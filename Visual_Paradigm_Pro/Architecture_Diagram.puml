@@ -1,0 +1,107 @@
+@startuml
+
+!theme cerulean-outline
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 8
+skinparam rectangleBorderStyle dashed
+skinparam rectangleBorderThickness 2
+
+title **RAMY Procedural Generation Studio**\nComponent Architecture Diagram
+
+' ========================================
+' FRONT END
+' ========================================
+rectangle "**front end**" as FE #FFF5E6 {
+    rectangle "user interface" as UI #FFFFFF {
+        component "Main\nWindow" as MW #FFF3E0
+        component "3D\nViewport" as VP #FFF3E0
+    }
+    
+    rectangle "panels" as PANELS #FFFFFF {
+        component "Pipeline\nManager" as PM #FFF3E0
+        component "Inspector\nPanel" as IP #FFF3E0
+        component "Asset\nExplorer" as AE #FFF3E0
+    }
+}
+
+' ========================================
+' CORE ENGINE
+' ========================================
+rectangle "**core engine**" as CE #E8F5E9 {
+    rectangle "management" as MGMT #FFFFFF {
+        component "Application\n<<Singleton>>" as APP #C8E6C9
+        component "Scene\nManager" as SM #C8E6C9
+    }
+    
+    rectangle "processing" as PROC #FFFFFF {
+        component "Generation\nStack" as GS #C8E6C9
+        component "Renderer\n<<OpenGL>>" as RND #C8E6C9
+    }
+    
+    rectangle "scene objects" as OBJS #FFFFFF {
+        component "GameObject" as GO #C8E6C9
+        component "Mesh" as MESH #C8E6C9
+        component "Transform" as TRF #C8E6C9
+    }
+}
+
+' ========================================
+' GENERATORS (Plugin System)
+' ========================================
+rectangle "**generators** //plugin system//" as GEN #FCE4EC {
+    component "<<interface>>\nIGenerator" as IGEN #F8BBD9
+    
+    rectangle "implementations" as IMPL #FFFFFF {
+        component "Perlin\nNoise" as PNG #F8BBD9
+        component "WFC" as WFC #F8BBD9
+        component "Shape\nGrammar" as SGG #F8BBD9
+        component "Scatter" as SCG #F8BBD9
+    }
+}
+
+' ========================================
+' IO SYSTEM
+' ========================================
+rectangle "**io system**" as IO #E3F2FD {
+    component "Config\nLoader" as CL #BBDEFB
+    component "Mesh\nExporter" as ME #BBDEFB
+    component "Asset\nImporter" as AI #BBDEFB
+}
+
+' ========================================
+' DATA LAYER
+' ========================================
+rectangle "**data layer**" as DL #F3E5F5 {
+    database "SQLite\nDatabase" as DB #E1BEE7
+    storage "File\nSystem" as FS #E1BEE7
+}
+
+' ========================================
+' CONNECTIONS WITH NUMBERS
+' ========================================
+MW -[#FF6B00,bold]-> APP : <color #FF6B00><size:14>**1**</size></color>
+VP -[#FF6B00,bold]-> RND : <color #FF6B00><size:14>**2**</size></color>
+PM -[#FF6B00,bold]-> GS : <color #FF6B00><size:14>**3**</size></color>
+IP -[#FF6B00,bold]-> SM : <color #FF6B00><size:14>**4**</size></color>
+
+APP -[#2E7D32,bold]-> SM : <color #2E7D32><size:14>**5**</size></color>
+APP -[#2E7D32,bold]-> GS : <color #2E7D32><size:14>**6**</size></color>
+SM -[#2E7D32,bold]-> GO : <color #2E7D32><size:14>**7**</size></color>
+GO --> MESH
+GO --> TRF
+
+GS -[#C2185B,bold]-> IGEN : <color #C2185B><size:14>**8**</size></color>
+PNG ..|> IGEN
+WFC ..|> IGEN
+SGG ..|> IGEN
+SCG ..|> IGEN
+
+AE -[#1565C0,bold]-> AI : <color #1565C0><size:14>**9**</size></color>
+AI --> SM
+ME -[#1565C0,bold]-> FS : <color #1565C0><size:14>**10**</size></color>
+CL --> DB
+CL --> FS
+
+@enduml

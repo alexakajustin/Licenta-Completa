@@ -1,0 +1,41 @@
+@startuml
+
+!theme cerulean-outline
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Procedural Generation Pipeline Execution
+
+actor User
+participant "Node Editor\n(Dear imGUI)" as Editor
+participant "Generator\nStack" as Stack
+participant "IGenerator" as Gen
+participant "Scene\nManager" as Scene
+participant "Viewport\n(OpenGL)" as View
+
+User -> Editor : Configure generators
+activate Editor
+
+Editor -> Stack : Build pipeline
+activate Stack
+
+loop For each generator in stack
+    Stack -> Gen : Execute()
+    activate Gen
+    Gen --> Stack : MeshData
+    deactivate Gen
+end
+
+Stack -> Scene : UpdateScene(meshes)
+activate Scene
+deactivate Stack
+
+Scene -> View : Render()
+activate View
+View --> User : Display 3D result
+deactivate View
+deactivate Scene
+deactivate Editor
+
+@enduml
