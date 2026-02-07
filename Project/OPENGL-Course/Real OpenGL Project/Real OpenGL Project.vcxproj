@@ -1,0 +1,566 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{38b28d49-8fd2-4f04-8723-2633e4908e0a}</ProjectGuid>
+    <RootNamespace>RealOpenGLProject</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="OmniShadowMap.cpp" />
+    <ClCompile Include="PointLight.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ShadowMap.cpp" />
+    <ClCompile Include="Skybox.cpp" />
+    <ClCompile Include="SpotLight.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Window.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="External Libs\GLEW\doc\advanced.html" />
+    <None Include="External Libs\GLEW\doc\basic.html" />
+    <None Include="External Libs\GLEW\doc\build.html" />
+    <None Include="External Libs\GLEW\doc\credits.html" />
+    <None Include="External Libs\GLEW\doc\glew.html" />
+    <None Include="External Libs\GLEW\doc\glxew.html" />
+    <None Include="External Libs\GLEW\doc\index.html" />
+    <None Include="External Libs\GLEW\doc\install.html" />
+    <None Include="External Libs\GLEW\doc\log.html" />
+    <None Include="External Libs\GLEW\doc\wglew.html" />
+    <None Include="External Libs\GLFW\docs\html\build_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\build_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\compat_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\compat_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\compile_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\compile_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\context_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\context_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\deprecated.html" />
+    <None Include="External Libs\GLFW\docs\html\dir_13577e2d8b9423099662de029791bd7d.html" />
+    <None Include="External Libs\GLFW\docs\html\dir_7f92719a7fe62e5b064f87d7a3c220b1.html" />
+    <None Include="External Libs\GLFW\docs\html\dir_a788ef6c2b1e5b367804e0b6ccfd6f11.html" />
+    <None Include="External Libs\GLFW\docs\html\dir_b11153cd0f4fd04a7564cc166f482635.html" />
+    <None Include="External Libs\GLFW\docs\html\files.html" />
+    <None Include="External Libs\GLFW\docs\html\glfw3native_8h.html" />
+    <None Include="External Libs\GLFW\docs\html\glfw3native_8h_source.html" />
+    <None Include="External Libs\GLFW\docs\html\glfw3_8h.html" />
+    <None Include="External Libs\GLFW\docs\html\glfw3_8h_source.html" />
+    <None Include="External Libs\GLFW\docs\html\group__buttons.html" />
+    <None Include="External Libs\GLFW\docs\html\group__context.html" />
+    <None Include="External Libs\GLFW\docs\html\group__errors.html" />
+    <None Include="External Libs\GLFW\docs\html\group__gamepad__axes.html" />
+    <None Include="External Libs\GLFW\docs\html\group__gamepad__buttons.html" />
+    <None Include="External Libs\GLFW\docs\html\group__hat__state.html" />
+    <None Include="External Libs\GLFW\docs\html\group__init.html" />
+    <None Include="External Libs\GLFW\docs\html\group__input.html" />
+    <None Include="External Libs\GLFW\docs\html\group__joysticks.html" />
+    <None Include="External Libs\GLFW\docs\html\group__keys.html" />
+    <None Include="External Libs\GLFW\docs\html\group__mods.html" />
+    <None Include="External Libs\GLFW\docs\html\group__monitor.html" />
+    <None Include="External Libs\GLFW\docs\html\group__native.html" />
+    <None Include="External Libs\GLFW\docs\html\group__shapes.html" />
+    <None Include="External Libs\GLFW\docs\html\group__vulkan.html" />
+    <None Include="External Libs\GLFW\docs\html\group__window.html" />
+    <None Include="External Libs\GLFW\docs\html\index.html" />
+    <None Include="External Libs\GLFW\docs\html\input_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\input_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\internals_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\internal_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\intro_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\intro_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\main_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\monitor_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\monitor_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\moving_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\moving_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\news.html" />
+    <None Include="External Libs\GLFW\docs\html\news_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\pages.html" />
+    <None Include="External Libs\GLFW\docs\html\quick_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\quick_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\struct_g_l_f_wallocator.html" />
+    <None Include="External Libs\GLFW\docs\html\struct_g_l_f_wgamepadstate.html" />
+    <None Include="External Libs\GLFW\docs\html\struct_g_l_f_wgammaramp.html" />
+    <None Include="External Libs\GLFW\docs\html\struct_g_l_f_wimage.html" />
+    <None Include="External Libs\GLFW\docs\html\struct_g_l_f_wvidmode.html" />
+    <None Include="External Libs\GLFW\docs\html\topics.html" />
+    <None Include="External Libs\GLFW\docs\html\vulkan_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\vulkan_guide.html" />
+    <None Include="External Libs\GLFW\docs\html\window_8md.html" />
+    <None Include="External Libs\GLFW\docs\html\window_guide.html" />
+    <None Include="External Libs\glm\detail\func_common.inl" />
+    <None Include="External Libs\glm\detail\func_common_simd.inl" />
+    <None Include="External Libs\glm\detail\func_exponential.inl" />
+    <None Include="External Libs\glm\detail\func_exponential_simd.inl" />
+    <None Include="External Libs\glm\detail\func_geometric.inl" />
+    <None Include="External Libs\glm\detail\func_geometric_simd.inl" />
+    <None Include="External Libs\glm\detail\func_integer.inl" />
+    <None Include="External Libs\glm\detail\func_integer_simd.inl" />
+    <None Include="External Libs\glm\detail\func_matrix.inl" />
+    <None Include="External Libs\glm\detail\func_matrix_simd.inl" />
+    <None Include="External Libs\glm\detail\func_packing.inl" />
+    <None Include="External Libs\glm\detail\func_packing_simd.inl" />
+    <None Include="External Libs\glm\detail\func_trigonometric.inl" />
+    <None Include="External Libs\glm\detail\func_trigonometric_simd.inl" />
+    <None Include="External Libs\glm\detail\func_vector_relational.inl" />
+    <None Include="External Libs\glm\detail\func_vector_relational_simd.inl" />
+    <None Include="External Libs\glm\detail\type_gentype.inl" />
+    <None Include="External Libs\glm\detail\type_half.inl" />
+    <None Include="External Libs\glm\detail\type_mat.inl" />
+    <None Include="External Libs\glm\detail\type_mat2x2.inl" />
+    <None Include="External Libs\glm\detail\type_mat2x3.inl" />
+    <None Include="External Libs\glm\detail\type_mat2x4.inl" />
+    <None Include="External Libs\glm\detail\type_mat3x2.inl" />
+    <None Include="External Libs\glm\detail\type_mat3x3.inl" />
+    <None Include="External Libs\glm\detail\type_mat3x4.inl" />
+    <None Include="External Libs\glm\detail\type_mat4x2.inl" />
+    <None Include="External Libs\glm\detail\type_mat4x3.inl" />
+    <None Include="External Libs\glm\detail\type_mat4x4.inl" />
+    <None Include="External Libs\glm\detail\type_mat4x4_simd.inl" />
+    <None Include="External Libs\glm\detail\type_vec.inl" />
+    <None Include="External Libs\glm\detail\type_vec1.inl" />
+    <None Include="External Libs\glm\detail\type_vec2.inl" />
+    <None Include="External Libs\glm\detail\type_vec3.inl" />
+    <None Include="External Libs\glm\detail\type_vec4.inl" />
+    <None Include="External Libs\glm\detail\type_vec4_simd.inl" />
+    <None Include="External Libs\GLM\glm\detail\func_matrix_simd.inl" />
+    <None Include="External Libs\GLM\glm\detail\type_gentype.inl" />
+    <None Include="External Libs\GLM\glm\gtx\io.inl" />
+    <None Include="External Libs\GLM\glm\gtx\mixed_product.inl" />
+    <None Include="External Libs\GLM\glm\gtx\raw_data.inl" />
+    <None Include="External Libs\GLM\glm\gtx\rotate_normalized_axis.inl" />
+    <None Include="External Libs\GLM\glm\gtx\rotate_vector.inl" />
+    <None Include="External Libs\GLM\glm\gtx\scalar_relational.inl" />
+    <None Include="External Libs\GLM\glm\gtx\spline.inl" />
+    <None Include="External Libs\GLM\glm\gtx\std_based_type.inl" />
+    <None Include="External Libs\GLM\glm\gtx\string_cast.inl" />
+    <None Include="External Libs\GLM\glm\gtx\transform.inl" />
+    <None Include="External Libs\GLM\glm\gtx\transform2.inl" />
+    <None Include="External Libs\GLM\glm\gtx\type_aligned.inl" />
+    <None Include="External Libs\GLM\glm\gtx\type_trait.inl" />
+    <None Include="External Libs\GLM\glm\gtx\vector_angle.inl" />
+    <None Include="External Libs\GLM\glm\gtx\vector_query.inl" />
+    <None Include="External Libs\GLM\glm\gtx\wrap.inl" />
+    <None Include="External Libs\glm\gtc\bitfield.inl" />
+    <None Include="External Libs\glm\gtc\color_encoding.inl" />
+    <None Include="External Libs\glm\gtc\color_space.inl" />
+    <None Include="External Libs\glm\gtc\constants.inl" />
+    <None Include="External Libs\glm\gtc\epsilon.inl" />
+    <None Include="External Libs\glm\gtc\functions.inl" />
+    <None Include="External Libs\glm\gtc\integer.inl" />
+    <None Include="External Libs\glm\gtc\matrix_access.inl" />
+    <None Include="External Libs\glm\gtc\matrix_inverse.inl" />
+    <None Include="External Libs\glm\gtc\matrix_transform.inl" />
+    <None Include="External Libs\glm\gtc\noise.inl" />
+    <None Include="External Libs\glm\gtc\packing.inl" />
+    <None Include="External Libs\glm\gtc\quaternion.inl" />
+    <None Include="External Libs\glm\gtc\quaternion_simd.inl" />
+    <None Include="External Libs\glm\gtc\random.inl" />
+    <None Include="External Libs\glm\gtc\reciprocal.inl" />
+    <None Include="External Libs\glm\gtc\round.inl" />
+    <None Include="External Libs\glm\gtc\type_precision.inl" />
+    <None Include="External Libs\glm\gtc\type_ptr.inl" />
+    <None Include="External Libs\glm\gtc\ulp.inl" />
+    <None Include="External Libs\glm\gtc\vec1.inl" />
+    <None Include="External Libs\glm\gtx\associated_min_max.inl" />
+    <None Include="External Libs\glm\gtx\bit.inl" />
+    <None Include="External Libs\glm\gtx\closest_point.inl" />
+    <None Include="External Libs\glm\gtx\color_space.inl" />
+    <None Include="External Libs\glm\gtx\color_space_YCoCg.inl" />
+    <None Include="External Libs\glm\gtx\common.inl" />
+    <None Include="External Libs\glm\gtx\compatibility.inl" />
+    <None Include="External Libs\glm\gtx\component_wise.inl" />
+    <None Include="External Libs\glm\gtx\dual_quaternion.inl" />
+    <None Include="External Libs\glm\gtx\euler_angles.inl" />
+    <None Include="External Libs\glm\gtx\extend.inl" />
+    <None Include="External Libs\glm\gtx\extended_min_max.inl" />
+    <None Include="External Libs\glm\gtx\fast_exponential.inl" />
+    <None Include="External Libs\glm\gtx\fast_square_root.inl" />
+    <None Include="External Libs\glm\gtx\fast_trigonometry.inl" />
+    <None Include="External Libs\glm\gtx\float_notmalize.inl" />
+    <None Include="External Libs\glm\gtx\gradient_paint.inl" />
+    <None Include="External Libs\glm\gtx\handed_coordinate_space.inl" />
+    <None Include="External Libs\glm\gtx\hash.inl" />
+    <None Include="External Libs\glm\gtx\integer.inl" />
+    <None Include="External Libs\glm\gtx\intersect.inl" />
+    <None Include="External Libs\glm\gtx\io.inl" />
+    <None Include="External Libs\glm\gtx\log_base.inl" />
+    <None Include="External Libs\glm\gtx\matrix_cross_product.inl" />
+    <None Include="External Libs\glm\gtx\matrix_decompose.inl" />
+    <None Include="External Libs\glm\gtx\matrix_interpolation.inl" />
+    <None Include="External Libs\glm\gtx\matrix_major_storage.inl" />
+    <None Include="External Libs\glm\gtx\matrix_operation.inl" />
+    <None Include="External Libs\glm\gtx\matrix_query.inl" />
+    <None Include="External Libs\glm\gtx\matrix_transform_2d.inl" />
+    <None Include="External Libs\glm\gtx\mixed_product.inl" />
+    <None Include="External Libs\glm\gtx\norm.inl" />
+    <None Include="External Libs\glm\gtx\normal.inl" />
+    <None Include="External Libs\glm\gtx\normalize_dot.inl" />
+    <None Include="External Libs\glm\gtx\number_precision.inl" />
+    <None Include="External Libs\glm\gtx\optimum_pow.inl" />
+    <None Include="External Libs\glm\gtx\orthonormalize.inl" />
+    <None Include="External Libs\glm\gtx\perpendicular.inl" />
+    <None Include="External Libs\glm\gtx\polar_coordinates.inl" />
+    <None Include="External Libs\glm\gtx\projection.inl" />
+    <None Include="External Libs\glm\gtx\quaternion.inl" />
+    <None Include="External Libs\glm\gtx\raw_data.inl" />
+    <None Include="External Libs\glm\gtx\rotate_normalized_axis.inl" />
+    <None Include="External Libs\glm\gtx\rotate_vector.inl" />
+    <None Include="External Libs\glm\gtx\scalar_relational.inl" />
+    <None Include="External Libs\glm\gtx\spline.inl" />
+    <None Include="External Libs\glm\gtx\std_based_type.inl" />
+    <None Include="External Libs\glm\gtx\string_cast.inl" />
+    <None Include="External Libs\glm\gtx\transform.inl" />
+    <None Include="External Libs\glm\gtx\transform2.inl" />
+    <None Include="External Libs\glm\gtx\type_aligned.inl" />
+    <None Include="External Libs\glm\gtx\type_trait.inl" />
+    <None Include="External Libs\glm\gtx\vector_angle.inl" />
+    <None Include="External Libs\glm\gtx\vector_query.inl" />
+    <None Include="External Libs\glm\gtx\wrap.inl" />
+    <None Include="glew32.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="CommonValues.h" />
+    <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="External Libs\GLEW\include\GL\eglew.h" />
+    <ClInclude Include="External Libs\GLEW\include\GL\glew.h" />
+    <ClInclude Include="External Libs\GLEW\include\GL\glxew.h" />
+    <ClInclude Include="External Libs\GLEW\include\GL\wglew.h" />
+    <ClInclude Include="External Libs\GLFW\include\GLFW\glfw3.h" />
+    <ClInclude Include="External Libs\GLFW\include\GLFW\glfw3native.h" />
+    <ClInclude Include="External Libs\glm\detail\func_common.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_exponential.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_geometric.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_integer.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_matrix.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_packing.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_trigonometric.hpp" />
+    <ClInclude Include="External Libs\glm\detail\func_vector_relational.hpp" />
+    <ClInclude Include="External Libs\glm\detail\precision.hpp" />
+    <ClInclude Include="External Libs\glm\detail\setup.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_float.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_gentype.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_half.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_int.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat2x2.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat2x3.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat2x4.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat3x2.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat3x3.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat3x4.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat4x2.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat4x3.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_mat4x4.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_vec.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_vec1.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_vec2.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_vec3.hpp" />
+    <ClInclude Include="External Libs\glm\detail\type_vec4.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_features.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_fixes.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_noise.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_swizzle.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_swizzle_func.hpp" />
+    <ClInclude Include="External Libs\glm\detail\_vectorize.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\common.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\detail\func_packing.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\exponential.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\ext.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\fwd.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\geometric.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\glm.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\matrix_operation.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\matrix_query.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\perpendicular.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\range.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\raw_data.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\rotate_normalized_axis.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\rotate_vector.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\scalar_multiplication.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\scalar_relational.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\spline.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\std_based_type.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\string_cast.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\transform.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\transform2.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\type_aligned.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\type_trait.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\vector_angle.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\vector_query.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\gtx\wrap.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\integer.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat2x2.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat2x3.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat2x4.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat3x2.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat3x3.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat3x4.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat4x2.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat4x3.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\mat4x4.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\matrix.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\packing.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\simd\common.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\exponential.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\geometric.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\integer.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\matrix.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\packing.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\platform.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\trigonometric.h" />
+    <ClInclude Include="External Libs\GLM\glm\simd\vector_relational.h" />
+    <ClInclude Include="External Libs\GLM\glm\trigonometric.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\vec2.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\vec3.hpp" />
+    <ClInclude Include="External Libs\GLM\glm\vector_relational.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\bitfield.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\color_space.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\constants.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\epsilon.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\functions.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\integer.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\matrix_access.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\matrix_integer.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\matrix_inverse.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\matrix_transform.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\noise.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\packing.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\quaternion.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\random.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\reciprocal.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\round.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\type_aligned.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\type_precision.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\type_ptr.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\ulp.hpp" />
+    <ClInclude Include="External Libs\glm\gtc\vec1.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\associated_min_max.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\bit.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\closest_point.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\color_space.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\color_space_YCoCg.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\common.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\compatibility.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\component_wise.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\dual_quaternion.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\euler_angles.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\extend.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\extended_min_max.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\fast_exponential.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\fast_square_root.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\fast_trigonometry.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\gradient_paint.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\handed_coordinate_space.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\hash.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\integer.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\intersect.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\io.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\log_base.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_cross_product.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_decompose.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_interpolation.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_major_storage.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_operation.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_query.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\matrix_transform_2d.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\mixed_product.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\norm.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\normal.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\normalize_dot.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\number_precision.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\optimum_pow.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\orthonormalize.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\perpendicular.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\polar_coordinates.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\projection.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\quaternion.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\range.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\raw_data.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\rotate_normalized_axis.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\rotate_vector.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\scalar_multiplication.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\scalar_relational.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\spline.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\std_based_type.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\string_cast.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\transform.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\transform2.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\type_aligned.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\type_trait.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\vector_angle.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\vector_query.hpp" />
+    <ClInclude Include="External Libs\glm\gtx\wrap.hpp" />
+    <ClInclude Include="External Libs\glm\simd\common.h" />
+    <ClInclude Include="External Libs\glm\simd\exponential.h" />
+    <ClInclude Include="External Libs\glm\simd\geometric.h" />
+    <ClInclude Include="External Libs\glm\simd\integer.h" />
+    <ClInclude Include="External Libs\glm\simd\matrix.h" />
+    <ClInclude Include="External Libs\glm\simd\packing.h" />
+    <ClInclude Include="External Libs\glm\simd\platform.h" />
+    <ClInclude Include="External Libs\glm\simd\trigonometric.h" />
+    <ClInclude Include="External Libs\glm\simd\vector_relational.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
+    <ClInclude Include="OmniShadowMap.h" />
+    <ClInclude Include="PointLight.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShadowMap.h" />
+    <ClInclude Include="Skybox.h" />
+    <ClInclude Include="SpotLight.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="Window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="External Libs\GLEW\lib\Release\Win32\glew32.lib" />
+    <Library Include="External Libs\GLEW\lib\Release\Win32\glew32s.lib" />
+    <Library Include="External Libs\GLEW\lib\Release\x64\glew32.lib" />
+    <Library Include="External Libs\GLEW\lib\Release\x64\glew32s.lib" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
