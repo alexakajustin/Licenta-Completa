@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -93,7 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,21 +141,33 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_demo.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_draw.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_impl_glfw.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_tables.cpp" />
+    <ClCompile Include="External Libs\ImGUI\imgui_widgets.cpp" />
+    <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightObject.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OmniShadowMap.cpp" />
     <ClCompile Include="PointLight.cpp" />
+    <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="ShadowMap.cpp" />
     <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="SpotLight.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="assimp-vc143-mt.dll" />
     <None Include="External Libs\GLEW\doc\advanced.html" />
     <None Include="External Libs\GLEW\doc\basic.html" />
     <None Include="External Libs\GLEW\doc\build.html" />
@@ -357,6 +369,7 @@
     <None Include="External Libs\glm\gtx\vector_query.inl" />
     <None Include="External Libs\glm\gtx\wrap.inl" />
     <None Include="glew32.dll" />
+    <None Include="imgui.ini" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -540,18 +553,31 @@
     <ClInclude Include="External Libs\glm\simd\platform.h" />
     <ClInclude Include="External Libs\glm\simd\trigonometric.h" />
     <ClInclude Include="External Libs\glm\simd\vector_relational.h" />
+    <ClInclude Include="External Libs\ImGUI\imconfig.h" />
+    <ClInclude Include="External Libs\ImGUI\imgui.h" />
+    <ClInclude Include="External Libs\ImGUI\imgui_impl_glfw.h" />
+    <ClInclude Include="External Libs\ImGUI\imgui_impl_opengl3.h" />
+    <ClInclude Include="External Libs\ImGUI\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="External Libs\ImGUI\imgui_internal.h" />
+    <ClInclude Include="External Libs\ImGUI\imstb_rectpack.h" />
+    <ClInclude Include="External Libs\ImGUI\imstb_textedit.h" />
+    <ClInclude Include="External Libs\ImGUI\imstb_truetype.h" />
+    <ClInclude Include="GameObject.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="LightObject.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OmniShadowMap.h" />
     <ClInclude Include="PointLight.h" />
+    <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShadowMap.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="SpotLight.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="Transform.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>

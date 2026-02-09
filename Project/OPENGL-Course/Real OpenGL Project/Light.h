@@ -19,6 +19,11 @@ public:
 
 	ShadowMap* GetShadowMap() { return shadowMap; }
 
+	// Getters for editing
+	glm::vec3* GetColourPtr() { return &colour; }
+	GLfloat* GetAmbientIntensityPtr() { return &ambientIntensity; }
+	GLfloat* GetDiffuseIntensityPtr() { return &diffuseIntensity; }
+
 	~Light();
 
 protected:

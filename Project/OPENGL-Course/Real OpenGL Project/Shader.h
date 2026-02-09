@@ -55,6 +55,7 @@ public:
 
 	void UseShader();
 	void ClearShader();
+	GLuint GetShaderID() { return shaderID; }
 
 private:
 	int pointLightCount;

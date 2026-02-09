@@ -91,16 +91,19 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / textureSize(directionalShadowMap, 0);
-	for(int x = -1; x <= 1; ++x)
+	
+	// Disk-based PCF sampling (20 samples) for smoother shadows
+	int samples = 20;
+	float diskRadius = 1.2; // Lower = sharper, higher = softer
+	
+	for(int i = 0; i < samples; i++)
 	{
-		for(int y = -1; y <= 1; ++y)
-		{
-			float pcfDepth = texture(directionalShadowMap, projCoords.xy + vec2(x,y) * texelSize).r;
-			shadow += current - bias > pcfDepth ? 1.0 : 0.0;
-		}
+		vec2 offset = sampleOffsetDirections[i].xy * texelSize * diskRadius;
+		float pcfDepth = texture(directionalShadowMap, projCoords.xy + offset).r;
+		shadow += current - bias > pcfDepth ? 1.0 : 0.0;
 	}
 
-	shadow /= 9.0;
+	shadow /= float(samples);
 	
 	if(projCoords.z > 1.0)
 	{
@@ -157,7 +160,7 @@ vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 		if(specularFactor > 0.0f) 
 		{
 			specularFactor = pow(specularFactor, material.shininess);
-			specularColour = vec4(light.colour * material.specularIntensity * specularFactor, 1.0f);
+			specularColour = vec4(light.colour * material.specularIntensity * specularFactor * light.diffuseIntensity, 1.0f);
 		}
 	}
 

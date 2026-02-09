@@ -9,7 +9,7 @@
 class Window
 {
 public:
-	Window();
+	Window();	
 	Window(GLfloat windowWidth, GLfloat windowHeight);
 	~Window();
 
@@ -17,11 +17,13 @@ public:
 	GLfloat getBufferWidth() { return bufferWidth; }
 	GLfloat getBufferHeight() { return bufferHeight; }
 	bool getShouldClose() { return glfwWindowShouldClose(mainWindow); }
+	GLFWwindow* getWindow() { return mainWindow; }
 	
 	// not so object oriented but fuck it
 	bool* getKeys() { return keys; };
 	GLfloat getXChange();
 	GLfloat getYChange();
+	bool isCursorEnabled() { return cursorEnabled; }
 
 
 	void swapBuffers() { glfwSwapBuffers(mainWindow); }
@@ -36,6 +38,7 @@ private:
 	GLfloat lastX, lastY;
 	GLfloat xChange, yChange;
 	bool mouseFirstMoved;
+	bool cursorEnabled = false; // ESC toggles this for ImGui interaction
 
 	// glfw callback needs the method to be static
 	// 5 values cuz the callback has these variables

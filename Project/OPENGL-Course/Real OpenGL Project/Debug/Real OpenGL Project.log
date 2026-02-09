@@ -1,12 +1,9 @@
-﻿  ShadowMap.cpp
-  main.cpp
+﻿  main.cpp
 C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'main.cpp')
   
 C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'main.cpp')
   
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\main.cpp(338,15): warning C4244: 'initializing': conversion from 'double' to 'GLfloat', possible loss of data
-  Generating Code...
-LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\main.cpp(426,15): warning C4244: 'initializing': conversion from 'double' to 'GLfloat', possible loss of data
   Real OpenGL Project.vcxproj -> C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

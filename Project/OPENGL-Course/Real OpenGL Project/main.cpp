@@ -1,5 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
-
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <stdio.h>
 #include <string.h>
 #include <cmath>
@@ -31,6 +33,7 @@
 #include "Model.h"
 
 #include "Skybox.h"
+#include "SceneManager.h"
 
 
 Window mainWindow;
@@ -69,6 +72,7 @@ unsigned int spotLightCount = 0;
 
 Skybox skybox;
 
+SceneManager sceneManager;
 
 void calcAverageNormals(unsigned int * indices, unsigned int indiceCount, GLfloat * vertices, unsigned int verticeCount, 
 						unsigned int vLength, unsigned int normalOffset)
@@ -155,48 +159,7 @@ void CreateShaders()
 
 void RenderScene()
 {
-
-	// pyramid 1
-	glm::mat4 model(1.0f);
-	model = glm::translate(model, glm::vec3(-5.0f, 0.0f, 0.0f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	brickTexture.UseTexture();
-	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	meshList[0]->RenderMesh();
-
-	// pyramid 2
-	model = glm::mat4();
-	model = glm::translate(model, glm::vec3(5.0f, 0.0f, 0.0f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	dirtTexture.UseTexture();
-	shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	meshList[1]->RenderMesh();
-
-	// plain
-	model = glm::mat4();
-	model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-	model = glm::scale(model, glm::vec3(10.0f, 10.0f, 10.0f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	plainTexture.UseTexture();
-	plainMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	meshList[2]->RenderMesh();
-
-	// rug
-	model = glm::mat4();
-	model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
-	model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	rug.RenderModel();
-
-	// monitor
-	model = glm::mat4();
-	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 5.0f));
-	model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	monitor.RenderModel();
+	sceneManager.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess);
 }
 
 void DirectionalShadowMapPass(DirectionalLight* light)
@@ -250,7 +213,6 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
-
 	glViewport(0, 0, 1920, 1080);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -282,7 +244,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
 	glm::vec3 lowerLight = camera.getCameraPosition();
 	lowerLight.y -= 0.1f;
-	spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+	// spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
 
 	shaderList[0].Validate();
 
@@ -379,7 +341,83 @@ int main()
 
 	skybox = Skybox(skyboxFaces);
 
+	// ============== SCENE SETUP ==============
+	// Create GameObjects and add them to the SceneManager
+
+	// Pyramid 1
+	GameObject* pyramid1 = new GameObject("Pyramid 1");
+	pyramid1->GetTransform().SetPosition(glm::vec3(-5.0f, 0.0f, 0.0f));
+	pyramid1->SetMesh(meshList[0]);
+	pyramid1->SetTexture(&brickTexture);
+	pyramid1->SetMaterial(&dullMaterial);
+	sceneManager.AddObject(pyramid1);
+
+	// Pyramid 2
+	GameObject* pyramid2 = new GameObject("Pyramid 2");
+	pyramid2->GetTransform().SetPosition(glm::vec3(5.0f, 0.0f, 0.0f));
+	pyramid2->SetMesh(meshList[1]);
+	pyramid2->SetTexture(&dirtTexture);
+	pyramid2->SetMaterial(&shinyMaterial);
+	sceneManager.AddObject(pyramid2);
+
+	// Floor
+	GameObject* floor = new GameObject("Floor");
+	floor->GetTransform().SetPosition(glm::vec3(0.0f, -2.0f, 0.0f));
+	floor->GetTransform().SetScale(glm::vec3(10.0f, 10.0f, 10.0f));
+	floor->SetMesh(meshList[2]);
+	floor->SetTexture(&plainTexture);
+	floor->SetMaterial(&plainMaterial);
+	sceneManager.AddObject(floor);
+
+	// Rug
+	GameObject* rugObj = new GameObject("Rug");
+	rugObj->GetTransform().SetPosition(glm::vec3(0.0f, -2.0f, 0.0f));
+	rugObj->GetTransform().SetRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
+	rugObj->GetTransform().SetScale(glm::vec3(0.05f, 0.05f, 0.05f));
+	rugObj->SetModel(&rug);
+	rugObj->SetMaterial(&dullMaterial);
+	sceneManager.AddObject(rugObj);
+
+	// Monitor
+	GameObject* monitorObj = new GameObject("Monitor");
+	monitorObj->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 5.0f));
+	monitorObj->GetTransform().SetScale(glm::vec3(0.5f, 0.5f, 0.5f));
+	monitorObj->SetModel(&monitor);
+	monitorObj->SetMaterial(&shinyMaterial);
+	sceneManager.AddObject(monitorObj);
+
+	// ============ LIGHTS IN HIERARCHY ============
+	// Wrap lights in LightObjects for hierarchy display
+	LightObject* mainLightObj = new LightObject("Sun", &mainLight);
+	sceneManager.AddLight(mainLightObj);
+
+	LightObject* pointLight1Obj = new LightObject("Point Light 1 (Green)", &pointLights[0]);
+	sceneManager.AddLight(pointLight1Obj);
+
+	LightObject* pointLight2Obj = new LightObject("Point Light 2 (Blue)", &pointLights[1]);
+	sceneManager.AddLight(pointLight2Obj);
+
+	LightObject* spotLight1Obj = new LightObject("Flashlight", &spotLights[0]);
+	sceneManager.AddLight(spotLight1Obj);
+
+	LightObject* spotLight2Obj = new LightObject("Red Spot", &spotLights[1]);
+	sceneManager.AddLight(spotLight2Obj);
+
+	// ============================================
+
 	glm::mat4 projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(), 0.001f, 1000.0f);
+
+
+	// Initialize ImGUI
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(mainWindow.getWindow(), true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+	// Initialize color picking
+	sceneManager.InitPicking((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
 
 	// ---------------- DONE WITH INITS------------------------------
 	// -------------NOW IT IS THE TIME FOR THE LOOP-------------------
@@ -389,11 +427,45 @@ int main()
 		deltaTime = now - lastTime;
 		lastTime = now;
 
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 		// handle user input
 		glfwPollEvents();
 
-		camera.keyControl(mainWindow.getKeys(), deltaTime);
-		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+		// Only process camera input when not in ImGui mode
+		if (!mainWindow.isCursorEnabled())
+		{
+			camera.keyControl(mainWindow.getKeys(), deltaTime);
+			camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+		}
+		else
+		{
+			// Mouse picking when cursor is enabled
+			if (glfwGetMouseButton(mainWindow.getWindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			{
+				// Only pick if not clicking on ImGui
+				if (!ImGui::GetIO().WantCaptureMouse)
+				{
+					double mouseX, mouseY;
+					glfwGetCursorPos(mainWindow.getWindow(), &mouseX, &mouseY);
+					
+					int picked = sceneManager.PickObject(
+						(float)mouseX, (float)mouseY,
+						projection, camera.calculateViewMatrix());
+					
+					if (picked >= 0)
+					{
+						sceneManager.SetSelectedIndex(picked);
+					}
+				}
+			}
+		}
+
+		// Scene Hierarchy and Inspector panels
+		sceneManager.RenderImGui();
+
+
 		
 		DirectionalShadowMapPass(&mainLight);
 
@@ -412,7 +484,11 @@ int main()
 
 		glUseProgram(0);
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		// swap frame buffers (back -> front)
 		mainWindow.swapBuffers();
 	}
+	ImGui::DestroyContext();
 }

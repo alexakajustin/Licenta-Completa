@@ -24,7 +24,13 @@ public:
 
 
     glm::vec3 GetPosition();
+    glm::vec3* GetPositionPtr() { return &position; }
     GLfloat GetFarPlane();
+
+    // Attenuation getters for editing
+    GLfloat* GetConstantPtr() { return &constant; }
+    GLfloat* GetLinearPtr() { return &linear; }
+    GLfloat* GetExponentPtr() { return &exponent; }
 
     ~PointLight();
 protected:

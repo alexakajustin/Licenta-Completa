@@ -49,7 +49,7 @@ int Window::Initialise()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
 	// Create a window
-	mainWindow = glfwCreateWindow(width, height, "Super Game Engine", NULL, NULL);
+	mainWindow = glfwCreateWindow(width, height, "RAMY Procedural Generation Engine", NULL, NULL);
 
 	if (!mainWindow) {
 		printf("GLFW Window Creation failed!");
@@ -119,7 +119,16 @@ void Window::handleKeys(GLFWwindow* window, int key, int code, int action, int m
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
-		glfwSetWindowShouldClose(window, GL_TRUE);
+		// Toggle cursor for ImGui interaction
+		theWindow->cursorEnabled = !theWindow->cursorEnabled;
+		if (theWindow->cursorEnabled)
+		{
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		else
+		{
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
 	}
 
 	if (key >= 0 && key <= 1024)

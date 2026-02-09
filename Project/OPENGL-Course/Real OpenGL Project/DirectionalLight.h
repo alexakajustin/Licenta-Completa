@@ -14,6 +14,9 @@ public:
 
 	glm::mat4 CalculateLightTransform();
 
+	// Getter for editing
+	glm::vec3* GetDirectionPtr() { return &direction; }
+
 	~DirectionalLight();
 private:
 	glm::vec3 direction;

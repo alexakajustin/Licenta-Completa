@@ -1,0 +1,10 @@
+#version 330
+
+uniform vec3 pickingColor;
+
+out vec4 colour;
+
+void main()
+{
+    colour = vec4(pickingColor, 1.0);
+}

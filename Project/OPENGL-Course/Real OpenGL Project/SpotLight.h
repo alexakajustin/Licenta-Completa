@@ -21,6 +21,9 @@ public:
         GLuint edgeLocation);
 
     void SetFlash(glm::vec3 pos, glm::vec3 dir);
+
+    // Getter for editing
+    glm::vec3* GetDirectionPtr() { return &direction; }
      
     ~SpotLight();
 private:
