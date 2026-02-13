@@ -490,6 +490,7 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 	GLuint worldPosLoc = glGetUniformLocation(iconShader.GetShaderID(), "worldPos");
 	GLuint iconSizeLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconSize");
 	GLuint textureLoc = glGetUniformLocation(iconShader.GetShaderID(), "theTexture");
+	GLuint iconColorLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconColor");
 	
 	// Force unit 0 specifically for icons to avoid unit 1 mismatch from Texture::UseTexture
 	glActiveTexture(GL_TEXTURE0);
@@ -506,6 +507,10 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 		if (pos)
 		{
 			if (worldPosLoc != (GLuint)-1) glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
+			
+			glm::vec3* color = light->GetColorPtr();
+			if (iconColorLoc != (GLuint)-1 && color) glUniform3f(iconColorLoc, color->x, color->y, color->z);
+			
 			iconMesh->RenderMesh();
 		}
 	}
