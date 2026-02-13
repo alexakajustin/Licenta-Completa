@@ -112,7 +112,7 @@ private:
 	
 	void CompileShader(const char* vertexCode, const char* fragmentCode);
 	void CompileShader(const char* vertexCode, const char* geometryCode, const char* fragmentCode);
-	void AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
+	bool AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
 	void CompileProgram();
 };
 

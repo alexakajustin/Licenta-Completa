@@ -1,6 +1,7 @@
 #version 330
 
 uniform vec3 pickingColor;
+uniform bool isBillboard;
 
 out vec4 colour;
 

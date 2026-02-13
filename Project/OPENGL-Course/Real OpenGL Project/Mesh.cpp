@@ -52,8 +52,8 @@ void Mesh::CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int num
 
 	// unbinds
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind vbo 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // unbind IBO
 	glBindVertexArray(0); // unbind vao
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // unbind IBO
 }
 
 void Mesh::RenderMesh()
@@ -64,11 +64,10 @@ void Mesh::RenderMesh()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO); 
 	// draw the object stored in the VAO
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0); 
-	// unbind the IBO
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
 	// unbind the VAO
 	glBindVertexArray(0);                    
-
+	// unbind the IBO
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
 }
 
 void Mesh::ClearMesh()

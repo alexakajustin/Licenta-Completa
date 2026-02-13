@@ -24,9 +24,10 @@ Texture::Texture(const char* fileLoc)
 
 bool Texture::LoadTexture()
 {
-	unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 0);
+	// Force 4 channels (RGBA) for consistency and ease of use in shaders
+	unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
 
-	printf("Image %s loaded - channels: %d\n", fileLocation, bitDepth);
+	printf("Image %s loaded - original channels: %d (forced to 4)\n", fileLocation, bitDepth);
 
 	if (!texData)
 	{
@@ -34,25 +35,10 @@ bool Texture::LoadTexture()
 		return false;
 	}
 
-	// determine format based on number of channels
-	GLenum format = GL_RGB;
-	GLenum internalFormat = GL_RGB;
-
-	if (bitDepth == 4)
-	{
-		format = GL_RGBA;
-		internalFormat = GL_RGBA;
-	}
-	else if (bitDepth == 3)
-	{
-		format = GL_RGB;
-		internalFormat = GL_RGB;
-	}
-	else if (bitDepth == 1)
-	{
-		format = GL_RED;
-		internalFormat = GL_RED;
-	}
+	// We forced 4 channels, so we can always use GL_RGBA
+	GLenum format = GL_RGBA;
+	GLenum internalFormat = GL_RGBA;
+	bitDepth = 4;
 
 	// same thing as the VAO, VBO etc.
 	glGenTextures(1, &textureID);

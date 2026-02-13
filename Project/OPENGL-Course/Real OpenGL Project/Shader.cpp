@@ -5,8 +5,19 @@ Shader::Shader()
 	shaderID = 0;
 	uniformModel = 0;
 	uniformProjection = 0;
+	uniformView = 0;
+	uniformEyePosition = 0;
+	uniformSpecularIntensity = 0;
+	uniformShininess = 0;
+	uniformTexture = 0;
+	uniformDirectionalLightTransform = 0;
+	uniformDirectionalShadowMap = 0;
+	uniformOmniLightPos = 0;
+	uniformFarPlane = 0;
 	pointLightCount = 0;
 	spotLightCount = 0;
+
+	for (int i = 0; i < 6; i++) uniformLightMatrices[i] = 0;
 }
 
 Shader::~Shader()
@@ -56,10 +67,11 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 	}
 
 	// add the vertex and fragment shader to the shader program
-	AddShader(shaderID, vertexCode, GL_VERTEX_SHADER);
-	AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER);
+	if (!AddShader(shaderID, vertexCode, GL_VERTEX_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER)) { ClearShader(); return; }
 
 	CompileProgram();
+	if (shaderID == 0) return;
 }
 
 void Shader::CompileShader(const char* vertexCode, const char* geometryCode, const char* fragmentCode)
@@ -74,14 +86,15 @@ void Shader::CompileShader(const char* vertexCode, const char* geometryCode, con
 	}
 
 	// add the vertex and fragment shader to the shader program
-	AddShader(shaderID, vertexCode, GL_VERTEX_SHADER);
-	AddShader(shaderID, geometryCode, GL_GEOMETRY_SHADER);
-	AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER);
+	if (!AddShader(shaderID, vertexCode, GL_VERTEX_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, geometryCode, GL_GEOMETRY_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER)) { ClearShader(); return; }
 
 	CompileProgram();
+	if (shaderID == 0) return;
 }
 
-void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)
+bool Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)
 {
 	GLuint theShader = glCreateShader(shaderType);
 
@@ -89,7 +102,7 @@ void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderT
 	theCode[0] = shaderCode;
 	
 	GLint codeLenght[1];
-	codeLenght[0] = strlen(shaderCode);
+	codeLenght[0] = (GLint)strlen(shaderCode);
 
 	glShaderSource(theShader, 1, theCode, codeLenght);
 
@@ -104,10 +117,11 @@ void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderT
 	{
 		glGetShaderInfoLog(theShader, sizeof(errorLog), NULL, errorLog);
 		printf("error at shader compile status: %s\n", errorLog);
-		return;
+		return false;
 	}
 
 	glAttachShader(theProgram, theShader);
+	return true;
 }
 
 void Shader::Validate()
@@ -139,8 +153,8 @@ void Shader::CompileProgram()
 	{
 		glGetProgramInfoLog(shaderID, sizeof(errorLog), NULL, errorLog);
 		printf("error at shader linking status: %s\n", errorLog);
+		ClearShader();
 		return;
-
 	}
 
 	uniformModel = glGetUniformLocation(shaderID, "model");

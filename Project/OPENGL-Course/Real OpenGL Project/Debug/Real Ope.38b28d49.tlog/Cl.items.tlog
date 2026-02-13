@@ -1,26 +1,29 @@
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Camera.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Camera.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\DirectionalLight.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\DirectionalLight.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_demo.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_demo.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_draw.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_draw.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_impl_glfw.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_impl_glfw.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_impl_opengl3.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_impl_opengl3.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_tables.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_tables.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_widgets.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_widgets.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\GameObject.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\GameObject.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Light.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Light.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\LightObject.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\LightObject.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\main.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\main.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Material.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Material.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Mesh.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Mesh.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Model.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Model.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\OmniShadowMap.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\OmniShadowMap.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\PointLight.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\PointLight.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\SceneManager.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\SceneManager.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Shader.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Shader.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\ShadowMap.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\ShadowMap.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Skybox.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Skybox.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\SpotLight.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\SpotLight.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Texture.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Texture.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Transform.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Transform.obj
-C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Window.cpp;C:\Users\Jastin\Desktop\Licenta\Project\OPENGL-Course\Real OpenGL Project\Debug\Window.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Camera.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Camera.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\DirectionalLight.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\DirectionalLight.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLM\glm\detail\dummy.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\dummy.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLM\glm\detail\glm.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\glm.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_demo.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_demo.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_draw.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_draw.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_impl_glfw.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_impl_glfw.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_impl_opengl3.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_impl_opengl3.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_tables.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_tables.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\ImGUI\imgui_widgets.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\imgui_widgets.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\GameObject.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\GameObject.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Light.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Light.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\LightObject.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\LightObject.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\main.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\main.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Material.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Material.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Mesh.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Mesh.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Model.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Model.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\OmniShadowMap.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\OmniShadowMap.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PointLight.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\PointLight.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\PrimitiveGenerator.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\SceneManager.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\SceneManager.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Shader.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Shader.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\ShadowMap.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\ShadowMap.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Skybox.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Skybox.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\SpotLight.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\SpotLight.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Texture.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Texture.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Transform.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Transform.obj
+C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp;C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Window.obj

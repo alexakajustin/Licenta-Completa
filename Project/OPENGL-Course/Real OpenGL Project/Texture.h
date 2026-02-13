@@ -16,6 +16,8 @@ public:
 	void UseTexture();
 	void ClearTexture();
 
+	GLuint GetTextureID() const { return textureID; }
+
 	~Texture();
 private:
 	// id on graphics card

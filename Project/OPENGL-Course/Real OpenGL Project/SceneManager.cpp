@@ -1,8 +1,52 @@
 #include "SceneManager.h"
+#include "PrimitiveGenerator.h"
+#include <iostream>
+
+// Helper for Unity-like Vector3 input
+static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f)
+{
+	ImGui::PushID(label.c_str());
+
+	ImGui::Text(label.c_str());
+	
+	// Right-align the inputs
+	float totalWidth = ImGui::GetContentRegionAvail().x;
+	float inputWidth = (totalWidth - 20.0f) / 3.0f; // Roughly divide remaining space
+	
+	ImGui::SameLine(70.0f); // Fixed label width
+
+	ImGui::PushItemWidth(inputWidth);
+	
+	// X
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+	ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.2f");
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemClicked(1)) values.x = resetValue; // Right click to reset
+	
+	ImGui::SameLine(0, 5);
+	
+	// Y
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
+	ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.2f");
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemClicked(1)) values.y = resetValue;
+	
+	ImGui::SameLine(0, 5);
+	
+	// Z
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
+	ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.2f");
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemClicked(1)) values.z = resetValue;
+
+	ImGui::PopItemWidth();
+	ImGui::PopID();
+}
 
 SceneManager::SceneManager()
 	: selectedObjectIndex(-1), selectedLightIndex(-1), pickingFBO(0), pickingTexture(0), pickingDepth(0),
-	  pickWidth(0), pickHeight(0), pickingInitialized(false)
+	  pickWidth(0), pickHeight(0), pickingInitialized(false),
+	  lightIconTexture(nullptr), iconMesh(nullptr)
 {
 }
 
@@ -14,6 +58,10 @@ SceneManager::~SceneManager()
 	if (pickingFBO) glDeleteFramebuffers(1, &pickingFBO);
 	if (pickingTexture) glDeleteTextures(1, &pickingTexture);
 	if (pickingDepth) glDeleteRenderbuffers(1, &pickingDepth);
+
+	// Cleanup icons
+	if (lightIconTexture) delete lightIconTexture;
+	if (iconMesh) delete iconMesh;
 }
 
 void SceneManager::AddObject(GameObject* obj)
@@ -118,8 +166,13 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glUniformMatrix4fv(pickingShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
 	glUniformMatrix4fv(pickingShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
 
-	GLuint colorLoc = glGetUniformLocation(pickingShader.GetShaderID(), "pickingColor");
 	GLuint modelLoc = pickingShader.GetModelLocation();
+	GLuint colorLoc = glGetUniformLocation(pickingShader.GetShaderID(), "pickingColor");
+	GLuint isBillboardLoc = glGetUniformLocation(pickingShader.GetShaderID(), "isBillboard");
+	GLuint worldPosLoc = glGetUniformLocation(pickingShader.GetShaderID(), "worldPos");
+	GLuint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
+
+	glUniform1i(isBillboardLoc, 0); // Not a billboard for normal objects
 
 	// Render each object with unique color based on index
 	for (int i = 0; i < (int)objects.size(); i++)
@@ -147,6 +200,31 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
+	// Render light icons for picking
+	if (iconMesh)
+	{
+		glUniform1i(isBillboardLoc, 1);
+		glUniform1f(iconSizeLoc, 0.5f);
+
+		for (int i = 0; i < (int)lights.size(); i++)
+		{
+			// Light IDs start at 10000
+			int id = i + 10000;
+			float r = ((id & 0x0000FF) >> 0) / 255.0f;
+			float g = ((id & 0x00FF00) >> 8) / 255.0f;
+			float b = ((id & 0xFF0000) >> 16) / 255.0f;
+
+			glUniform3f(colorLoc, r, g, b);
+
+			glm::vec3* pos = lights[i]->GetPositionPtr();
+			if (pos)
+			{
+				glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
+				iconMesh->RenderMesh();
+			}
+		}
+	}
+
 	// Read pixel at mouse position
 	glFlush();
 	glFinish();
@@ -161,177 +239,283 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// Handle object picking
 	if (pickedID > 0 && pickedID <= (int)objects.size())
 	{
-		return pickedID - 1; // Convert back to 0-based index
+		selectedObjectIndex = pickedID - 1;
+		selectedLightIndex = -1;
+		return 1; // Object picked
 	}
 
-	return -1;
+	// Handle light picking
+	if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size())
+	{
+		selectedLightIndex = pickedID - 10000;
+		selectedObjectIndex = -1;
+		return 2; // Light picked
+	}
+
+	// Nothing picked - clear selection
+	selectedObjectIndex = -1;
+	selectedLightIndex = -1;
+	return 0;
 }
 
 void SceneManager::RenderImGui()
 {
-	ImGui::Begin("Scene Hierarchy");
-
-	// Object list
+	// 1. Scene Hierarchy Window
+	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(300, 450), ImGuiCond_FirstUseEver);
+	
+	ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen);
+	
 	if (ImGui::CollapsingHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (int i = 0; i < (int)objects.size(); i++)
 		{
 			ImGui::PushID(i);
-			// Only highlight if this object is selected AND no light is selected
 			bool isSelected = (selectedObjectIndex == i && selectedLightIndex < 0);
 			if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
 			{
 				selectedObjectIndex = i;
-				selectedLightIndex = -1; // Clear light selection
+				selectedLightIndex = -1;
+			}
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem("Delete")) {
+					delete objects[i];
+					objects.erase(objects.begin() + i);
+					selectedObjectIndex = -1;
+					ImGui::EndPopup(); ImGui::PopID(); break;
+				}
+				ImGui::EndPopup();
 			}
 			ImGui::PopID();
 		}
 	}
 
-	// Light list  
 	if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (int i = 0; i < (int)lights.size(); i++)
 		{
 			ImGui::PushID(1000 + i);
-			
-			const char* icon = "";
-			switch (lights[i]->GetLightType())
-			{
-			case LightType::Directional: icon = "[D] "; break;
-			case LightType::Point: icon = "[P] "; break;
-			case LightType::Spot: icon = "[S] "; break;
-			}
-			
+			const char* icon = (lights[i]->GetLightType() == LightType::Directional) ? "[D] " : 
+							   (lights[i]->GetLightType() == LightType::Point) ? "[P] " : "[S] ";
 			std::string label = std::string(icon) + lights[i]->GetName();
-			// Only highlight if this light is selected AND no object is selected
 			bool isSelected = (selectedLightIndex == i && selectedObjectIndex < 0);
 			if (ImGui::Selectable(label.c_str(), isSelected))
 			{
 				selectedLightIndex = i;
-				selectedObjectIndex = -1; // Clear object selection
+				selectedObjectIndex = -1;
 			}
 			ImGui::PopID();
 		}
 	}
 
+	if (ImGui::BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags_MouseButtonRight))
+	{
+		if (ImGui::BeginMenu("Create GameObject"))
+		{
+			if (ImGui::MenuItem("Plane")) CreateGameObject("Plane");
+			if (ImGui::MenuItem("Cube")) CreateGameObject("Cube");
+			if (ImGui::MenuItem("Sphere")) CreateGameObject("Sphere");
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Create Light"))
+		{
+			if (ImGui::MenuItem("Point Light")) CreateLight(LightType::Point);
+			if (ImGui::MenuItem("Spot Light")) CreateLight(LightType::Spot);
+			ImGui::EndMenu();
+		}
+		ImGui::EndPopup();
+	}
 	ImGui::End();
 
-	// Show object inspector ONLY if object selected and NO light selected
+	// 2. Inspector Window
 	bool showObjectInspector = (selectedObjectIndex >= 0 && selectedLightIndex < 0);
+	bool showLightInspector = (selectedLightIndex >= 0 && selectedObjectIndex < 0);
 
-	// Inspector panel for selected object
-	if (showObjectInspector && selectedObjectIndex < (int)objects.size())
+	if (showObjectInspector || showLightInspector)
 	{
-		GameObject* selected = objects[selectedObjectIndex];
-		Transform& transform = selected->GetTransform();
+		ImGui::SetNextWindowPos(ImVec2(0, 450), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(300, 500), ImGuiCond_FirstUseEver);
 
-		ImGui::Begin("Inspector");
+		ImGui::Begin("Inspector", &windowState.isInspectorOpen);
 
-		// Name display
-		ImGui::Text("Name: %s", selected->GetName().c_str());
-		ImGui::Separator();
-
-		// Transform editing
-		ImGui::Text("Transform");
-
-		glm::vec3* pos = transform.GetPositionPtr();
-		glm::vec3* rot = transform.GetRotationPtr();
-		glm::vec3* scl = transform.GetScalePtr();
-
-		ImGui::DragFloat3("Position", &pos->x, 0.1f);
-		ImGui::DragFloat3("Rotation", &rot->x, 1.0f);
-		ImGui::DragFloat3("Scale", &scl->x, 0.01f, 0.01f, 100.0f);
-
-		ImGui::Separator();
-
-		// Component info
-		ImGui::Text("Components");
-		if (selected->GetModel())
+		if (showObjectInspector)
 		{
-			ImGui::BulletText("Model: Loaded");
+			GameObject* selected = objects[selectedObjectIndex];
+			Transform& transform = selected->GetTransform();
+			ImGui::Text("Object: %s", selected->GetName().c_str());
+			ImGui::Separator();
+			ImGui::Text("Transform");
+			
+			DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f);
+			DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f);
+			DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
+			
+			ImGui::Separator();
+			ImGui::Text("Components");
+			if (selected->GetMesh()) ImGui::BulletText("Mesh");
+			if (selected->GetModel()) ImGui::BulletText("Model");
+			if (selected->GetTexture()) ImGui::BulletText("Texture");
+			if (selected->GetMaterial()) ImGui::BulletText("Material");
 		}
-		if (selected->GetMesh())
+		else if (showLightInspector)
 		{
-			ImGui::BulletText("Mesh: Loaded");
+			LightObject* light = lights[selectedLightIndex];
+			ImGui::Text("Light: %s", light->GetName().c_str());
+			ImGui::Separator();
+			ImGui::ColorEdit3("Color", &light->GetColorPtr()->x);
+			ImGui::SliderFloat("Ambient", light->GetAmbientIntensityPtr(), 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse", light->GetDiffuseIntensityPtr(), 0.0f, 2.0f);
+			
+			if (light->GetPositionPtr()) DrawVec3Control("Position", *light->GetPositionPtr(), 0.0f, 0.1f);
+			if (light->GetDirectionPtr()) DrawVec3Control("Direction", *light->GetDirectionPtr(), 0.0f, 0.01f);
+			
+			if (light->GetConstantPtr()) {
+				ImGui::Separator();
+				ImGui::Text("Attenuation");
+				ImGui::SliderFloat("Constant", light->GetConstantPtr(), 0.01f, 2.0f);
+				ImGui::SliderFloat("Linear", light->GetLinearPtr(), 0.001f, 0.5f);
+				ImGui::SliderFloat("Exponent", light->GetExponentPtr(), 0.001f, 0.5f);
+			}
 		}
-		if (selected->GetTexture())
-		{
-			ImGui::BulletText("Texture: Loaded");
-		}
-		if (selected->GetMaterial())
-		{
-			ImGui::BulletText("Material: Loaded");
-		}
-
 		ImGui::End();
 	}
+}
 
-	// Inspector panel for selected light
-	bool showLightInspector = (selectedLightIndex >= 0 && selectedObjectIndex < 0);
-	if (showLightInspector && selectedLightIndex < (int)lights.size())
+void SceneManager::CreateGameObject(const std::string& type)
+{
+	GameObject* newObj = new GameObject(type + " " + std::to_string(objects.size()));
+	
+	if (type == "Plane") {
+		newObj->SetMesh(PrimitiveGenerator::CreatePlane());
+	} else if (type == "Cube") {
+		newObj->SetMesh(PrimitiveGenerator::CreateCube());
+	} else if (type == "Sphere") {
+		newObj->SetMesh(PrimitiveGenerator::CreateSphere());
+	}
+
+	// Set default texture and material
+	if (defaultTexture) newObj->SetTexture(defaultTexture);
+	if (defaultMaterial) newObj->SetMaterial(defaultMaterial);
+	
+	objects.push_back(newObj);
+	selectedObjectIndex = (int)objects.size() - 1;
+	selectedLightIndex = -1;
+}
+
+void SceneManager::CreateLight(LightType type)
+{
+	if (type == LightType::Point) {
+		if (globalPointLights && globalPointLightCount && *globalPointLightCount < MAX_POINT_LIGHTS) {
+			unsigned int idx = *globalPointLightCount;
+			globalPointLights[idx] = PointLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 0.8f, 0.0f, 5.0f, 0.0f, 0.3f, 0.02f, 0.01f);
+			
+			LightObject* newLightObj = new LightObject("Point Light " + std::to_string(lights.size()), &globalPointLights[idx]);
+			lights.push_back(newLightObj);
+			(*globalPointLightCount)++;
+			selectedLightIndex = (int)lights.size() - 1;
+			selectedObjectIndex = -1;
+		}
+	} else if (type == LightType::Spot) {
+		if (globalSpotLights && globalSpotLightCount && *globalSpotLightCount < MAX_SPOT_LIGHTS) {
+			unsigned int idx = *globalSpotLightCount;
+			globalSpotLights[idx] = SpotLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 1.0f, 0.0f, 5.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.02f, 0.01f, 20.0f);
+			
+			LightObject* newLightObj = new LightObject("Spot Light " + std::to_string(lights.size()), &globalSpotLights[idx]);
+			lights.push_back(newLightObj);
+			(*globalSpotLightCount)++;
+			selectedLightIndex = (int)lights.size() - 1;
+			selectedObjectIndex = -1;
+		}
+	}
+}
+
+void SceneManager::InitIcons()
+{
+	iconShader.CreateFromFiles("Shaders/icon.vert", "Shaders/icon.frag");
+	
+	if (iconShader.GetShaderID() == 0) {
+		printf("Icon shader failed to initialize!\n");
+		return;
+	}
+
+	lightIconTexture = new Texture("Icons/Light.png");
+	if (!lightIconTexture->LoadTextureA()) {
+		printf("Failed to load Light.png icon!\n");
+		delete lightIconTexture;
+		lightIconTexture = nullptr;
+		return;
+	}
+
+	CreateIconMesh();
+}
+
+void SceneManager::CreateIconMesh()
+{
+	unsigned int indices[] = {
+		0, 2, 1,
+		1, 2, 3
+	};
+
+	GLfloat vertices[] = {
+		// x     y      z     u     v     nx    ny    nz
+		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f
+	};
+
+	iconMesh = new Mesh();
+	iconMesh->CreateMesh(vertices, indices, 32, 6);
+}
+
+void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
+{
+	if (!iconMesh || !lightIconTexture || iconShader.GetShaderID() == 0) return;
+
+	// Clear any previous errors to isolate the issue
+	while (glGetError() != GL_NO_ERROR);
+
+	iconShader.UseShader();
+	
+	GLuint projLoc = iconShader.GetProjectionLocation();
+	GLuint viewLoc = iconShader.GetViewLocation();
+	
+	if (projLoc != (GLuint)-1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+	if (viewLoc != (GLuint)-1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	
+	GLuint worldPosLoc = glGetUniformLocation(iconShader.GetShaderID(), "worldPos");
+	GLuint iconSizeLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconSize");
+	GLuint textureLoc = glGetUniformLocation(iconShader.GetShaderID(), "theTexture");
+	
+	// Force unit 0 specifically for icons to avoid unit 1 mismatch from Texture::UseTexture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, lightIconTexture->GetTextureID()); // Bypass UseTexture() hardcoded unit
+	
+	if (textureLoc != (GLuint)-1) glUniform1i(textureLoc, 0); 
+	if (iconSizeLoc != (GLuint)-1) glUniform1f(iconSizeLoc, 0.5f); 
+
+	for (auto* light : lights)
 	{
-		LightObject* light = lights[selectedLightIndex];
+		if (!light) continue;
 
-		ImGui::Begin("Inspector");
-
-		// Name and type display
-		ImGui::Text("Name: %s", light->GetName().c_str());
-		const char* typeStr = "";
-		switch (light->GetLightType())
+		glm::vec3* pos = light->GetPositionPtr();
+		if (pos)
 		{
-		case LightType::Directional: typeStr = "Directional Light"; break;
-		case LightType::Point: typeStr = "Point Light"; break;
-		case LightType::Spot: typeStr = "Spot Light"; break;
+			if (worldPosLoc != (GLuint)-1) glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
+			iconMesh->RenderMesh();
 		}
-		ImGui::Text("Type: %s", typeStr);
-		ImGui::Separator();
+	}
 
-		// Light properties
-		ImGui::Text("Light Properties");
-
-		glm::vec3* color = light->GetColorPtr();
-		ImGui::ColorEdit3("Color", &color->x);
-
-		float* ambient = light->GetAmbientIntensityPtr();
-		ImGui::SliderFloat("Ambient Intensity", ambient, 0.0f, 1.0f);
-
-		float* diffuse = light->GetDiffuseIntensityPtr();
-		ImGui::SliderFloat("Diffuse Intensity", diffuse, 0.0f, 2.0f);
-
-		ImGui::Separator();
-
-		// Position (for point/spot lights)
-		glm::vec3* position = light->GetPositionPtr();
-		if (position)
-		{
-			ImGui::DragFloat3("Position", &position->x, 0.1f);
-		}
-
-		// Direction (for directional/spot lights)
-		glm::vec3* direction = light->GetDirectionPtr();
-		if (direction)
-		{
-			ImGui::DragFloat3("Direction", &direction->x, 0.01f, -1.0f, 1.0f);
-		}
-
-		// Attenuation (for point/spot lights)
-		float* constant = light->GetConstantPtr();
-		float* linear = light->GetLinearPtr();
-		float* exponent = light->GetExponentPtr();
-
-		if (constant && linear && exponent)
-		{
-			ImGui::Separator();
-			ImGui::Text("Attenuation");
-			ImGui::SliderFloat("Constant", constant, 0.01f, 2.0f);
-			ImGui::SliderFloat("Linear", linear, 0.001f, 0.5f);
-			ImGui::SliderFloat("Exponent", exponent, 0.001f, 0.5f);
-		}
-
-		ImGui::End();
+	glUseProgram(0);
+	
+	// Final check for errors
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR) {
+		printf("OpenGL error in RenderIcons: 0x%x\n", err);
 	}
 }
 
@@ -342,5 +526,13 @@ void SceneManager::Clear()
 		delete obj;
 	}
 	objects.clear();
+	
+	for (auto* light : lights)
+	{
+		delete light;
+	}
+	lights.clear();
+	
 	selectedObjectIndex = -1;
+	selectedLightIndex = -1;
 }

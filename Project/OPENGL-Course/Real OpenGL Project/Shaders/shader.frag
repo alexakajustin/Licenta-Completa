@@ -86,7 +86,8 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	vec3 normal = normalize(Normal);
 	vec3 lightDir = normalize(directionalLight.direction);
 	
-	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.0005);
+	// Correct bias: use -lightDir (surface to light) for dot product
+	float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.0005);
 
 	
 	float shadow = 0.0;
@@ -94,7 +95,7 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	
 	// Disk-based PCF sampling (20 samples) for smoother shadows
 	int samples = 20;
-	float diskRadius = 1.2; // Lower = sharper, higher = softer
+	float diskRadius = 0.5; // Lower = sharper, higher = softer
 	
 	for(int i = 0; i < samples; i++)
 	{
@@ -121,11 +122,11 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 	float currentDepth = length(fragToLight);
 
 	float shadow = 0.0;
-	float bias = 0.15;
+	float bias = 0.05;
 	int samples = 20;
 	
 	float viewDistance = length(eyePosition - FragPos);
-	float diskRadius = (1.0 + (viewDistance / omniShadowMaps[shadowIndex].farPlane)) / 25.0; 
+	float diskRadius = (1.0 + (viewDistance / omniShadowMaps[shadowIndex].farPlane)) / 75.0; 
 
 	for(int i = 0; i < samples; i++)
 	{
@@ -145,7 +146,9 @@ vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 {
 	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
 
-	float diffuseFactor = max(dot(normalize(Normal), normalize(direction)), 0.0f);
+    // We assume 'direction' is light -> fragment.
+    // For diffuse, we need fragment -> light, so we use -direction.
+	float diffuseFactor = max(dot(normalize(Normal), normalize(-direction)), 0.0f);
 	vec4 diffuseColor = vec4(light.colour, 1.0f) * light.diffuseIntensity * diffuseFactor;
 
 	vec4 specularColour = vec4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -153,7 +156,8 @@ vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 	if(diffuseFactor > 0.0f)
 	{
 		vec3 fragToEye = normalize(eyePosition - FragPos);
-		vec3 reflectedVertex = normalize(reflect(direction, normalize(Normal)));
+        // reflect expects vector FROM light source TO surface, which 'direction' is.
+		vec3 reflectedVertex = normalize(reflect(normalize(direction), normalize(Normal)));
 
 		float specularFactor = dot(fragToEye, reflectedVertex);
 

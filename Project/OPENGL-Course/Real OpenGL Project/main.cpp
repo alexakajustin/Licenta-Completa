@@ -125,10 +125,10 @@ void CreateObjects()
 	};
 
 	GLfloat floorVertices[] = {
-		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
-		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
-		-10.0f, 0.0f, 10.0f,	0.0f, 10.0f,	0.0f, -1.0f, 0.0f,
-		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
+		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, 1.0f, 0.0f,
+		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, 1.0f, 0.0f,
+		-10.0f, 0.0f, 10.0f,	0.0f, 10.0f,	0.0f, 1.0f, 0.0f,
+		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, 1.0f, 0.0f
 	};
 
 	calcAverageNormals(indices, 12, vertices, 32, 8, 5);
@@ -249,6 +249,9 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 	shaderList[0].Validate();
 
 	RenderScene();
+
+	// Render light icons (billboards)
+	sceneManager.RenderIcons(projectionMatrix, viewMatrix);
 }
 
 int main()
@@ -275,6 +278,8 @@ int main()
 	shinyMaterial = Material(1.0f, 32);
 	dullMaterial = Material(0.3f, 4);
 	plainMaterial = Material(1.0f, 512);
+
+	sceneManager.SetDefaultResources(&plainTexture, &plainMaterial);
 
 	rug = Model();
 	rug.LoadModel("Models/rug.obj");
@@ -344,68 +349,27 @@ int main()
 	// ============== SCENE SETUP ==============
 	// Create GameObjects and add them to the SceneManager
 
-	// Pyramid 1
-	GameObject* pyramid1 = new GameObject("Pyramid 1");
-	pyramid1->GetTransform().SetPosition(glm::vec3(-5.0f, 0.0f, 0.0f));
-	pyramid1->SetMesh(meshList[0]);
-	pyramid1->SetTexture(&brickTexture);
-	pyramid1->SetMaterial(&dullMaterial);
-	sceneManager.AddObject(pyramid1);
-
-	// Pyramid 2
-	GameObject* pyramid2 = new GameObject("Pyramid 2");
-	pyramid2->GetTransform().SetPosition(glm::vec3(5.0f, 0.0f, 0.0f));
-	pyramid2->SetMesh(meshList[1]);
-	pyramid2->SetTexture(&dirtTexture);
-	pyramid2->SetMaterial(&shinyMaterial);
-	sceneManager.AddObject(pyramid2);
-
-	// Floor
-	GameObject* floor = new GameObject("Floor");
-	floor->GetTransform().SetPosition(glm::vec3(0.0f, -2.0f, 0.0f));
+	// Floor/Plane
+	GameObject* floor = new GameObject("Plane");
+	floor->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 	floor->GetTransform().SetScale(glm::vec3(10.0f, 10.0f, 10.0f));
 	floor->SetMesh(meshList[2]);
 	floor->SetTexture(&plainTexture);
 	floor->SetMaterial(&plainMaterial);
 	sceneManager.AddObject(floor);
 
-	// Rug
-	GameObject* rugObj = new GameObject("Rug");
-	rugObj->GetTransform().SetPosition(glm::vec3(0.0f, -2.0f, 0.0f));
-	rugObj->GetTransform().SetRotation(glm::vec3(-90.0f, 0.0f, 0.0f));
-	rugObj->GetTransform().SetScale(glm::vec3(0.05f, 0.05f, 0.05f));
-	rugObj->SetModel(&rug);
-	rugObj->SetMaterial(&dullMaterial);
-	sceneManager.AddObject(rugObj);
-
-	// Monitor
-	GameObject* monitorObj = new GameObject("Monitor");
-	monitorObj->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 5.0f));
-	monitorObj->GetTransform().SetScale(glm::vec3(0.5f, 0.5f, 0.5f));
-	monitorObj->SetModel(&monitor);
-	monitorObj->SetMaterial(&shinyMaterial);
-	sceneManager.AddObject(monitorObj);
-
 	// ============ LIGHTS IN HIERARCHY ============
 	// Wrap lights in LightObjects for hierarchy display
 	LightObject* mainLightObj = new LightObject("Sun", &mainLight);
 	sceneManager.AddLight(mainLightObj);
 
-	LightObject* pointLight1Obj = new LightObject("Point Light 1 (Green)", &pointLights[0]);
-	sceneManager.AddLight(pointLight1Obj);
-
-	LightObject* pointLight2Obj = new LightObject("Point Light 2 (Blue)", &pointLights[1]);
-	sceneManager.AddLight(pointLight2Obj);
-
-	LightObject* spotLight1Obj = new LightObject("Flashlight", &spotLights[0]);
-	sceneManager.AddLight(spotLight1Obj);
-
-	LightObject* spotLight2Obj = new LightObject("Red Spot", &spotLights[1]);
-	sceneManager.AddLight(spotLight2Obj);
+	// Reset point/spot light counts to empty the scene of extra lights
+	pointLightCount = 0;
+	spotLightCount = 0;
 
 	// ============================================
 
-	glm::mat4 projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(), 0.001f, 1000.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(), 0.1f, 1000.0f);
 
 
 	// Initialize ImGUI
@@ -418,6 +382,9 @@ int main()
 
 	// Initialize color picking
 	sceneManager.InitPicking((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
+	sceneManager.InitIcons();
+
+	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
 
 	// ---------------- DONE WITH INITS------------------------------
 	// -------------NOW IT IS THE TIME FOR THE LOOP-------------------
@@ -450,14 +417,9 @@ int main()
 					double mouseX, mouseY;
 					glfwGetCursorPos(mainWindow.getWindow(), &mouseX, &mouseY);
 					
-					int picked = sceneManager.PickObject(
+					sceneManager.PickObject(
 						(float)mouseX, (float)mouseY,
 						projection, camera.calculateViewMatrix());
-					
-					if (picked >= 0)
-					{
-						sceneManager.SetSelectedIndex(picked);
-					}
 				}
 			}
 		}

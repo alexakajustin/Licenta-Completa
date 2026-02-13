@@ -42,15 +42,32 @@ public:
 
 	// Initialize picking (call after OpenGL context is ready)
 	void InitPicking(int width, int height);
+	void InitIcons();
 
 	// Color picking - renders scene to pick buffer, returns object index at mouse pos
 	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 
 	// Rendering
 	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess);
+	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 
 	// ImGui interface
 	void RenderImGui();
+
+	// Creation methods
+	void CreateGameObject(const std::string& type);
+	void CreateLight(LightType type);
+
+	// Sync with global lighting system
+	void SetLightArrays(PointLight* pLights, unsigned int* pCount, SpotLight* sLights, unsigned int* sCount) {
+		globalPointLights = pLights;
+		globalPointLightCount = pCount;
+		globalSpotLights = sLights;
+		globalSpotLightCount = sCount;
+	}
+
+	// Default resources
+	void SetDefaultResources(Texture* tex, Material* mat) { defaultTexture = tex; defaultMaterial = mat; }
 
 	// Clear all objects
 	void Clear();
@@ -61,6 +78,20 @@ private:
 	int selectedObjectIndex;
 	int selectedLightIndex;
 
+	Texture* defaultTexture = nullptr;
+	Material* defaultMaterial = nullptr;
+
+	struct WindowState {
+		bool isHierarchyOpen = true;
+		bool isInspectorOpen = true;
+	} windowState;
+
+	// Global light state pointers
+	PointLight* globalPointLights = nullptr;
+	unsigned int* globalPointLightCount = nullptr;
+	SpotLight* globalSpotLights = nullptr;
+	unsigned int* globalSpotLightCount = nullptr;
+
 	// Color picking resources
 	GLuint pickingFBO;
 	GLuint pickingTexture;
@@ -68,4 +99,10 @@ private:
 	Shader pickingShader;
 	int pickWidth, pickHeight;
 	bool pickingInitialized;
+
+	// Icon resources
+	Shader iconShader;
+	Texture* lightIconTexture;
+	Mesh* iconMesh;
+	void CreateIconMesh();
 };
