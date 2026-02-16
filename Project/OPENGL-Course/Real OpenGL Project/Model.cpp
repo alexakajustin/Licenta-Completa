@@ -57,7 +57,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 		}
 
 		// normals
-		vertices.insert(vertices.end(), { -mesh->mNormals[i].x, -mesh->mNormals[i].y, -mesh->mNormals[i].z });
+		vertices.insert(vertices.end(), { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z });
 
 		// tangents
 		if (mesh->mTangents)

@@ -21,9 +21,9 @@ glm::mat4 Transform::GetModelMatrix() const
 	// Translation
 	model = glm::translate(model, position);
 
-	// Rotation (applied in order: X, Y, Z)
-	model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	// Rotation (applied in order: Y, X, Z - Yaw, Pitch, Roll)
 	model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	// Scale

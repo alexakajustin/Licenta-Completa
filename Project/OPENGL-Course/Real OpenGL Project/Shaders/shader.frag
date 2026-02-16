@@ -83,10 +83,6 @@ vec3 GetEffectiveNormal()
 		vec3 sampledNormal = texture(normalMap, TexCoord).rgb;
 		sampledNormal = sampledNormal * 2.0 - 1.0;
 
-		// IMPORTANT: Flip Green channel for DirectX normal mapped assets (common in modern editors)
-		// If lighting looks inverted top-to-bottom, this is usually the reason.
-		sampledNormal.g = -sampledNormal.g; 
-
 		// Remapped normal must be normalized again to ensure it's a unit vector
 		sampledNormal = normalize(sampledNormal);
 

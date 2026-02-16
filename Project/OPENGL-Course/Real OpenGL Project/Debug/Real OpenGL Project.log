@@ -1,1 +1,2 @@
-﻿C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(456,5): error MSB8020: The build tools for v145 (Platform Toolset = 'v145') cannot be found. To build using the v145 build tools, please install v145 build tools.  Alternatively, you may upgrade to the current Visual Studio tools by selecting the Project menu or right-click the solution, and then selecting "Retarget solution".
+﻿  SceneManager.cpp
+  Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

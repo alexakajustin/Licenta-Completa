@@ -1,6 +1,7 @@
 #include "SceneManager.h"
 #include "PrimitiveGenerator.h"
 #include <iostream>
+#include <GLFW/glfw3.h>
 
 // Helper for Unity-like Vector3 input
 static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f)
@@ -203,8 +204,10 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	// Render light icons for picking
 	if (iconMesh)
 	{
+		glDisable(GL_CULL_FACE); // Billboard quads need culling disabled (matches RenderIcons)
+		glDisable(GL_DEPTH_TEST); // Icons should always be pickable when visible
 		glUniform1i(isBillboardLoc, 1);
-		glUniform1f(iconSizeLoc, 0.5f);
+		glUniform1f(iconSizeLoc, 0.7f); // Slightly larger picking area for better feel
 
 		for (int i = 0; i < (int)lights.size(); i++)
 		{
@@ -225,13 +228,23 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
+	// Restore GL state after icon rendering
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
 	// Read pixel at mouse position
 	glFlush();
 	glFinish();
 
+	// Map window-space mouse coordinates to framebuffer-space (handles DPI scaling/window resizing)
+	int windowWidth, windowHeight;
+	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+	float scaleX = (float)pickWidth / (float)windowWidth;
+	float scaleY = (float)pickHeight / (float)windowHeight;
+
 	unsigned char pixel[3];
-	int readX = (int)mouseX;
-	int readY = pickHeight - (int)mouseY; // Flip Y
+	int readX = (int)(mouseX * scaleX);
+	int readY = pickHeight - (int)(mouseY * scaleY); // Flip Y correctly in buffer space
 	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
 
 	// Convert color back to index
@@ -481,6 +494,9 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 
 	iconShader.UseShader();
 	
+	// Disable face culling for billboards (they may face either direction)
+	glDisable(GL_CULL_FACE);
+	
 	GLuint projLoc = iconShader.GetProjectionLocation();
 	GLuint viewLoc = iconShader.GetViewLocation();
 	
@@ -516,6 +532,9 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 	}
 
 	glUseProgram(0);
+	
+	// Re-enable face culling after billboard rendering
+	glEnable(GL_CULL_FACE);
 	
 	// Final check for errors
 	GLenum err = glGetError();

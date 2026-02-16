@@ -214,12 +214,15 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
-	glViewport(0, 0, 1920, 1080);
+	glViewport(0, 0, (GLint)mainWindow.getBufferWidth(), (GLint)mainWindow.getBufferHeight());
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Skybox is viewed from inside, so disable face culling for it
+	glDisable(GL_CULL_FACE);
 	skybox.DrawSkybox(viewMatrix, projectionMatrix);
+	glEnable(GL_CULL_FACE);
 
 	shaderList[0].UseShader();
 	uniformModel = shaderList[0].GetModelLocation();
@@ -467,6 +470,9 @@ int main()
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		// Update projection matrix if window size changes
+		projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(), 0.1f, 1000.0f);
 
 		// swap frame buffers (back -> front)
 		mainWindow.swapBuffers();
