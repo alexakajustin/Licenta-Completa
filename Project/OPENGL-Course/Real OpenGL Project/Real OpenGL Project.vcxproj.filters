@@ -2039,12 +2039,6 @@
     <Image Include="Textures\OldMonitor03Texture.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="Textures\OldMonitor03TextureNormalMap.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="Textures\OldMonitor03TextureSpecularMap.png">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="Textures\plain.png">
       <Filter>Resource Files</Filter>
     </Image>
@@ -2055,6 +2049,15 @@
     <Image Include="Textures\Skybox\cupertin-lake_rt.tga" />
     <Image Include="Textures\Skybox\cupertin-lake_up.tga" />
     <Image Include="Textures\statue.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Textures\OldMonitor03Texture_normal.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Textures\broken_brick.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Textures\broken_brick_normal.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

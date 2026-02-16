@@ -89,6 +89,12 @@ void Texture::UseTexture()
 	glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
+void Texture::UseNormalMap()
+{
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+}
+
 Texture::~Texture()
 {
 	ClearTexture();

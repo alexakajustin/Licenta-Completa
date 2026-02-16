@@ -10,6 +10,8 @@ Shader::Shader()
 	uniformSpecularIntensity = 0;
 	uniformShininess = 0;
 	uniformTexture = 0;
+	uniformNormalMap = 0;
+	uniformUseNormalMap = 0;
 	uniformDirectionalLightTransform = 0;
 	uniformDirectionalShadowMap = 0;
 	uniformOmniLightPos = 0;
@@ -233,6 +235,8 @@ void Shader::CompileProgram()
 	}
 
 	uniformTexture = glGetUniformLocation(shaderID, "theTexture");
+	uniformNormalMap = glGetUniformLocation(shaderID, "normalMap");
+	uniformUseNormalMap = glGetUniformLocation(shaderID, "useNormalMap");
 	uniformDirectionalLightTransform = glGetUniformLocation(shaderID, "directionalLightTransform");
 	uniformDirectionalShadowMap = glGetUniformLocation(shaderID, "directionalShadowMap");
 
@@ -407,6 +411,16 @@ void Shader::SetSpotLights(SpotLight* spotLight, unsigned int lightCount, unsign
 void Shader::SetTexture(GLuint textureUnit)
 {
 	glUniform1i(uniformTexture, textureUnit);
+}
+
+void Shader::SetNormalMap(GLuint textureUnit)
+{
+	glUniform1i(uniformNormalMap, textureUnit);
+}
+
+void Shader::SetUseNormalMap(bool useNormalMap)
+{
+	glUniform1i(uniformUseNormalMap, useNormalMap ? 1 : 0);
 }
 
 void Shader::SetDirectionalShadowMap(GLuint textureUnit)

@@ -7,7 +7,7 @@ Model::Model()
 void Model::LoadModel(const std::string& fileName)
 {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+	const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
 	if (!scene)
 	{
 		printf("Model [%s] failed to load: %s!\n", fileName, importer.GetErrorString());
@@ -58,6 +58,26 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 
 		// normals
 		vertices.insert(vertices.end(), { -mesh->mNormals[i].x, -mesh->mNormals[i].y, -mesh->mNormals[i].z });
+
+		// tangents
+		if (mesh->mTangents)
+		{
+			vertices.insert(vertices.end(), { mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z });
+		}
+		else
+		{
+			vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
+		}
+
+		// bitangents
+		if (mesh->mBitangents)
+		{
+			vertices.insert(vertices.end(), { mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z });
+		}
+		else
+		{
+			vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
+		}
 	}
 
 	// go thru the faces so we can add the indices
@@ -81,12 +101,14 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 void Model::LoadMaterials(const aiScene* scene)
 {
 	textureList.resize(scene->mNumMaterials);
+	normalMapList.resize(scene->mNumMaterials);
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++)
 	{
 		aiMaterial* material = scene->mMaterials[i];
 
 		textureList[i] = nullptr;
+		normalMapList[i] = nullptr;
 
 		if (material->GetTextureCount(aiTextureType_DIFFUSE))
 		{
@@ -102,9 +124,38 @@ void Model::LoadMaterials(const aiScene* scene)
 
 				if (!textureList[i]->LoadTexture())
 				{
-					printf("Failed to load texture at: %s!\n", texPath);
+					printf("Failed to load texture at: %s!\n", texPath.c_str());
 					delete textureList[i];
 					textureList[i] = nullptr;
+				}
+				else
+				{
+					// Auto-detect normal map using _normal naming convention
+					// e.g. "Textures/brick.png" -> "Textures/brick_normal.png"
+					size_t dotPos = texPath.rfind('.');
+					if (dotPos != std::string::npos)
+					{
+						std::string normalPath = texPath.substr(0, dotPos) + "_normal" + texPath.substr(dotPos);
+
+						// Check if file exists using fopen
+						FILE* testFile = nullptr;
+						fopen_s(&testFile, normalPath.c_str(), "r");
+						if (testFile)
+						{
+							fclose(testFile);
+							normalMapList[i] = new Texture(normalPath.c_str());
+							if (!normalMapList[i]->LoadTexture())
+							{
+								printf("Failed to load normal map at: %s!\n", normalPath.c_str());
+								delete normalMapList[i];
+								normalMapList[i] = nullptr;
+							}
+							else
+							{
+								printf("Normal map loaded: %s\n", normalPath.c_str());
+							}
+						}
+					}
 				}
 			}
 		}
@@ -136,9 +187,18 @@ void Model::ClearModel()
 			textureList[i] = nullptr;
 		}
 	}
+
+	for (size_t i = 0; i < normalMapList.size(); i++)
+	{
+		if (normalMapList[i])
+		{
+			delete normalMapList[i];
+			normalMapList[i] = nullptr;
+		}
+	}
 }
 
-void Model::RenderModel()
+void Model::RenderModel(GLuint uniformUseNormalMap)
 {
 	for (size_t i = 0; i < meshList.size(); i++)
 	{
@@ -147,6 +207,16 @@ void Model::RenderModel()
 		if (materialIndex < textureList.size() && textureList[materialIndex])
 		{
 			textureList[materialIndex]->UseTexture();
+		}
+
+		if (materialIndex < normalMapList.size() && normalMapList[materialIndex])
+		{
+			glUniform1i(uniformUseNormalMap, 1);
+			normalMapList[materialIndex]->UseNormalMap();
+		}
+		else
+		{
+			glUniform1i(uniformUseNormalMap, 0);
 		}
 
 		meshList[i]->RenderMesh();

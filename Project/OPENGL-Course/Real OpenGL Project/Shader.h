@@ -48,6 +48,8 @@ public:
 	void SetSpotLights(SpotLight* spotLight, unsigned int lightCount, unsigned int textureUnit, unsigned int offset);
 
 	void SetTexture(GLuint textureUnit);
+	void SetNormalMap(GLuint textureUnit);
+	void SetUseNormalMap(bool useNormalMap);
 	void SetDirectionalShadowMap(GLuint textureUnit);
 	void SetDirectionalLightTransform(glm::mat4 lTransform);
 	void SetLightMatrices(std::vector<glm::mat4> lightMatrices);
@@ -62,7 +64,7 @@ private:
 	int spotLightCount;
 	GLuint shaderID, uniformProjection, uniformModel, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess,
-		uniformTexture,
+		uniformTexture, uniformNormalMap, uniformUseNormalMap,
 		uniformDirectionalLightTransform, uniformDirectionalShadowMap,
 		uniformOmniLightPos, uniformFarPlane;
 

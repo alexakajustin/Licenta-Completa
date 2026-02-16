@@ -97,11 +97,11 @@ GameObject* SceneManager::FindObject(const std::string& name)
 	return nullptr;
 }
 
-void SceneManager::RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess)
+void SceneManager::RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap)
 {
 	for (auto* obj : objects)
 	{
-		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess);
+		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformUseNormalMap);
 	}
 }
 
@@ -192,7 +192,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		// Render geometry only
 		if (objects[i]->GetModel())
 		{
-			objects[i]->GetModel()->RenderModel();
+			objects[i]->GetModel()->RenderModel(0); // picking pass doesn't use normal maps
 		}
 		else if (objects[i]->GetMesh())
 		{
@@ -461,15 +461,15 @@ void SceneManager::CreateIconMesh()
 	};
 
 	GLfloat vertices[] = {
-		// x     y      z     u     v     nx    ny    nz
-		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f
+		// x     y      z     u     v     nx    ny    nz    tx    ty    tz    bx    by    bz
+		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 	};
 
 	iconMesh = new Mesh();
-	iconMesh->CreateMesh(vertices, indices, 32, 6);
+	iconMesh->CreateMesh(vertices, indices, 56, 6);
 }
 
 void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)

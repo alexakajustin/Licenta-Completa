@@ -27,16 +27,18 @@ public:
 	void SetModel(Model* mdl) { model = mdl; }
 	void SetMesh(Mesh* msh) { mesh = msh; }
 	void SetTexture(Texture* tex) { texture = tex; }
+	void SetNormalMap(Texture* normal) { normalMap = normal; }
 	void SetMaterial(Material* mat) { material = mat; }
 
 	// Getters for components
 	Model* GetModel() const { return model; }
 	Mesh* GetMesh() const { return mesh; }
 	Texture* GetTexture() const { return texture; }
+	Texture* GetNormalMap() const { return normalMap; }
 	Material* GetMaterial() const { return material; }
 
 	// Render this object
-	void Render(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess);
+	void Render(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
 
 private:
 	std::string name;
@@ -48,5 +50,6 @@ private:
 
 	// Appearance
 	Texture* texture;
+	Texture* normalMap;
 	Material* material;
 };

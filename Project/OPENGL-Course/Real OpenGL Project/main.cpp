@@ -47,7 +47,7 @@ GLuint shader;
 static const char* vShader = "Shaders/shader.vert";
 static const char* fShader = "Shaders/shader.frag";
 
-Texture brickTexture, dirtTexture, plainTexture;
+Texture brickTexture, dirtTexture, plainTexture, brokenBrickTexture, brokenBrickNormal;
 
 Material shinyMaterial, dullMaterial, plainMaterial;
 
@@ -57,8 +57,8 @@ SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 Model rug, monitor, statue;
 
-GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess,
-uniformOmniLightPos, uniformFarPlane;
+GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0,
+uniformOmniLightPos, uniformFarPlane, uniformUseNormalMap;
 
 
 std::vector<Mesh*> meshList;
@@ -111,12 +111,13 @@ void CreateObjects()
 		0, 1, 2
 	};
 
+	//                                                                                              tangent         bitangent
+	//	x      y      z			u	  v			nx	  ny    nz          tx   ty   tz       bx   by   bz
 	GLfloat vertices[] = {
-		//	x      y      z			u	  v			nx	  ny    nz
-			-1.0f, -1.0f, -0.6f,		0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
-			0.0f, -1.0f, 1.0f,		0.5f, 0.0f,		0.0f, 0.0f, 0.0f,
-			1.0f, -1.0f, -0.6f,		1.0f, 0.0f,		0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f,		0.5f, 1.0f,		0.0f, 0.0f, 0.0f
+			-1.0f, -1.0f, -0.6f,		0.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+			0.0f, -1.0f, 1.0f,		0.5f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+			1.0f, -1.0f, -0.6f,		1.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f,		0.5f, 1.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f, 0.0f
 	};
 
 	unsigned int floorIndices[] = {
@@ -125,24 +126,24 @@ void CreateObjects()
 	};
 
 	GLfloat floorVertices[] = {
-		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, 1.0f, 0.0f,
-		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, 1.0f, 0.0f,
-		-10.0f, 0.0f, 10.0f,	0.0f, 10.0f,	0.0f, 1.0f, 0.0f,
-		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, 1.0f, 0.0f
+		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, 1.0f, 0.0f,		1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f,
+		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, 1.0f, 0.0f,		1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f,
+		-10.0f, 0.0f, 10.0f,	0.0f, 10.0f,	0.0f, 1.0f, 0.0f,		1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f,
+		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, 1.0f, 0.0f,		1.0f, 0.0f, 0.0f,		0.0f, 0.0f, 1.0f
 	};
 
-	calcAverageNormals(indices, 12, vertices, 32, 8, 5);
+	calcAverageNormals(indices, 12, vertices, 56, 14, 5);
 
 	Mesh* obj1 = new Mesh();
-	obj1->CreateMesh(vertices, indices, 32, 12);
+	obj1->CreateMesh(vertices, indices, 56, 12);
 	meshList.push_back(obj1);
 
 	Mesh* obj2 = new Mesh();
-	obj2->CreateMesh(vertices, indices, 32, 12);
+	obj2->CreateMesh(vertices, indices, 56, 12);
 	meshList.push_back(obj2);
 
 	Mesh* obj3 = new Mesh();
-	obj3->CreateMesh(floorVertices, floorIndices, 32, 6);
+	obj3->CreateMesh(floorVertices, floorIndices, 56, 6);
 	meshList.push_back(obj3);
 }
 
@@ -159,7 +160,7 @@ void CreateShaders()
 
 void RenderScene()
 {
-	sceneManager.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess);
+	sceneManager.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformUseNormalMap);
 }
 
 void DirectionalShadowMapPass(DirectionalLight* light)
@@ -233,14 +234,16 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 	glUniform3f(uniformEyePosition, camera.getCameraPosition().x, camera.getCameraPosition().y, camera.getCameraPosition().z);
 
 	shaderList[0].SetDirectionalLight(&mainLight);
-	shaderList[0].SetPointLights(pointLights, pointLightCount, 3, 0);
-	shaderList[0].SetSpotLights(spotLights, spotLightCount, 3 + pointLightCount, pointLightCount);
+	shaderList[0].SetPointLights(pointLights, pointLightCount, 4, 0);
+	shaderList[0].SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
 	shaderList[0].SetDirectionalLightTransform(mainLight.
 		CalculateLightTransform());
 
-	mainLight.GetShadowMap()->Read(GL_TEXTURE2);
+	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
 	shaderList[0].SetTexture(1);
-	shaderList[0].SetDirectionalShadowMap(2);
+	shaderList[0].SetNormalMap(2);
+	shaderList[0].SetDirectionalShadowMap(3);
+	uniformUseNormalMap = glGetUniformLocation(shaderList[0].GetShaderID(), "useNormalMap");
 
 	glm::vec3 lowerLight = camera.getCameraPosition();
 	lowerLight.y -= 0.1f;
@@ -248,7 +251,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
 	shaderList[0].Validate();
 
-	RenderScene();
+	sceneManager.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformUseNormalMap);
 
 	// Render light icons (billboards)
 	sceneManager.RenderIcons(projectionMatrix, viewMatrix);
@@ -275,9 +278,15 @@ int main()
 	plainTexture = Texture("Textures/plain.png");
 	plainTexture.LoadTextureA();
 
+	brokenBrickTexture = Texture("Textures/broken_brick.jpg");
+	brokenBrickTexture.LoadTextureA();
+
+	brokenBrickNormal = Texture("Textures/broken_brick_normal.png");
+	brokenBrickNormal.LoadTextureA();
+
 	shinyMaterial = Material(1.0f, 32);
 	dullMaterial = Material(0.3f, 4);
-	plainMaterial = Material(1.0f, 512);
+	plainMaterial = Material(0.1f, 32.0f); // Default shininess 32.0 for better highlights
 
 	sceneManager.SetDefaultResources(&plainTexture, &plainMaterial);
 
@@ -354,9 +363,19 @@ int main()
 	floor->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 	floor->GetTransform().SetScale(glm::vec3(10.0f, 10.0f, 10.0f));
 	floor->SetMesh(meshList[2]);
-	floor->SetTexture(&plainTexture);
+	floor->SetTexture(&brokenBrickTexture);
+	floor->SetNormalMap(&brokenBrickNormal);
 	floor->SetMaterial(&plainMaterial);
 	sceneManager.AddObject(floor);
+
+	// Monitor (has normal map: OldMonitor03Texture_normal.png)
+	GameObject* monitorObj = new GameObject("Monitor");
+	// Rotate slightly and lift off the floor to avoid z-fighting
+	monitorObj->GetTransform().SetPosition(glm::vec3(0.0f, 0.1f, 0.0f));
+	monitorObj->GetTransform().SetRotation(glm::vec3(0.0f, -45.0f, 0.0f));
+	monitorObj->SetModel(&monitor);
+	monitorObj->SetMaterial(&shinyMaterial);
+	sceneManager.AddObject(monitorObj);
 
 	// ============ LIGHTS IN HIERARCHY ============
 	// Wrap lights in LightObjects for hierarchy display

@@ -48,7 +48,7 @@ public:
 	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 
 	// Rendering
-	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess);
+	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 
 	// ImGui interface

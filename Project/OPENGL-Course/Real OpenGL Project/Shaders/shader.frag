@@ -6,6 +6,11 @@ in vec3 Normal;
 in vec3 FragPos;
 in vec4 DirectionalLightSpacePos;
 
+// TBN vectors from vertex shader
+in vec3 TangentWorld;
+in vec3 BitangentWorld;
+in vec3 NormalWorld;
+
 out vec4 colour;	
 
 const int MAX_POINT_LIGHTS = 3;
@@ -59,6 +64,8 @@ uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 
 uniform sampler2D theTexture;
+uniform sampler2D normalMap;
+uniform bool useNormalMap;
 uniform sampler2D directionalShadowMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
@@ -66,6 +73,44 @@ uniform Material material;
 
 // camera position
 uniform vec3 eyePosition;
+
+// Compute the effective normal: either from normal map or from vertex normal
+vec3 GetEffectiveNormal()
+{
+	if(useNormalMap)
+	{
+		// Sample normal map and convert from [0,1] to [-1,1]
+		vec3 sampledNormal = texture(normalMap, TexCoord).rgb;
+		sampledNormal = sampledNormal * 2.0 - 1.0;
+
+		// IMPORTANT: Flip Green channel for DirectX normal mapped assets (common in modern editors)
+		// If lighting looks inverted top-to-bottom, this is usually the reason.
+		sampledNormal.g = -sampledNormal.g; 
+
+		// Remapped normal must be normalized again to ensure it's a unit vector
+		sampledNormal = normalize(sampledNormal);
+
+		// Re-orthogonalize TBN matrix using Gram-Schmidt process
+		// We use the interpolated vectors from the vertex shader.
+		// Using the provided BitangentWorld instead of cross(N, T) preserves handedness/mirrored UVs.
+		vec3 N = normalize(NormalWorld);
+		vec3 T = normalize(TangentWorld);
+		vec3 B = normalize(BitangentWorld);
+
+		// Re-orthogonalize T and B to N
+		T = normalize(T - dot(T, N) * N);
+		B = normalize(B - dot(B, N) * N - dot(B, T) * T);
+		
+		mat3 TBN = mat3(T, B, N);
+
+		// Transform from tangent space to world space
+		return normalize(TBN * sampledNormal);
+	}
+	else
+	{
+		return normalize(Normal);
+	}
+}
 
 vec3 sampleOffsetDirections[20] = vec3[]
 (
@@ -83,7 +128,7 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	
 	float current = projCoords.z;
 	
-	vec3 normal = normalize(Normal);
+	vec3 normal = GetEffectiveNormal();
 	vec3 lightDir = normalize(directionalLight.direction);
 	
 	// Correct bias: use -lightDir (surface to light) for dot product
@@ -144,11 +189,13 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 }
 vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor) 
 {
+	vec3 effectiveNormal = GetEffectiveNormal();
+
 	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
 
     // We assume 'direction' is light -> fragment.
     // For diffuse, we need fragment -> light, so we use -direction.
-	float diffuseFactor = max(dot(normalize(Normal), normalize(-direction)), 0.0f);
+	float diffuseFactor = max(dot(effectiveNormal, normalize(-direction)), 0.0f);
 	vec4 diffuseColor = vec4(light.colour, 1.0f) * light.diffuseIntensity * diffuseFactor;
 
 	vec4 specularColour = vec4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -157,7 +204,7 @@ vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 	{
 		vec3 fragToEye = normalize(eyePosition - FragPos);
         // reflect expects vector FROM light source TO surface, which 'direction' is.
-		vec3 reflectedVertex = normalize(reflect(normalize(direction), normalize(Normal)));
+		vec3 reflectedVertex = normalize(reflect(normalize(direction), effectiveNormal));
 
 		float specularFactor = dot(fragToEye, reflectedVertex);
 
