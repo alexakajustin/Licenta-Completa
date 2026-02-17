@@ -118,10 +118,14 @@ private:
 	// Gizmo resources
 	Shader gizmoShader;
 	Model* gizmoArrowModel = nullptr;
+	Model* gizmoTorusModel = nullptr;
 
 	// Gizmo dragging state
-	int activeDragAxis = 0; // 0=None, 20001=X, 20002=Y, 20003=Z
+	int activeDragAxis = 0; // 0=None, 20001=X, 20002=Y, 20003=Z (Move), 20004=X, 20005=Y, 20006=Z (Rot)
 	glm::vec3 dragInitialObjectPos;
+	glm::vec3 dragInitialObjectRot;
+	glm::vec2 dragInitialMousePos;
+	float dragInitialAngle; // For seamless rotation
 	glm::vec3 dragInitialIntersectPos;
 	glm::vec3 dragPlaneNormal;
 

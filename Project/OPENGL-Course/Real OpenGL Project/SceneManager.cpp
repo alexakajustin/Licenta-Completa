@@ -47,7 +47,7 @@ static void DrawVec3Control(const std::string& label, glm::vec3& values, float r
 SceneManager::SceneManager()
 	: selectedObjectIndex(-1), selectedLightIndex(-1), pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr)
+	  	lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
 {
 }
 
@@ -60,14 +60,14 @@ SceneManager::~SceneManager()
 	if (pickingTexture) glDeleteTextures(1, &pickingTexture);
 	if (pickingDepth) glDeleteRenderbuffers(1, &pickingDepth);
 
-	// Cleanup icons
-	if (lightIconTexture) delete lightIconTexture;
-	if (iconMesh) delete iconMesh;
-
 	// Cleanup gizmo
 	if (gizmoArrowModel) {
 		gizmoArrowModel->ClearModel();
 		delete gizmoArrowModel;
+	}
+	if (gizmoTorusModel) {
+		gizmoTorusModel->ClearModel();
+		delete gizmoTorusModel;
 	}
 }
 
@@ -234,7 +234,58 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
-	// Render gizmo arrows for picking
+	// Render gizmo tori for picking (FIRST, so arrows can be on top)
+	if (gizmoTorusModel && (selectedObjectIndex != -1 || selectedLightIndex != -1))
+	{
+		glUniform1i(isBillboardLoc, 0);
+		glDisable(GL_DEPTH_TEST);
+
+		glm::vec3 gizmoPos(0.0f);
+		glm::mat4 objRot(1.0f);
+		if (selectedObjectIndex != -1) {
+			gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
+		else {
+			glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
+			if (lightPos) gizmoPos = *lightPos;
+		}
+
+		glDisable(GL_CULL_FACE); // Gizmos should be pickable from any angle
+		float dist = glm::length(gizmoPos - cameraPos);
+		float torusPickScale = dist * 0.1f * 0.6f; // Reduced from 1.3f
+
+		// X Rotation (20004)
+		glUniform3f(colorLoc, (20004 & 0xFF) / 255.0f, ((20004 >> 8) & 0xFF) / 255.0f, ((20004 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 rotX = glm::translate(glm::mat4(1.0f), gizmoPos);
+		rotX = rotX * objRot;
+		rotX = glm::rotate(rotX, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		rotX = glm::scale(rotX, glm::vec3(torusPickScale));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotX));
+		gizmoTorusModel->RenderModel(0);
+
+		// Y Rotation (20005)
+		glUniform3f(colorLoc, (20005 & 0xFF) / 255.0f, ((20005 >> 8) & 0xFF) / 255.0f, ((20005 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 rotY = glm::translate(glm::mat4(1.0f), gizmoPos);
+		rotY = rotY * objRot;
+		rotY = glm::scale(rotY, glm::vec3(torusPickScale));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotY));
+		gizmoTorusModel->RenderModel(0);
+
+		// Z Rotation (20006)
+		glUniform3f(colorLoc, (20006 & 0xFF) / 255.0f, ((20006 >> 8) & 0xFF) / 255.0f, ((20006 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 rotZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+		rotZ = rotZ * objRot;
+		rotZ = glm::rotate(rotZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		rotZ = glm::scale(rotZ, glm::vec3(torusPickScale));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotZ));
+		gizmoTorusModel->RenderModel(0);
+	}
+
+	// Render gizmo arrows for picking (SECOND, so they take priority for the pixel)
 	if (gizmoArrowModel && (selectedObjectIndex != -1 || selectedLightIndex != -1))
 	{
 		glUniform1i(isBillboardLoc, 0);
@@ -246,20 +297,30 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
 			if (lightPos) gizmoPos = *lightPos;
 			else {
+				// Cleanup state before return
 				glEnable(GL_DEPTH_TEST);
 				glEnable(GL_CULL_FACE);
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				return 0; // No gizmo for directional lights
+				return 0;
 			}
 		}
 
-		// Use the EXACT same scale logic as RenderGizmo
 		float dist = glm::length(gizmoPos - cameraPos);
 		float scaleFactor = dist * 0.1f; 
+
+		// Calculate object rotation matrix
+		glm::mat4 objRot(1.0f);
+		if (selectedObjectIndex != -1) {
+			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
 
 		// X Axis (20001)
 		glUniform3f(colorLoc, (20001 & 0xFF) / 255.0f, ((20001 >> 8) & 0xFF) / 255.0f, ((20001 >> 16) & 0xFF) / 255.0f);
 		glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelX = modelX * objRot;
 		modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		modelX = glm::scale(modelX, glm::vec3(scaleFactor));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
@@ -268,6 +329,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		// Y Axis (20002)
 		glUniform3f(colorLoc, (20002 & 0xFF) / 255.0f, ((20002 >> 8) & 0xFF) / 255.0f, ((20002 >> 16) & 0xFF) / 255.0f);
 		glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelY = modelY * objRot;
 		modelY = glm::scale(modelY, glm::vec3(scaleFactor));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
 		gizmoArrowModel->RenderModel(0);
@@ -275,6 +337,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		// Z Axis (20003)
 		glUniform3f(colorLoc, (20003 & 0xFF) / 255.0f, ((20003 >> 8) & 0xFF) / 255.0f, ((20003 >> 16) & 0xFF) / 255.0f);
 		glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelZ = modelZ * objRot;
 		modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		modelZ = glm::scale(modelZ, glm::vec3(scaleFactor));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
@@ -589,6 +652,9 @@ void SceneManager::InitGizmo()
 
 	gizmoArrowModel = new Model();
 	gizmoArrowModel->LoadModel("Utils/arrow.obj");
+
+	gizmoTorusModel = new Model();
+	gizmoTorusModel->LoadModel("Utils/torus.obj");
 }
 
 void SceneManager::CreateIconMesh()
@@ -701,27 +767,76 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
+	// Calculate object rotation matrix
+	glm::mat4 objRot(1.0f);
+	if (selectedObjectIndex != -1) {
+		glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+		objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	}
+
+	// --- Rotation Tori (Draw FIRST) ---
+	float torusScaleFactor = dist * 0.1f * 0.6f; // Reduced from 1.3f
+	glm::vec3 torusScale(torusScaleFactor);
+
+	// X Rotation (Red) - YZ plane
+	glm::mat4 rotX = glm::translate(glm::mat4(1.0f), gizmoPos);
+	rotX = rotX * objRot;
+	rotX = glm::rotate(rotX, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	rotX = glm::scale(rotX, torusScale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotX));
+	if (activeDragAxis == 20004) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f); // Gold/Yellow when active
+	else glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
+	gizmoTorusModel->RenderModel(0);
+
+	// Y Rotation (Green) - XZ plane
+	glm::mat4 rotY = glm::translate(glm::mat4(1.0f), gizmoPos);
+	rotY = rotY * objRot;
+	rotY = glm::scale(rotY, torusScale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotY));
+	if (activeDragAxis == 20005) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+	else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
+	gizmoTorusModel->RenderModel(0);
+
+	// Z Rotation (Blue) - XY plane
+	glm::mat4 rotZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+	rotZ = rotZ * objRot;
+	rotZ = glm::rotate(rotZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotZ = glm::scale(rotZ, torusScale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotZ));
+	if (activeDragAxis == 20006) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+	else glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
+	gizmoTorusModel->RenderModel(0);
+
+	// --- Move Arrows (Draw SECOND to be on top) ---
 	// Y Axis (Green)
 	glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelY = modelY * objRot;
 	modelY = glm::scale(modelY, scale);
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
-	glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
+	if (activeDragAxis == 20002) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+	else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
 	gizmoArrowModel->RenderModel(0);
 
 	// X Axis (Red) - Rotate -90 degrees around Z
 	glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelX = modelX * objRot;
 	modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	modelX = glm::scale(modelX, scale);
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
-	glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
+	if (activeDragAxis == 20001) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+	else glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
 	gizmoArrowModel->RenderModel(0);
 
 	// Z Axis (Blue) - Rotate +90 degrees around X
 	glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelZ = modelZ * objRot;
 	modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	modelZ = glm::scale(modelZ, scale);
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
-	glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
+	if (activeDragAxis == 20003) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+	else glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
 	gizmoArrowModel->RenderModel(0);
 
 	glEnable(GL_DEPTH_TEST);
@@ -744,13 +859,26 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				if (selectedObjectIndex != -1) dragInitialObjectPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
 				else if (selectedLightIndex != -1) dragInitialObjectPos = *lights[selectedLightIndex]->GetPositionPtr();
 				
+				// Calculate local axes based on object rotation
+				glm::mat4 objRot(1.0f);
+				if (selectedObjectIndex != -1) {
+					glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+					objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+					objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+					objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+				}
+
+				glm::vec3 localX = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
+				glm::vec3 localY = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
+				glm::vec3 localZ = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
+
 				// Pick the best plane for dragging
-				glm::vec3 cameraFront = glm::normalize(glm::vec3(glm::inverse(view)[2])); // Camera front is -Z in view space usually, but Assimp/GLM can vary. Let's use world-space forward.
+				glm::vec3 cameraFront = glm::normalize(glm::vec3(glm::inverse(view)[2])); 
 				glm::vec3 planeNorm1, planeNorm2;
 				
-				if (activeDragAxis == 20001) { planeNorm1 = glm::vec3(0, 1, 0); planeNorm2 = glm::vec3(0, 0, 1); }
-				else if (activeDragAxis == 20002) { planeNorm1 = glm::vec3(1, 0, 0); planeNorm2 = glm::vec3(0, 0, 1); }
-				else { planeNorm1 = glm::vec3(1, 0, 0); planeNorm2 = glm::vec3(0, 1, 0); }
+				if (activeDragAxis == 20001) { planeNorm1 = localY; planeNorm2 = localZ; }
+				else if (activeDragAxis == 20002) { planeNorm1 = localX; planeNorm2 = localZ; }
+				else { planeNorm1 = localX; planeNorm2 = localY; }
 				
 				if (std::abs(glm::dot(planeNorm1, cameraFront)) > std::abs(glm::dot(planeNorm2, cameraFront)))
 					dragPlaneNormal = planeNorm1;
@@ -761,6 +889,29 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
 				
 				RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, dragInitialIntersectPos);
+			}
+			else if (pickedID >= 20004 && pickedID <= 20006) {
+				activeDragAxis = pickedID;
+				printf("Gizmo Rotation START: Axis %d\n", activeDragAxis);
+
+				if (selectedObjectIndex != -1) {
+					dragInitialObjectRot = objects[selectedObjectIndex]->GetTransform().GetRotation();
+					glm::vec3 gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+
+					// Calculate screen center of gizmo for seamless rotation
+					glm::vec4 ndc = projection * view * glm::vec4(gizmoPos, 1.0f);
+					if (ndc.w != 0) ndc /= ndc.w;
+
+					int windowWidth, windowHeight;
+					glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+					float centerX = (ndc.x + 1.0f) * 0.5f * windowWidth;
+					float centerY = (1.0f - ndc.y) * 0.5f * windowHeight;
+
+					dragInitialAngle = atan2(mouseY - centerY, mouseX - centerX);
+				}
+				else if (selectedLightIndex != -1) dragInitialObjectRot = glm::vec3(0.0f); 
+
+				dragInitialMousePos = glm::vec2(mouseX, mouseY);
 			}
 		} else if (action == GLFW_RELEASE) {
 			if (activeDragAxis != 0) printf("Gizmo Drag END\n");
@@ -778,19 +929,49 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
 	
 	glm::vec3 currentIntersect;
-	if (RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect)) {
+	if (activeDragAxis >= 20001 && activeDragAxis <= 20003 && RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect)) {
 		glm::vec3 delta = currentIntersect - dragInitialIntersectPos;
 		
+		glm::mat4 objRot(1.0f);
+		if (selectedObjectIndex != -1) {
+			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
+
 		glm::vec3 axis(0.0f);
-		if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
-		else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
-		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
+		if (activeDragAxis == 20001) axis = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
+		else if (activeDragAxis == 20002) axis = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
+		else if (activeDragAxis == 20003) axis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
 		
 		float movement = glm::dot(delta, axis);
 		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
 		
 		if (selectedObjectIndex != -1) objects[selectedObjectIndex]->GetTransform().SetPosition(newPos);
 		else if (selectedLightIndex != -1) lights[selectedLightIndex]->SetPosition(newPos);
+	}
+	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
+		if (selectedObjectIndex == -1) return;
+
+		glm::vec3 gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+		glm::vec4 ndc = projection * view * glm::vec4(gizmoPos, 1.0f);
+		if (ndc.w != 0) ndc /= ndc.w;
+
+		int windowWidth, windowHeight;
+		glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+		float centerX = (ndc.x + 1.0f) * 0.5f * windowWidth;
+		float centerY = (1.0f - ndc.y) * 0.5f * windowHeight;
+
+		float currentAngle = atan2(mouseY - centerY, mouseX - centerX);
+		float deltaAngle = -glm::degrees(currentAngle - dragInitialAngle); // Negated to fix inversion
+
+		glm::vec3 rotationDelta(0.0f);
+		if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
+		else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
+		else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
+
+		objects[selectedObjectIndex]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
 	}
 }
 
