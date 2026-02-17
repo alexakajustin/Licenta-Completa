@@ -157,7 +157,7 @@ void SceneManager::InitPicking(int width, int height)
 	pickingInitialized = true;
 }
 
-int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
+int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
 {
 	if (!pickingInitialized) return -1;
 
@@ -234,6 +234,53 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
+	// Render gizmo arrows for picking
+	if (gizmoArrowModel && (selectedObjectIndex != -1 || selectedLightIndex != -1))
+	{
+		glUniform1i(isBillboardLoc, 0);
+		glDisable(GL_DEPTH_TEST);
+
+		glm::vec3 gizmoPos(0.0f);
+		if (selectedObjectIndex != -1) gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+		else {
+			glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
+			if (lightPos) gizmoPos = *lightPos;
+			else {
+				glEnable(GL_DEPTH_TEST);
+				glEnable(GL_CULL_FACE);
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				return 0; // No gizmo for directional lights
+			}
+		}
+
+		// Use the EXACT same scale logic as RenderGizmo
+		float dist = glm::length(gizmoPos - cameraPos);
+		float scaleFactor = dist * 0.1f; 
+
+		// X Axis (20001)
+		glUniform3f(colorLoc, (20001 & 0xFF) / 255.0f, ((20001 >> 8) & 0xFF) / 255.0f, ((20001 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		modelX = glm::scale(modelX, glm::vec3(scaleFactor));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
+		gizmoArrowModel->RenderModel(0);
+
+		// Y Axis (20002)
+		glUniform3f(colorLoc, (20002 & 0xFF) / 255.0f, ((20002 >> 8) & 0xFF) / 255.0f, ((20002 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelY = glm::scale(modelY, glm::vec3(scaleFactor));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
+		gizmoArrowModel->RenderModel(0);
+
+		// Z Axis (20003)
+		glUniform3f(colorLoc, (20003 & 0xFF) / 255.0f, ((20003 >> 8) & 0xFF) / 255.0f, ((20003 >> 16) & 0xFF) / 255.0f);
+		glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+		modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		modelZ = glm::scale(modelZ, glm::vec3(scaleFactor));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
+		gizmoArrowModel->RenderModel(0);
+	}
+
 	// Restore GL state after icon rendering
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
@@ -258,26 +305,26 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// Handle object picking
+	// Handle selection logic based on the ID
 	if (pickedID > 0 && pickedID <= (int)objects.size())
 	{
 		selectedObjectIndex = pickedID - 1;
 		selectedLightIndex = -1;
-		return 1; // Object picked
 	}
-
-	// Handle light picking
-	if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size())
+	else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size())
 	{
 		selectedLightIndex = pickedID - 10000;
 		selectedObjectIndex = -1;
-		return 2; // Light picked
+	}
+	else if (pickedID < 20000) // If we didn't hit a gizmo, clear selection
+	{
+		// But don't clear if we're clicking on UI or something else handled externally
+		// For now, keep the original behavior but only if it's not a gizmo
+		selectedObjectIndex = -1;
+		selectedLightIndex = -1;
 	}
 
-	// Nothing picked - clear selection
-	selectedObjectIndex = -1;
-	selectedLightIndex = -1;
-	return 0;
+	return pickedID;
 }
 
 void SceneManager::RenderImGui()
@@ -680,6 +727,97 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glUseProgram(0);
+}
+
+void SceneManager::HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT) {
+		if (action == GLFW_PRESS) {
+			int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos);
+			printf("Picked ID: %d\n", pickedID);
+			
+			if (pickedID >= 20001 && pickedID <= 20003) {
+				activeDragAxis = pickedID;
+				printf("Gizmo Drag START: Axis %d\n", activeDragAxis);
+				
+				// Calculate initial drag anchors
+				if (selectedObjectIndex != -1) dragInitialObjectPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+				else if (selectedLightIndex != -1) dragInitialObjectPos = *lights[selectedLightIndex]->GetPositionPtr();
+				
+				// Pick the best plane for dragging
+				glm::vec3 cameraFront = glm::normalize(glm::vec3(glm::inverse(view)[2])); // Camera front is -Z in view space usually, but Assimp/GLM can vary. Let's use world-space forward.
+				glm::vec3 planeNorm1, planeNorm2;
+				
+				if (activeDragAxis == 20001) { planeNorm1 = glm::vec3(0, 1, 0); planeNorm2 = glm::vec3(0, 0, 1); }
+				else if (activeDragAxis == 20002) { planeNorm1 = glm::vec3(1, 0, 0); planeNorm2 = glm::vec3(0, 0, 1); }
+				else { planeNorm1 = glm::vec3(1, 0, 0); planeNorm2 = glm::vec3(0, 1, 0); }
+				
+				if (std::abs(glm::dot(planeNorm1, cameraFront)) > std::abs(glm::dot(planeNorm2, cameraFront)))
+					dragPlaneNormal = planeNorm1;
+				else
+					dragPlaneNormal = planeNorm2;
+					
+				glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
+				glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
+				
+				RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, dragInitialIntersectPos);
+			}
+		} else if (action == GLFW_RELEASE) {
+			if (activeDragAxis != 0) printf("Gizmo Drag END\n");
+			activeDragAxis = 0;
+		}
+	}
+}
+
+void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
+{
+	if (activeDragAxis == 0) return;
+	// printf("Dragging axis %d...\n", activeDragAxis);
+
+	glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
+	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
+	
+	glm::vec3 currentIntersect;
+	if (RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect)) {
+		glm::vec3 delta = currentIntersect - dragInitialIntersectPos;
+		
+		glm::vec3 axis(0.0f);
+		if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
+		else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
+		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
+		
+		float movement = glm::dot(delta, axis);
+		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
+		
+		if (selectedObjectIndex != -1) objects[selectedObjectIndex]->GetTransform().SetPosition(newPos);
+		else if (selectedLightIndex != -1) lights[selectedLightIndex]->SetPosition(newPos);
+	}
+}
+
+glm::vec3 SceneManager::GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
+{
+	float x = (2.0f * mouseX) / pickWidth - 1.0f;
+	float y = 1.0f - (2.0f * mouseY) / pickHeight;
+	
+	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+	glm::vec4 rayEye = glm::inverse(projection) * rayClip;
+	rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+	
+	glm::vec3 rayWorld = glm::vec3(glm::inverse(view) * rayEye);
+	return glm::normalize(rayWorld);
+}
+
+bool SceneManager::RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint)
+{
+	float denom = glm::dot(planeNormal, rayDir);
+	if (std::abs(denom) > 1e-6) {
+		float t = glm::dot(planePoint - rayOrigin, planeNormal) / denom;
+		if (t >= 0) {
+			intersectPoint = rayOrigin + rayDir * t;
+			return true;
+		}
+	}
+	return false;
 }
 
 void SceneManager::Clear()

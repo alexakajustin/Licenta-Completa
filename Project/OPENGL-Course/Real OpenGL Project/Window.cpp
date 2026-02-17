@@ -10,6 +10,10 @@ Window::Window()
 	{
 		keys[i] = 0;
 	}
+	for (size_t i = 0; i < 32; i++)
+	{
+		mouseButtons[i] = 0;
+	}
 }
 
 Window::Window(GLfloat windowWidth, GLfloat windowHeight)/* : Window()*/
@@ -21,6 +25,10 @@ Window::Window(GLfloat windowWidth, GLfloat windowHeight)/* : Window()*/
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
+	}
+	for (size_t i = 0; i < 32; i++)
+	{
+		mouseButtons[i] = 0;
 	}
 }
 
@@ -170,6 +178,23 @@ void Window::handleMouse(GLFWwindow* window, double xPos, double yPos)
 
 	// this is how powerful the movement is
 	//printf("x:%.6f, y:%.6f\n", theWindow->xChange, theWindow->yChange);
+}
+
+void Window::handleMouseButton(GLFWwindow* window, int button, int action, int mods)
+{
+	Window* theWindow = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+	if (button >= 0 && button < 32)
+	{
+		if (action == GLFW_PRESS)
+		{
+			theWindow->mouseButtons[button] = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			theWindow->mouseButtons[button] = false;
+		}
+	}
 }
 
 void Window::createCallbacks()

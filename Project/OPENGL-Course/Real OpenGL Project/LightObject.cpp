@@ -91,6 +91,12 @@ glm::vec3* LightObject::GetDirectionPtr()
 	}
 }
 
+void LightObject::SetPosition(const glm::vec3& pos)
+{
+	glm::vec3* p = GetPositionPtr();
+	if (p) *p = pos;
+}
+
 float* LightObject::GetConstantPtr()
 {
 	switch (lightType)

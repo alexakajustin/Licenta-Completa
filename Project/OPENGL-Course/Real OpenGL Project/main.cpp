@@ -412,6 +412,8 @@ int main()
 
 	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
 
+	bool lastLMBState = false;
+
 	// ---------------- DONE WITH INITS------------------------------
 	// -------------NOW IT IS THE TIME FOR THE LOOP-------------------
 	while (!mainWindow.getShouldClose())
@@ -434,20 +436,30 @@ int main()
 		}
 		else
 		{
-			// Mouse picking when cursor is enabled
-			if (glfwGetMouseButton(mainWindow.getWindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			// Handle mouse input for picking and gizmo dragging
+			bool currentLMBState = glfwGetMouseButton(mainWindow.getWindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+			double mouseX, mouseY;
+			glfwGetCursorPos(mainWindow.getWindow(), &mouseX, &mouseY);
+
+			if (!ImGui::GetIO().WantCaptureMouse)
 			{
-				// Only pick if not clicking on ImGui
-				if (!ImGui::GetIO().WantCaptureMouse)
+				if (currentLMBState && !lastLMBState)
 				{
-					double mouseX, mouseY;
-					glfwGetCursorPos(mainWindow.getWindow(), &mouseX, &mouseY);
-					
-					sceneManager.PickObject(
-						(float)mouseX, (float)mouseY,
-						projection, camera.calculateViewMatrix());
+					// Button just pressed
+					sceneManager.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, (float)mouseX, (float)mouseY, projection, camera.calculateViewMatrix(), camera.getCameraPosition());
+				}
+				else if (!currentLMBState && lastLMBState)
+				{
+					// Button just released
+					sceneManager.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, (float)mouseX, (float)mouseY, projection, camera.calculateViewMatrix(), camera.getCameraPosition());
+				}
+				else if (currentLMBState)
+				{
+					// Button held - update dragging
+					sceneManager.HandleMouseMove((float)mouseX, (float)mouseY, projection, camera.calculateViewMatrix());
 				}
 			}
+			lastLMBState = currentLMBState;
 		}
 
 		// Scene Hierarchy and Inspector panels

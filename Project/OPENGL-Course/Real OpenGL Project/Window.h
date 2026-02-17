@@ -23,6 +23,7 @@ public:
 	bool* getKeys() { return keys; };
 	GLfloat getXChange();
 	GLfloat getYChange();
+	bool* getMouseButtons() { return mouseButtons; }
 	bool isCursorEnabled() { return cursorEnabled; }
 
 
@@ -46,6 +47,9 @@ private:
 	// and we need to avoud the this pointer so we make it static
 	static void handleKeys(GLFWwindow* window, int key, int code, int action, int mode); 
 	static void handleMouse(GLFWwindow* window, double xPos, double yPos); 
+	static void handleMouseButton(GLFWwindow* window, int button, int action, int mods);
 	void createCallbacks();
+
+	bool mouseButtons[32];
 };
 

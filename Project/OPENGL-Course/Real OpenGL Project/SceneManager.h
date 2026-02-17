@@ -45,7 +45,7 @@ public:
 	void InitIcons();
 
 	// Color picking - renders scene to pick buffer, returns object index at mouse pos
-	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
+	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
 
 	// Rendering
 	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
@@ -61,6 +61,8 @@ public:
 
 	// Gizmo methods
 	void InitGizmo();
+	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
+	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 
 	// Deletion
 	void DeleteLight(int index);
@@ -116,4 +118,14 @@ private:
 	// Gizmo resources
 	Shader gizmoShader;
 	Model* gizmoArrowModel = nullptr;
+
+	// Gizmo dragging state
+	int activeDragAxis = 0; // 0=None, 20001=X, 20002=Y, 20003=Z
+	glm::vec3 dragInitialObjectPos;
+	glm::vec3 dragInitialIntersectPos;
+	glm::vec3 dragPlaneNormal;
+
+	// Ray-Plane math helpers
+	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
+	bool RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint);
 };
