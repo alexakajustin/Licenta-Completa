@@ -29,6 +29,8 @@ public:
 	DirectionalLight* GetDirectionalLight() { return directionalLight; }
 	PointLight* GetPointLight() { return pointLight; }
 	SpotLight* GetSpotLight() { return spotLight; }
+	void SetPointLight(PointLight* p) { pointLight = p; }
+	void SetSpotLight(SpotLight* s) { spotLight = s; }
 
 	// Get editable properties (pointers for ImGui)
 	glm::vec3* GetColorPtr();

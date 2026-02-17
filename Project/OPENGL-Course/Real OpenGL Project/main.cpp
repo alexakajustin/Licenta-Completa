@@ -258,6 +258,9 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
 	// Render light icons (billboards)
 	sceneManager.RenderIcons(projectionMatrix, viewMatrix);
+
+	// Render gizmo arrows for selected object
+	sceneManager.RenderGizmo(projectionMatrix, viewMatrix, camera.getCameraPosition());
 }
 
 int main()
@@ -405,6 +408,7 @@ int main()
 	// Initialize color picking
 	sceneManager.InitPicking((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
 	sceneManager.InitIcons();
+	sceneManager.InitGizmo();
 
 	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
 

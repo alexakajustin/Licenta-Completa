@@ -44,7 +44,6 @@ private:
 	std::string name;
 	Transform transform;
 
-	// Visual components (use one or the other)
 	Model* model;      // For loaded .obj models
 	Mesh* mesh;        // For primitive meshes
 

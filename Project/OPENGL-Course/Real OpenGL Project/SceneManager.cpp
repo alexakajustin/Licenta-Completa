@@ -63,6 +63,12 @@ SceneManager::~SceneManager()
 	// Cleanup icons
 	if (lightIconTexture) delete lightIconTexture;
 	if (iconMesh) delete iconMesh;
+
+	// Cleanup gizmo
+	if (gizmoArrowModel) {
+		gizmoArrowModel->ClearModel();
+		delete gizmoArrowModel;
+	}
 }
 
 void SceneManager::AddObject(GameObject* obj)
@@ -293,16 +299,6 @@ void SceneManager::RenderImGui()
 				selectedObjectIndex = i;
 				selectedLightIndex = -1;
 			}
-			if (ImGui::BeginPopupContextItem())
-			{
-				if (ImGui::MenuItem("Delete")) {
-					delete objects[i];
-					objects.erase(objects.begin() + i);
-					selectedObjectIndex = -1;
-					ImGui::EndPopup(); ImGui::PopID(); break;
-				}
-				ImGui::EndPopup();
-			}
 			ImGui::PopID();
 		}
 	}
@@ -322,6 +318,21 @@ void SceneManager::RenderImGui()
 				selectedObjectIndex = -1;
 			}
 			ImGui::PopID();
+		}
+	}
+
+	// Delete key - delete selected object or light
+	if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+	{
+		if (selectedObjectIndex >= 0 && selectedObjectIndex < (int)objects.size() && selectedLightIndex < 0)
+		{
+			delete objects[selectedObjectIndex];
+			objects.erase(objects.begin() + selectedObjectIndex);
+			selectedObjectIndex = -1;
+		}
+		else if (selectedLightIndex >= 0 && selectedLightIndex < (int)lights.size() && selectedObjectIndex < 0)
+		{
+			DeleteLight(selectedLightIndex);
 		}
 	}
 
@@ -424,7 +435,7 @@ void SceneManager::CreateLight(LightType type)
 	if (type == LightType::Point) {
 		if (globalPointLights && globalPointLightCount && *globalPointLightCount < MAX_POINT_LIGHTS) {
 			unsigned int idx = *globalPointLightCount;
-			globalPointLights[idx] = PointLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 0.8f, 0.0f, 5.0f, 0.0f, 0.3f, 0.02f, 0.01f);
+			globalPointLights[idx] = PointLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 0.8f, 0.0f, 5.0f, 0.0f, 1.0f, 0.02f, 0.01f);
 			
 			LightObject* newLightObj = new LightObject("Point Light " + std::to_string(lights.size()), &globalPointLights[idx]);
 			lights.push_back(newLightObj);
@@ -446,6 +457,60 @@ void SceneManager::CreateLight(LightType type)
 	}
 }
 
+void SceneManager::DeleteLight(int index)
+{
+	if (index < 0 || index >= (int)lights.size()) return;
+
+	LightObject* light = lights[index];
+	LightType type = light->GetLightType();
+
+	// Never delete the directional light (Sun)
+	if (type == LightType::Directional) return;
+
+	// Remove from the global light array by compacting it and fix remaining pointers
+	if (type == LightType::Point && globalPointLights && globalPointLightCount) {
+		PointLight* ptr = light->GetPointLight();
+		int arrayIdx = (int)(ptr - globalPointLights);
+		if (arrayIdx >= 0 && arrayIdx < (int)*globalPointLightCount) {
+			for (unsigned int j = arrayIdx; j < *globalPointLightCount - 1; j++) {
+				globalPointLights[j] = globalPointLights[j + 1];
+			}
+			(*globalPointLightCount)--;
+
+			// Update pointers in remaining LightObjects that pointed past the deleted slot
+			for (auto* lo : lights) {
+				if (lo == light) continue;
+				if (lo->GetLightType() == LightType::Point && lo->GetPointLight() > ptr) {
+					lo->SetPointLight(lo->GetPointLight() - 1);
+				}
+			}
+		}
+	}
+	else if (type == LightType::Spot && globalSpotLights && globalSpotLightCount) {
+		SpotLight* ptr = light->GetSpotLight();
+		int arrayIdx = (int)(ptr - globalSpotLights);
+		if (arrayIdx >= 0 && arrayIdx < (int)*globalSpotLightCount) {
+			for (unsigned int j = arrayIdx; j < *globalSpotLightCount - 1; j++) {
+				globalSpotLights[j] = globalSpotLights[j + 1];
+			}
+			(*globalSpotLightCount)--;
+
+			// Update pointers in remaining LightObjects that pointed past the deleted slot
+			for (auto* lo : lights) {
+				if (lo == light) continue;
+				if (lo->GetLightType() == LightType::Spot && lo->GetSpotLight() > ptr) {
+					lo->SetSpotLight(lo->GetSpotLight() - 1);
+				}
+			}
+		}
+	}
+
+	// Remove from lights vector and delete the wrapper
+	delete light;
+	lights.erase(lights.begin() + index);
+	selectedLightIndex = -1;
+}
+
 void SceneManager::InitIcons()
 {
 	iconShader.CreateFromFiles("Shaders/icon.vert", "Shaders/icon.frag");
@@ -464,6 +529,19 @@ void SceneManager::InitIcons()
 	}
 
 	CreateIconMesh();
+}
+
+void SceneManager::InitGizmo()
+{
+	gizmoShader.CreateFromFiles("Shaders/gizmo.vert", "Shaders/gizmo.frag");
+	
+	if (gizmoShader.GetShaderID() == 0) {
+		printf("Gizmo shader failed to initialize!\n");
+		return;
+	}
+
+	gizmoArrowModel = new Model();
+	gizmoArrowModel->LoadModel("Utils/arrow.obj");
 }
 
 void SceneManager::CreateIconMesh()
@@ -541,6 +619,67 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 	if (err != GL_NO_ERROR) {
 		printf("OpenGL error in RenderIcons: 0x%x\n", err);
 	}
+}
+
+void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos)
+{
+	// Only render if something is selected
+	if (selectedObjectIndex == -1 && selectedLightIndex == -1) return;
+	if (!gizmoArrowModel || gizmoShader.GetShaderID() == 0) return;
+
+	glm::vec3 gizmoPos(0.0f);
+	if (selectedObjectIndex != -1) {
+		gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+	} else {
+		glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
+		if (lightPos) gizmoPos = *lightPos;
+		else return; // Don't render gizmo for directional lights with no position
+	}
+
+	// Dynamic scale based on distance to camera to maintain constant screen size
+	float dist = glm::length(gizmoPos - cameraPos);
+	float scaleFactor = dist * 0.1f; // Scaled down for better visual balance
+	glm::vec3 scale(scaleFactor);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	gizmoShader.UseShader();
+	
+	GLuint projLoc = gizmoShader.GetProjectionLocation();
+	GLuint viewLoc = gizmoShader.GetViewLocation();
+	GLuint modelLoc = gizmoShader.GetModelLocation();
+	GLuint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+
+	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	// Y Axis (Green)
+	glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelY = glm::scale(modelY, scale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
+	glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
+	gizmoArrowModel->RenderModel(0);
+
+	// X Axis (Red) - Rotate -90 degrees around Z
+	glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	modelX = glm::scale(modelX, scale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
+	glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
+	gizmoArrowModel->RenderModel(0);
+
+	// Z Axis (Blue) - Rotate +90 degrees around X
+	glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
+	modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	modelZ = glm::scale(modelZ, scale);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
+	glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
+	gizmoArrowModel->RenderModel(0);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glUseProgram(0);
 }
 
 void SceneManager::Clear()

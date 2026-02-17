@@ -50,6 +50,7 @@ public:
 	// Rendering
 	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
+	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
 	// ImGui interface
 	void RenderImGui();
@@ -57,6 +58,12 @@ public:
 	// Creation methods
 	void CreateGameObject(const std::string& type);
 	void CreateLight(LightType type);
+
+	// Gizmo methods
+	void InitGizmo();
+
+	// Deletion
+	void DeleteLight(int index);
 
 	// Sync with global lighting system
 	void SetLightArrays(PointLight* pLights, unsigned int* pCount, SpotLight* sLights, unsigned int* sCount) {
@@ -105,4 +112,8 @@ private:
 	Texture* lightIconTexture;
 	Mesh* iconMesh;
 	void CreateIconMesh();
+
+	// Gizmo resources
+	Shader gizmoShader;
+	Model* gizmoArrowModel = nullptr;
 };
