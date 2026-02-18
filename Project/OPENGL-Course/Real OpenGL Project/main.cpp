@@ -275,19 +275,19 @@ int main()
 
 	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 1.0f, 0.25f);
 
-	brickTexture = Texture( "Textures/brick.png");
+	brickTexture = Texture( "Assets/Textures/brick.png");
 	brickTexture.LoadTextureA();
 
-	dirtTexture = Texture("Textures/dirt.png");
+	dirtTexture = Texture("Assets/Textures/dirt.png");
 	dirtTexture.LoadTextureA();
 
-	plainTexture = Texture("Textures/plain.png");
+	plainTexture = Texture("Assets/Textures/plain.png");
 	plainTexture.LoadTextureA();
 
-	brokenBrickTexture = Texture("Textures/broken_brick.jpg");
+	brokenBrickTexture = Texture("Assets/Textures/broken_brick.jpg");
 	brokenBrickTexture.LoadTextureA();
 
-	brokenBrickNormal = Texture("Textures/broken_brick_normal.png");
+	brokenBrickNormal = Texture("Assets/Textures/broken_brick_normal.png");
 	brokenBrickNormal.LoadTextureA();
 
 	shinyMaterial = Material(1.0f, 32);
@@ -352,12 +352,12 @@ int main()
 	spotLightCount++;
 
 	std::vector<std::string> skyboxFaces;
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_rt.tga");
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_lf.tga");
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_up.tga");
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_dn.tga");
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_bk.tga");
-	skyboxFaces.push_back("Textures/Skybox/cupertin-lake_ft.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_rt.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_lf.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_up.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_dn.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_bk.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_ft.tga");
 
 	skybox = Skybox(skyboxFaces);
 
