@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <glm/glm.hpp>
 
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
@@ -20,6 +21,10 @@ public:
 	void ClearModel();
 
 	~Model();
+
+	glm::vec3 GetMinBound() const { return minBound; }
+	glm::vec3 GetMaxBound() const { return maxBound; }
+
 private:
 	// scene contains all data, node is just one part of that list of data
 	void LoadNode(aiNode* node, const aiScene* scene);
@@ -30,5 +35,8 @@ private:
 	std::vector <Texture*> textureList;
 	std::vector <Texture*> normalMapList;
 	std::vector<unsigned int> meshToTex;
+
+	glm::vec3 minBound = glm::vec3(1e10);
+	glm::vec3 maxBound = glm::vec3(-1e10);
 };
 

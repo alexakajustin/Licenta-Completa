@@ -18,6 +18,7 @@ public:
 	void ClearTexture();
 
 	GLuint GetTextureID() const { return textureID; }
+	void SetTextureID(GLuint id) { textureID = id; }
 	const char* GetFileLocation() const { return fileLocation; }
 
 	~Texture();

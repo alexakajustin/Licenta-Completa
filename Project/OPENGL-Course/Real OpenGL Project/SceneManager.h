@@ -73,6 +73,7 @@ public:
 	void RenderImGui();
 	void RenderAssetBrowser();
 	void RefreshAssetList();
+	void GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot);
 
 	// Creation methods
 	void CreateGameObject(const std::string& type);
@@ -158,8 +159,17 @@ private:
 	Texture* modelIconSlot = nullptr;
 
 	void LoadAssetIcons();
+	void InitThumbnailFBO();
+	void CleanupThumbnailFBO();
 
 	// Ray-Plane math helpers
 	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 	bool RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint);
+
+	// Thumbnail resources
+	GLuint thumbnailFBO = 0;
+	GLuint thumbnailTexture = 0;
+	GLuint thumbnailDepth = 0;
+	Shader thumbnailShader;
+	const int thumbnailSize = 128;
 };

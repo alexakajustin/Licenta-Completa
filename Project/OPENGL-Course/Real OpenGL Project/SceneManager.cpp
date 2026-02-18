@@ -2,6 +2,7 @@
 #include "PrimitiveGenerator.h"
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include <algorithm>
 
 // Helper for Unity-like Vector3 input
 static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f)
@@ -72,6 +73,8 @@ SceneManager::~SceneManager()
 	}
 
 	// Cleanup asset icons
+	CleanupThumbnailFBO();
+
 	for (auto const& [key, val] : assetTextureCache) {
 		if (val) {
 			val->ClearTexture();
@@ -633,7 +636,6 @@ void SceneManager::DeleteLight(int index)
 	lights.erase(lights.begin() + index);
 	selectedLightIndex = -1;
 }
-
 void SceneManager::InitIcons()
 {
 	iconShader.CreateFromFiles("Shaders/icon.vert", "Shaders/icon.frag");
@@ -652,6 +654,7 @@ void SceneManager::InitIcons()
 	}
 
 	CreateIconMesh();
+	InitThumbnailFBO();
 }
 
 void SceneManager::InitGizmo()
@@ -1044,6 +1047,125 @@ void SceneManager::LoadAssetIcons()
 	}
 }
 
+void SceneManager::InitThumbnailFBO()
+{
+	if (thumbnailFBO != 0) CleanupThumbnailFBO();
+
+	glGenFramebuffers(1, &thumbnailFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
+
+	// Create thumbnail texture
+	glGenTextures(1, &thumbnailTexture);
+	glBindTexture(GL_TEXTURE_2D, thumbnailTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, thumbnailSize, thumbnailSize, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, thumbnailTexture, 0);
+
+	// Create depth buffer
+	glGenRenderbuffers(1, &thumbnailDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, thumbnailDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, thumbnailSize, thumbnailSize);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, thumbnailDepth);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		printf("Thumbnail Framebuffer is not complete!\n");
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Load thumbnail shader
+	thumbnailShader.CreateFromFiles("Shaders/thumbnail.vert", "Shaders/thumbnail.frag");
+}
+
+void SceneManager::CleanupThumbnailFBO()
+{
+	if (thumbnailFBO != 0) {
+		glDeleteFramebuffers(1, &thumbnailFBO);
+		thumbnailFBO = 0;
+	}
+	if (thumbnailTexture != 0) {
+		glDeleteTextures(1, &thumbnailTexture);
+		thumbnailTexture = 0;
+	}
+	if (thumbnailDepth != 0) {
+		glDeleteRenderbuffers(1, &thumbnailDepth);
+		thumbnailDepth = 0;
+	}
+}
+
+void SceneManager::GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot)
+{
+	if (thumbnailFBO == 0) return;
+
+	// Load model
+	Model tempModel;
+	tempModel.LoadModel(modelPath.string());
+
+	// Setup rendering state
+	GLint oldViewport[4];
+	glGetIntegerv(GL_VIEWPORT, oldViewport);
+	glViewport(0, 0, thumbnailSize, thumbnailSize);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f); // Slightly lighter gray
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE); // Ensure all parts are visible
+
+	// Use thumbnailShader for thumbnail capture
+	thumbnailShader.UseShader();
+	
+	// Frame the model automatically
+	glm::vec3 minB = tempModel.GetMinBound();
+	glm::vec3 maxB = tempModel.GetMaxBound();
+	glm::vec3 center = (minB + maxB) * 0.5f;
+	glm::vec3 size = maxB - minB;
+	float maxDim = std::max({ size.x, size.y, size.z });
+	if (maxDim < 0.001f) maxDim = 1.0f;
+
+	// Set basic matrices
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, maxDim * 10.0f);
+	// Pull camera back based on model size
+	float cameraDist = maxDim * 1.5f;
+	glm::mat4 view = glm::lookAt(center + glm::vec3(cameraDist, cameraDist, cameraDist) * 0.6f, center, glm::vec3(0, 1, 0));
+	
+	glUniformMatrix4fv(thumbnailShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(thumbnailShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
+	
+	glm::mat4 model = glm::mat4(1.0f); // Model is already translated via view's lookAt center
+	glUniformMatrix4fv(thumbnailShader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
+
+	// Set shader uniforms
+	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
+	// Check if model has any textures to decide whether to use them in thumbnail
+	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.GetMinBound().x != 1e10 ? 1 : 0); 
+
+	tempModel.RenderModel(-1); // Pass -1 to safely ignore normal map uniform
+
+	// Read back or just use the FBO texture
+	// Since we want unique textures for each model, we need to copy this FBO content to a new Texture
+	unsigned char* data = new unsigned char[thumbnailSize * thumbnailSize * 3];
+	glReadPixels(0, 0, thumbnailSize, thumbnailSize, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+	// Create a new OpenGL texture for the cache
+	GLuint newTexID;
+	glGenTextures(1, &newTexID);
+	glBindTexture(GL_TEXTURE_2D, newTexID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, thumbnailSize, thumbnailSize, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
+	// Since our Texture class manages IDs, we'll wrap it
+	targetSlot->SetTextureID(newTexID);
+
+	delete[] data;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+	tempModel.ClearModel();
+}
+
 void SceneManager::RefreshAssetList()
 {
 	currentAssets.clear();
@@ -1089,11 +1211,19 @@ void SceneManager::RefreshAssetList()
 			}
 			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
 				info.type = AssetType::Model;
-				info.thumbnail = modelIconSlot;
+				std::string pStr = entry.path().string();
+				if (assetTextureCache.count(pStr)) {
+					info.thumbnail = assetTextureCache[pStr];
+				}
+				else {
+					Texture* tex = new Texture(); // Container for the rendered texture
+					GenerateModelThumbnail(entry.path(), tex);
+					assetTextureCache[pStr] = tex;
+					info.thumbnail = tex;
+				}
 			}
 			else {
-				info.type = AssetType::Other;
-				info.thumbnail = nullptr;
+				continue; // Skip everything else (mtl, meta, tga etc)
 			}
 		}
 		currentAssets.push_back(info);

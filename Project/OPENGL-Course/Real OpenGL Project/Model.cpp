@@ -1,4 +1,5 @@
 #include "Model.h"
+#include <algorithm>
 
 Model::Model()
 {
@@ -6,6 +7,9 @@ Model::Model()
 
 void Model::LoadModel(const std::string& fileName)
 {
+	minBound = glm::vec3(1e10);
+	maxBound = glm::vec3(-1e10);
+
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
 	if (!scene)
@@ -46,6 +50,15 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 	{
 		// x y z positions
 		vertices.insert(vertices.end(), { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z });
+		
+		// Update bounds
+		minBound.x = std::min(minBound.x, mesh->mVertices[i].x);
+		minBound.y = std::min(minBound.y, mesh->mVertices[i].y);
+		minBound.z = std::min(minBound.z, mesh->mVertices[i].z);
+		maxBound.x = std::max(maxBound.x, mesh->mVertices[i].x);
+		maxBound.y = std::max(maxBound.y, mesh->mVertices[i].y);
+		maxBound.z = std::max(maxBound.z, mesh->mVertices[i].z);
+
 		// u v texture coordinates 
 		if (mesh->mTextureCoords[0])
 		{
