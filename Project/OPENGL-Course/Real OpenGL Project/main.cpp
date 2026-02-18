@@ -297,13 +297,13 @@ int main()
 	sceneManager.SetDefaultResources(&plainTexture, &plainMaterial);
 
 	rug = Model();
-	rug.LoadModel("Models/rug.obj");
+	rug.LoadModel("Assets/Models/rug.obj");
 
 	monitor = Model();	
-	monitor.LoadModel("Models/monitor.obj");
+	monitor.LoadModel("Assets/Models/monitor.obj");
 
 	statue = Model();
-	statue.LoadModel("Models/statue.obj");
+	statue.LoadModel("Assets/Models/statue.obj");
 
 	mainLight = DirectionalLight(2048, 2048, // width, height (keep shadow resolution)
 		1.0f, 0.6f, 0.3f, // color: warm orange-gold tones
