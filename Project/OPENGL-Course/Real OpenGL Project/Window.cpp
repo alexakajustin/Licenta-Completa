@@ -152,7 +152,7 @@ void Window::handleKeys(GLFWwindow* window, int key, int code, int action, int m
 		else if (action == GLFW_RELEASE)
 		{
 			theWindow->keys[key] = false;
-			printf("Key released:%d\n", key);
+			// printf("Key released:%d\n", key);
 		}
 	}
 }

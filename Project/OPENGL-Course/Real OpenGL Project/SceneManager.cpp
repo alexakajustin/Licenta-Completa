@@ -47,7 +47,8 @@ static void DrawVec3Control(const std::string& label, glm::vec3& values, float r
 SceneManager::SceneManager()
 	: selectedObjectIndex(-1), selectedLightIndex(-1), pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  	lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
+	  lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr),
+	  currentAssetPath("Assets")
 {
 }
 
@@ -69,6 +70,16 @@ SceneManager::~SceneManager()
 		gizmoTorusModel->ClearModel();
 		delete gizmoTorusModel;
 	}
+
+	// Cleanup asset icons
+	for (auto const& [key, val] : assetTextureCache) {
+		if (val) {
+			val->ClearTexture();
+			delete val;
+		}
+	}
+	if (folderIconSlot) { folderIconSlot->ClearTexture(); delete folderIconSlot; }
+	if (modelIconSlot) { modelIconSlot->ClearTexture(); delete modelIconSlot; }
 }
 
 void SceneManager::AddObject(GameObject* obj)
@@ -517,6 +528,8 @@ void SceneManager::RenderImGui()
 		}
 		ImGui::End();
 	}
+
+	RenderAssetBrowser();
 }
 
 void SceneManager::CreateGameObject(const std::string& type)
@@ -1017,4 +1030,151 @@ void SceneManager::Clear()
 	
 	selectedObjectIndex = -1;
 	selectedLightIndex = -1;
+}
+
+void SceneManager::LoadAssetIcons()
+{
+	if (!folderIconSlot) {
+		folderIconSlot = new Texture("Assets/Textures/plain.png"); // Placeholder for folder
+		folderIconSlot->LoadTextureA();
+	}
+	if (!modelIconSlot) {
+		modelIconSlot = new Texture("Assets/Textures/plain.png"); // Placeholder for model
+		modelIconSlot->LoadTextureA();
+	}
+}
+
+void SceneManager::RefreshAssetList()
+{
+	currentAssets.clear();
+	LoadAssetIcons();
+
+	if (!std::filesystem::exists(currentAssetPath)) {
+		currentAssetPath = "Assets";
+		if (!std::filesystem::exists(currentAssetPath)) return;
+	}
+
+	for (auto const& entry : std::filesystem::directory_iterator(currentAssetPath))
+	{
+		AssetInfo info;
+		info.name = entry.path().filename().string();
+		info.path = entry.path();
+		
+		if (entry.is_directory()) {
+			info.type = AssetType::Folder;
+			info.thumbnail = folderIconSlot;
+		}
+		else {
+			std::string ext = entry.path().extension().string();
+			for (auto& c : ext) c = tolower(c);
+
+			if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+				info.type = AssetType::Texture;
+				// Try to get from cache or load
+				std::string pStr = entry.path().string();
+				if (assetTextureCache.count(pStr)) {
+					info.thumbnail = assetTextureCache[pStr];
+				}
+				else {
+					Texture* tex = new Texture(pStr.data());
+					if (tex->LoadTexture()) {
+						assetTextureCache[pStr] = tex;
+						info.thumbnail = tex;
+					}
+					else {
+						delete tex;
+						info.thumbnail = nullptr;
+					}
+				}
+			}
+			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+				info.type = AssetType::Model;
+				info.thumbnail = modelIconSlot;
+			}
+			else {
+				info.type = AssetType::Other;
+				info.thumbnail = nullptr;
+			}
+		}
+		currentAssets.push_back(info);
+	}
+}
+
+void SceneManager::RenderAssetBrowser()
+{
+	int bufferWidth, bufferHeight;
+	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+	ImGui::SetNextWindowPos(ImVec2(300, 450), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth - 300.0f, 500.0f), ImGuiCond_FirstUseEver);
+
+	ImGui::Begin("Project", &windowState.isAssetBrowserOpen);
+
+	if (ImGui::Button("Refresh")) {
+		RefreshAssetList();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("..")) {
+		if (currentAssetPath.has_parent_path() && currentAssetPath != "Assets") {
+			currentAssetPath = currentAssetPath.parent_path();
+			RefreshAssetList();
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Text("Path: %s", currentAssetPath.string().c_str());
+
+	ImGui::Separator();
+
+	float cellSize = 100.0f;
+	float padding = 16.0f;
+	float panelWidth = ImGui::GetContentRegionAvail().x;
+	int columnCount = (int)(panelWidth / (cellSize + padding));
+	if (columnCount < 1) columnCount = 1;
+
+	ImGui::Columns(columnCount, 0, false);
+
+	for (int i = 0; i < (int)currentAssets.size(); i++)
+	{
+		ImGui::PushID(i);
+		
+		ImVec4 tint = ImVec4(1, 1, 1, 1);
+		if (currentAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1); // Yellowish for folders
+
+		ImVec2 startPos = ImGui::GetCursorPos();
+		bool isSelected = (currentAssets[i].path == selectedAssetPath);
+
+		// Use a selectable for the entire area (image + text)
+		if (ImGui::Selectable("##selectable", isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(cellSize, cellSize + 40))) {
+			selectedAssetPath = currentAssets[i].path;
+			
+			if (ImGui::IsMouseDoubleClicked(0)) {
+				if (currentAssets[i].type == AssetType::Folder) {
+					currentAssetPath = currentAssets[i].path;
+					RefreshAssetList();
+					ImGui::PopID();
+					break; 
+				}
+			}
+		}
+
+		// Draw the content on top of the selectable
+		ImGui::SetCursorPos(startPos);
+		ImGui::BeginGroup();
+		
+		if (currentAssets[i].thumbnail) {
+			ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0, 0, 0, 0), tint);
+		}
+		else {
+			ImGui::Button("??", ImVec2(cellSize, cellSize));
+		}
+
+		ImGui::TextWrapped("%s", currentAssets[i].name.c_str());
+		ImGui::EndGroup();
+		
+		ImGui::NextColumn();
+		ImGui::PopID();
+	}
+
+	ImGui::Columns(1);
+
+	ImGui::End();
 }

@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <string>
+#include <map>
+#include <filesystem>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -10,6 +12,21 @@
 #include "GameObject.h"
 #include "LightObject.h"
 #include "Shader.h"
+#include "Texture.h"
+
+enum class AssetType {
+	Folder,
+	Texture,
+	Model,
+	Other
+};
+
+struct AssetInfo {
+	std::string name;
+	std::filesystem::path path;
+	AssetType type;
+	Texture* thumbnail = nullptr;
+};
 
 class SceneManager
 {
@@ -54,6 +71,8 @@ public:
 
 	// ImGui interface
 	void RenderImGui();
+	void RenderAssetBrowser();
+	void RefreshAssetList();
 
 	// Creation methods
 	void CreateGameObject(const std::string& type);
@@ -93,6 +112,7 @@ private:
 	struct WindowState {
 		bool isHierarchyOpen = true;
 		bool isInspectorOpen = true;
+		bool isAssetBrowserOpen = true;
 	} windowState;
 
 	// Global light state pointers
@@ -128,6 +148,16 @@ private:
 	float dragInitialAngle; // For seamless rotation
 	glm::vec3 dragInitialIntersectPos;
 	glm::vec3 dragPlaneNormal;
+
+	// Asset Navigator state
+	std::filesystem::path currentAssetPath;
+	std::filesystem::path selectedAssetPath;
+	std::vector<AssetInfo> currentAssets;
+	std::map<std::string, Texture*> assetTextureCache;
+	Texture* folderIconSlot = nullptr;
+	Texture* modelIconSlot = nullptr;
+
+	void LoadAssetIcons();
 
 	// Ray-Plane math helpers
 	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);

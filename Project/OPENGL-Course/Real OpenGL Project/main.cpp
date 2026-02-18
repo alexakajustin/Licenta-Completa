@@ -409,6 +409,7 @@ int main()
 	sceneManager.InitPicking((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
 	sceneManager.InitIcons();
 	sceneManager.InitGizmo();
+	sceneManager.RefreshAssetList();
 
 	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
 
