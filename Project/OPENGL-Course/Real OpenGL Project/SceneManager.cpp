@@ -404,7 +404,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	return pickedID;
 }
 
-void SceneManager::RenderImGui()
+void SceneManager::RenderImGui(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos)
 {
 	// 1. Scene Hierarchy Window
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
@@ -477,6 +477,22 @@ void SceneManager::RenderImGui()
 		}
 		ImGui::EndPopup();
 	}
+
+	// DRAG AND DROP TARGET FOR HIERARCHY
+	if (ImGui::BeginDragDropTarget()) {
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+			const char* pathStr = (const char*)payload->Data;
+			std::filesystem::path path(pathStr);
+			std::string ext = path.extension().string();
+			for (auto& c : ext) c = tolower(c);
+
+			if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+				InstantiateModel(path);
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+
 	ImGui::End();
 
 	// 2. Inspector Window
@@ -529,10 +545,69 @@ void SceneManager::RenderImGui()
 				ImGui::SliderFloat("Exponent", light->GetExponentPtr(), 0.001f, 0.5f);
 			}
 		}
+
+		// DRAG AND DROP TARGET FOR INSPECTOR (Could be used to apply textures to models)
+		if (ImGui::BeginDragDropTarget()) {
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+				const char* pathStr = (const char*)payload->Data;
+				std::filesystem::path path(pathStr);
+				std::string ext = path.extension().string();
+				for (auto& c : ext) c = tolower(c);
+
+				if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+					InstantiateModel(path);
+				}
+				// Potential future: apply texture if dropped on specific component
+			}
+			ImGui::EndDragDropTarget();
+		}
+
 		ImGui::End();
 	}
-
 	RenderAssetBrowser();
+
+	// 4. Viewport Drop Target (Full screen, only active during drag)
+	ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(mainViewport->Pos);
+	ImGui::SetNextWindowSize(mainViewport->Size);
+	
+	ImGuiWindowFlags viewportFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	bool isDragging = (ImGui::GetDragDropPayload() != nullptr);
+	if (!isDragging) viewportFlags |= ImGuiWindowFlags_NoInputs;
+	
+	ImGui::Begin("ViewportTarget", nullptr, viewportFlags);
+	
+	// Create a dummy item that covers the whole window so that BeginDragDropTarget has an item to hit
+	ImGui::Dummy(ImGui::GetContentRegionAvail());
+
+	if (ImGui::BeginDragDropTarget()) {
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+			const char* pathStr = (const char*)payload->Data;
+			std::filesystem::path path(pathStr);
+			std::string ext = path.extension().string();
+			for (auto& c : ext) c = tolower(c);
+
+			if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+				// Calculate world position
+				ImVec2 mousePos = ImGui::GetMousePos();
+				int windowWidth, windowHeight;
+				glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+				float scaleX = (float)pickWidth / (float)windowWidth;
+				float scaleY = (float)pickHeight / (float)windowHeight;
+				float localX = mousePos.x * scaleX;
+				float localY = mousePos.y * scaleY;
+				
+				glm::vec3 rayDir = GetMouseRay(localX, localY, projection, view);
+				glm::vec3 spawnPos(0.0f);
+				if (!RayPlaneIntersection(cameraPos, rayDir, glm::vec3(0,0,0), glm::vec3(0,1,0), spawnPos)) {
+					spawnPos = cameraPos + rayDir * 5.0f;
+				}
+				InstantiateModel(path, spawnPos);
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+	ImGui::End();
 }
 
 void SceneManager::CreateGameObject(const std::string& type)
@@ -552,8 +627,27 @@ void SceneManager::CreateGameObject(const std::string& type)
 	if (defaultMaterial) newObj->SetMaterial(defaultMaterial);
 	
 	objects.push_back(newObj);
+	selectedLightIndex = -1;
+}
+
+void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
+{
+	std::string name = path.stem().string();
+	GameObject* newObj = new GameObject(name + " " + std::to_string(objects.size()));
+	newObj->GetTransform().SetPosition(spawnPos);
+	Model* model = new Model();
+	model->LoadModel(path.string());
+	newObj->SetModel(model);
+
+	// Set default texture and material if available
+	if (defaultTexture) newObj->SetTexture(defaultTexture);
+	if (defaultMaterial) newObj->SetMaterial(defaultMaterial);
+
+	objects.push_back(newObj);
 	selectedObjectIndex = (int)objects.size() - 1;
 	selectedLightIndex = -1;
+	
+	printf("Instantiated model: %s\n", path.string().c_str());
 }
 
 void SceneManager::CreateLight(LightType type)
@@ -1054,10 +1148,10 @@ void SceneManager::InitThumbnailFBO()
 	glGenFramebuffers(1, &thumbnailFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
 
-	// Create thumbnail texture
+	// Create thumbnail texture (RGBA to avoid alignment issues)
 	glGenTextures(1, &thumbnailTexture);
 	glBindTexture(GL_TEXTURE_2D, thumbnailTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, thumbnailSize, thumbnailSize, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, thumbnailSize, thumbnailSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, thumbnailTexture, 0);
@@ -1139,23 +1233,24 @@ void SceneManager::GenerateModelThumbnail(const std::filesystem::path& modelPath
 
 	// Set shader uniforms
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
-	// Check if model has any textures to decide whether to use them in thumbnail
-	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.GetMinBound().x != 1e10 ? 1 : 0); 
+	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.HasTextures() ? 1 : 0); 
 
 	tempModel.RenderModel(-1); // Pass -1 to safely ignore normal map uniform
 
-	// Read back or just use the FBO texture
-	// Since we want unique textures for each model, we need to copy this FBO content to a new Texture
-	unsigned char* data = new unsigned char[thumbnailSize * thumbnailSize * 3];
-	glReadPixels(0, 0, thumbnailSize, thumbnailSize, GL_RGB, GL_UNSIGNED_BYTE, data);
+	// Read back (using RGBA for 4-byte stride safety)
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	unsigned char* data = new unsigned char[thumbnailSize * thumbnailSize * 4];
+	glReadPixels(0, 0, thumbnailSize, thumbnailSize, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	// Create a new OpenGL texture for the cache
 	GLuint newTexID;
 	glGenTextures(1, &newTexID);
 	glBindTexture(GL_TEXTURE_2D, newTexID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, thumbnailSize, thumbnailSize, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, thumbnailSize, thumbnailSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glGenerateMipmap(GL_TEXTURE_2D);
 	
 	// Since our Texture class manages IDs, we'll wrap it
 	targetSlot->SetTextureID(newTexID);
@@ -1286,12 +1381,25 @@ void SceneManager::RenderAssetBrowser()
 			}
 		}
 
+		// DRAG AND DROP SOURCE - must follow the item (Selectable)
+		if (ImGui::BeginDragDropSource()) {
+			std::string pathStr = currentAssets[i].path.string();
+			ImGui::SetDragDropPayload("ASSET_PATH", pathStr.c_str(), pathStr.size() + 1);
+			
+			// Visual preview while dragging
+			ImGui::Text("Dragging %s", currentAssets[i].name.c_str());
+			if (currentAssets[i].thumbnail) {
+				ImGui::Image((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
+			}
+			ImGui::EndDragDropSource();
+		}
+
 		// Draw the content on top of the selectable
 		ImGui::SetCursorPos(startPos);
 		ImGui::BeginGroup();
 		
 		if (currentAssets[i].thumbnail) {
-			ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0, 0, 0, 0), tint);
+			ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0, 0, 0, 0), tint);
 		}
 		else {
 			ImGui::Button("??", ImVec2(cellSize, cellSize));

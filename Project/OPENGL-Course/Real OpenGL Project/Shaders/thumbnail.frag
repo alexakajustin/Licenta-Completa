@@ -21,8 +21,8 @@ void main()
     if (hasTexture) {
         vec4 sampled = texture(theTexture, TexCoord);
         if (sampled.a < 0.1) discard;
-        // Blend more with white to ensure visibility
-        texColor = mix(vec4(1.0), sampled, 0.5);
+        // Blend slightly with white to ensure visibility in dark icons
+        texColor = mix(vec4(1.0), sampled, 0.8); // 0.8 sampled, 0.2 white
     }
     
     // Add stronger rim lighting

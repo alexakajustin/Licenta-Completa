@@ -464,7 +464,7 @@ int main()
 		}
 
 		// Scene Hierarchy and Inspector panels
-		sceneManager.RenderImGui();
+		sceneManager.RenderImGui(projection, camera.calculateViewMatrix(), camera.getCameraPosition());
 
 
 		

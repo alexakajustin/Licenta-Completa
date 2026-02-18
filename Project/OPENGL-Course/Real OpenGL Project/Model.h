@@ -24,6 +24,10 @@ public:
 
 	glm::vec3 GetMinBound() const { return minBound; }
 	glm::vec3 GetMaxBound() const { return maxBound; }
+	bool HasTextures() const {
+		for (auto* tex : textureList) if (tex != nullptr) return true;
+		return false;
+	}
 
 private:
 	// scene contains all data, node is just one part of that list of data

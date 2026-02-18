@@ -70,13 +70,14 @@ public:
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
 	// ImGui interface
-	void RenderImGui();
+	void RenderImGui(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos);
 	void RenderAssetBrowser();
 	void RefreshAssetList();
 	void GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot);
 
 	// Creation methods
 	void CreateGameObject(const std::string& type);
+	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void CreateLight(LightType type);
 
 	// Gizmo methods
