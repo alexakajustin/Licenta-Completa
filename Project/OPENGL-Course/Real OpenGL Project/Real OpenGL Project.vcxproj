@@ -186,7 +186,7 @@
     <ClCompile Include="ScatterNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MeshUpdateNode.cpp">
+    <ClCompile Include="OutputNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SceneInputNode.cpp">
@@ -882,7 +882,7 @@
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="MeshData.h" />
-    <ClInclude Include="MeshUpdateNode.h" />
+    <ClInclude Include="OutputNode.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OmniShadowMap.h" />
     <ClInclude Include="PerlinNoiseGenerator.h" />

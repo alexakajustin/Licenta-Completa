@@ -1,20 +1,20 @@
-#include "MeshUpdateNode.h"
+#include "OutputNode.h"
 #include "SceneManager.h"
 #include "GameObject.h"
 #include "Mesh.h"
 #include "imgui.h"
 
-MeshUpdateNode::MeshUpdateNode(NodeGraph& graph)
+OutputNode::OutputNode(NodeGraph& graph)
 {
 	id = graph.NextNodeId();
-	title = "Update Scene Mesh";
+	title = "Output";
 
 	// One input: Mesh
 	Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Mesh");
 	inputs.push_back(meshIn);
 }
 
-void MeshUpdateNode::RenderContent(SceneManager* scene)
+void OutputNode::RenderContent(SceneManager* scene)
 {
 	if (!scene) return;
 	auto& objects = scene->GetObjects();
@@ -37,7 +37,7 @@ void MeshUpdateNode::RenderContent(SceneManager* scene)
 		ImGui::TextColored(ImVec4(0, 1, 0, 1), "Target: %s", objects[targetIndex]->GetName().c_str());
 }
 
-void MeshUpdateNode::Execute()
+void OutputNode::Execute()
 {
 	// Logic is handled in NodeGraph::Execute because it needs access to SceneManager
 }

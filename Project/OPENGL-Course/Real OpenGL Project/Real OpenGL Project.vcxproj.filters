@@ -138,7 +138,7 @@
     <ClCompile Include="ScatterNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MeshUpdateNode.cpp">
+    <ClCompile Include="OutputNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SceneInputNode.cpp">
@@ -2118,7 +2118,7 @@
     <ClInclude Include="ScatterNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MeshUpdateNode.h">
+    <ClInclude Include="OutputNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\imnodes\imnodes.h">

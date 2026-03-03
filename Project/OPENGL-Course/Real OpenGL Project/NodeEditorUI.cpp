@@ -3,7 +3,7 @@
 #include "PerlinNoiseNode.h"
 #include "SceneInputNode.h"
 #include "ScatterNode.h"
-#include "MeshUpdateNode.h"
+#include "OutputNode.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -95,10 +95,10 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 {
 	for (auto* node : graph.GetNodes())
 	{
-		// Set position once if not set
+		// Set position once if not set (using screen space coordinates from when it was added)
 		if (!node->positionSet)
 		{
-			ImNodes::SetNodeEditorSpacePos(node->id, ImVec2(node->editorPos.x, node->editorPos.y));
+			ImNodes::SetNodeScreenSpacePos(node->id, ImVec2(node->editorPos.x, node->editorPos.y));
 			node->positionSet = true;
 		}
 
@@ -166,14 +166,12 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Perlin Noise")) newNode = new PerlinNoiseNode(graph);
 		if (ImGui::MenuItem("Scene Input")) newNode = new SceneInputNode(graph);
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
-		if (ImGui::MenuItem("Update Scene Mesh")) newNode = new MeshUpdateNode(graph);
+		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
 
 		if (newNode)
 		{
-			// Convert screen mouse pos to editor space pos
-			ImVec2 editorPos = ImNodes::EditorContextGetPanning(); // Basic approximation
 			newNode->editorPos = glm::vec2(contextMenuPos.x, contextMenuPos.y); 
-			newNode->positionSet = false; // Trigger SetNodeEditorSpacePos
+			newNode->positionSet = false; // Trigger SetNodeScreenSpacePos in RenderNodes
 			graph.AddNode(newNode);
 		}
 

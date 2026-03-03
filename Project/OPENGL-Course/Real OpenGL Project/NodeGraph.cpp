@@ -1,5 +1,5 @@
 #include "NodeGraph.h"
-#include "MeshUpdateNode.h"
+#include "OutputNode.h"
 #include "SceneInputNode.h"
 #include "ScatterNode.h"
 #include "SceneManager.h"
@@ -242,10 +242,10 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 	for (auto* node : sorted)
 	{
-		// 1. Handle MeshUpdateNode
-		if (node->title == "Update Scene Mesh")
+		// 1. Handle OutputNode
+		if (node->title == "Output")
 		{
-			MeshUpdateNode* updateNode = static_cast<MeshUpdateNode*>(node);
+			OutputNode* updateNode = static_cast<OutputNode*>(node);
 			int targetIdx = updateNode->GetTargetIndex();
 			
 			if (targetIdx >= 0 && targetIdx < (int)objects.size())
@@ -325,7 +325,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 	}
 }
 
-// SceneInputNode and MeshUpdateNode implementations moved to separate .cpp files
+// SceneInputNode and OutputNode implementations moved to separate .cpp files
 
 
 void NodeGraph::Clear()

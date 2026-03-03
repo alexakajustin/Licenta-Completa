@@ -9,10 +9,10 @@ class SceneManager;
  * Targets an existing GameObject in the scene and overwrites its mesh
  * with the mesh data received from the input pin.
  */
-class MeshUpdateNode : public GraphNode
+class OutputNode : public GraphNode
 {
 public:
-	MeshUpdateNode(NodeGraph& graph);
+	OutputNode(NodeGraph& graph);
 
 	void RenderContent(SceneManager* scene) override;
 	void Execute() override;
