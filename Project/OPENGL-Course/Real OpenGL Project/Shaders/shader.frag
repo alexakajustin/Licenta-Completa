@@ -65,6 +65,7 @@ uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 
 uniform sampler2D theTexture;
+uniform bool useDiffuseTexture;
 uniform sampler2D normalMap;
 uniform bool useNormalMap;
 uniform sampler2D directionalShadowMap;
@@ -285,5 +286,6 @@ void main()
 	vec4 finalColour = CalcDirectionalLight();
 	finalColour += CalcPointLights(); // ambient + diffuse + specular combination
 	finalColour += CalcSpotLights();
-	colour = texture(theTexture, TexCoord) * vec4(material.baseColor, 1.0) * finalColour;          
+	vec4 texColor = useDiffuseTexture ? texture(theTexture, TexCoord) : vec4(1.0);
+	colour = texColor * vec4(material.baseColor, 1.0) * finalColour;          
 };

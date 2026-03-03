@@ -132,7 +132,7 @@ void AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.HasTextures() ? 1 : 0); 
 
-	tempModel.RenderModel(-1);
+	tempModel.RenderModel(-1, 0);
 
 	// Read back
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -318,87 +318,89 @@ void AssetBrowser::Render(SceneManager& scene)
 	ImGui::SetNextWindowPos(ImVec2(300, 450), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth - 300.0f, 500.0f), ImGuiCond_FirstUseEver);
 
-	ImGui::Begin("Project", &isOpen);
+	if (!isOpen) return;
 
-	if (ImGui::Button("Refresh")) {
-		RefreshAssetList();
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("..")) {
-		if (currentAssetPath.has_parent_path() && currentAssetPath != "Assets") {
-			currentAssetPath = currentAssetPath.parent_path();
+	if (ImGui::Begin("Project", &isOpen))
+	{
+		if (ImGui::Button("Refresh")) {
 			RefreshAssetList();
 		}
-	}
-	ImGui::SameLine();
-	ImGui::Text("Path: %s", currentAssetPath.string().c_str());
+		ImGui::SameLine();
+		if (ImGui::Button("..")) {
+			if (currentAssetPath.has_parent_path() && currentAssetPath != "Assets") {
+				currentAssetPath = currentAssetPath.parent_path();
+				RefreshAssetList();
+			}
+		}
+		ImGui::SameLine();
+		ImGui::Text("Path: %s", currentAssetPath.string().c_str());
 
-	ImGui::Separator();
+		ImGui::Separator();
 
-	float cellSize = 100.0f;
-	float padding = 16.0f;
-	float panelWidth = ImGui::GetContentRegionAvail().x;
-	int columnCount = (int)(panelWidth / (cellSize + padding));
-	if (columnCount < 1) columnCount = 1;
+		float cellSize = 100.0f;
+		float padding = 16.0f;
+		float panelWidth = ImGui::GetContentRegionAvail().x;
+		int columnCount = (int)(panelWidth / (cellSize + padding));
+		if (columnCount < 1) columnCount = 1;
 
-	ImGui::Columns(columnCount, 0, false);
+		ImGui::Columns(columnCount, 0, false);
 
-	for (int i = 0; i < (int)currentAssets.size(); i++)
-	{
-		ImGui::PushID(i);
-		
-		ImVec4 tint = ImVec4(1, 1, 1, 1);
-		if (currentAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1);
-
-		ImVec2 startPos = ImGui::GetCursorPos();
-		bool isSelected = (currentAssets[i].path == selectedAssetPath);
-
-		if (ImGui::Selectable("##selectable", isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(cellSize, cellSize + 40))) {
-			selectedAssetPath = currentAssets[i].path;
+		for (int i = 0; i < (int)currentAssets.size(); i++)
+		{
+			ImGui::PushID(i);
 			
-			if (ImGui::IsMouseDoubleClicked(0)) {
-				if (currentAssets[i].type == AssetType::Folder) {
-					currentAssetPath = currentAssets[i].path;
-					RefreshAssetList();
-					ImGui::PopID();
-					break; 
+			ImVec4 tint = ImVec4(1, 1, 1, 1);
+			if (currentAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1);
+
+			ImVec2 startPos = ImGui::GetCursorPos();
+			bool isSelected = (currentAssets[i].path == selectedAssetPath);
+
+			if (ImGui::Selectable("##selectable", isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(cellSize, cellSize + 40))) {
+				selectedAssetPath = currentAssets[i].path;
+				
+				if (ImGui::IsMouseDoubleClicked(0)) {
+					if (currentAssets[i].type == AssetType::Folder) {
+						currentAssetPath = currentAssets[i].path;
+						RefreshAssetList();
+						ImGui::PopID();
+						break; 
+					}
 				}
 			}
-		}
 
-		// Drag-drop source
-		if (ImGui::BeginDragDropSource()) {
-			std::string pathStr = currentAssets[i].path.string();
-			
-			// Use different payload type for materials vs models
-			const char* payloadType = (currentAssets[i].type == AssetType::MaterialAsset) ? "MATERIAL_PATH" : "ASSET_PATH";
-			ImGui::SetDragDropPayload(payloadType, pathStr.c_str(), pathStr.size() + 1);
-			
-			ImGui::Text("Dragging %s", currentAssets[i].name.c_str());
-			if (currentAssets[i].thumbnail) {
-				ImGui::Image((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
+			// Drag-drop source
+			if (ImGui::BeginDragDropSource()) {
+				std::string pathStr = currentAssets[i].path.string();
+				
+				// Use different payload type for materials vs models
+				const char* payloadType = (currentAssets[i].type == AssetType::MaterialAsset) ? "MATERIAL_PATH" : "ASSET_PATH";
+				ImGui::SetDragDropPayload(payloadType, pathStr.c_str(), pathStr.size() + 1);
+				
+				ImGui::Text("Dragging %s", currentAssets[i].name.c_str());
+				if (currentAssets[i].thumbnail) {
+					ImGui::Image((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
+				}
+				ImGui::EndDragDropSource();
 			}
-			ImGui::EndDragDropSource();
+
+			ImGui::SetCursorPos(startPos);
+			ImGui::BeginGroup();
+			
+			if (currentAssets[i].thumbnail) {
+				ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0, 0, 0, 0), tint);
+			}
+			else {
+				ImGui::Button("??", ImVec2(cellSize, cellSize));
+			}
+
+			ImGui::TextWrapped("%s", currentAssets[i].name.c_str());
+			ImGui::EndGroup();
+			
+			ImGui::NextColumn();
+			ImGui::PopID();
 		}
 
-		ImGui::SetCursorPos(startPos);
-		ImGui::BeginGroup();
-		
-		if (currentAssets[i].thumbnail) {
-			ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0, 0, 0, 0), tint);
-		}
-		else {
-			ImGui::Button("??", ImVec2(cellSize, cellSize));
-		}
-
-		ImGui::TextWrapped("%s", currentAssets[i].name.c_str());
-		ImGui::EndGroup();
-		
-		ImGui::NextColumn();
-		ImGui::PopID();
+		ImGui::Columns(1);
 	}
-
-	ImGui::Columns(1);
-
 	ImGui::End();
 }

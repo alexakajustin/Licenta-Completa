@@ -46,7 +46,7 @@ private:
 	// Cached uniform locations (fetched once at init)
 	GLint uniformModel, uniformProjection, uniformView;
 	GLint uniformEyePosition, uniformSpecularIntensity, uniformShininess, uniformMaterialColor;
-	GLint uniformOmniLightPos, uniformFarPlane, uniformUseNormalMap;
+	GLint uniformOmniLightPos, uniformFarPlane, uniformUseNormalMap, uniformUseDiffuseTexture;
 
 	void CacheUniforms();
 };

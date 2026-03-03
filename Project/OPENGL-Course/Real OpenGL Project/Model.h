@@ -17,7 +17,7 @@ public:
 	Model();
 	
 	void LoadModel(const std::string& fileName);
-	void RenderModel(GLuint uniformUseNormalMap);
+	void RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture);
 	void RenderModelGeometryOnly(); // Render meshes without binding model textures (for overrides)
 	void ClearModel();
 

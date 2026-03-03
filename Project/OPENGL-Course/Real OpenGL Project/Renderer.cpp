@@ -38,6 +38,7 @@ void Renderer::CacheUniforms()
 	uniformShininess = mainShader.GetShininessLocation();
 	uniformMaterialColor = glGetUniformLocation(mainShader.GetShaderID(), "material.baseColor");
 	uniformUseNormalMap = glGetUniformLocation(mainShader.GetShaderID(), "useNormalMap");
+	uniformUseDiffuseTexture = glGetUniformLocation(mainShader.GetShaderID(), "useDiffuseTexture");
 }
 
 void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene)
@@ -54,7 +55,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 
 	directionalShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1);
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -78,7 +79,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1);
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -119,7 +120,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.Validate();
 
 	// Scene objects
-	scene.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap);
+	scene.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude
 	glClear(GL_DEPTH_BUFFER_BIT);

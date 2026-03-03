@@ -16,7 +16,7 @@ GameObject::~GameObject()
 	// Resource management should be handled by a ResourceManager in the future
 }
 
-void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap)
+void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture)
 {
 	// Apply transform
 	glm::mat4 modelMatrix = transform.GetModelMatrix();
@@ -42,7 +42,13 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 
 		if (hasOverrideTex || hasOverrideNorm) {
 			// Inspector overrides: bind our textures, skip model's own
-			if (hasOverrideTex) texture->UseTexture();
+			if (hasOverrideTex) {
+				glUniform1i(uniformUseDiffuseTexture, 1);
+				texture->UseTexture();
+			} else {
+				glUniform1i(uniformUseDiffuseTexture, 0);
+			}
+
 			if (hasOverrideNorm) {
 				glUniform1i(uniformUseNormalMap, 1);
 				normalMap->UseNormalMap();
@@ -52,12 +58,21 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 			model->RenderModelGeometryOnly();
 		} else {
 			// No overrides — model uses its own per-mesh textures
-			model->RenderModel(uniformUseNormalMap);
+			// Note: model->RenderModel handles its own uniformUseDiffuseTexture/uniformUseNormalMap if needed,
+			// but we should ensure it has access to the locations or set a default.
+			// Actually, model->RenderModel takes uniformUseNormalMap as argument currently.
+			// We should probably update Model::RenderModel too to be consistent.
+			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture);
 		}
 	}
 	else if (mesh)
 	{
-		if (texture) texture->UseTexture();
+		if (texture) {
+			glUniform1i(uniformUseDiffuseTexture, 1);
+			texture->UseTexture();
+		} else {
+			glUniform1i(uniformUseDiffuseTexture, 0);
+		}
 
 		if (normalMap)
 		{

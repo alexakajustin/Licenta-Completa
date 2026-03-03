@@ -67,11 +67,11 @@ GameObject* SceneManager::FindObject(const std::string& name)
 	return nullptr;
 }
 
-void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap)
+void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture)
 {
 	for (auto* obj : objects)
 	{
-		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap);
+		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture);
 	}
 }
 
@@ -316,7 +316,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		glm::mat4 modelMatrix = objects[i]->GetTransform().GetModelMatrix();
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
-		if (objects[i]->GetModel()) objects[i]->GetModel()->RenderModel(0);
+		if (objects[i]->GetModel()) objects[i]->GetModel()->RenderModel(0, 0);
 		else if (objects[i]->GetMesh()) objects[i]->GetMesh()->RenderMesh();
 	}
 
@@ -369,7 +369,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * a.extraRot;
 				m = glm::scale(m, glm::vec3(arrowScale));
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-				gizmoArrowModel->RenderModel(0);
+				gizmoArrowModel->RenderModel(0, 0);
 			}
 		}
 
@@ -389,7 +389,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * t.extraRot;
 				m = glm::scale(m, glm::vec3(torusScale));
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-				gizmoTorusModel->RenderModel(0);
+				gizmoTorusModel->RenderModel(0, 0);
 			}
 		}
 	}
@@ -603,7 +603,7 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 
 		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
 		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
-		part.model->RenderModel(0);
+		part.model->RenderModel(0, 0);
 	}
 
 	for (auto& part : rotationParts)
@@ -615,7 +615,7 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 
 		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
 		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
-		part.model->RenderModel(0);
+		part.model->RenderModel(0, 0);
 	}
 
 	glEnable(GL_DEPTH_TEST);

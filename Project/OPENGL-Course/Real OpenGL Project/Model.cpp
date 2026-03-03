@@ -211,7 +211,7 @@ void Model::ClearModel()
 	}
 }
 
-void Model::RenderModel(GLuint uniformUseNormalMap)
+void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture)
 {
 	for (size_t i = 0; i < meshList.size(); i++)
 	{
@@ -219,7 +219,12 @@ void Model::RenderModel(GLuint uniformUseNormalMap)
 
 		if (materialIndex < textureList.size() && textureList[materialIndex])
 		{
+			glUniform1i(uniformUseDiffuseTexture, 1);
 			textureList[materialIndex]->UseTexture();
+		}
+		else
+		{
+			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
 		if (materialIndex < normalMapList.size() && normalMapList[materialIndex])
