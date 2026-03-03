@@ -305,6 +305,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	GLint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
 
 	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE); // Crucial: ensure the clear actually affects the depth buffer
 	glEnable(GL_CULL_FACE);
 
 	// Objects
@@ -632,7 +633,7 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 	if (button == GLFW_MOUSE_BUTTON_LEFT) {
 		if (action == GLFW_PRESS) {
 			int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos);
-			printf("Picked ID: %d\n", pickedID);
+			printf("[SceneManager] Picked ID: %d (Active Selection: %s)\n", pickedID, GetSelectedName().c_str());
 			
 			glm::vec3 cameraForward = -glm::normalize(glm::vec3(glm::inverse(view)[2]));
 			glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
@@ -741,8 +742,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
 			// Fallback: use mouse delta for rotation when ray is parallel to plane
 			float dx = mouseX - dragInitialMousePos.x;
-			float deltaAngle = dx * 0.5f; // 0.5 degrees per pixel
-			deltaAngle = glm::clamp(deltaAngle, -180.0f, 180.0f);
+			float deltaAngle = dx * 0.5f; // No clamp for smoother rotation
 
 			glm::vec3 rotationDelta(0.0f);
 			if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
@@ -764,7 +764,6 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		float sign = glm::dot(crossVal, dragRotationAxis);
 		float angleRad = atan2(glm::length(crossVal) * (sign >= 0 ? 1.0f : -1.0f), dotVal);
 		float deltaAngle = glm::degrees(angleRad);
-		deltaAngle = glm::clamp(deltaAngle, -180.0f, 180.0f);
 
 		glm::vec3 rotationDelta(0.0f);
 		if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;

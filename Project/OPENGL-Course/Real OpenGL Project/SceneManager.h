@@ -55,6 +55,7 @@ public:
 	void InitIcons();
 	void InitGizmo();
 	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
+	int GetActiveDragAxis() const { return activeDragAxis; }
 	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
 	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 

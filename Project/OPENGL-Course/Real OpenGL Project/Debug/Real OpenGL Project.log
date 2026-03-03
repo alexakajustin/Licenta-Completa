@@ -1,4 +1,38 @@
-﻿  AssetBrowser.cpp
+﻿  Application.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Application.cpp')
+  
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Application.cpp')
+  
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared\minwindef.h(130,9): warning C4005: 'APIENTRY': macro redefinition
+  (compiling source file 'Application.cpp')
+      C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLFW\include\GLFW\glfw3.h(123,11):
+      see previous definition of 'APIENTRY'
+  
+  AssetBrowser.cpp
   EditorUI.cpp
+  InputHandler.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'InputHandler.cpp')
+  
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'InputHandler.cpp')
+  
+  Renderer.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Renderer.cpp')
+  
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Renderer.cpp')
+  
+  SceneManager.cpp
+  main.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'main.cpp')
+  
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'main.cpp')
+  
   Generating Code...
-  Real OpenGL Project.vcxproj -> C:\Users\Jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe
+  Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

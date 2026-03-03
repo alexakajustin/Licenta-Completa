@@ -30,30 +30,31 @@ void InputHandler::Update(Window& window, Camera& camera, SceneManager& scene,
 		double mouseX, mouseY;
 		glfwGetCursorPos(window.getWindow(), &mouseX, &mouseY);
 
-		if (!ImGui::GetIO().WantCaptureMouse)
-		{
-			glm::mat4 view = camera.calculateViewMatrix();
+		bool wantCapture = ImGui::GetIO().WantCaptureMouse;
+		glm::mat4 view = camera.calculateViewMatrix();
 
-			if (currentLMB && !lastLMBState)
-			{
-				if (!ImGui::GetIO().WantCaptureMouse) {
-					scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
-						(float)mouseX, (float)mouseY, projection, view, camera.getCameraPosition());
-				}
-			}
-			else if (!currentLMB && lastLMBState)
-			{
-				// Always handle release to clear gizmo state
-				scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE,
+		if (currentLMB && !lastLMBState)
+		{
+			// Only start a press if ImGui doesn't want the mouse
+			if (!wantCapture) {
+				scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
 					(float)mouseX, (float)mouseY, projection, view, camera.getCameraPosition());
 			}
-			else if (currentLMB)
-			{
-				if (!ImGui::GetIO().WantCaptureMouse) {
-					scene.HandleMouseMove((float)mouseX, (float)mouseY, projection, view);
-				}
+		}
+		else if (!currentLMB && lastLMBState)
+		{
+			// ALWAYS handle release to ensure gizmo state is cleared correctly, even if over UI
+			scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE,
+				(float)mouseX, (float)mouseY, projection, view, camera.getCameraPosition());
+		}
+		else if (currentLMB)
+		{
+			// Continue dragging if we have an active gizmo axis, even if the mouse moved over a UI window
+			if (scene.GetActiveDragAxis() != 0) {
+				scene.HandleMouseMove((float)mouseX, (float)mouseY, projection, view);
 			}
 		}
+
 		lastLMBState = currentLMB;
 	}
 }
