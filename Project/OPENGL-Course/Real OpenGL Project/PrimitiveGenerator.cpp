@@ -6,60 +6,84 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-Mesh* PrimitiveGenerator::CreatePlane()
+MeshData PrimitiveGenerator::GetPlaneData(int resolutionX, int resolutionZ)
 {
-    // x, y, z, u, v, nx, ny, nz, tx, ty, tz, bx, by, bz
-    GLfloat vertices[] = {
-        -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         1.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-        -1.0f, 0.0f,  1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f
-    };
+    MeshData data;
+    
+    float stepX = 2.0f / (float)resolutionX;
+    float stepZ = 2.0f / (float)resolutionZ;
 
-    unsigned int indices[] = {
-        0, 2, 1,
-        1, 2, 3
-    };
+    for (int z = 0; z <= resolutionZ; z++)
+    {
+        for (int x = 0; x <= resolutionX; x++)
+        {
+            float posX = -1.0f + (float)x * stepX;
+            float posZ = -1.0f + (float)z * stepZ;
+            float u = (float)x / (float)resolutionX;
+            float v = (float)z / (float)resolutionZ;
 
-    Mesh* mesh = new Mesh();
-    mesh->CreateMesh(vertices, indices, 4 * 14, 6);
-    return mesh;
+            // Normal: (0, 1, 0), Tangent: (1, 0, 0), Bitangent: (0, 0, 1)
+            data.AddVertex(posX, 0.0f, posZ, u, v, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        }
+    }
+
+    for (int z = 0; z < resolutionZ; z++)
+    {
+        for (int x = 0; x < resolutionX; x++)
+        {
+            unsigned int topLeft = z * (resolutionX + 1) + x;
+            unsigned int topRight = topLeft + 1;
+            unsigned int bottomLeft = (z + 1) * (resolutionX + 1) + x;
+            unsigned int bottomRight = bottomLeft + 1;
+
+            data.AddTriangle(topLeft, bottomLeft, topRight);
+            data.AddTriangle(topRight, bottomLeft, bottomRight);
+        }
+    }
+
+    return data;
 }
 
-Mesh* PrimitiveGenerator::CreateCube()
+Mesh* PrimitiveGenerator::CreatePlane(int resolutionX, int resolutionZ)
 {
-    GLfloat vertices[] = {
-        // Front face: normal (0,0,1), tangent (1,0,0), bitangent (0,1,0)
-        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        // Back face: normal (0,0,-1), tangent (-1,0,0), bitangent (0,1,0)
-        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        // Top face: normal (0,1,0), tangent (1,0,0), bitangent (0,0,-1)
-        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-        -0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-         0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-        // Bottom face: normal (0,-1,0), tangent (1,0,0), bitangent (0,0,1)
-        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-        // Left face: normal (-1,0,0), tangent (0,0,1), bitangent (0,1,0)
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-        // Right face: normal (1,0,0), tangent (0,0,-1), bitangent (0,1,0)
-         0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f, 0.0f
-    };
+    MeshData data = GetPlaneData(resolutionX, resolutionZ);
+    return data.ToMesh();
+}
+
+MeshData PrimitiveGenerator::GetCubeData()
+{
+    MeshData data;
+    // We'll manually add vertices and indices based on the original table to preserve normals/tangents
+    // Front face
+    data.AddVertex(-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(-0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    // Back face
+    data.AddVertex(-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(-0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    // Top
+    data.AddVertex(-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f);
+    data.AddVertex(-0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f);
+    data.AddVertex(0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f);
+    data.AddVertex(0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f);
+    // Bottom
+    data.AddVertex(-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    data.AddVertex(0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    data.AddVertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    data.AddVertex(-0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    // Left
+    data.AddVertex(-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(-0.5f, -0.5f, 0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(-0.5f, 0.5f, 0.5f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+    // Right
+    data.AddVertex(0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
+    data.AddVertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
 
     unsigned int indices[] = {
         0, 1, 2, 2, 3, 0,
@@ -69,17 +93,20 @@ Mesh* PrimitiveGenerator::CreateCube()
         16, 17, 18, 18, 19, 16,
         20, 21, 22, 22, 23, 20
     };
+    for (int i = 0; i < 36; i++) data.indices.push_back(indices[i]);
 
-    Mesh* mesh = new Mesh();
-    mesh->CreateMesh(vertices, indices, 24 * 14, 36);
-    return mesh;
+    return data;
 }
 
-Mesh* PrimitiveGenerator::CreateSphere(unsigned int rings, unsigned int sectors)
+Mesh* PrimitiveGenerator::CreateCube()
 {
-    std::vector<GLfloat> vertices;
-    std::vector<unsigned int> indices;
+    MeshData data = GetCubeData();
+    return data.ToMesh();
+}
 
+MeshData PrimitiveGenerator::GetSphereData(unsigned int rings, unsigned int sectors)
+{
+    MeshData data;
     float const R = 1.0f / (float)(rings - 1);
     float const S = 1.0f / (float)(sectors - 1);
 
@@ -89,53 +116,37 @@ Mesh* PrimitiveGenerator::CreateSphere(unsigned int rings, unsigned int sectors)
             float x = cos(2 * M_PI * s * S) * sin(M_PI * r * R);
             float z = sin(2 * M_PI * s * S) * sin(M_PI * r * R);
 
-            // Position
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
-            // UV
-            vertices.push_back(s * S);
-            vertices.push_back(r * R);
-            // Normal (same as position for unit sphere)
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
+            float u = s * S;
+            float v = r * R;
+            float nx = x, ny = y, nz = z;
 
-            // Tangent: derivative of position w.r.t. s (longitude)
             float tx = -sin(2 * M_PI * s * S);
             float ty = 0.0f;
             float tz = cos(2 * M_PI * s * S);
             float tlen = sqrt(tx * tx + ty * ty + tz * tz);
             if (tlen > 0.0f) { tx /= tlen; ty /= tlen; tz /= tlen; }
-            vertices.push_back(tx);
-            vertices.push_back(ty);
-            vertices.push_back(tz);
 
-            // Bitangent: cross(normal, tangent)
             float bx = y * tz - z * ty;
             float by = z * tx - x * tz;
             float bz = x * ty - y * tx;
             float blen = sqrt(bx * bx + by * by + bz * bz);
             if (blen > 0.0f) { bx /= blen; by /= blen; bz /= blen; }
-            vertices.push_back(bx);
-            vertices.push_back(by);
-            vertices.push_back(bz);
+
+            data.AddVertex(x, y, z, u, v, nx, ny, nz, tx, ty, tz, bx, by, bz);
         }
     }
 
     for (unsigned int r = 0; r < rings - 1; r++) {
         for (unsigned int s = 0; s < sectors - 1; s++) {
-            indices.push_back(r * sectors + s);
-            indices.push_back((r + 1) * sectors + s);
-            indices.push_back((r + 1) * sectors + (s + 1));
-
-            indices.push_back(r * sectors + s);
-            indices.push_back((r + 1) * sectors + (s + 1));
-            indices.push_back(r * sectors + (s + 1));
+            data.AddTriangle(r * sectors + s, (r + 1) * sectors + s, (r + 1) * sectors + (s + 1));
+            data.AddTriangle(r * sectors + s, (r + 1) * sectors + (s + 1), r * sectors + (s + 1));
         }
     }
+    return data;
+}
 
-    Mesh* mesh = new Mesh();
-    mesh->CreateMesh(vertices.data(), indices.data(), (unsigned int)vertices.size(), (unsigned int)indices.size());
-    return mesh;
+Mesh* PrimitiveGenerator::CreateSphere(unsigned int rings, unsigned int sectors)
+{
+    MeshData data = GetSphereData(rings, sectors);
+    return data.ToMesh();
 }

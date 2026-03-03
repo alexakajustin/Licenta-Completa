@@ -313,12 +313,12 @@ void AssetBrowser::RefreshAssetList()
 
 void AssetBrowser::Render(SceneManager& scene)
 {
+	if (!isOpen) return;
+
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
-	ImGui::SetNextWindowPos(ImVec2(300, 450), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth - 300.0f, 500.0f), ImGuiCond_FirstUseEver);
-
-	if (!isOpen) return;
+	ImGui::SetNextWindowPos(ImVec2(0, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.7f, (float)bufferHeight * 0.3f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin("Project", &isOpen))
 	{

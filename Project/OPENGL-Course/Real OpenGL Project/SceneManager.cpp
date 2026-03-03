@@ -284,11 +284,12 @@ void SceneManager::InitPicking(int width, int height)
 	pickingInitialized = true;
 }
 
-int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
+int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth, float viewportHeight)
 {
 	if (!pickingInitialized) return -1;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
+	// We still render picking to the full internal buffer size (pickWidth/Height)
 	glViewport(0, 0, pickWidth, pickHeight);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -305,7 +306,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	GLint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
 
 	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE); // Crucial: ensure the clear actually affects the depth buffer
+	glDepthMask(GL_TRUE); 
 	glEnable(GL_CULL_FACE);
 
 	// Objects
@@ -313,15 +314,12 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	{
 		glm::vec3 color = EncodeID(i + 1);
 		glUniform3f(colorLoc, color.r, color.g, color.b);
-
 		glm::mat4 modelMatrix = objects[i]->GetTransform().GetModelMatrix();
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-
 		if (objects[i]->GetModel()) objects[i]->GetModel()->RenderModel(0, 0);
 		else if (objects[i]->GetMesh()) objects[i]->GetMesh()->RenderMesh();
 	}
 
-	// UI priority: clear depth so icons and gizmos draw over scene objects
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Light icons
@@ -330,12 +328,10 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		glDisable(GL_CULL_FACE);
 		glUniform1i(isBillboardLoc, 1);
 		glUniform1f(iconSizeLoc, 0.7f);
-
 		for (int i = 0; i < (int)lights.size(); i++)
 		{
 			glm::vec3 color = EncodeID(i + 10000);
 			glUniform3f(colorLoc, color.r, color.g, color.b);
-
 			glm::vec3* pos = lights[i]->GetPositionPtr();
 			if (pos) {
 				glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
@@ -350,11 +346,9 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	{
 		glm::mat4 objRot = GetSelectedRotationMatrix();
 		float dist = glm::length(gizmoPos - cameraPos);
-		
 		glUniform1i(isBillboardLoc, 0);
 		glDisable(GL_CULL_FACE);
 
-		// 1. Translation arrows (20001, 20002, 20003)
 		if (gizmoArrowModel) {
 			float arrowScale = dist * 0.1f;
 			struct { int id; glm::mat4 extraRot; } arrows[] = {
@@ -362,11 +356,9 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 				{ 20002, glm::mat4(1.0f) },
 				{ 20003, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
 			};
-
 			for (auto& a : arrows) {
 				glm::vec3 color = EncodeID(a.id);
 				glUniform3f(colorLoc, color.r, color.g, color.b);
-				// World-space translation arrows: ignore objRot
 				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * a.extraRot;
 				m = glm::scale(m, glm::vec3(arrowScale));
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
@@ -374,7 +366,6 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			}
 		}
 
-		// 2. Rotation tori (20004, 20005, 20006)
 		if (gizmoTorusModel) {
 			float torusScale = dist * 0.1f * 0.6f;
 			struct { int id; glm::mat4 extraRot; } tori[] = {
@@ -382,11 +373,9 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 				{ 20005, glm::mat4(1.0f) },
 				{ 20006, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
 			};
-
 			for (auto& t : tori) {
 				glm::vec3 color = EncodeID(t.id);
 				glUniform3f(colorLoc, color.r, color.g, color.b);
-				// Local-space rotation tori: use objRot
 				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * t.extraRot;
 				m = glm::scale(m, glm::vec3(torusScale));
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
@@ -395,29 +384,24 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
-	// Restore GL state
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
-
-	// Read pixel
 	glFlush();
 	glFinish();
 
-	int windowWidth, windowHeight;
-	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-	float scaleX = (float)pickWidth / (float)windowWidth;
-	float scaleY = (float)pickHeight / (float)windowHeight;
+	// Scale mouse coordinates from viewport window space to picking FBO space
+	float scaleX = (float)pickWidth / viewportWidth;
+	float scaleY = (float)pickHeight / viewportHeight;
 
 	unsigned char pixel[3];
 	int readX = (int)(mouseX * scaleX);
 	int readY = pickHeight - (int)(mouseY * scaleY);
+	
 	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
-
 	int pickedID = DecodeID(pixel);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// Selection
 	if (pickedID > 0 && pickedID <= (int)objects.size()) {
 		selectedObjectIndex = pickedID - 1;
 		selectedLightIndex = -1;
@@ -628,16 +612,17 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 // Mouse/Gizmo Interaction
 // =====================================================================
 
-void SceneManager::HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
+void SceneManager::HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth, float viewportHeight)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT) {
-		if (action == GLFW_PRESS) {
-			int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos);
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		// Use specific viewport resolution for picking
+		int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos, viewportWidth, viewportHeight);
 			printf("[SceneManager] Picked ID: %d (Active Selection: %s)\n", pickedID, GetSelectedName().c_str());
 			
 			glm::vec3 cameraForward = -glm::normalize(glm::vec3(glm::inverse(view)[2]));
 			glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
-			glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
+			glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
 
 			if (pickedID >= 20001 && pickedID <= 20003) {
 				// === TRANSLATION ===
@@ -698,19 +683,19 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 
 				dragInitialMousePos = glm::vec2(mouseX, mouseY);
 			}
-		} else if (action == GLFW_RELEASE) {
+		}
+		else if (action == GLFW_RELEASE) {
 			if (activeDragAxis != 0) printf("Gizmo Drag END\n");
 			activeDragAxis = 0;
 		}
-	}
 }
-
-void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
+void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight)
 {
 	if (activeDragAxis == 0) return;
 
+	// Use viewport dimensions for ray casting
 	glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
-	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
+	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
 	
 	if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
 		// === TRANSLATION ===
@@ -778,14 +763,11 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 // Math Utilities
 // =====================================================================
 
-glm::vec3 SceneManager::GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
+glm::vec3 SceneManager::GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight)
 {
-	// Use actual window size for NDC conversion (not the picking FBO size)
-	int windowWidth, windowHeight;
-	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-
-	float x = (2.0f * mouseX) / windowWidth - 1.0f;
-	float y = 1.0f - (2.0f * mouseY) / windowHeight;
+	// Map to NDC using specific viewport dimensions
+	float x = (2.0f * mouseX) / viewportWidth - 1.0f;
+	float y = 1.0f - (2.0f * mouseY) / viewportHeight;
 	
 	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
 	glm::vec4 rayEye = glm::inverse(projection) * rayClip;

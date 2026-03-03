@@ -11,6 +11,8 @@
 #include "Model.h"
 #include "Mesh.h"
 #include "LightObject.h"
+#include "DebugOverlay.h"
+#include "External Libs/imnodes/imnodes.h"
 #include "PrimitiveGenerator.h"
 
 Application::Application()
@@ -55,12 +57,19 @@ bool Application::Init()
 	UpdateProjection();
 
 	// ImGui
-	IMGUI_CHECKVERSION();
+	// Initialize ImGui
 	ImGui::CreateContext();
+	ImNodes::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+	// io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Missing in this ImGui branch
+	
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(mainWindow.getWindow(), true);
 	ImGui_ImplOpenGL3_Init("#version 330");
+
+	// Viewport FBO initialization
+	InitViewportFBO();
 
 	// Enable VSync — caps FPS to monitor refresh rate, prevents GPU from running at 100%
 	glfwSwapInterval(1);
@@ -151,22 +160,34 @@ void Application::Run()
 		debugOverlay.SetViewportInfo((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
 
 		// Editor UI
+		// Since docking is not available, we use fixed window layout to emulate Unity
+		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(300, 600), ImGuiCond_FirstUseEver);
+		// ... (EditorUI handles its own windows)
+
 		glm::mat4 view = camera.calculateViewMatrix();
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition());
-		assetBrowser.Render(sceneManager);
-
-		// Shadow passes
+		
+		// Rendering to Viewport FBO
+		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+		glViewport(0, 0, (GLint)mainWindow.getBufferWidth(), (GLint)mainWindow.getBufferHeight());
+		
+		// Shadow passes (already bind their own FBOs)
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
-
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
-
 		for (unsigned int i = 0; i < spotLightCount; i++)
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
 
-		// Main render pass
+		// Main render pass into FBO
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, mainWindow);
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// Now render ImGui windows
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture);
+		assetBrowser.Render(sceneManager);
+		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial);
 
 		glUseProgram(0);
 
@@ -185,7 +206,44 @@ void Application::Run()
 	}
 }
 
+void Application::InitViewportFBO()
+{
+	if (viewportFBO) glDeleteFramebuffers(1, &viewportFBO);
+	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
+	if (viewportDepth) glDeleteRenderbuffers(1, &viewportDepth);
+
+	glGenFramebuffers(1, &viewportFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+
+	glGenTextures(1, &viewportTexture);
+	glBindTexture(GL_TEXTURE_2D, viewportTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)mainWindow.getBufferWidth(), (GLsizei)mainWindow.getBufferHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, viewportTexture, 0);
+
+	glGenRenderbuffers(1, &viewportDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, (GLsizei)mainWindow.getBufferWidth(), (GLsizei)mainWindow.getBufferHeight());
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, viewportDepth);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("Viewport Framebuffer not complete!\n");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::SetupDockSpace()
+{
+    // Not supported without docking branch
+}
+
 void Application::Shutdown()
 {
+	if (viewportFBO) glDeleteFramebuffers(1, &viewportFBO);
+	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
+	if (viewportDepth) glDeleteRenderbuffers(1, &viewportDepth);
+
+	ImNodes::DestroyContext();
 	ImGui::DestroyContext();
 }

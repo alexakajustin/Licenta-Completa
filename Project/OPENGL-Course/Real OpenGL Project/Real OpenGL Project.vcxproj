@@ -158,6 +158,8 @@
     <ClCompile Include="External Libs\ImGUI\imgui_tables.cpp" />
     <ClCompile Include="External Libs\ImGUI\imgui_widgets.cpp" />
     <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="GenerationPipelineUI.cpp" />
+    <ClCompile Include="GenerationStack.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightObject.cpp" />
     <ClCompile Include="EditorUI.cpp" />
@@ -167,6 +169,7 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OmniShadowMap.cpp" />
+    <ClCompile Include="PerlinNoiseGenerator.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGenerator.cpp" />
     <ClCompile Include="Renderer.cpp" />
@@ -178,6 +181,18 @@
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Window.cpp" />
+    <ClCompile Include="NodeGraph.cpp" />
+    <ClCompile Include="NodeEditorUI.cpp" />
+    <ClCompile Include="ScatterNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshUpdateNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneInputNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="External Libs\imnodes\imnodes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc143-mt.dll" />
@@ -858,13 +873,20 @@
     <ClInclude Include="AssetBrowser.h" />
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="GameObject.h" />
+    <ClInclude Include="GenerationPipelineUI.h" />
+    <ClInclude Include="GenerationStack.h" />
+    <ClInclude Include="IGenerator.h" />
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="LightObject.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="MeshData.h" />
+    <ClInclude Include="MeshUpdateNode.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OmniShadowMap.h" />
+    <ClInclude Include="PerlinNoiseGenerator.h" />
+    <ClInclude Include="PerlinNoiseNode.h" />
     <ClInclude Include="PointLight.h" />
     <ClInclude Include="PrimitiveGenerator.h" />
     <ClInclude Include="Renderer.h" />
@@ -877,6 +899,13 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Window.h" />
+    <ClInclude Include="NodeGraph.h" />
+    <ClInclude Include="NodeEditorUI.h" />
+    <ClInclude Include="PerlinTerrainNode.h" />
+    <ClInclude Include="SceneInputNode.h" />
+    <ClInclude Include="ScatterNode.h" />
+    <ClInclude Include="External Libs\imnodes\imnodes.h" />
+    <ClInclude Include="External Libs\imnodes\imnodes_internal.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icons\Light.png" />

@@ -169,18 +169,84 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 	}
 }
 
-void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos)
+void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID)
 {
-	RenderHierarchy(scene);
-	RenderInspector(scene);
-	RenderViewportDropTarget(scene, projection, view, cameraPos);
+	int bufferWidth, bufferHeight;
+	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+
+	RenderHierarchy(scene, bufferHeight);
+	RenderInspector(scene, bufferWidth, bufferHeight);
 }
 
-void EditorUI::RenderHierarchy(SceneManager& scene)
+void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID)
 {
+	int bufferWidth, bufferHeight;
+	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 0), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.5f, (float)bufferHeight * 0.7f), ImGuiCond_Always);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	if (ImGui::Begin("Scene", &windowState.isViewportOpen))
+	{
+		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+		
+		// Render the scene texture
+		// Need to flip V because OpenGL textures are bottom-up
+		ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
+
+		// Drag and Drop support for viewport
+		if (ImGui::BeginDragDropTarget()) {
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+				const char* pathStr = (const char*)payload->Data;
+				std::filesystem::path path(pathStr);
+				std::string ext = path.extension().string();
+				for (auto& c : ext) c = tolower(c);
+
+				if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+					// Calculate world position from mouse ray
+					ImVec2 mousePos = ImGui::GetMousePos();
+					ImVec2 winPos = ImGui::GetWindowPos();
+					ImVec2 winSize = ImGui::GetWindowSize();
+					glm::vec3 rayDir = scene.GetMouseRay(mousePos.x - winPos.x, mousePos.y - winPos.y, projection, view, winSize.x, winSize.y);
+					glm::vec3 spawnPos(0.0f);
+					if (!scene.RayPlaneIntersect(cameraPos, rayDir, glm::vec3(0,0,0), glm::vec3(0,1,0), spawnPos)) {
+						spawnPos = cameraPos + rayDir * 5.0f;
+					}
+					scene.InstantiateModel(path, spawnPos);
+				}
+				else if (ext == ".mat") {
+					// Material drop: apply to object under mouse
+					ImVec2 mousePos = ImGui::GetMousePos();
+					ImVec2 winPos = ImGui::GetWindowPos();
+					ImVec2 winSize = ImGui::GetWindowSize();
+					int pickedID = scene.PickObject(mousePos.x - winPos.x, mousePos.y - winPos.y, projection, view, cameraPos, winSize.x, winSize.y);
+					if (pickedID >= 0 && pickedID < (int)scene.GetObjects().size()) {
+						Material* loadedMat = Material::LoadFromFile(pathStr);
+						if (loadedMat) {
+							scene.GetObjects()[pickedID]->SetMaterial(loadedMat);
+							scene.SetSelectedIndex(pickedID);
+						}
+					}
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
+void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
+{
+	int bufferWidth;
+	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, nullptr);
+
+	// Hierarchy on the left
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(300, 450), ImGuiCond_FirstUseEver);
-	
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.3f, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	if (!windowState.isHierarchyOpen) return;
+
 	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen))
 	{
 		auto& objects = scene.GetObjects();
@@ -199,6 +265,15 @@ void EditorUI::RenderHierarchy(SceneManager& scene)
 					scene.SetSelectedIndex(i);
 				}
 				
+				// --- Drag Source ---
+				if (ImGui::BeginDragDropSource())
+				{
+					int objIndex = i;
+					ImGui::SetDragDropPayload("SCENE_OBJECT_INDEX", &objIndex, sizeof(int));
+					ImGui::Text("Dragging %s", objects[i]->GetName().c_str());
+					ImGui::EndDragDropSource();
+				}
+
 				// Accept material drops on individual objects
 				if (ImGui::BeginDragDropTarget()) {
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MATERIAL_PATH")) {
@@ -207,7 +282,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene)
 						if (mat) objects[i]->SetMaterial(mat);
 						printf("Applied material %s to %s\n", matPath, objects[i]->GetName().c_str());
 					}
-					HandleAssetDrop(scene);
+					HandleAssetDrop(scene, glm::vec3(0.0f)); // Pass a dummy spawnPos, as it's not used for material drops
 					ImGui::EndDragDropTarget();
 				}
 				
@@ -268,14 +343,14 @@ void EditorUI::RenderHierarchy(SceneManager& scene)
 
 		// Drag-drop target (DRY: uses shared handler)
 		if (ImGui::BeginDragDropTarget()) {
-			HandleAssetDrop(scene);
+			HandleAssetDrop(scene, glm::vec3(0.0f)); // Pass a dummy spawnPos, as it's not used for material drops
 			ImGui::EndDragDropTarget();
 		}
 	}
 	ImGui::End();
 }
 
-void EditorUI::RenderInspector(SceneManager& scene)
+void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight)
 {
 	auto& objects = scene.GetObjects();
 	auto& lights = scene.GetLights();
@@ -285,10 +360,20 @@ void EditorUI::RenderInspector(SceneManager& scene)
 	bool showObjectInspector = (selectedObj >= 0 && selectedLight < 0);
 	bool showLightInspector = (selectedLight >= 0 && selectedObj < 0);
 
-	if (!showObjectInspector && !showLightInspector) return;
+	// Inspector - Usually tabbed with hierarchy or on the far side. 
+	// For this layout, we'll place it as a float or tabbed if needed, but for now let's prioritize the 3-column top
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth - 300.0f, 0), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(300, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	if (!windowState.isInspectorOpen) return;
 
-	ImGui::SetNextWindowPos(ImVec2(0, 450), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(300, 500), ImGuiCond_FirstUseEver);
+	if (!showObjectInspector && !showLightInspector) {
+		// Even if empty, show a blank Inspector window for docking consistency
+		if (ImGui::Begin("Inspector", &windowState.isInspectorOpen)) {
+			ImGui::TextDisabled("Select an object to inspect");
+		}
+		ImGui::End();
+		return;
+	}
 
 	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen))
 	{
@@ -461,52 +546,6 @@ void EditorUI::RenderInspector(SceneManager& scene)
 	ImGui::End();
 }
 
-void EditorUI::RenderViewportDropTarget(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos)
-{
-	ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(mainViewport->Pos);
-	ImGui::SetNextWindowSize(mainViewport->Size);
-	
-	ImGuiWindowFlags viewportFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
-	bool isDragging = (ImGui::GetDragDropPayload() != nullptr);
-	if (!isDragging) viewportFlags |= ImGuiWindowFlags_NoInputs;
-	
-	ImGui::Begin("ViewportTarget", nullptr, viewportFlags);
-	
-	ImGui::Dummy(ImGui::GetContentRegionAvail());
+// RenderViewport renamed to Render (which handles the Scene window)
+// RenderViewportDropTarget removed as it's now handled by the Scene window logic
 
-	if (ImGui::BeginDragDropTarget()) {
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-			const char* pathStr = (const char*)payload->Data;
-			std::filesystem::path path(pathStr);
-			std::string ext = path.extension().string();
-			for (auto& c : ext) c = tolower(c);
-
-			if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
-				// Calculate world position from mouse ray
-				ImVec2 mousePos = ImGui::GetMousePos();
-				glm::vec3 rayDir = scene.GetMouseRay(mousePos.x, mousePos.y, projection, view);
-				glm::vec3 spawnPos(0.0f);
-				if (!scene.RayPlaneIntersect(cameraPos, rayDir, glm::vec3(0,0,0), glm::vec3(0,1,0), spawnPos)) {
-					spawnPos = cameraPos + rayDir * 5.0f;
-				}
-				scene.InstantiateModel(path, spawnPos);
-			}
-			else if (ext == ".mat") {
-				// Material drop: apply to object under mouse
-				ImVec2 mousePos = ImGui::GetMousePos();
-				int pickedID = scene.PickObject(mousePos.x, mousePos.y, projection, view, cameraPos);
-				if (pickedID >= 0 && pickedID < (int)scene.GetObjects().size()) {
-					Material* loadedMat = Material::LoadFromFile(pathStr);
-					if (loadedMat) {
-						scene.GetObjects()[pickedID]->SetMaterial(loadedMat);
-						scene.SetSelectedIndex(pickedID); // Select it too
-						printf("Applied material %s to object %d\n", pathStr, pickedID);
-					}
-				}
-			}
-		}
-		ImGui::EndDragDropTarget();
-	}
-	ImGui::End();
-}

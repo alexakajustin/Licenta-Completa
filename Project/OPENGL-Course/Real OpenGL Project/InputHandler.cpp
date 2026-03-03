@@ -26,32 +26,50 @@ void InputHandler::Update(Window& window, Camera& camera, SceneManager& scene,
 	else
 	{
 		// Editor mode — handle picking and gizmo dragging
-		bool currentLMB = glfwGetMouseButton(window.getWindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+		bool currentLMB = window.getMouseButtons()[GLFW_MOUSE_BUTTON_LEFT];
 		double mouseX, mouseY;
 		glfwGetCursorPos(window.getWindow(), &mouseX, &mouseY);
 
 		bool wantCapture = ImGui::GetIO().WantCaptureMouse;
 		glm::mat4 view = camera.calculateViewMatrix();
 
-		if (currentLMB && !lastLMBState)
+		if (currentLMB && !lastLMBState && !wantCapture)
 		{
-			// Only start a press if ImGui doesn't want the mouse
-			if (!wantCapture) {
-				scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
-					(float)mouseX, (float)mouseY, projection, view, camera.getCameraPosition());
+			// With the new UI overhaul, we need the "Scene" window's bounds
+			// We use ImGui::FindWindowByName (from imgui_internal.h) OR better, we can just check if the window is hovered
+			// But for layout, we need to know where it is.
+			
+			// Actually, let's use a simpler approach: check if Scene window is focused/hovered
+			if (ImGui::Begin("Scene")) {
+				if (ImGui::IsWindowHovered()) {
+					ImVec2 winPos = ImGui::GetWindowPos();
+					ImVec2 winSize = ImGui::GetWindowSize();
+					ImVec2 mousePos = ImGui::GetMousePos();
+
+					float localX = mousePos.x - winPos.x;
+					float localY = mousePos.y - winPos.y;
+
+					scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, localX, localY, projection, view, camera.getCameraPosition(), winSize.x, winSize.y);
+				}
+				ImGui::End();
 			}
 		}
 		else if (!currentLMB && lastLMBState)
 		{
-			// ALWAYS handle release to ensure gizmo state is cleared correctly, even if over UI
-			scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE,
-				(float)mouseX, (float)mouseY, projection, view, camera.getCameraPosition());
+			scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, 0, 0, projection, view, camera.getCameraPosition(), 0, 0);
 		}
-		else if (currentLMB)
+		
+		// Update mouse drag
+		if (scene.GetActiveDragAxis() != 0)
 		{
-			// Continue dragging if we have an active gizmo axis, even if the mouse moved over a UI window
-			if (scene.GetActiveDragAxis() != 0) {
-				scene.HandleMouseMove((float)mouseX, (float)mouseY, projection, view);
+			if (ImGui::Begin("Scene")) {
+				ImVec2 winPos = ImGui::GetWindowPos();
+				ImVec2 winSize = ImGui::GetWindowSize();
+				ImVec2 mousePos = ImGui::GetMousePos();
+				float localX = mousePos.x - winPos.x;
+				float localY = mousePos.y - winPos.y;
+				scene.HandleMouseMove(localX, localY, projection, view, winSize.x, winSize.y);
+				ImGui::End();
 			}
 		}
 

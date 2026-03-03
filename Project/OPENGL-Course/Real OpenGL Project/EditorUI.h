@@ -18,12 +18,12 @@ public:
 	~EditorUI();
 
 	// Draw all editor panels (hierarchy + inspector)
-	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos);
+	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID);
 
 private:
-	void RenderHierarchy(SceneManager& scene);
-	void RenderInspector(SceneManager& scene);
-	void RenderViewportDropTarget(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos);
+	void RenderHierarchy(SceneManager& scene, int bufferHeight);
+	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
+	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID);
 
 	// Helper: Unity-style Vector3 input 
 	static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f);
@@ -34,6 +34,7 @@ private:
 	struct WindowState {
 		bool isHierarchyOpen = true;
 		bool isInspectorOpen = true;
+		bool isViewportOpen = true;
 	} windowState;
 
 	// Material preview sphere

@@ -1,0 +1,219 @@
+#include "NodeGraph.h"
+#include "SceneManager.h"
+#include "GameObject.h"
+#include "PrimitiveGenerator.h"
+#include "imgui.h"
+#include "ScatterNode.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
+
+void ScatterNode::RenderContent(SceneManager* scene)
+{
+	ImGui::PushID(this);
+
+	ImGui::SliderInt("Count", &count, 1, 1000);
+	ImGui::DragFloat("Min Scale", &minScale, 0.01f, 0.01f, 10.0f);
+	ImGui::DragFloat("Max Scale", &maxScale, 0.01f, 0.01f, 10.0f);
+	ImGui::Checkbox("Random Rotation", &randomRotation);
+	ImGui::Checkbox("Align to Normal", &alignToNormal);
+	if (ImGui::InputInt("Seed", &seed)) {}
+	ImGui::SameLine();
+	if (ImGui::Button("Rand"))
+		seed = std::rand();
+
+	ImGui::Separator();
+	ImGui::Checkbox("Spawn as Objects", &spawnAsObjects);
+	if (spawnAsObjects && scene)
+	{
+		auto& objects = scene->GetObjects();
+		if (ImGui::BeginCombo("Parent", targetParentName.c_str()))
+		{
+			for (int i = 0; i < (int)objects.size(); i++)
+			{
+				bool isSelected = (targetParentIndex == i);
+				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
+				{
+					targetParentIndex = i;
+					targetParentName = objects[i]->GetName();
+				}
+			}
+			ImGui::EndCombo();
+		}
+	}
+
+	ImGui::PopID();
+}
+
+float ScatterNode::RandRange(float min, float max)
+{
+	float t = (float)std::rand() / (float)RAND_MAX;
+	return min + t * (max - min);
+}
+
+void ScatterNode::RandomPointOnMesh(const MeshData& mesh, glm::vec3& outPos, glm::vec3& outNormal)
+{
+	if (mesh.indices.empty() || mesh.vertices.empty())
+	{
+		outPos = glm::vec3(0.0f);
+		outNormal = glm::vec3(0.0f, 1.0f, 0.0f);
+		return;
+	}
+
+	// Pick a random triangle
+	int triCount = (int)mesh.indices.size() / 3;
+	int triIdx = std::rand() % triCount;
+
+	unsigned int i0 = mesh.indices[triIdx * 3];
+	unsigned int i1 = mesh.indices[triIdx * 3 + 1];
+	unsigned int i2 = mesh.indices[triIdx * 3 + 2];
+
+	glm::vec3 v0 = mesh.GetPosition(i0);
+	glm::vec3 v1 = mesh.GetPosition(i1);
+	glm::vec3 v2 = mesh.GetPosition(i2);
+
+	// Random barycentric coordinates
+	float r1 = RandRange(0.0f, 1.0f);
+	float r2 = RandRange(0.0f, 1.0f);
+	if (r1 + r2 > 1.0f)
+	{
+		r1 = 1.0f - r1;
+		r2 = 1.0f - r2;
+	}
+	float r0 = 1.0f - r1 - r2;
+
+	outPos = v0 * r0 + v1 * r1 + v2 * r2;
+
+	// Interpolate normal
+	glm::vec3 n0 = mesh.GetNormal(i0);
+	glm::vec3 n1 = mesh.GetNormal(i1);
+	glm::vec3 n2 = mesh.GetNormal(i2);
+	outNormal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
+}
+
+void ScatterNode::MergeTransformed(const MeshData& objectMesh, const glm::vec3& pos,
+	const glm::vec3& rotation, const glm::vec3& scaleVec,
+	const glm::vec3& surfaceNormal, MeshData& output)
+{
+	// Build transform matrix
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, pos);
+
+	// Align Y-up to surface normal if requested
+	if (alignToNormal && glm::length(surfaceNormal) > 0.001f)
+	{
+		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::vec3 normal = glm::normalize(surfaceNormal);
+
+		if (glm::abs(glm::dot(up, normal)) < 0.999f)
+		{
+			glm::vec3 rotAxis = glm::normalize(glm::cross(up, normal));
+			float angle = acos(glm::clamp(glm::dot(up, normal), -1.0f, 1.0f));
+			model = glm::rotate(model, angle, rotAxis);
+		}
+	}
+
+	// Apply rotation
+	model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+	model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+	model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+
+	// Apply scale
+	model = glm::scale(model, scaleVec);
+
+	// Normal matrix (inverse transpose of upper 3x3)
+	glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+
+	// Merge vertices
+	int baseVertex = output.GetVertexCount();
+	int srcVertCount = objectMesh.GetVertexCount();
+
+	for (int i = 0; i < srcVertCount; i++)
+	{
+		int base = i * 14;
+
+		// Transform position
+		glm::vec4 p = model * glm::vec4(
+			objectMesh.vertices[base], objectMesh.vertices[base + 1], objectMesh.vertices[base + 2], 1.0f);
+
+		// Keep UVs
+		float u = objectMesh.vertices[base + 3];
+		float v = objectMesh.vertices[base + 4];
+
+		// Transform normal
+		glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(
+			objectMesh.vertices[base + 5], objectMesh.vertices[base + 6], objectMesh.vertices[base + 7]));
+
+		// Transform tangent and bitangent
+		glm::vec3 t = glm::normalize(normalMatrix * glm::vec3(
+			objectMesh.vertices[base + 8], objectMesh.vertices[base + 9], objectMesh.vertices[base + 10]));
+
+		glm::vec3 b = glm::normalize(normalMatrix * glm::vec3(
+			objectMesh.vertices[base + 11], objectMesh.vertices[base + 12], objectMesh.vertices[base + 13]));
+
+		output.AddVertex(p.x, p.y, p.z, u, v, n.x, n.y, n.z, t.x, t.y, t.z, b.x, b.y, b.z);
+	}
+
+	// Merge indices (offset by base vertex)
+	for (int i = 0; i < (int)objectMesh.indices.size(); i++)
+	{
+		output.indices.push_back(objectMesh.indices[i] + baseVertex);
+	}
+}
+
+void ScatterNode::Execute()
+{
+	outputs[0].data.Clear(); // Transforms
+	outputs[0].data.type = PinDataType::TransformList;
+	outputs[1].data.Clear(); // Mesh
+	outputs[1].data.type = PinDataType::Mesh;
+
+	// Get surface mesh from input 0
+	MeshData& surfaceMesh = inputs[0].data.meshData;
+	// Get object mesh from input 1
+	MeshData& objectMesh = inputs[1].data.meshData;
+
+	bool hasSurface = (inputs[0].data.type == PinDataType::Mesh && !surfaceMesh.vertices.empty());
+	bool hasObject = (inputs[1].data.type == PinDataType::Mesh && !objectMesh.vertices.empty());
+
+	if (!hasSurface || !hasObject)
+	{
+		// If no object mesh connected, just pass through the surface
+		if (hasSurface) outputs[1].data.meshData = surfaceMesh;
+		return;
+	}
+
+	std::srand(seed);
+	MeshData result;
+	TransformList transforms;
+
+	for (int i = 0; i < count; i++)
+	{
+		glm::vec3 pos, normal;
+		RandomPointOnMesh(surfaceMesh, pos, normal);
+
+		// Random scale
+		float s = RandRange(minScale, maxScale);
+		glm::vec3 scaleVec(s);
+
+		// Random rotation
+		glm::vec3 rot(0.0f);
+		if (randomRotation)
+		{
+			rot.y = RandRange(0.0f, 360.0f);
+		}
+
+		// Store transform
+		TransformData t;
+		t.position = pos;
+		t.rotation = rot;
+		t.scale = scaleVec;
+		// Special handling for alignToNormal: we'll store the surface normal in rotation.x temporarily?
+		// No, let's keep it simple for now or bake it if merging.
+		transforms.push_back(t);
+
+		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, result);
+	}
+
+	outputs[0].data.transforms = transforms;
+	outputs[1].data.meshData = result;
+}

@@ -8,6 +8,8 @@
 #include "EditorUI.h"
 #include "AssetBrowser.h"
 #include "DebugOverlay.h"
+#include "NodeGraph.h"
+#include "NodeEditorUI.h"
 #include "Texture.h"
 #include "Material.h"
 #include "DirectionalLight.h"
@@ -39,6 +41,8 @@ private:
 	EditorUI editorUI;
 	AssetBrowser assetBrowser;
 	DebugOverlay debugOverlay;
+	NodeGraph nodeGraph;
+	NodeEditorUI nodeEditorUI;
 
 	// Resources
 	Texture plainTexture;
@@ -50,6 +54,13 @@ private:
 	SpotLight spotLights[MAX_SPOT_LIGHTS];
 	unsigned int pointLightCount;
 	unsigned int spotLightCount;
+
+	// Viewport FBO
+	void InitViewportFBO();
+	void SetupDockSpace();
+	GLuint viewportFBO = 0;
+	GLuint viewportTexture = 0;
+	GLuint viewportDepth = 0;
 
 	// Models
 	// (None currently hardcoded in Application)

@@ -113,8 +113,10 @@ void DebugOverlay::Render()
 {
 	if (!isOpen) return;
 
-	ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(340, 420), ImGuiCond_FirstUseEver);
+	int bufferWidth, bufferHeight;
+	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.7f, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.3f, (float)bufferHeight * 0.3f), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowBgAlpha(0.85f);
 
 	ImGui::Begin("GPU Debug", &isOpen, ImGuiWindowFlags_NoFocusOnAppearing);
