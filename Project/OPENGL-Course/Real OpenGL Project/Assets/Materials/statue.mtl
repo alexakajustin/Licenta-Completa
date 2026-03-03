@@ -1,0 +1,16 @@
+# Blender 4.0.2 MTL File: 'None'
+# www.blender.org
+
+newmtl statue
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.5880 0.5880 0.5880
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.2790 0.2790 0.2790
+	Ke 0.0000 0.0000 0.0000
+	map_Ka statue.png
+	map_Kd statue.png

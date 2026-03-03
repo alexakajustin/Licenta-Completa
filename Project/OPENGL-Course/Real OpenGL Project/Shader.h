@@ -30,18 +30,18 @@ public:
 
 	std::string ReadFile(const char* fileLocation);
 
-	GLuint GetProjectionLocation();
-	GLuint GetModelLocation();
-	GLuint GetViewLocation();
-	GLuint GetAmbientIntensityLocation();
-	GLuint GetAmbientColourLocation();
-	GLuint GetDiffuseIntensityLocation();
-	GLuint GetDirectionLocation();
-	GLuint GetSpecularIntensityLocation();
-	GLuint GetShininessLocation();
-	GLuint GetEyePositionLocation();
-	GLuint getOmniLightPosLocation();
-	GLuint getFarPlaneLocation();
+	GLint GetProjectionLocation();
+	GLint GetModelLocation();
+	GLint GetViewLocation();
+	GLint GetAmbientIntensityLocation();
+	GLint GetAmbientColourLocation();
+	GLint GetDiffuseIntensityLocation();
+	GLint GetDirectionLocation();
+	GLint GetSpecularIntensityLocation();
+	GLint GetShininessLocation();
+	GLint GetEyePositionLocation();
+	GLint getOmniLightPosLocation();
+	GLint getFarPlaneLocation();
 
 	void SetDirectionalLight(DirectionalLight* directionalLight);
 	void SetPointLights(PointLight* pointLight, unsigned int lightCount, unsigned int textureUnit, unsigned int offset);
@@ -62,54 +62,55 @@ public:
 private:
 	int pointLightCount;
 	int spotLightCount;
-	GLuint shaderID, uniformProjection, uniformModel, uniformView, uniformEyePosition,
+	GLuint shaderID;
+	GLint uniformProjection, uniformModel, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess,
 		uniformTexture, uniformNormalMap, uniformUseNormalMap,
 		uniformDirectionalLightTransform, uniformDirectionalShadowMap,
 		uniformOmniLightPos, uniformFarPlane;
 
-	GLuint uniformLightMatrices[6];
+	GLint uniformLightMatrices[6];
 
 	struct {
-		GLuint uniformColour;
-		GLuint uniformAmbientIntensity;
-		GLuint uniformDiffuseIntensity;
+		GLint uniformColour;
+		GLint uniformAmbientIntensity;
+		GLint uniformDiffuseIntensity;
 
-		GLuint uniformDirection;
+		GLint uniformDirection;
 	} uniformDirectionalLight;
 
-	GLuint uniformPointLightCount;
+	GLint uniformPointLightCount;
 
 	struct {
-		GLuint uniformColour;
-		GLuint uniformAmbientIntensity;
-		GLuint uniformDiffuseIntensity;
+		GLint uniformColour;
+		GLint uniformAmbientIntensity;
+		GLint uniformDiffuseIntensity;
 
-		GLuint uniformPosition;
-		GLuint uniformConstant;
-		GLuint uniformLinear;
-		GLuint uniformExponent;
+		GLint uniformPosition;
+		GLint uniformConstant;
+		GLint uniformLinear;
+		GLint uniformExponent;
 	} uniformPointLight[MAX_POINT_LIGHTS];
 
-	GLuint uniformSpotLightCount;
+	GLint uniformSpotLightCount;
 
 	struct {
-		GLuint uniformColour;
-		GLuint uniformAmbientIntensity;
-		GLuint uniformDiffuseIntensity;
+		GLint uniformColour;
+		GLint uniformAmbientIntensity;
+		GLint uniformDiffuseIntensity;
 
-		GLuint uniformPosition;
-		GLuint uniformConstant;
-		GLuint uniformLinear;
-		GLuint uniformExponent;
+		GLint uniformPosition;
+		GLint uniformConstant;
+		GLint uniformLinear;
+		GLint uniformExponent;
 
-		GLuint uniformDirection;
-		GLuint uniformEdge;
+		GLint uniformDirection;
+		GLint uniformEdge;
 	} uniformSpotLight[MAX_SPOT_LIGHTS];
 
 	struct {
-		GLuint shadowMap;
-		GLuint farPlane;
+		GLint shadowMap;
+		GLint farPlane;
 	} uniformOmniShadowMap[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 	
 	void CompileShader(const char* vertexCode, const char* fragmentCode);

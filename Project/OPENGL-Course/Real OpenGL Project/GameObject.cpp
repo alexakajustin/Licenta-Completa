@@ -16,27 +16,49 @@ GameObject::~GameObject()
 	// Resource management should be handled by a ResourceManager in the future
 }
 
-void GameObject::Render(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap)
+void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap)
 {
 	// Apply transform
 	glm::mat4 modelMatrix = transform.GetModelMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
-	// Apply texture if available
-	if (texture)
+	// Apply material if available
+	if (material)
 	{
-		texture->UseTexture();
+		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor);
+	}
+	else
+	{
+		glUniform1f(uniformSpecularIntensity, 0.0f);
+		glUniform1f(uniformShininess, 1.0f);
+		glUniform3f(uniformMaterialColor, 1.0f, 1.0f, 1.0f);
 	}
 
 	// Render the visual component
 	if (model)
 	{
-		// Model handles per-mesh normal map binding internally
-		model->RenderModel(uniformUseNormalMap);
+		bool hasOverrideTex = (texture != nullptr);
+		bool hasOverrideNorm = (normalMap != nullptr);
+
+		if (hasOverrideTex || hasOverrideNorm) {
+			// Inspector overrides: bind our textures, skip model's own
+			if (hasOverrideTex) texture->UseTexture();
+			if (hasOverrideNorm) {
+				glUniform1i(uniformUseNormalMap, 1);
+				normalMap->UseNormalMap();
+			} else {
+				glUniform1i(uniformUseNormalMap, 0);
+			}
+			model->RenderModelGeometryOnly();
+		} else {
+			// No overrides — model uses its own per-mesh textures
+			model->RenderModel(uniformUseNormalMap);
+		}
 	}
 	else if (mesh)
 	{
-		// Primitive meshes use the GameObject's normal map if available
+		if (texture) texture->UseTexture();
+
 		if (normalMap)
 		{
 			glUniform1i(uniformUseNormalMap, 1);

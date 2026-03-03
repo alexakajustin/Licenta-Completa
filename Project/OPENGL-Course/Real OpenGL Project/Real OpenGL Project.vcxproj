@@ -143,7 +143,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application.cpp" />
+    <ClCompile Include="AssetBrowser.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="DebugOverlay.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
     <ClCompile Include="External Libs\GLM\glm\detail\dummy.cpp" />
     <ClCompile Include="External Libs\GLM\glm\detail\glm.cpp" />
@@ -157,6 +160,8 @@
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightObject.cpp" />
+    <ClCompile Include="EditorUI.cpp" />
+    <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
@@ -164,6 +169,7 @@
     <ClCompile Include="OmniShadowMap.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGenerator.cpp" />
+    <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="ShadowMap.cpp" />
@@ -482,6 +488,7 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CommonValues.h" />
+    <ClInclude Include="DebugOverlay.h" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\ai_assert.h" />
@@ -847,7 +854,11 @@
     <ClInclude Include="External Libs\ImGUI\imstb_rectpack.h" />
     <ClInclude Include="External Libs\ImGUI\imstb_textedit.h" />
     <ClInclude Include="External Libs\ImGUI\imstb_truetype.h" />
+    <ClInclude Include="Application.h" />
+    <ClInclude Include="AssetBrowser.h" />
+    <ClInclude Include="EditorUI.h" />
     <ClInclude Include="GameObject.h" />
+    <ClInclude Include="InputHandler.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="LightObject.h" />
     <ClInclude Include="Material.h" />
@@ -856,6 +867,7 @@
     <ClInclude Include="OmniShadowMap.h" />
     <ClInclude Include="PointLight.h" />
     <ClInclude Include="PrimitiveGenerator.h" />
+    <ClInclude Include="Renderer.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShadowMap.h" />

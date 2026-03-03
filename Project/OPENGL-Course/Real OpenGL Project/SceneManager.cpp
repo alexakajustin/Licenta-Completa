@@ -4,52 +4,14 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 
-// Helper for Unity-like Vector3 input
-static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f)
-{
-	ImGui::PushID(label.c_str());
-
-	ImGui::Text(label.c_str());
-	
-	// Right-align the inputs
-	float totalWidth = ImGui::GetContentRegionAvail().x;
-	float inputWidth = (totalWidth - 20.0f) / 3.0f; // Roughly divide remaining space
-	
-	ImGui::SameLine(70.0f); // Fixed label width
-
-	ImGui::PushItemWidth(inputWidth);
-	
-	// X
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-	ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.2f");
-	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.x = resetValue; // Right click to reset
-	
-	ImGui::SameLine(0, 5);
-	
-	// Y
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
-	ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.2f");
-	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.y = resetValue;
-	
-	ImGui::SameLine(0, 5);
-	
-	// Z
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
-	ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.2f");
-	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.z = resetValue;
-
-	ImGui::PopItemWidth();
-	ImGui::PopID();
-}
+// =====================================================================
+// Constructor / Destructor
+// =====================================================================
 
 SceneManager::SceneManager()
 	: selectedObjectIndex(-1), selectedLightIndex(-1), pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr),
-	  currentAssetPath("Assets")
+	  lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
 {
 }
 
@@ -57,40 +19,21 @@ SceneManager::~SceneManager()
 {
 	Clear();
 	
-	// Cleanup picking resources
 	if (pickingFBO) glDeleteFramebuffers(1, &pickingFBO);
 	if (pickingTexture) glDeleteTextures(1, &pickingTexture);
 	if (pickingDepth) glDeleteRenderbuffers(1, &pickingDepth);
 
-	// Cleanup gizmo
-	if (gizmoArrowModel) {
-		gizmoArrowModel->ClearModel();
-		delete gizmoArrowModel;
-	}
-	if (gizmoTorusModel) {
-		gizmoTorusModel->ClearModel();
-		delete gizmoTorusModel;
-	}
-
-	// Cleanup asset icons
-	CleanupThumbnailFBO();
-
-	for (auto const& [key, val] : assetTextureCache) {
-		if (val) {
-			val->ClearTexture();
-			delete val;
-		}
-	}
-	if (folderIconSlot) { folderIconSlot->ClearTexture(); delete folderIconSlot; }
-	if (modelIconSlot) { modelIconSlot->ClearTexture(); delete modelIconSlot; }
+	if (gizmoArrowModel) { gizmoArrowModel->ClearModel(); delete gizmoArrowModel; }
+	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
 }
+
+// =====================================================================
+// Object & Light Management
+// =====================================================================
 
 void SceneManager::AddObject(GameObject* obj)
 {
-	if (obj)
-	{
-		objects.push_back(obj);
-	}
+	if (obj) objects.push_back(obj);
 }
 
 void SceneManager::RemoveObject(const std::string& name)
@@ -99,8 +42,17 @@ void SceneManager::RemoveObject(const std::string& name)
 	{
 		if ((*it)->GetName() == name)
 		{
-			delete* it;
+			int index = (int)(it - objects.begin());
+			delete *it;
 			objects.erase(it);
+
+			// Selection safety
+			if (selectedObjectIndex == index) {
+				selectedObjectIndex = -1;
+				activeDragAxis = 0;
+			} else if (selectedObjectIndex > index) {
+				selectedObjectIndex--;
+			}
 			return;
 		}
 	}
@@ -110,524 +62,90 @@ GameObject* SceneManager::FindObject(const std::string& name)
 {
 	for (auto* obj : objects)
 	{
-		if (obj->GetName() == name)
-		{
-			return obj;
-		}
+		if (obj->GetName() == name) return obj;
 	}
 	return nullptr;
 }
 
-void SceneManager::RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap)
+void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap)
 {
 	for (auto* obj : objects)
 	{
-		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformUseNormalMap);
+		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap);
 	}
 }
 
 void SceneManager::AddLight(LightObject* light)
 {
-	if (light)
-	{
-		lights.push_back(light);
-	}
+	if (light) lights.push_back(light);
 }
 
-void SceneManager::InitPicking(int width, int height)
+void SceneManager::Clear()
 {
-	pickWidth = width;
-	pickHeight = height;
-
-	// Create framebuffer
-	glGenFramebuffers(1, &pickingFBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
-
-	// Create color texture
-	glGenTextures(1, &pickingTexture);
-	glBindTexture(GL_TEXTURE_2D, pickingTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pickingTexture, 0);
-
-	// Create depth buffer
-	glGenRenderbuffers(1, &pickingDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, pickingDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, pickingDepth);
-
-	// Check completeness
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		printf("Picking framebuffer not complete!\n");
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	// Load picking shader
-	pickingShader.CreateFromFiles("Shaders/picking.vert", "Shaders/picking.frag");
-
-	pickingInitialized = true;
+	for (auto* obj : objects) delete obj;
+	objects.clear();
+	
+	for (auto* light : lights) delete light;
+	lights.clear();
+	
+	selectedObjectIndex = -1;
+	selectedLightIndex = -1;
 }
 
-int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
+// =====================================================================
+// DRY Helpers
+// =====================================================================
+
+glm::mat4 SceneManager::GetSelectedRotationMatrix() const
 {
-	if (!pickingInitialized) return -1;
-
-	// Bind picking framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
-	glViewport(0, 0, pickWidth, pickHeight);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	pickingShader.UseShader();
-
-	// Set projection and view
-	glUniformMatrix4fv(pickingShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
-	glUniformMatrix4fv(pickingShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
-
-	GLuint modelLoc = pickingShader.GetModelLocation();
-	GLuint colorLoc = glGetUniformLocation(pickingShader.GetShaderID(), "pickingColor");
-	GLuint isBillboardLoc = glGetUniformLocation(pickingShader.GetShaderID(), "isBillboard");
-	GLuint worldPosLoc = glGetUniformLocation(pickingShader.GetShaderID(), "worldPos");
-	GLuint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
-
-	glUniform1i(isBillboardLoc, 0); // Not a billboard for normal objects
-
-	// Render each object with unique color based on index
-	for (int i = 0; i < (int)objects.size(); i++)
-	{
-		// Convert index to RGB color (index + 1 to avoid black background)
-		int id = i + 1;
-		float r = ((id & 0x0000FF) >> 0) / 255.0f;
-		float g = ((id & 0x00FF00) >> 8) / 255.0f;
-		float b = ((id & 0xFF0000) >> 16) / 255.0f;
-
-		glUniform3f(colorLoc, r, g, b);
-
-		// Set model matrix
-		glm::mat4 modelMatrix = objects[i]->GetTransform().GetModelMatrix();
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-
-		// Render geometry only
-		if (objects[i]->GetModel())
-		{
-			objects[i]->GetModel()->RenderModel(0); // picking pass doesn't use normal maps
-		}
-		else if (objects[i]->GetMesh())
-		{
-			objects[i]->GetMesh()->RenderMesh();
-		}
+	glm::mat4 rot(1.0f);
+	if (selectedObjectIndex != -1) {
+		glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+		rot = glm::rotate(rot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		rot = glm::rotate(rot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		rot = glm::rotate(rot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
 	}
-
-	// Render light icons for picking
-	if (iconMesh)
-	{
-		glDisable(GL_CULL_FACE); // Billboard quads need culling disabled (matches RenderIcons)
-		glDisable(GL_DEPTH_TEST); // Icons should always be pickable when visible
-		glUniform1i(isBillboardLoc, 1);
-		glUniform1f(iconSizeLoc, 0.7f); // Slightly larger picking area for better feel
-
-		for (int i = 0; i < (int)lights.size(); i++)
-		{
-			// Light IDs start at 10000
-			int id = i + 10000;
-			float r = ((id & 0x0000FF) >> 0) / 255.0f;
-			float g = ((id & 0x00FF00) >> 8) / 255.0f;
-			float b = ((id & 0xFF0000) >> 16) / 255.0f;
-
-			glUniform3f(colorLoc, r, g, b);
-
-			glm::vec3* pos = lights[i]->GetPositionPtr();
-			if (pos)
-			{
-				glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
-				iconMesh->RenderMesh();
-			}
-		}
-	}
-
-	// Render gizmo tori for picking (FIRST, so arrows can be on top)
-	if (gizmoTorusModel && (selectedObjectIndex != -1 || selectedLightIndex != -1))
-	{
-		glUniform1i(isBillboardLoc, 0);
-		glDisable(GL_DEPTH_TEST);
-
-		glm::vec3 gizmoPos(0.0f);
-		glm::mat4 objRot(1.0f);
-		if (selectedObjectIndex != -1) {
-			gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
-			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		}
-		else {
-			glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
-			if (lightPos) gizmoPos = *lightPos;
-		}
-
-		glDisable(GL_CULL_FACE); // Gizmos should be pickable from any angle
-		float dist = glm::length(gizmoPos - cameraPos);
-		float torusPickScale = dist * 0.1f * 0.6f; // Reduced from 1.3f
-
-		// X Rotation (20004)
-		glUniform3f(colorLoc, (20004 & 0xFF) / 255.0f, ((20004 >> 8) & 0xFF) / 255.0f, ((20004 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 rotX = glm::translate(glm::mat4(1.0f), gizmoPos);
-		rotX = rotX * objRot;
-		rotX = glm::rotate(rotX, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		rotX = glm::scale(rotX, glm::vec3(torusPickScale));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotX));
-		gizmoTorusModel->RenderModel(0);
-
-		// Y Rotation (20005)
-		glUniform3f(colorLoc, (20005 & 0xFF) / 255.0f, ((20005 >> 8) & 0xFF) / 255.0f, ((20005 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 rotY = glm::translate(glm::mat4(1.0f), gizmoPos);
-		rotY = rotY * objRot;
-		rotY = glm::scale(rotY, glm::vec3(torusPickScale));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotY));
-		gizmoTorusModel->RenderModel(0);
-
-		// Z Rotation (20006)
-		glUniform3f(colorLoc, (20006 & 0xFF) / 255.0f, ((20006 >> 8) & 0xFF) / 255.0f, ((20006 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 rotZ = glm::translate(glm::mat4(1.0f), gizmoPos);
-		rotZ = rotZ * objRot;
-		rotZ = glm::rotate(rotZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		rotZ = glm::scale(rotZ, glm::vec3(torusPickScale));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotZ));
-		gizmoTorusModel->RenderModel(0);
-	}
-
-	// Render gizmo arrows for picking (SECOND, so they take priority for the pixel)
-	if (gizmoArrowModel && (selectedObjectIndex != -1 || selectedLightIndex != -1))
-	{
-		glUniform1i(isBillboardLoc, 0);
-		glDisable(GL_DEPTH_TEST);
-
-		glm::vec3 gizmoPos(0.0f);
-		if (selectedObjectIndex != -1) gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-		else {
-			glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
-			if (lightPos) gizmoPos = *lightPos;
-			else {
-				// Cleanup state before return
-				glEnable(GL_DEPTH_TEST);
-				glEnable(GL_CULL_FACE);
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				return 0;
-			}
-		}
-
-		float dist = glm::length(gizmoPos - cameraPos);
-		float scaleFactor = dist * 0.1f; 
-
-		// Calculate object rotation matrix
-		glm::mat4 objRot(1.0f);
-		if (selectedObjectIndex != -1) {
-			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
-			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		}
-
-		// X Axis (20001)
-		glUniform3f(colorLoc, (20001 & 0xFF) / 255.0f, ((20001 >> 8) & 0xFF) / 255.0f, ((20001 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
-		modelX = modelX * objRot;
-		modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		modelX = glm::scale(modelX, glm::vec3(scaleFactor));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
-		gizmoArrowModel->RenderModel(0);
-
-		// Y Axis (20002)
-		glUniform3f(colorLoc, (20002 & 0xFF) / 255.0f, ((20002 >> 8) & 0xFF) / 255.0f, ((20002 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
-		modelY = modelY * objRot;
-		modelY = glm::scale(modelY, glm::vec3(scaleFactor));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
-		gizmoArrowModel->RenderModel(0);
-
-		// Z Axis (20003)
-		glUniform3f(colorLoc, (20003 & 0xFF) / 255.0f, ((20003 >> 8) & 0xFF) / 255.0f, ((20003 >> 16) & 0xFF) / 255.0f);
-		glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
-		modelZ = modelZ * objRot;
-		modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		modelZ = glm::scale(modelZ, glm::vec3(scaleFactor));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
-		gizmoArrowModel->RenderModel(0);
-	}
-
-	// Restore GL state after icon rendering
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-
-	// Read pixel at mouse position
-	glFlush();
-	glFinish();
-
-	// Map window-space mouse coordinates to framebuffer-space (handles DPI scaling/window resizing)
-	int windowWidth, windowHeight;
-	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-	float scaleX = (float)pickWidth / (float)windowWidth;
-	float scaleY = (float)pickHeight / (float)windowHeight;
-
-	unsigned char pixel[3];
-	int readX = (int)(mouseX * scaleX);
-	int readY = pickHeight - (int)(mouseY * scaleY); // Flip Y correctly in buffer space
-	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
-
-	// Convert color back to index
-	int pickedID = pixel[0] + pixel[1] * 256 + pixel[2] * 256 * 256;
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	// Handle selection logic based on the ID
-	if (pickedID > 0 && pickedID <= (int)objects.size())
-	{
-		selectedObjectIndex = pickedID - 1;
-		selectedLightIndex = -1;
-	}
-	else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size())
-	{
-		selectedLightIndex = pickedID - 10000;
-		selectedObjectIndex = -1;
-	}
-	else if (pickedID < 20000) // If we didn't hit a gizmo, clear selection
-	{
-		// But don't clear if we're clicking on UI or something else handled externally
-		// For now, keep the original behavior but only if it's not a gizmo
-		selectedObjectIndex = -1;
-		selectedLightIndex = -1;
-	}
-
-	return pickedID;
+	return rot;
 }
 
-void SceneManager::RenderImGui(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos)
+bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 {
-	// 1. Scene Hierarchy Window
-	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(300, 450), ImGuiCond_FirstUseEver);
-	
-	ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen);
-	
-	if (ImGui::CollapsingHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		for (int i = 0; i < (int)objects.size(); i++)
-		{
-			ImGui::PushID(i);
-			bool isSelected = (selectedObjectIndex == i && selectedLightIndex < 0);
-			if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
-			{
-				selectedObjectIndex = i;
-				selectedLightIndex = -1;
-			}
-			ImGui::PopID();
-		}
+	if (selectedObjectIndex != -1) {
+		outPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+		return true;
 	}
-
-	if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		for (int i = 0; i < (int)lights.size(); i++)
-		{
-			ImGui::PushID(1000 + i);
-			const char* icon = (lights[i]->GetLightType() == LightType::Directional) ? "[D] " : 
-							   (lights[i]->GetLightType() == LightType::Point) ? "[P] " : "[S] ";
-			std::string label = std::string(icon) + lights[i]->GetName();
-			bool isSelected = (selectedLightIndex == i && selectedObjectIndex < 0);
-			if (ImGui::Selectable(label.c_str(), isSelected))
-			{
-				selectedLightIndex = i;
-				selectedObjectIndex = -1;
-			}
-			ImGui::PopID();
-		}
+	else if (selectedLightIndex != -1) {
+		glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
+		if (lightPos) { outPos = *lightPos; return true; }
 	}
-
-	// Delete key - delete selected object or light
-	if (ImGui::IsKeyPressed(ImGuiKey_Delete))
-	{
-		if (selectedObjectIndex >= 0 && selectedObjectIndex < (int)objects.size() && selectedLightIndex < 0)
-		{
-			delete objects[selectedObjectIndex];
-			objects.erase(objects.begin() + selectedObjectIndex);
-			selectedObjectIndex = -1;
-		}
-		else if (selectedLightIndex >= 0 && selectedLightIndex < (int)lights.size() && selectedObjectIndex < 0)
-		{
-			DeleteLight(selectedLightIndex);
-		}
-	}
-
-	if (ImGui::BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags_MouseButtonRight))
-	{
-		if (ImGui::BeginMenu("Create GameObject"))
-		{
-			if (ImGui::MenuItem("Plane")) CreateGameObject("Plane");
-			if (ImGui::MenuItem("Cube")) CreateGameObject("Cube");
-			if (ImGui::MenuItem("Sphere")) CreateGameObject("Sphere");
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Create Light"))
-		{
-			if (ImGui::MenuItem("Point Light")) CreateLight(LightType::Point);
-			if (ImGui::MenuItem("Spot Light")) CreateLight(LightType::Spot);
-			ImGui::EndMenu();
-		}
-		ImGui::EndPopup();
-	}
-
-	// DRAG AND DROP TARGET FOR HIERARCHY
-	if (ImGui::BeginDragDropTarget()) {
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-			const char* pathStr = (const char*)payload->Data;
-			std::filesystem::path path(pathStr);
-			std::string ext = path.extension().string();
-			for (auto& c : ext) c = tolower(c);
-
-			if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
-				InstantiateModel(path);
-			}
-		}
-		ImGui::EndDragDropTarget();
-	}
-
-	ImGui::End();
-
-	// 2. Inspector Window
-	bool showObjectInspector = (selectedObjectIndex >= 0 && selectedLightIndex < 0);
-	bool showLightInspector = (selectedLightIndex >= 0 && selectedObjectIndex < 0);
-
-	if (showObjectInspector || showLightInspector)
-	{
-		ImGui::SetNextWindowPos(ImVec2(0, 450), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(300, 500), ImGuiCond_FirstUseEver);
-
-		ImGui::Begin("Inspector", &windowState.isInspectorOpen);
-
-		if (showObjectInspector)
-		{
-			GameObject* selected = objects[selectedObjectIndex];
-			Transform& transform = selected->GetTransform();
-			ImGui::Text("Object: %s", selected->GetName().c_str());
-			ImGui::Separator();
-			ImGui::Text("Transform");
-			
-			DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f);
-			DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f);
-			DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
-			
-			ImGui::Separator();
-			ImGui::Text("Components");
-			if (selected->GetMesh()) ImGui::BulletText("Mesh");
-			if (selected->GetModel()) ImGui::BulletText("Model");
-			if (selected->GetTexture()) ImGui::BulletText("Texture");
-			if (selected->GetMaterial()) ImGui::BulletText("Material");
-		}
-		else if (showLightInspector)
-		{
-			LightObject* light = lights[selectedLightIndex];
-			ImGui::Text("Light: %s", light->GetName().c_str());
-			ImGui::Separator();
-			ImGui::ColorEdit3("Color", &light->GetColorPtr()->x);
-			ImGui::SliderFloat("Ambient", light->GetAmbientIntensityPtr(), 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse", light->GetDiffuseIntensityPtr(), 0.0f, 2.0f);
-			
-			if (light->GetPositionPtr()) DrawVec3Control("Position", *light->GetPositionPtr(), 0.0f, 0.1f);
-			if (light->GetDirectionPtr()) DrawVec3Control("Direction", *light->GetDirectionPtr(), 0.0f, 0.01f);
-			
-			if (light->GetConstantPtr()) {
-				ImGui::Separator();
-				ImGui::Text("Attenuation");
-				ImGui::SliderFloat("Constant", light->GetConstantPtr(), 0.01f, 2.0f);
-				ImGui::SliderFloat("Linear", light->GetLinearPtr(), 0.001f, 0.5f);
-				ImGui::SliderFloat("Exponent", light->GetExponentPtr(), 0.001f, 0.5f);
-			}
-		}
-
-		// DRAG AND DROP TARGET FOR INSPECTOR (Could be used to apply textures to models)
-		if (ImGui::BeginDragDropTarget()) {
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-				const char* pathStr = (const char*)payload->Data;
-				std::filesystem::path path(pathStr);
-				std::string ext = path.extension().string();
-				for (auto& c : ext) c = tolower(c);
-
-				if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
-					InstantiateModel(path);
-				}
-				// Potential future: apply texture if dropped on specific component
-			}
-			ImGui::EndDragDropTarget();
-		}
-
-		ImGui::End();
-	}
-	RenderAssetBrowser();
-
-	// 4. Viewport Drop Target (Full screen, only active during drag)
-	ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(mainViewport->Pos);
-	ImGui::SetNextWindowSize(mainViewport->Size);
-	
-	ImGuiWindowFlags viewportFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
-	bool isDragging = (ImGui::GetDragDropPayload() != nullptr);
-	if (!isDragging) viewportFlags |= ImGuiWindowFlags_NoInputs;
-	
-	ImGui::Begin("ViewportTarget", nullptr, viewportFlags);
-	
-	// Create a dummy item that covers the whole window so that BeginDragDropTarget has an item to hit
-	ImGui::Dummy(ImGui::GetContentRegionAvail());
-
-	if (ImGui::BeginDragDropTarget()) {
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-			const char* pathStr = (const char*)payload->Data;
-			std::filesystem::path path(pathStr);
-			std::string ext = path.extension().string();
-			for (auto& c : ext) c = tolower(c);
-
-			if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
-				// Calculate world position
-				ImVec2 mousePos = ImGui::GetMousePos();
-				int windowWidth, windowHeight;
-				glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-				float scaleX = (float)pickWidth / (float)windowWidth;
-				float scaleY = (float)pickHeight / (float)windowHeight;
-				float localX = mousePos.x * scaleX;
-				float localY = mousePos.y * scaleY;
-				
-				glm::vec3 rayDir = GetMouseRay(localX, localY, projection, view);
-				glm::vec3 spawnPos(0.0f);
-				if (!RayPlaneIntersection(cameraPos, rayDir, glm::vec3(0,0,0), glm::vec3(0,1,0), spawnPos)) {
-					spawnPos = cameraPos + rayDir * 5.0f;
-				}
-				InstantiateModel(path, spawnPos);
-			}
-		}
-		ImGui::EndDragDropTarget();
-	}
-	ImGui::End();
+	return false;
 }
+
+std::string SceneManager::GetSelectedName() const
+{
+	if (selectedObjectIndex != -1 && selectedObjectIndex < (int)objects.size())
+		return objects[selectedObjectIndex]->GetName();
+	else if (selectedLightIndex != -1 && selectedLightIndex < (int)lights.size())
+		return lights[selectedLightIndex]->GetName();
+	return "None";
+}
+
+// =====================================================================
+// Creation / Deletion
+// =====================================================================
 
 void SceneManager::CreateGameObject(const std::string& type)
 {
 	GameObject* newObj = new GameObject(type + " " + std::to_string(objects.size()));
 	
-	if (type == "Plane") {
-		newObj->SetMesh(PrimitiveGenerator::CreatePlane());
-	} else if (type == "Cube") {
-		newObj->SetMesh(PrimitiveGenerator::CreateCube());
-	} else if (type == "Sphere") {
-		newObj->SetMesh(PrimitiveGenerator::CreateSphere());
-	}
+	if (type == "Plane") newObj->SetMesh(PrimitiveGenerator::CreatePlane());
+	else if (type == "Cube") newObj->SetMesh(PrimitiveGenerator::CreateCube());
+	else if (type == "Sphere") newObj->SetMesh(PrimitiveGenerator::CreateSphere());
 
-	// Set default texture and material
-	if (defaultTexture) newObj->SetTexture(defaultTexture);
-	if (defaultMaterial) newObj->SetMaterial(defaultMaterial);
-	
 	objects.push_back(newObj);
+	selectedObjectIndex = (int)objects.size() - 1;
 	selectedLightIndex = -1;
+	activeDragAxis = 0;
 }
 
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
@@ -639,13 +157,10 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	model->LoadModel(path.string());
 	newObj->SetModel(model);
 
-	// Set default texture and material if available
-	if (defaultTexture) newObj->SetTexture(defaultTexture);
-	if (defaultMaterial) newObj->SetMaterial(defaultMaterial);
-
 	objects.push_back(newObj);
 	selectedObjectIndex = (int)objects.size() - 1;
 	selectedLightIndex = -1;
+	activeDragAxis = 0; // Reset drag on instantiation
 	
 	printf("Instantiated model: %s\n", path.string().c_str());
 }
@@ -684,25 +199,20 @@ void SceneManager::DeleteLight(int index)
 	LightObject* light = lights[index];
 	LightType type = light->GetLightType();
 
-	// Never delete the directional light (Sun)
 	if (type == LightType::Directional) return;
 
-	// Remove from the global light array by compacting it and fix remaining pointers
 	if (type == LightType::Point && globalPointLights && globalPointLightCount) {
 		PointLight* ptr = light->GetPointLight();
 		int arrayIdx = (int)(ptr - globalPointLights);
 		if (arrayIdx >= 0 && arrayIdx < (int)*globalPointLightCount) {
-			for (unsigned int j = arrayIdx; j < *globalPointLightCount - 1; j++) {
+			for (unsigned int j = arrayIdx; j < *globalPointLightCount - 1; j++)
 				globalPointLights[j] = globalPointLights[j + 1];
-			}
 			(*globalPointLightCount)--;
 
-			// Update pointers in remaining LightObjects that pointed past the deleted slot
 			for (auto* lo : lights) {
 				if (lo == light) continue;
-				if (lo->GetLightType() == LightType::Point && lo->GetPointLight() > ptr) {
+				if (lo->GetLightType() == LightType::Point && lo->GetPointLight() > ptr)
 					lo->SetPointLight(lo->GetPointLight() - 1);
-				}
 			}
 		}
 	}
@@ -710,26 +220,223 @@ void SceneManager::DeleteLight(int index)
 		SpotLight* ptr = light->GetSpotLight();
 		int arrayIdx = (int)(ptr - globalSpotLights);
 		if (arrayIdx >= 0 && arrayIdx < (int)*globalSpotLightCount) {
-			for (unsigned int j = arrayIdx; j < *globalSpotLightCount - 1; j++) {
+			for (unsigned int j = arrayIdx; j < *globalSpotLightCount - 1; j++)
 				globalSpotLights[j] = globalSpotLights[j + 1];
-			}
 			(*globalSpotLightCount)--;
 
-			// Update pointers in remaining LightObjects that pointed past the deleted slot
 			for (auto* lo : lights) {
 				if (lo == light) continue;
-				if (lo->GetLightType() == LightType::Spot && lo->GetSpotLight() > ptr) {
+				if (lo->GetLightType() == LightType::Spot && lo->GetSpotLight() > ptr)
 					lo->SetSpotLight(lo->GetSpotLight() - 1);
-				}
 			}
 		}
 	}
 
-	// Remove from lights vector and delete the wrapper
 	delete light;
 	lights.erase(lights.begin() + index);
 	selectedLightIndex = -1;
 }
+
+// =====================================================================
+// Picking System
+// =====================================================================
+
+static glm::vec3 EncodeID(int id)
+{
+	return glm::vec3(
+		((id & 0x0000FF) >> 0) / 255.0f,
+		((id & 0x00FF00) >> 8) / 255.0f,
+		((id & 0xFF0000) >> 16) / 255.0f
+	);
+}
+
+static int DecodeID(unsigned char pixel[3])
+{
+	return pixel[0] + pixel[1] * 256 + pixel[2] * 256 * 256;
+}
+
+void SceneManager::InitPicking(int width, int height)
+{
+	pickWidth = width;
+	pickHeight = height;
+
+	glGenFramebuffers(1, &pickingFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
+
+	glGenTextures(1, &pickingTexture);
+	glBindTexture(GL_TEXTURE_2D, pickingTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pickingTexture, 0);
+
+	glGenRenderbuffers(1, &pickingDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, pickingDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, pickingDepth);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("Picking framebuffer not complete!\n");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	pickingShader.CreateFromFiles("Shaders/picking.vert", "Shaders/picking.frag");
+	pickingInitialized = true;
+}
+
+int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
+{
+	if (!pickingInitialized) return -1;
+
+	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
+	glViewport(0, 0, pickWidth, pickHeight);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	pickingShader.UseShader();
+
+	glUniformMatrix4fv(pickingShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(pickingShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
+
+	GLint modelLoc = pickingShader.GetModelLocation();
+	GLint colorLoc = glGetUniformLocation(pickingShader.GetShaderID(), "pickingColor");
+	GLint isBillboardLoc = glGetUniformLocation(pickingShader.GetShaderID(), "isBillboard");
+	GLint worldPosLoc = glGetUniformLocation(pickingShader.GetShaderID(), "worldPos");
+	GLint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
+	// Objects
+	for (int i = 0; i < (int)objects.size(); i++)
+	{
+		glm::vec3 color = EncodeID(i + 1);
+		glUniform3f(colorLoc, color.r, color.g, color.b);
+
+		glm::mat4 modelMatrix = objects[i]->GetTransform().GetModelMatrix();
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+		if (objects[i]->GetModel()) objects[i]->GetModel()->RenderModel(0);
+		else if (objects[i]->GetMesh()) objects[i]->GetMesh()->RenderMesh();
+	}
+
+	// UI priority: clear depth so icons and gizmos draw over scene objects
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	// Light icons
+	if (iconMesh)
+	{
+		glDisable(GL_CULL_FACE);
+		glUniform1i(isBillboardLoc, 1);
+		glUniform1f(iconSizeLoc, 0.7f);
+
+		for (int i = 0; i < (int)lights.size(); i++)
+		{
+			glm::vec3 color = EncodeID(i + 10000);
+			glUniform3f(colorLoc, color.r, color.g, color.b);
+
+			glm::vec3* pos = lights[i]->GetPositionPtr();
+			if (pos) {
+				glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
+				iconMesh->RenderMesh();
+			}
+		}
+	}
+
+	// Gizmo picking
+	glm::vec3 gizmoPos;
+	if (GetGizmoPosition(gizmoPos))
+	{
+		glm::mat4 objRot = GetSelectedRotationMatrix();
+		float dist = glm::length(gizmoPos - cameraPos);
+		
+		glUniform1i(isBillboardLoc, 0);
+		glDisable(GL_CULL_FACE);
+
+		// 1. Translation arrows (20001, 20002, 20003)
+		if (gizmoArrowModel) {
+			float arrowScale = dist * 0.1f;
+			struct { int id; glm::mat4 extraRot; } arrows[] = {
+				{ 20001, glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0,0,1)) },
+				{ 20002, glm::mat4(1.0f) },
+				{ 20003, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
+			};
+
+			for (auto& a : arrows) {
+				glm::vec3 color = EncodeID(a.id);
+				glUniform3f(colorLoc, color.r, color.g, color.b);
+				// World-space translation arrows: ignore objRot
+				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * a.extraRot;
+				m = glm::scale(m, glm::vec3(arrowScale));
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+				gizmoArrowModel->RenderModel(0);
+			}
+		}
+
+		// 2. Rotation tori (20004, 20005, 20006)
+		if (gizmoTorusModel) {
+			float torusScale = dist * 0.1f * 0.6f;
+			struct { int id; glm::mat4 extraRot; } tori[] = {
+				{ 20004, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0,0,1)) },
+				{ 20005, glm::mat4(1.0f) },
+				{ 20006, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
+			};
+
+			for (auto& t : tori) {
+				glm::vec3 color = EncodeID(t.id);
+				glUniform3f(colorLoc, color.r, color.g, color.b);
+				// Local-space rotation tori: use objRot
+				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * t.extraRot;
+				m = glm::scale(m, glm::vec3(torusScale));
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+				gizmoTorusModel->RenderModel(0);
+			}
+		}
+	}
+
+	// Restore GL state
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
+	// Read pixel
+	glFlush();
+	glFinish();
+
+	int windowWidth, windowHeight;
+	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+	float scaleX = (float)pickWidth / (float)windowWidth;
+	float scaleY = (float)pickHeight / (float)windowHeight;
+
+	unsigned char pixel[3];
+	int readX = (int)(mouseX * scaleX);
+	int readY = pickHeight - (int)(mouseY * scaleY);
+	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
+
+	int pickedID = DecodeID(pixel);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Selection
+	if (pickedID > 0 && pickedID <= (int)objects.size()) {
+		selectedObjectIndex = pickedID - 1;
+		selectedLightIndex = -1;
+	}
+	else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size()) {
+		selectedLightIndex = pickedID - 10000;
+		selectedObjectIndex = -1;
+	}
+	else if (pickedID < 20000) {
+		selectedObjectIndex = -1;
+		selectedLightIndex = -1;
+	}
+
+	return pickedID;
+}
+
+// =====================================================================
+// Icons
+// =====================================================================
+
 void SceneManager::InitIcons()
 {
 	iconShader.CreateFromFiles("Shaders/icon.vert", "Shaders/icon.frag");
@@ -748,8 +455,79 @@ void SceneManager::InitIcons()
 	}
 
 	CreateIconMesh();
-	InitThumbnailFBO();
 }
+
+void SceneManager::CreateIconMesh()
+{
+	unsigned int indices[] = { 0, 2, 1, 1, 2, 3 };
+
+	GLfloat vertices[] = {
+		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+	};
+
+	iconMesh = new Mesh();
+	iconMesh->CreateMesh(vertices, indices, 56, 6);
+}
+
+void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
+{
+	if (!iconMesh || !lightIconTexture || iconShader.GetShaderID() == 0) return;
+
+	while (glGetError() != GL_NO_ERROR);
+
+	iconShader.UseShader();
+	
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	
+	GLint projLoc = iconShader.GetProjectionLocation();
+	GLint viewLoc = iconShader.GetViewLocation();
+	
+	if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+	if (viewLoc != -1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	
+	GLint worldPosLoc = glGetUniformLocation(iconShader.GetShaderID(), "worldPos");
+	GLint iconSizeLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconSize");
+	GLint textureLoc = glGetUniformLocation(iconShader.GetShaderID(), "theTexture");
+	GLint iconColorLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconColor");
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, lightIconTexture->GetTextureID());
+	
+	if (textureLoc != (GLuint)-1) glUniform1i(textureLoc, 0); 
+	if (iconSizeLoc != (GLuint)-1) glUniform1f(iconSizeLoc, 0.5f); 
+
+	for (auto* light : lights)
+	{
+		if (!light) continue;
+
+		glm::vec3* pos = light->GetPositionPtr();
+		if (pos)
+		{
+			if (worldPosLoc != -1) glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
+			
+			glm::vec3* color = light->GetColorPtr();
+			if (iconColorLoc != -1 && color) glUniform3f(iconColorLoc, color->x, color->y, color->z);
+			
+			iconMesh->RenderMesh();
+		}
+	}
+
+	glUseProgram(0);
+	glEnable(GL_CULL_FACE);
+	
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR) {
+		printf("OpenGL error in RenderIcons: 0x%x\n", err);
+	}
+}
+
+// =====================================================================
+// Gizmo
+// =====================================================================
 
 void SceneManager::InitGizmo()
 {
@@ -767,192 +545,87 @@ void SceneManager::InitGizmo()
 	gizmoTorusModel->LoadModel("Utils/torus.obj");
 }
 
-void SceneManager::CreateIconMesh()
-{
-	unsigned int indices[] = {
-		0, 2, 1,
-		1, 2, 3
-	};
-
-	GLfloat vertices[] = {
-		// x     y      z     u     v     nx    ny    nz    tx    ty    tz    bx    by    bz
-		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-		 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
-	};
-
-	iconMesh = new Mesh();
-	iconMesh->CreateMesh(vertices, indices, 56, 6);
-}
-
-void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
-{
-	if (!iconMesh || !lightIconTexture || iconShader.GetShaderID() == 0) return;
-
-	// Clear any previous errors to isolate the issue
-	while (glGetError() != GL_NO_ERROR);
-
-	iconShader.UseShader();
-	
-	// Disable face culling for billboards (they may face either direction)
-	glDisable(GL_CULL_FACE);
-	
-	GLuint projLoc = iconShader.GetProjectionLocation();
-	GLuint viewLoc = iconShader.GetViewLocation();
-	
-	if (projLoc != (GLuint)-1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-	if (viewLoc != (GLuint)-1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-	
-	GLuint worldPosLoc = glGetUniformLocation(iconShader.GetShaderID(), "worldPos");
-	GLuint iconSizeLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconSize");
-	GLuint textureLoc = glGetUniformLocation(iconShader.GetShaderID(), "theTexture");
-	GLuint iconColorLoc = glGetUniformLocation(iconShader.GetShaderID(), "iconColor");
-	
-	// Force unit 0 specifically for icons to avoid unit 1 mismatch from Texture::UseTexture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, lightIconTexture->GetTextureID()); // Bypass UseTexture() hardcoded unit
-	
-	if (textureLoc != (GLuint)-1) glUniform1i(textureLoc, 0); 
-	if (iconSizeLoc != (GLuint)-1) glUniform1f(iconSizeLoc, 0.5f); 
-
-	for (auto* light : lights)
-	{
-		if (!light) continue;
-
-		glm::vec3* pos = light->GetPositionPtr();
-		if (pos)
-		{
-			if (worldPosLoc != (GLuint)-1) glUniform3f(worldPosLoc, pos->x, pos->y, pos->z);
-			
-			glm::vec3* color = light->GetColorPtr();
-			if (iconColorLoc != (GLuint)-1 && color) glUniform3f(iconColorLoc, color->x, color->y, color->z);
-			
-			iconMesh->RenderMesh();
-		}
-	}
-
-	glUseProgram(0);
-	
-	// Re-enable face culling after billboard rendering
-	glEnable(GL_CULL_FACE);
-	
-	// Final check for errors
-	GLenum err = glGetError();
-	if (err != GL_NO_ERROR) {
-		printf("OpenGL error in RenderIcons: 0x%x\n", err);
-	}
-}
-
 void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos)
 {
-	// Only render if something is selected
-	if (selectedObjectIndex == -1 && selectedLightIndex == -1) return;
+	glm::vec3 gizmoPos;
+	if (!GetGizmoPosition(gizmoPos)) return;
 	if (!gizmoArrowModel || gizmoShader.GetShaderID() == 0) return;
 
-	glm::vec3 gizmoPos(0.0f);
-	if (selectedObjectIndex != -1) {
-		gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-	} else {
-		glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
-		if (lightPos) gizmoPos = *lightPos;
-		else return; // Don't render gizmo for directional lights with no position
-	}
-
-	// Dynamic scale based on distance to camera to maintain constant screen size
 	float dist = glm::length(gizmoPos - cameraPos);
-	float scaleFactor = dist * 0.1f; // Scaled down for better visual balance
-	glm::vec3 scale(scaleFactor);
+	float scaleFactor = dist * 0.1f; // Restored to 0.1f for better thickness
+	float torusScaleFactor = dist * 0.1f * 0.6f;
 
-	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
 	gizmoShader.UseShader();
 	
-	GLuint projLoc = gizmoShader.GetProjectionLocation();
-	GLuint viewLoc = gizmoShader.GetViewLocation();
-	GLuint modelLoc = gizmoShader.GetModelLocation();
-	GLuint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+	GLint projLoc = gizmoShader.GetProjectionLocation();
+	GLint viewLoc = gizmoShader.GetViewLocation();
+	GLint modelLoc = gizmoShader.GetModelLocation();
+	GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
 
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-	// Calculate object rotation matrix
-	glm::mat4 objRot(1.0f);
-	if (selectedObjectIndex != -1) {
-		glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
-		objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 objRot = GetSelectedRotationMatrix();
+
+	// DRY: data-driven rendering for all 6 gizmo parts
+	struct GizmoPart {
+		Model* model;
+		int axisID;
+		glm::vec3 defaultColor;
+		glm::mat4 extraRot;
+		float scale;
+	};
+
+	// World-space translation arrows (ignore objRot)
+	GizmoPart translationParts[] = {
+		{ gizmoArrowModel, 20002, {0,1,0}, glm::mat4(1.0f), scaleFactor },
+		{ gizmoArrowModel, 20001, {1,0,0}, glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0,0,1)), scaleFactor },
+		{ gizmoArrowModel, 20003, {0,0,1}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)), scaleFactor }
+	};
+
+	// Local-space rotation tori (use objRot)
+	GizmoPart rotationParts[] = {
+		{ gizmoTorusModel, 20004, {1,0,0}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0,0,1)), torusScaleFactor },
+		{ gizmoTorusModel, 20005, {0,1,0}, glm::mat4(1.0f), torusScaleFactor },
+		{ gizmoTorusModel, 20006, {0,0,1}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)), torusScaleFactor }
+	};
+
+	// Draw order: Arrows FIRST, Tori SECOND (so tori overlap)
+	for (auto& part : translationParts)
+	{
+		if (!part.model) continue;
+		glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * part.extraRot; // No objRot
+		m = glm::scale(m, glm::vec3(part.scale));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+
+		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
+		part.model->RenderModel(0);
 	}
 
-	// --- Rotation Tori (Draw FIRST) ---
-	float torusScaleFactor = dist * 0.1f * 0.6f; // Reduced from 1.3f
-	glm::vec3 torusScale(torusScaleFactor);
+	for (auto& part : rotationParts)
+	{
+		if (!part.model) continue;
+		glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * part.extraRot; // Uses objRot
+		m = glm::scale(m, glm::vec3(part.scale));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
 
-	// X Rotation (Red) - YZ plane
-	glm::mat4 rotX = glm::translate(glm::mat4(1.0f), gizmoPos);
-	rotX = rotX * objRot;
-	rotX = glm::rotate(rotX, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	rotX = glm::scale(rotX, torusScale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotX));
-	if (activeDragAxis == 20004) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f); // Gold/Yellow when active
-	else glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
-	gizmoTorusModel->RenderModel(0);
-
-	// Y Rotation (Green) - XZ plane
-	glm::mat4 rotY = glm::translate(glm::mat4(1.0f), gizmoPos);
-	rotY = rotY * objRot;
-	rotY = glm::scale(rotY, torusScale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotY));
-	if (activeDragAxis == 20005) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-	else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
-	gizmoTorusModel->RenderModel(0);
-
-	// Z Rotation (Blue) - XY plane
-	glm::mat4 rotZ = glm::translate(glm::mat4(1.0f), gizmoPos);
-	rotZ = rotZ * objRot;
-	rotZ = glm::rotate(rotZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	rotZ = glm::scale(rotZ, torusScale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotZ));
-	if (activeDragAxis == 20006) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-	else glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
-	gizmoTorusModel->RenderModel(0);
-
-	// --- Move Arrows (Draw SECOND to be on top) ---
-	// Y Axis (Green)
-	glm::mat4 modelY = glm::translate(glm::mat4(1.0f), gizmoPos);
-	modelY = modelY * objRot;
-	modelY = glm::scale(modelY, scale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelY));
-	if (activeDragAxis == 20002) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-	else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
-	gizmoArrowModel->RenderModel(0);
-
-	// X Axis (Red) - Rotate -90 degrees around Z
-	glm::mat4 modelX = glm::translate(glm::mat4(1.0f), gizmoPos);
-	modelX = modelX * objRot;
-	modelX = glm::rotate(modelX, glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	modelX = glm::scale(modelX, scale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelX));
-	if (activeDragAxis == 20001) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-	else glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
-	gizmoArrowModel->RenderModel(0);
-
-	// Z Axis (Blue) - Rotate +90 degrees around X
-	glm::mat4 modelZ = glm::translate(glm::mat4(1.0f), gizmoPos);
-	modelZ = modelZ * objRot;
-	modelZ = glm::rotate(modelZ, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	modelZ = glm::scale(modelZ, scale);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelZ));
-	if (activeDragAxis == 20003) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-	else glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
-	gizmoArrowModel->RenderModel(0);
+		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
+		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
+		part.model->RenderModel(0);
+	}
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glUseProgram(0);
 }
+
+// =====================================================================
+// Mouse/Gizmo Interaction
+// =====================================================================
 
 void SceneManager::HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos)
 {
@@ -961,65 +634,66 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 			int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos);
 			printf("Picked ID: %d\n", pickedID);
 			
+			glm::vec3 cameraForward = -glm::normalize(glm::vec3(glm::inverse(view)[2]));
+			glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
+			glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
+
 			if (pickedID >= 20001 && pickedID <= 20003) {
+				// === TRANSLATION ===
 				activeDragAxis = pickedID;
 				printf("Gizmo Drag START: Axis %d\n", activeDragAxis);
 				
-				// Calculate initial drag anchors
-				if (selectedObjectIndex != -1) dragInitialObjectPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-				else if (selectedLightIndex != -1) dragInitialObjectPos = *lights[selectedLightIndex]->GetPositionPtr();
+				GetGizmoPosition(dragInitialObjectPos);
 				
-				// Calculate local axes based on object rotation
-				glm::mat4 objRot(1.0f);
-				if (selectedObjectIndex != -1) {
-					glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
-					objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-					objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-					objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
+				// World-space translation arrows: ignore objRot
+				glm::vec3 axis(0.0f);
+				if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
+				else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
+				else axis = glm::vec3(0, 0, 1);
+
+				// Best drag plane: contains the axis, faces the camera
+				// plane normal = cross(axis, cross(cameraForward, axis))
+				glm::vec3 crossCamAxis = glm::cross(cameraForward, axis);
+				if (glm::length(crossCamAxis) < 1e-4f) {
+					// Camera looking along the axis — use camera up as fallback
+					glm::vec3 cameraUp = glm::normalize(glm::vec3(glm::inverse(view)[1]));
+					crossCamAxis = glm::cross(cameraUp, axis);
 				}
-
-				glm::vec3 localX = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
-				glm::vec3 localY = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
-				glm::vec3 localZ = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
-
-				// Pick the best plane for dragging
-				glm::vec3 cameraFront = glm::normalize(glm::vec3(glm::inverse(view)[2])); 
-				glm::vec3 planeNorm1, planeNorm2;
-				
-				if (activeDragAxis == 20001) { planeNorm1 = localY; planeNorm2 = localZ; }
-				else if (activeDragAxis == 20002) { planeNorm1 = localX; planeNorm2 = localZ; }
-				else { planeNorm1 = localX; planeNorm2 = localY; }
-				
-				if (std::abs(glm::dot(planeNorm1, cameraFront)) > std::abs(glm::dot(planeNorm2, cameraFront)))
-					dragPlaneNormal = planeNorm1;
-				else
-					dragPlaneNormal = planeNorm2;
+				dragPlaneNormal = glm::normalize(glm::cross(axis, crossCamAxis));
 					
-				glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
-				glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
-				
-				RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, dragInitialIntersectPos);
+				RayPlaneIntersect(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, dragInitialIntersectPos);
 			}
 			else if (pickedID >= 20004 && pickedID <= 20006) {
+				// === ROTATION ===
 				activeDragAxis = pickedID;
 				printf("Gizmo Rotation START: Axis %d\n", activeDragAxis);
 
 				if (selectedObjectIndex != -1) {
 					dragInitialObjectRot = objects[selectedObjectIndex]->GetTransform().GetRotation();
-					glm::vec3 gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-
-					// Calculate screen center of gizmo for seamless rotation
-					glm::vec4 ndc = projection * view * glm::vec4(gizmoPos, 1.0f);
-					if (ndc.w != 0) ndc /= ndc.w;
-
-					int windowWidth, windowHeight;
-					glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-					float centerX = (ndc.x + 1.0f) * 0.5f * windowWidth;
-					float centerY = (1.0f - ndc.y) * 0.5f * windowHeight;
-
-					dragInitialAngle = atan2(mouseY - centerY, mouseX - centerX);
+					dragRotationCenter = objects[selectedObjectIndex]->GetTransform().GetPosition();
+				} else if (selectedLightIndex != -1) {
+					dragInitialObjectRot = glm::vec3(0.0f);
+					glm::vec3* lp = lights[selectedLightIndex]->GetPositionPtr();
+					if (lp) dragRotationCenter = *lp;
 				}
-				else if (selectedLightIndex != -1) dragInitialObjectRot = glm::vec3(0.0f); 
+
+				// Rotation axis in world space
+				glm::mat4 objRot = GetSelectedRotationMatrix();
+				if (activeDragAxis == 20004) dragRotationAxis = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
+				else if (activeDragAxis == 20005) dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
+				else dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
+				dragRotationAxis = glm::normalize(dragRotationAxis);
+
+				// Rotation plane: perpendicular to the rotation axis, through center
+				dragPlaneNormal = dragRotationAxis;
+
+				glm::vec3 hitPoint;
+				if (RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
+					dragInitialRotVec = glm::normalize(hitPoint - dragRotationCenter);
+				} else {
+					// Fallback: if ray is parallel to plane, use camera right
+					dragInitialRotVec = glm::normalize(glm::vec3(glm::inverse(view)[0]));
+				}
 
 				dragInitialMousePos = glm::vec2(mouseX, mouseY);
 			}
@@ -1033,48 +707,64 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
 {
 	if (activeDragAxis == 0) return;
-	// printf("Dragging axis %d...\n", activeDragAxis);
 
 	glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
 	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view);
 	
-	glm::vec3 currentIntersect;
-	if (activeDragAxis >= 20001 && activeDragAxis <= 20003 && RayPlaneIntersection(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect)) {
+	if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
+		// === TRANSLATION ===
+		glm::vec3 currentIntersect;
+		if (!RayPlaneIntersect(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect))
+			return;
+
 		glm::vec3 delta = currentIntersect - dragInitialIntersectPos;
 		
-		glm::mat4 objRot(1.0f);
-		if (selectedObjectIndex != -1) {
-			glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
-			objRot = glm::rotate(objRot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-			objRot = glm::rotate(objRot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		}
-
+		// World-space translation arrows: ignore objRot
 		glm::vec3 axis(0.0f);
-		if (activeDragAxis == 20001) axis = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
-		else if (activeDragAxis == 20002) axis = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
-		else if (activeDragAxis == 20003) axis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
+		if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
+		else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
+		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
 		
 		float movement = glm::dot(delta, axis);
+		movement = glm::clamp(movement, -50.0f, 50.0f);
+
 		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
 		
 		if (selectedObjectIndex != -1) objects[selectedObjectIndex]->GetTransform().SetPosition(newPos);
 		else if (selectedLightIndex != -1) lights[selectedLightIndex]->SetPosition(newPos);
 	}
 	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
+		// === ROTATION ===
 		if (selectedObjectIndex == -1) return;
 
-		glm::vec3 gizmoPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
-		glm::vec4 ndc = projection * view * glm::vec4(gizmoPos, 1.0f);
-		if (ndc.w != 0) ndc /= ndc.w;
+		glm::vec3 hitPoint;
+		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
+			// Fallback: use mouse delta for rotation when ray is parallel to plane
+			float dx = mouseX - dragInitialMousePos.x;
+			float deltaAngle = dx * 0.5f; // 0.5 degrees per pixel
+			deltaAngle = glm::clamp(deltaAngle, -180.0f, 180.0f);
 
-		int windowWidth, windowHeight;
-		glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
-		float centerX = (ndc.x + 1.0f) * 0.5f * windowWidth;
-		float centerY = (1.0f - ndc.y) * 0.5f * windowHeight;
+			glm::vec3 rotationDelta(0.0f);
+			if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
+			else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
+			else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
 
-		float currentAngle = atan2(mouseY - centerY, mouseX - centerX);
-		float deltaAngle = -glm::degrees(currentAngle - dragInitialAngle); // Negated to fix inversion
+			objects[selectedObjectIndex]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
+			return;
+		}
+
+		glm::vec3 currentVec = hitPoint - dragRotationCenter;
+		float len = glm::length(currentVec);
+		if (len < 1e-6f) return;
+		currentVec /= len;
+
+		// Signed angle between initial and current vectors, relative to the rotation axis
+		float dotVal = glm::clamp(glm::dot(dragInitialRotVec, currentVec), -1.0f, 1.0f);
+		glm::vec3 crossVal = glm::cross(dragInitialRotVec, currentVec);
+		float sign = glm::dot(crossVal, dragRotationAxis);
+		float angleRad = atan2(glm::length(crossVal) * (sign >= 0 ? 1.0f : -1.0f), dotVal);
+		float deltaAngle = glm::degrees(angleRad);
+		deltaAngle = glm::clamp(deltaAngle, -180.0f, 180.0f);
 
 		glm::vec3 rotationDelta(0.0f);
 		if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
@@ -1085,10 +775,18 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 	}
 }
 
+// =====================================================================
+// Math Utilities
+// =====================================================================
+
 glm::vec3 SceneManager::GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view)
 {
-	float x = (2.0f * mouseX) / pickWidth - 1.0f;
-	float y = 1.0f - (2.0f * mouseY) / pickHeight;
+	// Use actual window size for NDC conversion (not the picking FBO size)
+	int windowWidth, windowHeight;
+	glfwGetWindowSize(glfwGetCurrentContext(), &windowWidth, &windowHeight);
+
+	float x = (2.0f * mouseX) / windowWidth - 1.0f;
+	float y = 1.0f - (2.0f * mouseY) / windowHeight;
 	
 	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
 	glm::vec4 rayEye = glm::inverse(projection) * rayClip;
@@ -1098,7 +796,7 @@ glm::vec3 SceneManager::GetMouseRay(float mouseX, float mouseY, const glm::mat4&
 	return glm::normalize(rayWorld);
 }
 
-bool SceneManager::RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint)
+bool SceneManager::RayPlaneIntersect(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint)
 {
 	float denom = glm::dot(planeNormal, rayDir);
 	if (std::abs(denom) > 1e-6) {
@@ -1109,310 +807,4 @@ bool SceneManager::RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, g
 		}
 	}
 	return false;
-}
-
-void SceneManager::Clear()
-{
-	for (auto* obj : objects)
-	{
-		delete obj;
-	}
-	objects.clear();
-	
-	for (auto* light : lights)
-	{
-		delete light;
-	}
-	lights.clear();
-	
-	selectedObjectIndex = -1;
-	selectedLightIndex = -1;
-}
-
-void SceneManager::LoadAssetIcons()
-{
-	if (!folderIconSlot) {
-		folderIconSlot = new Texture("Assets/Textures/plain.png"); // Placeholder for folder
-		folderIconSlot->LoadTextureA();
-	}
-	if (!modelIconSlot) {
-		modelIconSlot = new Texture("Assets/Textures/plain.png"); // Placeholder for model
-		modelIconSlot->LoadTextureA();
-	}
-}
-
-void SceneManager::InitThumbnailFBO()
-{
-	if (thumbnailFBO != 0) CleanupThumbnailFBO();
-
-	glGenFramebuffers(1, &thumbnailFBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
-
-	// Create thumbnail texture (RGBA to avoid alignment issues)
-	glGenTextures(1, &thumbnailTexture);
-	glBindTexture(GL_TEXTURE_2D, thumbnailTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, thumbnailSize, thumbnailSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, thumbnailTexture, 0);
-
-	// Create depth buffer
-	glGenRenderbuffers(1, &thumbnailDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, thumbnailDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, thumbnailSize, thumbnailSize);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, thumbnailDepth);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		printf("Thumbnail Framebuffer is not complete!\n");
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	// Load thumbnail shader
-	thumbnailShader.CreateFromFiles("Shaders/thumbnail.vert", "Shaders/thumbnail.frag");
-}
-
-void SceneManager::CleanupThumbnailFBO()
-{
-	if (thumbnailFBO != 0) {
-		glDeleteFramebuffers(1, &thumbnailFBO);
-		thumbnailFBO = 0;
-	}
-	if (thumbnailTexture != 0) {
-		glDeleteTextures(1, &thumbnailTexture);
-		thumbnailTexture = 0;
-	}
-	if (thumbnailDepth != 0) {
-		glDeleteRenderbuffers(1, &thumbnailDepth);
-		thumbnailDepth = 0;
-	}
-}
-
-void SceneManager::GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot)
-{
-	if (thumbnailFBO == 0) return;
-
-	// Load model
-	Model tempModel;
-	tempModel.LoadModel(modelPath.string());
-
-	// Setup rendering state
-	GLint oldViewport[4];
-	glGetIntegerv(GL_VIEWPORT, oldViewport);
-	glViewport(0, 0, thumbnailSize, thumbnailSize);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
-	glClearColor(0.2f, 0.2f, 0.2f, 1.0f); // Slightly lighter gray
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE); // Ensure all parts are visible
-
-	// Use thumbnailShader for thumbnail capture
-	thumbnailShader.UseShader();
-	
-	// Frame the model automatically
-	glm::vec3 minB = tempModel.GetMinBound();
-	glm::vec3 maxB = tempModel.GetMaxBound();
-	glm::vec3 center = (minB + maxB) * 0.5f;
-	glm::vec3 size = maxB - minB;
-	float maxDim = std::max({ size.x, size.y, size.z });
-	if (maxDim < 0.001f) maxDim = 1.0f;
-
-	// Set basic matrices
-	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, maxDim * 10.0f);
-	// Pull camera back based on model size
-	float cameraDist = maxDim * 1.5f;
-	glm::mat4 view = glm::lookAt(center + glm::vec3(cameraDist, cameraDist, cameraDist) * 0.6f, center, glm::vec3(0, 1, 0));
-	
-	glUniformMatrix4fv(thumbnailShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
-	glUniformMatrix4fv(thumbnailShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
-	
-	glm::mat4 model = glm::mat4(1.0f); // Model is already translated via view's lookAt center
-	glUniformMatrix4fv(thumbnailShader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
-
-	// Set shader uniforms
-	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
-	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.HasTextures() ? 1 : 0); 
-
-	tempModel.RenderModel(-1); // Pass -1 to safely ignore normal map uniform
-
-	// Read back (using RGBA for 4-byte stride safety)
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	unsigned char* data = new unsigned char[thumbnailSize * thumbnailSize * 4];
-	glReadPixels(0, 0, thumbnailSize, thumbnailSize, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-	// Create a new OpenGL texture for the cache
-	GLuint newTexID;
-	glGenTextures(1, &newTexID);
-	glBindTexture(GL_TEXTURE_2D, newTexID);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, thumbnailSize, thumbnailSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	
-	// Since our Texture class manages IDs, we'll wrap it
-	targetSlot->SetTextureID(newTexID);
-
-	delete[] data;
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
-	tempModel.ClearModel();
-}
-
-void SceneManager::RefreshAssetList()
-{
-	currentAssets.clear();
-	LoadAssetIcons();
-
-	if (!std::filesystem::exists(currentAssetPath)) {
-		currentAssetPath = "Assets";
-		if (!std::filesystem::exists(currentAssetPath)) return;
-	}
-
-	for (auto const& entry : std::filesystem::directory_iterator(currentAssetPath))
-	{
-		AssetInfo info;
-		info.name = entry.path().filename().string();
-		info.path = entry.path();
-		
-		if (entry.is_directory()) {
-			info.type = AssetType::Folder;
-			info.thumbnail = folderIconSlot;
-		}
-		else {
-			std::string ext = entry.path().extension().string();
-			for (auto& c : ext) c = tolower(c);
-
-			if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
-				info.type = AssetType::Texture;
-				// Try to get from cache or load
-				std::string pStr = entry.path().string();
-				if (assetTextureCache.count(pStr)) {
-					info.thumbnail = assetTextureCache[pStr];
-				}
-				else {
-					Texture* tex = new Texture(pStr.data());
-					if (tex->LoadTexture()) {
-						assetTextureCache[pStr] = tex;
-						info.thumbnail = tex;
-					}
-					else {
-						delete tex;
-						info.thumbnail = nullptr;
-					}
-				}
-			}
-			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
-				info.type = AssetType::Model;
-				std::string pStr = entry.path().string();
-				if (assetTextureCache.count(pStr)) {
-					info.thumbnail = assetTextureCache[pStr];
-				}
-				else {
-					Texture* tex = new Texture(); // Container for the rendered texture
-					GenerateModelThumbnail(entry.path(), tex);
-					assetTextureCache[pStr] = tex;
-					info.thumbnail = tex;
-				}
-			}
-			else {
-				continue; // Skip everything else (mtl, meta, tga etc)
-			}
-		}
-		currentAssets.push_back(info);
-	}
-}
-
-void SceneManager::RenderAssetBrowser()
-{
-	int bufferWidth, bufferHeight;
-	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
-	ImGui::SetNextWindowPos(ImVec2(300, 450), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth - 300.0f, 500.0f), ImGuiCond_FirstUseEver);
-
-	ImGui::Begin("Project", &windowState.isAssetBrowserOpen);
-
-	if (ImGui::Button("Refresh")) {
-		RefreshAssetList();
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("..")) {
-		if (currentAssetPath.has_parent_path() && currentAssetPath != "Assets") {
-			currentAssetPath = currentAssetPath.parent_path();
-			RefreshAssetList();
-		}
-	}
-	ImGui::SameLine();
-	ImGui::Text("Path: %s", currentAssetPath.string().c_str());
-
-	ImGui::Separator();
-
-	float cellSize = 100.0f;
-	float padding = 16.0f;
-	float panelWidth = ImGui::GetContentRegionAvail().x;
-	int columnCount = (int)(panelWidth / (cellSize + padding));
-	if (columnCount < 1) columnCount = 1;
-
-	ImGui::Columns(columnCount, 0, false);
-
-	for (int i = 0; i < (int)currentAssets.size(); i++)
-	{
-		ImGui::PushID(i);
-		
-		ImVec4 tint = ImVec4(1, 1, 1, 1);
-		if (currentAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1); // Yellowish for folders
-
-		ImVec2 startPos = ImGui::GetCursorPos();
-		bool isSelected = (currentAssets[i].path == selectedAssetPath);
-
-		// Use a selectable for the entire area (image + text)
-		if (ImGui::Selectable("##selectable", isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(cellSize, cellSize + 40))) {
-			selectedAssetPath = currentAssets[i].path;
-			
-			if (ImGui::IsMouseDoubleClicked(0)) {
-				if (currentAssets[i].type == AssetType::Folder) {
-					currentAssetPath = currentAssets[i].path;
-					RefreshAssetList();
-					ImGui::PopID();
-					break; 
-				}
-			}
-		}
-
-		// DRAG AND DROP SOURCE - must follow the item (Selectable)
-		if (ImGui::BeginDragDropSource()) {
-			std::string pathStr = currentAssets[i].path.string();
-			ImGui::SetDragDropPayload("ASSET_PATH", pathStr.c_str(), pathStr.size() + 1);
-			
-			// Visual preview while dragging
-			ImGui::Text("Dragging %s", currentAssets[i].name.c_str());
-			if (currentAssets[i].thumbnail) {
-				ImGui::Image((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
-			}
-			ImGui::EndDragDropSource();
-		}
-
-		// Draw the content on top of the selectable
-		ImGui::SetCursorPos(startPos);
-		ImGui::BeginGroup();
-		
-		if (currentAssets[i].thumbnail) {
-			ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0, 0, 0, 0), tint);
-		}
-		else {
-			ImGui::Button("??", ImVec2(cellSize, cellSize));
-		}
-
-		ImGui::TextWrapped("%s", currentAssets[i].name.c_str());
-		ImGui::EndGroup();
-		
-		ImGui::NextColumn();
-		ImGui::PopID();
-	}
-
-	ImGui::Columns(1);
-
-	ImGui::End();
 }

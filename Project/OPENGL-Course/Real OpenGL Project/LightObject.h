@@ -23,6 +23,7 @@ public:
 	~LightObject();
 
 	const std::string& GetName() const { return name; }
+	void SetName(const std::string& newName) { name = newName; }
 	LightType GetLightType() const { return lightType; }
 
 	// Get underlying light

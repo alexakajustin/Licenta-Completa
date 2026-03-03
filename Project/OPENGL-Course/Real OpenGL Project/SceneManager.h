@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <string>
-#include <map>
 #include <filesystem>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -14,93 +13,75 @@
 #include "Shader.h"
 #include "Texture.h"
 
-enum class AssetType {
-	Folder,
-	Texture,
-	Model,
-	Other
-};
-
-struct AssetInfo {
-	std::string name;
-	std::filesystem::path path;
-	AssetType type;
-	Texture* thumbnail = nullptr;
-};
-
 class SceneManager
 {
 public:
 	SceneManager();
 	~SceneManager();
 
-	// Object management
+	// ========== Object Management ==========
 	void AddObject(GameObject* obj);
 	void RemoveObject(const std::string& name);
 	GameObject* FindObject(const std::string& name);
 	std::vector<GameObject*>& GetObjects() { return objects; }
 
-	// Light management
+	// ========== Light Management ==========
 	void AddLight(LightObject* light);
 	std::vector<LightObject*>& GetLights() { return lights; }
 
-	// Selection (negative = object, positive = light, 0 = none)
+	// ========== Selection ==========
 	void SetSelectedIndex(int index) { 
 		selectedObjectIndex = index; 
-		if (index >= 0) selectedLightIndex = -1; // Clear light selection
+		activeDragAxis = 0; // Reset drag state on selection change
+		if (index >= 0) selectedLightIndex = -1;
 	}
 	int GetSelectedIndex() const { return selectedObjectIndex; }
 	
 	void SetSelectedLightIndex(int index) { 
 		selectedLightIndex = index; 
-		if (index >= 0) selectedObjectIndex = -1; // Clear object selection
+		activeDragAxis = 0; // Reset drag state on selection change
+		if (index >= 0) selectedObjectIndex = -1;
 	}
 	int GetSelectedLightIndex() const { return selectedLightIndex; }
+	std::string GetSelectedName() const;
 
-	// Initialize picking (call after OpenGL context is ready)
-	void InitPicking(int width, int height);
-	void InitIcons();
-
-	// Color picking - renders scene to pick buffer, returns object index at mouse pos
-	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
-
-	// Rendering
-	void RenderAll(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
+	// ========== Rendering ==========
+	void RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
-	// ImGui interface
-	void RenderImGui(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos);
-	void RenderAssetBrowser();
-	void RefreshAssetList();
-	void GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot);
-
-	// Creation methods
-	void CreateGameObject(const std::string& type);
-	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
-	void CreateLight(LightType type);
-
-	// Gizmo methods
+	// ========== Picking & Gizmo ==========
+	void InitPicking(int width, int height);
+	void InitIcons();
 	void InitGizmo();
+	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
 	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos);
 	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
 
-	// Deletion
+	// ========== Creation / Deletion ==========
+	void CreateGameObject(const std::string& type);
+	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
+	void CreateLight(LightType type);
 	void DeleteLight(int index);
 
-	// Sync with global lighting system
+	// ========== Configuration ==========
 	void SetLightArrays(PointLight* pLights, unsigned int* pCount, SpotLight* sLights, unsigned int* sCount) {
 		globalPointLights = pLights;
 		globalPointLightCount = pCount;
 		globalSpotLights = sLights;
 		globalSpotLightCount = sCount;
 	}
-
-	// Default resources
 	void SetDefaultResources(Texture* tex, Material* mat) { defaultTexture = tex; defaultMaterial = mat; }
 
-	// Clear all objects
+	// ========== Utilities (public for EditorUI viewport drop) ==========
+	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
+	bool RayPlaneIntersect(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint);
+
+	// ========== Cleanup ==========
 	void Clear();
+
+	// Keep for asset browser backward compat
+	void RefreshAssetList() {} // No-op, AssetBrowser handles this now
 
 private:
 	std::vector<GameObject*> objects;
@@ -110,12 +91,6 @@ private:
 
 	Texture* defaultTexture = nullptr;
 	Material* defaultMaterial = nullptr;
-
-	struct WindowState {
-		bool isHierarchyOpen = true;
-		bool isInspectorOpen = true;
-		bool isAssetBrowserOpen = true;
-	} windowState;
 
 	// Global light state pointers
 	PointLight* globalPointLights = nullptr;
@@ -143,34 +118,19 @@ private:
 	Model* gizmoTorusModel = nullptr;
 
 	// Gizmo dragging state
-	int activeDragAxis = 0; // 0=None, 20001=X, 20002=Y, 20003=Z (Move), 20004=X, 20005=Y, 20006=Z (Rot)
+	int activeDragAxis = 0;
 	glm::vec3 dragInitialObjectPos;
 	glm::vec3 dragInitialObjectRot;
 	glm::vec2 dragInitialMousePos;
-	float dragInitialAngle; // For seamless rotation
 	glm::vec3 dragInitialIntersectPos;
 	glm::vec3 dragPlaneNormal;
+	// Rotation-specific: ray-plane approach
+	glm::vec3 dragRotationCenter;
+	glm::vec3 dragInitialRotVec;  // Initial vector from center to plane intersection
+	glm::vec3 dragRotationAxis;   // The world-space rotation axis
 
-	// Asset Navigator state
-	std::filesystem::path currentAssetPath;
-	std::filesystem::path selectedAssetPath;
-	std::vector<AssetInfo> currentAssets;
-	std::map<std::string, Texture*> assetTextureCache;
-	Texture* folderIconSlot = nullptr;
-	Texture* modelIconSlot = nullptr;
-
-	void LoadAssetIcons();
-	void InitThumbnailFBO();
-	void CleanupThumbnailFBO();
-
-	// Ray-Plane math helpers
-	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view);
-	bool RayPlaneIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 planePoint, glm::vec3 planeNormal, glm::vec3& intersectPoint);
-
-	// Thumbnail resources
-	GLuint thumbnailFBO = 0;
-	GLuint thumbnailTexture = 0;
-	GLuint thumbnailDepth = 0;
-	Shader thumbnailShader;
-	const int thumbnailSize = 128;
+	// Helper: build rotation matrix from Euler angles (DRY — used by picking, gizmo, drag)
+	glm::mat4 GetSelectedRotationMatrix() const;
+	// Helper: get the gizmo position (from object or light)
+	bool GetGizmoPosition(glm::vec3& outPos) const;
 };

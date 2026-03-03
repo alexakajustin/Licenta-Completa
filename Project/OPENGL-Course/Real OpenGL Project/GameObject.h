@@ -38,7 +38,7 @@ public:
 	Material* GetMaterial() const { return material; }
 
 	// Render this object
-	void Render(GLuint uniformModel, GLuint uniformSpecularIntensity, GLuint uniformShininess, GLuint uniformUseNormalMap);
+	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap);
 
 private:
 	std::string name;

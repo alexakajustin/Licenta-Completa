@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "DebugOverlay.h"
 
 Mesh::Mesh()
 {
@@ -73,6 +74,13 @@ void Mesh::RenderMesh()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO); 
 	// draw the object stored in the VAO
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0); 
+	
+	// Track stats
+	if (DebugOverlay::GetInstance()) {
+		DebugOverlay::GetInstance()->CountDrawCall();
+		DebugOverlay::GetInstance()->CountTriangles(indexCount / 3);
+	}
+
 	// unbind the VAO
 	glBindVertexArray(0);                    
 	// unbind the IBO

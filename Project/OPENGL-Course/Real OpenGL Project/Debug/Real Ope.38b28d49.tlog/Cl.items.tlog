@@ -1,4 +1,7 @@
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Application.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Application.obj
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\AssetBrowser.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\AssetBrowser.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Camera.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Camera.obj
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\DebugOverlay.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\DebugOverlay.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\DirectionalLight.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\DirectionalLight.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLM\glm\detail\dummy.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\dummy.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLM\glm\detail\glm.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\glm.obj
@@ -12,6 +15,8 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\GameObject.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\GameObject.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Light.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Light.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\LightObject.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\LightObject.obj
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\EditorUI.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\EditorUI.obj
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\InputHandler.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\InputHandler.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\main.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\main.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Material.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Material.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Mesh.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Mesh.obj
@@ -19,6 +24,7 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\OmniShadowMap.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\OmniShadowMap.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PointLight.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\PointLight.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\PrimitiveGenerator.obj
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Renderer.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Renderer.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\SceneManager.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\SceneManager.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Shader.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\Shader.obj
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\ShadowMap.cpp;C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Debug\ShadowMap.obj

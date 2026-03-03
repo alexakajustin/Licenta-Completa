@@ -126,11 +126,12 @@ Mesh* PrimitiveGenerator::CreateSphere(unsigned int rings, unsigned int sectors)
     for (unsigned int r = 0; r < rings - 1; r++) {
         for (unsigned int s = 0; s < sectors - 1; s++) {
             indices.push_back(r * sectors + s);
-            indices.push_back(r * sectors + (s + 1));
-            indices.push_back((r + 1) * sectors + (s + 1));
-            indices.push_back((r + 1) * sectors + (s + 1));
             indices.push_back((r + 1) * sectors + s);
+            indices.push_back((r + 1) * sectors + (s + 1));
+
             indices.push_back(r * sectors + s);
+            indices.push_back((r + 1) * sectors + (s + 1));
+            indices.push_back(r * sectors + (s + 1));
         }
     }
 

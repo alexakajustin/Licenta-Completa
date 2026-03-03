@@ -47,6 +47,7 @@ struct SpotLight
 struct Material {
 	 float specularIntensity;
 	 float shininess;
+	 vec3 baseColor;
 };
 
 struct OmniShadowMap
@@ -284,5 +285,5 @@ void main()
 	vec4 finalColour = CalcDirectionalLight();
 	finalColour += CalcPointLights(); // ambient + diffuse + specular combination
 	finalColour += CalcSpotLights();
-	colour = texture(theTexture, TexCoord) * finalColour;          
+	colour = texture(theTexture, TexCoord) * vec4(material.baseColor, 1.0) * finalColour;          
 };

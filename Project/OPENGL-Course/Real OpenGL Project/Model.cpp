@@ -236,6 +236,14 @@ void Model::RenderModel(GLuint uniformUseNormalMap)
 	}
 }
 
+void Model::RenderModelGeometryOnly()
+{
+	for (size_t i = 0; i < meshList.size(); i++)
+	{
+		meshList[i]->RenderMesh();
+	}
+}
+
 
 Model::~Model()
 {
