@@ -254,6 +254,7 @@ void                  EditorContextSet(ImNodesEditorContext*);
 ImVec2                EditorContextGetPanning();
 void                  EditorContextResetPanning(const ImVec2& pos);
 void                  EditorContextMoveToNode(const int node_id);
+void                  SetEditorContextCanvasScale(float scale);
 
 ImNodesIO& GetIO();
 

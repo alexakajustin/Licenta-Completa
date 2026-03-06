@@ -307,8 +307,8 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 			}
 		}
 
-		// Delete key
-		if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+		// Delete key — only when this window is focused
+		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
 		{
 			if (selectedObj >= 0 && selectedObj < (int)objects.size() && selectedLight < 0)
 			{

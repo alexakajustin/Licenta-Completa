@@ -255,7 +255,9 @@ inline bool RectangleOverlapsLink(
 
 inline ImVec2 ScreenSpaceToGridSpace(const ImNodesEditorContext& editor, const ImVec2& v)
 {
-    return v - GImNodes->CanvasOriginScreenSpace - editor.Panning;
+    return ImVec2(
+        (v.x - GImNodes->CanvasOriginScreenSpace.x - editor.Panning.x) / editor.CanvasScale,
+        (v.y - GImNodes->CanvasOriginScreenSpace.y - editor.Panning.y) / editor.CanvasScale);
 }
 
 inline ImRect ScreenSpaceToGridSpace(const ImNodesEditorContext& editor, const ImRect& r)
@@ -265,17 +267,19 @@ inline ImRect ScreenSpaceToGridSpace(const ImNodesEditorContext& editor, const I
 
 inline ImVec2 GridSpaceToScreenSpace(const ImNodesEditorContext& editor, const ImVec2& v)
 {
-    return v + GImNodes->CanvasOriginScreenSpace + editor.Panning;
+    return ImVec2(
+        v.x * editor.CanvasScale + GImNodes->CanvasOriginScreenSpace.x + editor.Panning.x,
+        v.y * editor.CanvasScale + GImNodes->CanvasOriginScreenSpace.y + editor.Panning.y);
 }
 
 inline ImVec2 GridSpaceToEditorSpace(const ImNodesEditorContext& editor, const ImVec2& v)
 {
-    return v + editor.Panning;
+    return ImVec2(v.x * editor.CanvasScale + editor.Panning.x, v.y * editor.CanvasScale + editor.Panning.y);
 }
 
 inline ImVec2 EditorSpaceToGridSpace(const ImNodesEditorContext& editor, const ImVec2& v)
 {
-    return v - editor.Panning;
+    return ImVec2((v.x - editor.Panning.x) / editor.CanvasScale, (v.y - editor.Panning.y) / editor.CanvasScale);
 }
 
 inline ImVec2 EditorSpaceToScreenSpace(const ImVec2& v)
@@ -2058,8 +2062,14 @@ void EditorContextMoveToNode(const int node_id)
     ImNodesEditorContext& editor = EditorContextGet();
     ImNodeData&           node = ObjectPoolFindOrCreateObject(editor.Nodes, node_id);
 
-    editor.Panning.x = -node.Origin.x;
-    editor.Panning.y = -node.Origin.y;
+    editor.Panning.x = -node.Origin.x * editor.CanvasScale;
+    editor.Panning.y = -node.Origin.y * editor.CanvasScale;
+}
+
+void SetEditorContextCanvasScale(const float scale)
+{
+    ImNodesEditorContext& editor = EditorContextGet();
+    editor.CanvasScale = scale;
 }
 
 void SetImGuiContext(ImGuiContext* ctx) { ImGui::SetCurrentContext(ctx); }

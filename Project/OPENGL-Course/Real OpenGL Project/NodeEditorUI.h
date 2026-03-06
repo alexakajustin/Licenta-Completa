@@ -20,6 +20,7 @@ public:
 
 private:
 	bool isOpen;
+	float zoomLevel = 1.0f;
 	
 	// Right-click context menu state
 	bool showContextMenu;

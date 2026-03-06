@@ -52,8 +52,49 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	}
 	ImGui::SameLine();
 	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
+	ImGui::SameLine();
+	ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "  Zoom: %.0f%%", zoomLevel * 100.0f);
 
 	ImGui::Separator();
+
+	ImVec2 editorOrigin = ImGui::GetCursorScreenPos();
+
+	// Zoom with mouse wheel when hovered
+	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
+	{
+		float wheel = ImGui::GetIO().MouseWheel;
+		if (wheel != 0.0f)
+		{
+			float oldZoom = zoomLevel;
+			zoomLevel += wheel * 0.1f;
+			if (zoomLevel < 0.2f) zoomLevel = 0.2f;
+			if (zoomLevel > 3.0f) zoomLevel = 3.0f;
+
+			// Zoom around mouse
+			ImVec2 mousePos = ImGui::GetMousePos();
+			ImVec2 panning = ImNodes::EditorContextGetPanning();
+			
+			// Position relative to the editor workspace origin
+			ImVec2 relativeMousePos = ImVec2(mousePos.x - editorOrigin.x, mousePos.y - editorOrigin.y);
+			
+			// Keep (RelativeMousePos - Panning) / oldZoom constant
+			// mouseInGrid = (relativeMousePos - panning) / oldZoom
+			ImVec2 mouseInGrid = ImVec2((relativeMousePos.x - panning.x) / oldZoom, (relativeMousePos.y - panning.y) / oldZoom);
+			// newPanning = relativeMousePos - mouseInGrid * zoomLevel
+			ImVec2 newPanning = ImVec2(relativeMousePos.x - mouseInGrid.x * zoomLevel, relativeMousePos.y - mouseInGrid.y * zoomLevel);
+			
+			ImNodes::EditorContextResetPanning(newPanning);
+		}
+	}
+
+	// Apply styles (scaled by zoom)
+	ImNodes::PushStyleVar(ImNodesStyleVar_GridSpacing, 24.0f * zoomLevel);
+	ImNodes::PushStyleVar(ImNodesStyleVar_NodePadding, ImVec2(8.0f * zoomLevel, 8.0f * zoomLevel));
+	ImNodes::PushStyleVar(ImNodesStyleVar_PinCircleRadius, 4.0f * zoomLevel);
+	ImNodes::PushStyleVar(ImNodesStyleVar_LinkThickness, 3.0f * zoomLevel);
+
+	// Apply zoom (library-level)
+	ImNodes::SetEditorContextCanvasScale(zoomLevel);
 
 	// Node Editor
 	ImNodes::BeginNodeEditor();
@@ -62,6 +103,8 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	RenderLinks(graph);
 
 	ImNodes::EndNodeEditor();
+
+	ImNodes::PopStyleVar(4);
 
 	HandleEditorInteractions(graph);
 
@@ -104,20 +147,27 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 
 		ImNodes::BeginNode(node->id);
 
+		// Scale internal font for node contents
+		ImGui::SetWindowFontScale(zoomLevel);
+
 		// Title Bar
 		ImNodes::BeginNodeTitleBar();
 		ImGui::TextUnformatted(node->title.c_str());
 		ImNodes::EndNodeTitleBar();
 
 		// Interior Content (UI parameters)
-		ImGui::PushItemWidth(120.0f);
+		ImGui::PushItemWidth(120.0f * zoomLevel);
 		node->RenderContent(scene);
 		ImGui::PopItemWidth();
+
+		ImGui::SetWindowFontScale(1.0f); // Reset font scale for imnodes-internal rendering logic if needed, 
+		                                 // though it's better to keep it consistent within the node.
+		                                 // Actually imnodes handles drawing based on its style.
 
 		ImGui::Spacing();
 
 		// Input and Output Pins
-		float nodeWidth = 150.0f;
+		float nodeWidth = 150.0f * zoomLevel;
 		
 		// Inputs
 		for (auto& pin : node->inputs)
@@ -132,9 +182,9 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 		{
 			ImNodes::BeginOutputAttribute(pin.id);
 			float textWidth = ImGui::CalcTextSize(pin.name.c_str()).x;
-			ImGui::Indent(nodeWidth - textWidth - 20.0f);
+			ImGui::Indent(nodeWidth - textWidth - 20.0f * zoomLevel);
 			ImGui::TextUnformatted(pin.name.c_str());
-			ImGui::Unindent(nodeWidth - textWidth - 20.0f);
+			ImGui::Unindent(nodeWidth - textWidth - 20.0f * zoomLevel);
 			ImNodes::EndOutputAttribute();
 		}
 

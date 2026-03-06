@@ -201,4 +201,5 @@ void Window::createCallbacks()
 {
 	glfwSetKeyCallback(mainWindow, handleKeys);
 	glfwSetCursorPosCallback(mainWindow, handleMouse);
+	glfwSetMouseButtonCallback(mainWindow, handleMouseButton);
 }

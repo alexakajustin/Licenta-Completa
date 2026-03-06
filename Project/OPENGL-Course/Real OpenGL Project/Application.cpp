@@ -149,9 +149,9 @@ void Application::Run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		// Input
+		// Input — camera only (no ImGui dependency)
 		glfwPollEvents();
-		inputHandler.Update(mainWindow, camera, sceneManager, projection, deltaTime);
+		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
 
 		// Debug info
 		debugOverlay.SetCameraInfo(camera.getCameraPosition(), camera.getCameraDirection());
@@ -184,10 +184,13 @@ void Application::Run()
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// Now render ImGui windows
+		// Now render ImGui windows (creates "Scene" window with correct bounds)
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture);
 		assetBrowser.Render(sceneManager);
 		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial);
+
+		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
+		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection);
 
 		glUseProgram(0);
 
