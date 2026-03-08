@@ -10,7 +10,7 @@
 #include "External Libs/imnodes/imnodes.h"
 
 NodeEditorUI::NodeEditorUI()
-	: isOpen(true), showContextMenu(false)
+	: isOpen(true)
 {
 }
 
@@ -52,49 +52,12 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	}
 	ImGui::SameLine();
 	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
-	ImGui::SameLine();
-	ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "  Zoom: %.0f%%", zoomLevel * 100.0f);
 
 	ImGui::Separator();
 
-	ImVec2 editorOrigin = ImGui::GetCursorScreenPos();
+	editorOrigin = ImGui::GetCursorScreenPos();
 
-	// Zoom with mouse wheel when hovered
-	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
-	{
-		float wheel = ImGui::GetIO().MouseWheel;
-		if (wheel != 0.0f)
-		{
-			float oldZoom = zoomLevel;
-			zoomLevel += wheel * 0.1f;
-			if (zoomLevel < 0.2f) zoomLevel = 0.2f;
-			if (zoomLevel > 3.0f) zoomLevel = 3.0f;
-
-			// Zoom around mouse
-			ImVec2 mousePos = ImGui::GetMousePos();
-			ImVec2 panning = ImNodes::EditorContextGetPanning();
-			
-			// Position relative to the editor workspace origin
-			ImVec2 relativeMousePos = ImVec2(mousePos.x - editorOrigin.x, mousePos.y - editorOrigin.y);
-			
-			// Keep (RelativeMousePos - Panning) / oldZoom constant
-			// mouseInGrid = (relativeMousePos - panning) / oldZoom
-			ImVec2 mouseInGrid = ImVec2((relativeMousePos.x - panning.x) / oldZoom, (relativeMousePos.y - panning.y) / oldZoom);
-			// newPanning = relativeMousePos - mouseInGrid * zoomLevel
-			ImVec2 newPanning = ImVec2(relativeMousePos.x - mouseInGrid.x * zoomLevel, relativeMousePos.y - mouseInGrid.y * zoomLevel);
-			
-			ImNodes::EditorContextResetPanning(newPanning);
-		}
-	}
-
-	// Apply styles (scaled by zoom)
-	ImNodes::PushStyleVar(ImNodesStyleVar_GridSpacing, 24.0f * zoomLevel);
-	ImNodes::PushStyleVar(ImNodesStyleVar_NodePadding, ImVec2(8.0f * zoomLevel, 8.0f * zoomLevel));
-	ImNodes::PushStyleVar(ImNodesStyleVar_PinCircleRadius, 4.0f * zoomLevel);
-	ImNodes::PushStyleVar(ImNodesStyleVar_LinkThickness, 3.0f * zoomLevel);
-
-	// Apply zoom (library-level)
-	ImNodes::SetEditorContextCanvasScale(zoomLevel);
+	// Node Editor
 
 	// Node Editor
 	ImNodes::BeginNodeEditor();
@@ -102,9 +65,11 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	RenderNodes(graph, &scene);
 	RenderLinks(graph);
 
-	ImNodes::EndNodeEditor();
+	// Add a dummy item at the very end of the canvas to satisfy ImGui 1.89+ boundary checks.
+	// This is the safest way to ensure that any SetCursorPos movement by imnodes is "finalized".
+	ImGui::Dummy(ImVec2(0.3f, 0.3f));
 
-	ImNodes::PopStyleVar(4);
+	ImNodes::EndNodeEditor();
 
 	HandleEditorInteractions(graph);
 
@@ -120,9 +85,14 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 				SceneInputNode* newNode = new SceneInputNode(graph);
 				newNode->SetSelection(objIndex, objects[objIndex]->GetName());
 				
-				// Place node at mouse position
+				// Place node at mouse position (convert to grid space)
 				ImVec2 mousePos = ImGui::GetMousePos();
-				newNode->editorPos = glm::vec2(mousePos.x, mousePos.y);
+				ImVec2 panning = ImNodes::EditorContextGetPanning();
+				ImVec2 gridPos = ImVec2(
+					(mousePos.x - editorOrigin.x - panning.x),
+					(mousePos.y - editorOrigin.y - panning.y)
+				);
+				newNode->editorPos = glm::vec2(gridPos.x, gridPos.y);
 				newNode->positionSet = false;
 				
 				graph.AddNode(newNode);
@@ -139,35 +109,29 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 	for (auto* node : graph.GetNodes())
 	{
 		// Set position once if not set (using screen space coordinates from when it was added)
+		// Set position once if not set
 		if (!node->positionSet)
 		{
-			ImNodes::SetNodeScreenSpacePos(node->id, ImVec2(node->editorPos.x, node->editorPos.y));
+			ImNodes::SetNodeGridSpacePos(node->id, ImVec2(node->editorPos.x, node->editorPos.y));
 			node->positionSet = true;
 		}
 
 		ImNodes::BeginNode(node->id);
 
-		// Scale internal font for node contents
-		ImGui::SetWindowFontScale(zoomLevel);
-
-		// Title Bar
+		// Minimalistic title bar
 		ImNodes::BeginNodeTitleBar();
 		ImGui::TextUnformatted(node->title.c_str());
 		ImNodes::EndNodeTitleBar();
 
 		// Interior Content (UI parameters)
-		ImGui::PushItemWidth(120.0f * zoomLevel);
+		ImGui::PushItemWidth(120.0f);
 		node->RenderContent(scene);
 		ImGui::PopItemWidth();
-
-		ImGui::SetWindowFontScale(1.0f); // Reset font scale for imnodes-internal rendering logic if needed, 
-		                                 // though it's better to keep it consistent within the node.
-		                                 // Actually imnodes handles drawing based on its style.
 
 		ImGui::Spacing();
 
 		// Input and Output Pins
-		float nodeWidth = 150.0f * zoomLevel;
+		const float nodeWidth = 150.0f;
 		
 		// Inputs
 		for (auto& pin : node->inputs)
@@ -182,9 +146,11 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 		{
 			ImNodes::BeginOutputAttribute(pin.id);
 			float textWidth = ImGui::CalcTextSize(pin.name.c_str()).x;
-			ImGui::Indent(nodeWidth - textWidth - 20.0f * zoomLevel);
+			// Indent based on a fixed node width to avoid infinite expansion feedback loops
+			float indent = nodeWidth - textWidth - 10.0f;
+			if (indent > 0.0f) ImGui::Indent(indent);
 			ImGui::TextUnformatted(pin.name.c_str());
-			ImGui::Unindent(nodeWidth - textWidth - 20.0f * zoomLevel);
+			if (indent > 0.0f) ImGui::Unindent(indent);
 			ImNodes::EndOutputAttribute();
 		}
 
@@ -220,8 +186,14 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 
 		if (newNode)
 		{
-			newNode->editorPos = glm::vec2(contextMenuPos.x, contextMenuPos.y); 
-			newNode->positionSet = false; // Trigger SetNodeScreenSpacePos in RenderNodes
+			// Convert menu position to grid space
+			ImVec2 panning = ImNodes::EditorContextGetPanning();
+			ImVec2 gridPos = ImVec2(
+				(contextMenuPos.x - editorOrigin.x - panning.x),
+				(contextMenuPos.y - editorOrigin.y - panning.y)
+			);
+			newNode->editorPos = glm::vec2(gridPos.x, gridPos.y); 
+			newNode->positionSet = false; // Trigger SetNodeGridSpacePos in RenderNodes
 			graph.AddNode(newNode);
 		}
 

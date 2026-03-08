@@ -20,11 +20,10 @@ public:
 
 private:
 	bool isOpen;
-	float zoomLevel = 1.0f;
 	
-	// Right-click context menu state
-	bool showContextMenu;
+	// Editor location and state
 	ImVec2 contextMenuPos;
+	ImVec2 editorOrigin;
 
 	void RenderNodes(NodeGraph& graph, SceneManager* scene);
 	void RenderLinks(NodeGraph& graph);
