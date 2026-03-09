@@ -89,9 +89,9 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  DirectionalLight& mainLight,
 						  PointLight* pointLights, unsigned int pointLightCount,
 						  SpotLight* spotLights, unsigned int spotLightCount,
-						  Window& window)
+						  int fbw, int fbh)
 {
-	glViewport(0, 0, (GLint)window.getBufferWidth(), (GLint)window.getBufferHeight());
+	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

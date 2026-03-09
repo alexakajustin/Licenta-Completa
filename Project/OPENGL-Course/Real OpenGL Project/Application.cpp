@@ -153,11 +153,16 @@ void Application::Run()
 		glfwPollEvents();
 		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
 
+		// Get live framebuffer size
+		int fbw, fbh;
+		glfwGetFramebufferSize(mainWindow.getWindow(), &fbw, &fbh);
+		if (fbw == 0 || fbh == 0) { fbw = 1; fbh = 1; }
+
 		// Debug info
 		debugOverlay.SetCameraInfo(camera.getCameraPosition(), camera.getCameraDirection());
 		debugOverlay.SetSceneInfo((int)sceneManager.GetObjects().size(), (int)sceneManager.GetLights().size());
 		debugOverlay.SetSelectionInfo(sceneManager.GetSelectedName());
-		debugOverlay.SetViewportInfo((int)mainWindow.getBufferWidth(), (int)mainWindow.getBufferHeight());
+		debugOverlay.SetViewportInfo(fbw, fbh);
 
 		// Editor UI
 		// Since docking is not available, we use fixed window layout to emulate Unity
@@ -165,11 +170,15 @@ void Application::Run()
 		ImGui::SetNextWindowSize(ImVec2(300, 600), ImGuiCond_FirstUseEver);
 		// ... (EditorUI handles its own windows)
 
+		// ... (EditorUI handles its own windows)
+
+		// Update projection matrix if window resized
+		projection = glm::perspective(glm::radians(60.0f), (GLfloat)fbw / (GLfloat)fbh, 0.1f, 1000.0f);
+
 		glm::mat4 view = camera.calculateViewMatrix();
 		
-		// Rendering to Viewport FBO
-		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
-		glViewport(0, 0, (GLint)mainWindow.getBufferWidth(), (GLint)mainWindow.getBufferHeight());
+		// Main render pass directly to screen
+		glViewport(0, 0, fbw, fbh);
 		
 		// Shadow passes (already bind their own FBOs)
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
@@ -180,12 +189,11 @@ void Application::Run()
 
 		// Main render pass into FBO
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, mainWindow);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, fbw, fbh);
 		
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// Now render ImGui windows (creates "Scene" window with correct bounds)
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture);
+		// Now render ImGui windows
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), 0);
 		assetBrowser.Render(sceneManager);
 		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial);
 
