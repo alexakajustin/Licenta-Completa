@@ -39,30 +39,40 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 
 	glm::mat4 view = camera.calculateViewMatrix();
 
-	// Use full window coordinates — the viewport renders directly to screen
+	// Use screen coordinates for scaling math in HandleMousePress (SceneManager::PickObject handles pixel scaling)
 	double mouseX, mouseY;
 	glfwGetCursorPos(window.getWindow(), &mouseX, &mouseY);
-	float screenW = (float)window.getBufferWidth();
-	float screenH = (float)window.getBufferHeight();
+
+	int winW, winH;
+	glfwGetWindowSize(window.getWindow(), &winW, &winH);
+	float screenW = (float)winW;
+	float screenH = (float)winH;
+
+	int fbw, fbh;
+	glfwGetFramebufferSize(window.getWindow(), &fbw, &fbh);
+
+	// Scale GLFW's logical cursor coordinates to raw pixel coordinates
+	float pixelMouseX = (float)mouseX * ((float)fbw / screenW);
+	float pixelMouseY = (float)mouseY * ((float)fbh / screenH);
 
 	if (currentLMB && !lastLMBState && !wantCapture)
 	{
 		scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
-			(float)mouseX, (float)mouseY, projection, view,
-			camera.getCameraPosition(), screenW, screenH);
+			pixelMouseX, pixelMouseY, projection, view,
+			camera.getCameraPosition(), (float)fbw, (float)fbh);
 	}
 	else if (!currentLMB && lastLMBState)
 	{
 		scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE,
 			0, 0, projection, view,
-			camera.getCameraPosition(), 0, 0);
+			camera.getCameraPosition(), (float)fbw, (float)fbh);
 	}
 
 	// Update mouse drag
 	if (scene.GetActiveDragAxis() != 0)
 	{
-		scene.HandleMouseMove((float)mouseX, (float)mouseY,
-			projection, view, screenW, screenH);
+		scene.HandleMouseMove(pixelMouseX, pixelMouseY,
+			projection, view, (float)fbw, (float)fbh);
 	}
 
 	lastLMBState = currentLMB;

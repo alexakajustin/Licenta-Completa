@@ -33,7 +33,7 @@ public:
 					DirectionalLight& mainLight,
 					PointLight* pointLights, unsigned int pointLightCount,
 					SpotLight* spotLights, unsigned int spotLightCount,
-					Window& window);
+					int fbw, int fbh);
 
 	Shader& GetMainShader() { return mainShader; }
 

@@ -331,9 +331,9 @@ void SceneManager::DeleteLight(int index)
 static glm::vec3 EncodeID(int id)
 {
 	return glm::vec3(
-		((id & 0x0000FF) >> 0) / 255.0f,
-		((id & 0x00FF00) >> 8) / 255.0f,
-		((id & 0xFF0000) >> 16) / 255.0f
+		(((id & 0x0000FF) >> 0) + 0.5f) / 255.0f,
+		(((id & 0x00FF00) >> 8) + 0.5f) / 255.0f,
+		(((id & 0xFF0000) >> 16) + 0.5f) / 255.0f
 	);
 }
 
@@ -344,6 +344,17 @@ static int DecodeID(unsigned char pixel[3])
 
 void SceneManager::InitPicking(int width, int height)
 {
+	if (pickingFBO && width == pickWidth && height == pickHeight) return;
+
+	if (pickingFBO) {
+		glDeleteFramebuffers(1, &pickingFBO);
+		glDeleteTextures(1, &pickingTexture);
+		glDeleteRenderbuffers(1, &pickingDepth);
+	}
+
+	printf("[SceneManager] Initializing picking FBO: %d x %d (Previous: %d x %d, FBO ID: %u)\n", 
+		width, height, pickWidth, pickHeight, pickingFBO);
+
 	pickWidth = width;
 	pickHeight = height;
 
@@ -367,19 +378,54 @@ void SceneManager::InitPicking(int width, int height)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	pickingShader.CreateFromFiles("Shaders/picking.vert", "Shaders/picking.frag");
-	pickingInitialized = true;
+	if (!pickingInitialized) {
+		pickingShader.CreateFromFiles("Shaders/picking.vert", "Shaders/picking.frag");
+		pickingInitialized = true;
+	}
 }
 
 int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth, float viewportHeight)
 {
 	if (!pickingInitialized) return -1;
 
+	// State safety for picking pass - disable all interference
+	GLint oldViewport[4];
+	glGetIntegerv(GL_VIEWPORT, oldViewport);
+	
+	GLboolean oldBlend = glIsEnabled(GL_BLEND);
+	GLboolean oldScissor = glIsEnabled(GL_SCISSOR_TEST);
+	GLboolean oldDepthTest = glIsEnabled(GL_DEPTH_TEST);
+	GLboolean oldCullFace = glIsEnabled(GL_CULL_FACE);
+	GLboolean oldDither = glIsEnabled(GL_DITHER);
+	GLint oldDepthFunc; glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+	GLint oldCullMode; glGetIntegerv(GL_CULL_FACE_MODE, &oldCullMode);
+	GLint oldPolygonMode[2]; glGetIntegerv(GL_POLYGON_MODE, oldPolygonMode);
+
+	glDisable(GL_BLEND);
+	glDisable(GL_SCISSOR_TEST);
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_DITHER);
+#ifdef GL_MULTISAMPLE
+	glDisable(GL_MULTISAMPLE);
+#endif
+#ifdef GL_FRAMEBUFFER_SRGB
+	glDisable(GL_FRAMEBUFFER_SRGB);
+#endif
+
 	glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
-	// We still render picking to the full internal buffer size (pickWidth/Height)
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
 	glViewport(0, 0, pickWidth, pickHeight);
+	
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	pickingShader.UseShader();
 
@@ -391,6 +437,9 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	GLint isBillboardLoc = glGetUniformLocation(pickingShader.GetShaderID(), "isBillboard");
 	GLint worldPosLoc = glGetUniformLocation(pickingShader.GetShaderID(), "worldPos");
 	GLint iconSizeLoc = glGetUniformLocation(pickingShader.GetShaderID(), "iconSize");
+
+	// Reset uniform state: Ensure objects are NOT drawn as billboards
+	glUniform1i(isBillboardLoc, 0);
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE); 
@@ -474,12 +523,13 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glFlush();
-	glFinish();
+	glFinish(); // Ensure AMD driver completes FBO rendering before read
 
 	// Scale mouse coordinates from viewport window space to picking FBO space
 	float scaleX = (float)pickWidth / viewportWidth;
 	float scaleY = (float)pickHeight / viewportHeight;
 
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	unsigned char pixel[3];
 	int readX = (int)(mouseX * scaleX);
 	int readY = pickHeight - (int)(mouseY * scaleY);
@@ -487,7 +537,26 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
 	int pickedID = DecodeID(pixel);
 
+	// printf("[SceneManager] PickDebug: Mouse(%.1f,%.1f) Scale(%.2f,%.2f) Read(%d,%d) ID(%d) | FBO:%u Size:%dx%d\n", 
+	// 	mouseX, mouseY, scaleX, scaleY, readX, readY, pickedID, pickingFBO, pickWidth, pickHeight);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDrawBuffer(GL_BACK);
+	glReadBuffer(GL_BACK);
+	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+	
+	// Restore all modified states
+	if (oldBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+	if (oldScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+#ifdef GL_MULTISAMPLE
+	glEnable(GL_MULTISAMPLE); // Re-enable for main anti-aliased render
+#endif
+	if (!oldDepthTest) glDisable(GL_DEPTH_TEST); else glEnable(GL_DEPTH_TEST);
+	if (!oldCullFace) glDisable(GL_CULL_FACE); else glEnable(GL_CULL_FACE);
+	if (oldDither) glEnable(GL_DITHER); else glDisable(GL_DITHER);
+	glDepthFunc(oldDepthFunc);
+	glCullFace(oldCullMode);
+	glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
 
 	if (pickedID > 0 && pickedID <= (int)objects.size()) {
 		SetSelectedIndex(pickedID - 1);
@@ -700,7 +769,9 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		// Use specific viewport resolution for picking
+		// Hard re-sync picking FBO if window size changed (e.g. maximization or High DPI switch)
+		if (viewportWidth > 0 && viewportHeight > 0) InitPicking((int)viewportWidth, (int)viewportHeight);
+		
 		int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos, viewportWidth, viewportHeight);
 			printf("[SceneManager] Picked ID: %d (Active Selection: %s)\n", pickedID, GetSelectedName().c_str());
 			
