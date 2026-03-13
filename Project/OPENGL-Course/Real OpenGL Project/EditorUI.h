@@ -10,6 +10,8 @@
 #include "Texture.h"
 
 class SceneManager;
+class Camera;
+class GameObject;
 
 class EditorUI
 {
@@ -18,10 +20,11 @@ public:
 	~EditorUI();
 
 	// Draw all editor panels (hierarchy + inspector)
-	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID);
+	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr);
 
 private:
-	void RenderHierarchy(SceneManager& scene, int bufferHeight);
+	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
+	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera);
 	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
 	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID);
 

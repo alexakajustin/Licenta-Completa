@@ -19,6 +19,7 @@ public:
 	void SetPosition(const glm::vec3& pos) { position = pos; }
 	void SetRotation(const glm::vec3& rot) { rotation = rot; }
 	void SetScale(const glm::vec3& scl) { scale = scl; }
+	void SetFromMatrix(const glm::mat4& matrix);
 
 	// Direct access for ImGui editing
 	glm::vec3* GetPositionPtr() { return &position; }

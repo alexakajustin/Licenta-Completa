@@ -38,27 +38,85 @@ void SceneManager::AddObject(GameObject* obj)
 
 void SceneManager::RemoveObject(const std::string& name)
 {
-	for (auto it = objects.begin(); it != objects.end(); ++it)
+	for (int i = 0; i < (int)objects.size(); i++)
 	{
-		if ((*it)->GetName() == name)
+		if (objects[i]->GetName() == name)
 		{
-			int index = (int)(it - objects.begin());
-			delete *it;
-			objects.erase(it);
-
-			// Update selection indices
-			std::vector<int> newSelection;
-			for (int selIdx : selectedObjectIndices) {
-				if (selIdx == index) continue;
-				if (selIdx > index) newSelection.push_back(selIdx - 1);
-				else newSelection.push_back(selIdx);
-			}
-			selectedObjectIndices = newSelection;
-			
-			if (selectedObjectIndices.empty()) activeDragAxis = 0;
+			DeleteGameObject(i);
 			return;
 		}
 	}
+}
+
+void SceneManager::DeleteSelectedObjects()
+{
+	if (selectedObjectIndices.empty()) return;
+
+	// Collect objects to delete
+	std::vector<GameObject*> toDelete;
+	for (int idx : selectedObjectIndices) {
+		if (idx >= 0 && idx < (int)objects.size()) {
+			toDelete.push_back(objects[idx]);
+		}
+	}
+
+	for (auto* obj : toDelete) {
+		// Re-verify object exists as it might have been deleted as a child of a previous selection
+		auto it = std::find(objects.begin(), objects.end(), obj);
+		if (it != objects.end()) {
+			DeleteGameObject((int)(it - objects.begin()));
+		}
+	}
+	ClearSelection();
+}
+
+void SceneManager::DeleteSelectedLights()
+{
+	if (selectedLightIndices.empty()) return;
+
+	// Sort descending to maintain indices
+	std::vector<int> sorted = selectedLightIndices;
+	std::sort(sorted.rbegin(), sorted.rend());
+
+	for (int idx : sorted) {
+		DeleteLight(idx);
+	}
+	ClearSelection();
+}
+
+void SceneManager::DeleteGameObject(int index)
+{
+	if (index < 0 || index >= (int)objects.size()) return;
+
+	GameObject* obj = objects[index];
+
+	// Recursive deletion: delete all children first
+	// We make a copy of the children vector because deleting a child 
+	// will modify the original vector via the destructor/parent detachment
+	std::vector<GameObject*> childrenCopy = obj->GetChildren();
+	for (auto* child : childrenCopy) {
+		// Find child index in global list
+		auto it = std::find(objects.begin(), objects.end(), child);
+		if (it != objects.end()) {
+			DeleteGameObject((int)(it - objects.begin()));
+		}
+	}
+
+	// Now delete 'obj' itself
+	// Destructor will handle parent detachment
+	delete obj;
+	objects.erase(objects.begin() + index);
+
+	// Update selection indices
+	std::vector<int> newSelection;
+	for (int selIdx : selectedObjectIndices) {
+		if (selIdx == index) continue;
+		if (selIdx > index) newSelection.push_back(selIdx - 1);
+		else newSelection.push_back(selIdx);
+	}
+	selectedObjectIndices = newSelection;
+
+	if (selectedObjectIndices.empty()) activeDragAxis = 0;
 }
 
 GameObject* SceneManager::FindObject(const std::string& name)
@@ -74,7 +132,10 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 {
 	for (auto* obj : objects)
 	{
-		obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture);
+		if (obj->GetParent() == nullptr)
+		{
+			obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture);
+		}
 	}
 }
 
@@ -116,7 +177,7 @@ bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 {
 	int selObj = GetSelectedIndex();
 	if (selObj != -1) {
-		outPos = objects[selObj]->GetTransform().GetPosition();
+		outPos = glm::vec3(objects[selObj]->GetWorldMatrix()[3]);
 		return true;
 	}
 	
@@ -450,7 +511,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	{
 		glm::vec3 color = EncodeID(i + 1);
 		glUniform3f(colorLoc, color.r, color.g, color.b);
-		glm::mat4 modelMatrix = objects[i]->GetTransform().GetModelMatrix();
+		glm::mat4 modelMatrix = objects[i]->GetWorldMatrix();
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 		if (objects[i]->GetModel()) objects[i]->GetModel()->RenderModel(0, 0);
 		else if (objects[i]->GetMesh()) objects[i]->GetMesh()->RenderMesh();
@@ -877,7 +938,16 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		
 		int selObj = GetSelectedIndex();
 		int selLight = GetSelectedLightIndex();
-		if (selObj != -1) objects[selObj]->GetTransform().SetPosition(newPos);
+		if (selObj != -1) {
+			GameObject* target = objects[selObj];
+			if (target->GetParent()) {
+				glm::mat4 invParent = glm::inverse(target->GetParent()->GetWorldMatrix());
+				glm::vec4 localPos = invParent * glm::vec4(newPos, 1.0f);
+				target->GetTransform().SetPosition(glm::vec3(localPos));
+			} else {
+				target->GetTransform().SetPosition(newPos);
+			}
+		}
 		else if (selLight != -1) lights[selLight]->SetPosition(newPos);
 	}
 	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {

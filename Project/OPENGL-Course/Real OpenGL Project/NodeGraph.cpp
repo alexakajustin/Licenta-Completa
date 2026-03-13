@@ -286,20 +286,62 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 				scatterNode->SetSpawnedNames({});
 
 				int parentIdx = scatterNode->GetParentIndex();
-				// Optional: Set some parenting logic here if SceneManager supports it.
-				// For now, we spawn them in the scene with a name prefix.
+				GameObject* targetParent = nullptr;
+
+				// 1. Try to use selected parent
+				if (parentIdx >= 0 && parentIdx < (int)objects.size())
+				{
+					targetParent = objects[parentIdx];
+				}
+
+				// 2. If no parent selected, create/find a group container for this node
+				if (!targetParent)
+				{
+					std::string groupName = "Scatter_Group_" + std::to_string(node->id);
+					targetParent = scene.FindObject(groupName);
+					if (!targetParent)
+					{
+						targetParent = new GameObject(groupName);
+						scene.AddObject(targetParent);
+					}
+				}
 
 				auto& transforms = scatterNode->GetLastTransforms();
 				std::vector<std::string> newSpawned;
 
 				for (int i = 0; i < (int)transforms.size(); i++)
 				{
-					std::string name = "Spawned_" + std::to_string(node->id) + "_" + std::to_string(i);
+					std::string name = "Instance_" + std::to_string(node->id) + "_" + std::to_string(i);
 					GameObject* obj = new GameObject(name);
 					
-					obj->GetTransform().SetPosition(transforms[i].position);
-					obj->GetTransform().SetRotation(transforms[i].rotation);
-					obj->GetTransform().SetScale(transforms[i].scale);
+					// Build world-space pose with normal alignment
+					glm::mat4 model = glm::mat4(1.0f);
+					model = glm::translate(model, transforms[i].position);
+
+					// Align Y-up to surface normal
+					glm::vec3 surfaceNormal = transforms[i].normal;
+					if (scatterNode->IsAlignToNormal() && glm::length(surfaceNormal) > 0.001f)
+					{
+						glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+						glm::vec3 normal = glm::normalize(surfaceNormal);
+						if (glm::abs(glm::dot(up, normal)) < 0.999f)
+						{
+							glm::vec3 rotAxis = glm::normalize(glm::cross(up, normal));
+							float angle = acos(glm::clamp(glm::dot(up, normal), -1.0f, 1.0f));
+							model = glm::rotate(model, angle, rotAxis);
+						}
+					}
+
+					// Apply additional random/fixed rotation
+					model = glm::rotate(model, glm::radians(transforms[i].rotation.x), glm::vec3(1, 0, 0));
+					model = glm::rotate(model, glm::radians(transforms[i].rotation.y), glm::vec3(0, 1, 0));
+					model = glm::rotate(model, glm::radians(transforms[i].rotation.z), glm::vec3(0, 0, 1));
+
+					// Apply scale
+					model = glm::scale(model, transforms[i].scale);
+
+					// Set the world pose
+					obj->GetTransform().SetFromMatrix(model);
 
 					// Use object mesh from input 1 if available
 					if (node->inputs[1].data.type == PinDataType::Mesh)
@@ -311,11 +353,14 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					if (defaultTex) obj->SetTexture(defaultTex);
 					if (defaultMat) obj->SetMaterial(defaultMat);
 
+					// Set parenting (SetParent maintains world pose)
+					obj->SetParent(targetParent);
+
 					scene.AddObject(obj);
 					newSpawned.push_back(name);
 				}
 				scatterNode->SetSpawnedNames(newSpawned);
-				printf("Scatter spawned %d objects as children (conceptual).\n", (int)newSpawned.size());
+				printf("Scatter spawned %d objects as children of '%s'.\n", (int)newSpawned.size(), targetParent->GetName().c_str());
 			}
 		}
 	}

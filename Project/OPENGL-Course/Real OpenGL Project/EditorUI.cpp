@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include "PrimitiveGenerator.h"
 #include "Material.h"
+#include "Camera.h"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -169,12 +170,12 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 	}
 }
 
-void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID)
+void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera)
 {
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
-	RenderHierarchy(scene, bufferHeight);
+	RenderHierarchy(scene, bufferHeight, camera);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 }
 
@@ -237,7 +238,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	ImGui::PopStyleVar();
 }
 
-void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
+void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera)
 {
 	int bufferWidth;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, nullptr);
@@ -251,44 +252,27 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 	{
 		auto& objects = scene.GetObjects();
 		auto& lights = scene.GetLights();
-		int selectedObj = scene.GetSelectedIndex();
-		int selectedLight = scene.GetSelectedLightIndex();
 
 		if (ImGui::CollapsingHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			// Drop target for reparenting to ROOT
+			ImGui::Selectable("##RootDropTarget", false, ImGuiSelectableFlags_Disabled, ImVec2(0, 5));
+			if (ImGui::BeginDragDropTarget()) {
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_OBJECT_INDEX")) {
+					int draggedIdx = *(const int*)payload->Data;
+					if (draggedIdx >= 0 && draggedIdx < (int)objects.size()) {
+						objects[draggedIdx]->SetParent(nullptr);
+					}
+				}
+				ImGui::EndDragDropTarget();
+			}
+
 			for (int i = 0; i < (int)objects.size(); i++)
 			{
-				ImGui::PushID(i);
-				bool isSelected = scene.IsObjectSelected(i);
-				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
-				{
-					bool multiSelect = ImGui::GetIO().KeyCtrl;
-					bool rangeSelect = ImGui::GetIO().KeyShift;
-					scene.SetSelectedIndex(i, multiSelect, rangeSelect);
+				// Only start recursive draw from roots
+				if (objects[i]->GetParent() == nullptr) {
+					RenderHierarchyRecursive(scene, objects[i], i, camera);
 				}
-				
-				// --- Drag Source ---
-				if (ImGui::BeginDragDropSource())
-				{
-					int objIndex = i;
-					ImGui::SetDragDropPayload("SCENE_OBJECT_INDEX", &objIndex, sizeof(int));
-					ImGui::Text("Dragging %s", objects[i]->GetName().c_str());
-					ImGui::EndDragDropSource();
-				}
-
-				// Accept material drops on individual objects
-				if (ImGui::BeginDragDropTarget()) {
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MATERIAL_PATH")) {
-						const char* matPath = (const char*)payload->Data;
-						Material* mat = Material::LoadFromFile(matPath);
-						if (mat) objects[i]->SetMaterial(mat);
-						printf("Applied material %s to %s\n", matPath, objects[i]->GetName().c_str());
-					}
-					HandleAssetDrop(scene, glm::vec3(0.0f)); // Pass a dummy spawnPos, as it's not used for material drops
-					ImGui::EndDragDropTarget();
-				}
-				
-				ImGui::PopID();
 			}
 		}
 
@@ -307,6 +291,13 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 					bool rangeSelect = ImGui::GetIO().KeyShift;
 					scene.SetSelectedLightIndex(i, multiSelect, rangeSelect);
 				}
+
+				// Double-click to focus
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && camera) {
+					glm::vec3* lp = lights[i]->GetPositionPtr();
+					if (lp) camera->SetPositionAndLookAt(*lp);
+				}
+
 				ImGui::PopID();
 			}
 		}
@@ -318,25 +309,10 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 			auto& selLights = scene.GetSelectedLightIndices();
 
 			if (!selObjects.empty()) {
-				// Sort indices descending to avoid shifting issues when deleting
-				std::vector<int> sorted = selObjects;
-				std::sort(sorted.rbegin(), sorted.rend());
-				for (int idx : sorted) {
-					if (idx >= 0 && idx < (int)objects.size()) {
-						delete objects[idx];
-						objects.erase(objects.begin() + idx);
-					}
-				}
-				scene.ClearSelection();
+				scene.DeleteSelectedObjects();
 			}
 			else if (!selLights.empty()) {
-				// Sort indices descending
-				std::vector<int> sorted = selLights;
-				std::sort(sorted.rbegin(), sorted.rend());
-				for (int idx : sorted) {
-					scene.DeleteLight(idx);
-				}
-				scene.ClearSelection();
+				scene.DeleteSelectedLights();
 			}
 		}
 
@@ -366,6 +342,92 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 		}
 	}
 	ImGui::End();
+}
+
+void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera)
+{
+	if (!obj) return;
+
+	ImGui::PushID(index);
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	if (scene.IsObjectSelected(index)) flags |= ImGuiTreeNodeFlags_Selected;
+	if (obj->GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+
+	bool isNodeOpen = ImGui::TreeNodeEx(obj->GetName().c_str(), flags);
+
+	// Selection logic
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+		bool multiSelect = ImGui::GetIO().KeyCtrl;
+		bool rangeSelect = ImGui::GetIO().KeyShift;
+		scene.SetSelectedIndex(index, multiSelect, rangeSelect);
+	}
+
+	// Double-click to focus
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && camera) {
+		// Use world position for focus
+		glm::vec3 worldPos = glm::vec3(obj->GetWorldMatrix()[3]);
+		camera->SetPositionAndLookAt(worldPos);
+	}
+
+	// --- Drag Source ---
+	if (ImGui::BeginDragDropSource())
+	{
+		ImGui::SetDragDropPayload("SCENE_OBJECT_INDEX", &index, sizeof(int));
+		ImGui::Text("Dragging %s", obj->GetName().c_str());
+		ImGui::EndDragDropSource();
+	}
+
+	// --- Drag Target (Reparenting) ---
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_OBJECT_INDEX")) {
+			int draggedIdx = *(const int*)payload->Data;
+			auto& objects = scene.GetObjects();
+			if (draggedIdx >= 0 && draggedIdx < (int)objects.size()) {
+				GameObject* draggedObj = objects[draggedIdx];
+
+				// Prevent cycle: check if 'obj' is a descendant of 'draggedObj'
+				bool isDescendant = false;
+				GameObject* p = obj;
+				while (p) {
+					if (p == draggedObj) { isDescendant = true; break; }
+					p = p->GetParent();
+				}
+
+				if (!isDescendant && draggedObj != obj) {
+					draggedObj->SetParent(obj);
+				}
+			}
+		}
+
+		// Accept material drops
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MATERIAL_PATH")) {
+			const char* matPath = (const char*)payload->Data;
+			Material* mat = Material::LoadFromFile(matPath);
+			if (mat) obj->SetMaterial(mat);
+		}
+
+		ImGui::EndDragDropTarget();
+	}
+
+	if (isNodeOpen) {
+		for (auto* child : obj->GetChildren()) {
+			// Find child index in the global objects list for selection
+			int childIndex = -1;
+			auto& allObjs = scene.GetObjects();
+			for (int j = 0; j < (int)allObjs.size(); j++) {
+				if (allObjs[j] == child) { childIndex = j; break; }
+			}
+
+			if (childIndex != -1) {
+				RenderHierarchyRecursive(scene, child, childIndex, camera);
+			}
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::PopID();
 }
 
 void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight)

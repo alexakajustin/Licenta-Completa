@@ -21,6 +21,7 @@ public:
 	std::string GetName() const { return name; }
 	Transform& GetTransform() { return transform; }
 	const Transform& GetTransform() const { return transform; }
+	glm::mat4 GetWorldMatrix() const;
 
 	// Setters for components
 	void SetName(const std::string& newName) { name = newName; }
@@ -37,12 +38,22 @@ public:
 	Texture* GetNormalMap() const { return normalMap; }
 	Material* GetMaterial() const { return material; }
 
+	// Hierarchy
+	void SetParent(GameObject* newParent);
+	GameObject* GetParent() const { return parent; }
+	const std::vector<GameObject*>& GetChildren() const { return children; }
+	void AddChild(GameObject* child);
+	void RemoveChild(GameObject* child);
+
 	// Render this object
-	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture);
+	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
 
 private:
 	std::string name;
 	Transform transform;
+
+	GameObject* parent = nullptr;
+	std::vector<GameObject*> children;
 
 	Model* model;      // For loaded .obj models
 	Mesh* mesh;        // For primitive meshes

@@ -65,6 +65,7 @@ private:
 
 public:
 	bool IsSpawnMode() const { return spawnAsObjects; }
+	bool IsAlignToNormal() const { return alignToNormal; }
 	int GetParentIndex() const { return targetParentIndex; }
 	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
 	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }

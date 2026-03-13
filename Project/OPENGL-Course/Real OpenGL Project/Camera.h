@@ -21,6 +21,7 @@ public:
 	glm::vec3 getCameraDirection();
 
 	glm::mat4 calculateViewMatrix();
+	void SetPositionAndLookAt(glm::vec3 targetPos, float distance = 5.0f);
 private:
 	glm::vec3 position;
 	glm::vec3 front;

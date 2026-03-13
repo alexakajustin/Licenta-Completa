@@ -12,14 +12,80 @@ GameObject::GameObject(const std::string& name)
 
 GameObject::~GameObject()
 {
-	// Note: We don't delete the pointers here as they may be shared
-	// Resource management should be handled by a ResourceManager in the future
+	if (parent) {
+		parent->RemoveChild(this);
+	}
+	// Note: We don't delete children here because SceneManager owns them in the 'objects' list.
+	// We just need to make sure they are orphaned if the parent is deleted alone, 
+	// OR better, SceneManager should delete them recursively.
+	for (auto* child : children) {
+		child->parent = nullptr;
+	}
 }
 
-void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture)
+void GameObject::SetParent(GameObject* newParent)
 {
-	// Apply transform
-	glm::mat4 modelMatrix = transform.GetModelMatrix();
+	if (parent == newParent) return;
+
+	// Calculate current world matrix to maintain world position
+	glm::mat4 worldMat = GetWorldMatrix();
+
+	// Remove from old parent
+	if (parent) {
+		parent->RemoveChild(this);
+	}
+
+	parent = newParent;
+
+	// Add to new parent
+	if (parent) {
+		parent->AddChild(this);
+	}
+
+	// Update local transform to maintain world position, rotation, and scale
+	if (parent) {
+		glm::mat4 invParent = glm::inverse(parent->GetWorldMatrix());
+		glm::mat4 localMat = invParent * worldMat;
+		transform.SetFromMatrix(localMat);
+	} else {
+		transform.SetFromMatrix(worldMat);
+	}
+}
+
+glm::mat4 GameObject::GetWorldMatrix() const
+{
+	if (parent) {
+		return parent->GetWorldMatrix() * transform.GetModelMatrix();
+	}
+	return transform.GetModelMatrix();
+}
+
+void GameObject::AddChild(GameObject* child)
+{
+	if (!child) return;
+	
+	// Ensure not already a child
+	for (auto* c : children) if (c == child) return;
+
+	children.push_back(child);
+	child->parent = this;
+}
+
+void GameObject::RemoveChild(GameObject* child)
+{
+	for (auto it = children.begin(); it != children.end(); ++it) {
+		if (*it == child) {
+			child->parent = nullptr;
+			children.erase(it);
+			return;
+		}
+	}
+}
+
+void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix)
+{
+	// Apply transform relative to parent
+	glm::mat4 modelMatrix = parentMatrix * transform.GetModelMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
 	// Apply material if available
@@ -85,5 +151,11 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 		}
 		
 		mesh->RenderMesh();
+	}
+
+	// Recursive render for children
+	for (auto* child : children)
+	{
+		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture, modelMatrix);
 	}
 }

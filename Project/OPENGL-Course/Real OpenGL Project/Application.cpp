@@ -193,7 +193,7 @@ void Application::Run()
 		
 
 		// Now render ImGui windows
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), 0);
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), 0, &camera);
 		assetBrowser.Render(sceneManager);
 		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial);
 

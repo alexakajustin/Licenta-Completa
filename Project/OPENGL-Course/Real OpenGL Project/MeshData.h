@@ -11,6 +11,7 @@ struct TransformData
 	glm::vec3 position = glm::vec3(0.0f);
 	glm::vec3 rotation = glm::vec3(0.0f); // Euler degrees
 	glm::vec3 scale = glm::vec3(1.0f);
+	glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0f);
 };
 
 using TransformList = std::vector<TransformData>;

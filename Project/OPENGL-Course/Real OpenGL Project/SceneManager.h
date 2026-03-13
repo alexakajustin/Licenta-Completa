@@ -57,10 +57,14 @@ public:
 	int GetActiveDragAxis() const { return activeDragAxis; }
 	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
 	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
+	
+	void DeleteSelectedObjects();
+	void DeleteSelectedLights();
 
 	// ========== Creation / Deletion ==========
 	void CreateGameObject(const std::string& type);
 	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
+	void DeleteGameObject(int index);
 	void CreateLight(LightType type);
 	void DeleteLight(int index);
 

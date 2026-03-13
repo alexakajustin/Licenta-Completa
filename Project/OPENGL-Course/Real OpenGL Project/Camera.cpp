@@ -109,3 +109,18 @@ void Camera::update()
 	right = glm::normalize(glm::cross(front, worldUp));
 	up = glm::normalize(glm::cross(right, front));
 }
+
+void Camera::SetPositionAndLookAt(glm::vec3 targetPos, float distance)
+{
+	// Use a fixed "Unity-like" top-down diagonal angle (Yaw: -45, Pitch: -30)
+	yaw = -45.0f;
+	pitch = -30.0f;
+
+	// Update vectors based on these fixed angles
+	update();
+
+	// Position the camera 'distance' units away along the new 'front' vector
+	position = targetPos - front * distance;
+
+	update(); // Final refresh
+}

@@ -237,14 +237,19 @@ void ScatterNode::Execute(SceneManager& scene)
 			rot.y = rotDist(gen);
 		}
 
-		// Store transform
+		// Store transform for object spawning pass in NodeGraph
 		TransformData t;
 		t.position = pos;
 		t.rotation = rot;
 		t.scale = scaleVec;
+		t.normal = normal;
 		lastTransforms.push_back(t);
 
-		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, result);
+		// ONLY merge into the baked mesh if we are NOT spawning separate GameObjects
+		if (!spawnAsObjects)
+		{
+			MergeTransformed(objectMesh, pos, rot, scaleVec, normal, result);
+		}
 	}
 
 	outputs[0].data.meshData = result;
