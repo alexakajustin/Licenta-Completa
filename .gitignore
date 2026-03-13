@@ -24,10 +24,8 @@
 **/[Oo]bj/
 **/[Ll]og/
 
-# Whitelist external libraries that might be in ignored folders
-!**/External Libs/**/*.lib
-!**/External Libs/**/*.dll
-!**/External Libs/**/*.pdb
+# Whitelist everything in External Libs
+!**/External Libs/**
 
 # Visual Studio Code
 .vscode/
