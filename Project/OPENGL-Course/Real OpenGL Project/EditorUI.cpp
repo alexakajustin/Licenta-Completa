@@ -259,10 +259,12 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 			for (int i = 0; i < (int)objects.size(); i++)
 			{
 				ImGui::PushID(i);
-				bool isSelected = (selectedObj == i && selectedLight < 0);
+				bool isSelected = scene.IsObjectSelected(i);
 				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
 				{
-					scene.SetSelectedIndex(i);
+					bool multiSelect = ImGui::GetIO().KeyCtrl;
+					bool rangeSelect = ImGui::GetIO().KeyShift;
+					scene.SetSelectedIndex(i, multiSelect, rangeSelect);
 				}
 				
 				// --- Drag Source ---
@@ -298,10 +300,12 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 				const char* icon = (lights[i]->GetLightType() == LightType::Directional) ? "[D] " : 
 								   (lights[i]->GetLightType() == LightType::Point) ? "[P] " : "[S] ";
 				std::string label = std::string(icon) + lights[i]->GetName();
-				bool isSelected = (selectedLight == i && selectedObj < 0);
+				bool isSelected = scene.IsLightSelected(i);
 				if (ImGui::Selectable(label.c_str(), isSelected))
 				{
-					scene.SetSelectedLightIndex(i);
+					bool multiSelect = ImGui::GetIO().KeyCtrl;
+					bool rangeSelect = ImGui::GetIO().KeyShift;
+					scene.SetSelectedLightIndex(i, multiSelect, rangeSelect);
 				}
 				ImGui::PopID();
 			}
@@ -310,15 +314,29 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight)
 		// Delete key — only when this window is focused
 		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
 		{
-			if (selectedObj >= 0 && selectedObj < (int)objects.size() && selectedLight < 0)
-			{
-				delete objects[selectedObj];
-				objects.erase(objects.begin() + selectedObj);
-				scene.SetSelectedIndex(-1);
+			auto& selObjects = scene.GetSelectedObjectIndices();
+			auto& selLights = scene.GetSelectedLightIndices();
+
+			if (!selObjects.empty()) {
+				// Sort indices descending to avoid shifting issues when deleting
+				std::vector<int> sorted = selObjects;
+				std::sort(sorted.rbegin(), sorted.rend());
+				for (int idx : sorted) {
+					if (idx >= 0 && idx < (int)objects.size()) {
+						delete objects[idx];
+						objects.erase(objects.begin() + idx);
+					}
+				}
+				scene.ClearSelection();
 			}
-			else if (selectedLight >= 0 && selectedLight < (int)lights.size() && selectedObj < 0)
-			{
-				scene.DeleteLight(selectedLight);
+			else if (!selLights.empty()) {
+				// Sort indices descending
+				std::vector<int> sorted = selLights;
+				std::sort(sorted.rbegin(), sorted.rend());
+				for (int idx : sorted) {
+					scene.DeleteLight(idx);
+				}
+				scene.ClearSelection();
 			}
 		}
 

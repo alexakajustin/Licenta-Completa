@@ -14,7 +14,7 @@ public:
 	SceneInputNode(NodeGraph& graph);
 
 	void RenderContent(SceneManager* scene) override;
-	void Execute() override;
+	void Execute(SceneManager& scene) override;
 
 	std::string GetSelectedName() const { return selectedName; }
 	int GetSelectedIndex() const { return selectedIndex; }

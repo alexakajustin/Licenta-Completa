@@ -11,6 +11,8 @@ Mesh::Mesh()
 
 void Mesh::CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices)
 {
+	ClearMesh();
+	
 	indexCount = numberOfIndices;
 
 	// generate the vertex array object (LAYOUT/METADATA FOR THE VBO)

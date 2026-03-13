@@ -10,6 +10,11 @@ MeshData PrimitiveGenerator::GetPlaneData(int resolutionX, int resolutionZ)
 {
     MeshData data;
     
+    int totalVerts = (resolutionX + 1) * (resolutionZ + 1);
+    int totalIndices = resolutionX * resolutionZ * 6;
+    data.vertices.reserve(totalVerts * 14);
+    data.indices.reserve(totalIndices);
+
     float stepX = 2.0f / (float)resolutionX;
     float stepZ = 2.0f / (float)resolutionZ;
 
@@ -107,6 +112,12 @@ Mesh* PrimitiveGenerator::CreateCube()
 MeshData PrimitiveGenerator::GetSphereData(unsigned int rings, unsigned int sectors)
 {
     MeshData data;
+    
+    int totalVerts = rings * sectors;
+    int totalIndices = (rings - 1) * (sectors - 1) * 6;
+    data.vertices.reserve(totalVerts * 14);
+    data.indices.reserve(totalIndices);
+
     float const R = 1.0f / (float)(rings - 1);
     float const S = 1.0f / (float)(sectors - 1);
 

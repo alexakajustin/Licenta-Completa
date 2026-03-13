@@ -52,7 +52,7 @@ public:
 	virtual void RenderContent(SceneManager* scene) = 0;
 
 	// Process: read input pin data, compute, write output pin data
-	virtual void Execute() = 0;
+	virtual void Execute(SceneManager& scene) = 0;
 
 	// Find a pin by ID
 	Pin* FindPin(int pinId);

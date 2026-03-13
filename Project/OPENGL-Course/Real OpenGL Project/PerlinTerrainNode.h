@@ -24,7 +24,7 @@ public:
 		generator.RenderUI();
 	}
 
-	void Execute() override
+	void Execute(SceneManager& scene) override
 	{
 		MeshData data = generator.Generate(nullptr);
 		outputs[0].data.type = PinDataType::Mesh;

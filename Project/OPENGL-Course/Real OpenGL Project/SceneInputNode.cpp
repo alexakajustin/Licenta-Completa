@@ -33,20 +33,35 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 	}
 }
 
-void SceneInputNode::Execute()
+void SceneInputNode::Execute(SceneManager& scene)
 {
 	outputs[0].data.Clear();
 	outputs[0].data.type = PinDataType::Mesh;
 
 	if (selectedName == "(none)") return;
 
-	if (selectedName.find("Plane") != std::string::npos) {
-		outputs[0].data.meshData = ::PrimitiveGenerator::GetPlaneData();
+	MeshData data;
+	bool found = false;
+
+	// Check if it's a primitive or a scene object
+	auto& objects = scene.GetObjects();
+	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
+	{
+		GameObject* obj = objects[selectedIndex];
+		if (obj->GetMesh())
+		{
+			// Start with primitive data if it's one of the standard primitives
+			if (selectedName.find("Plane") != std::string::npos) data = PrimitiveGenerator::GetPlaneData();
+			else if (selectedName.find("Sphere") != std::string::npos) data = PrimitiveGenerator::GetSphereData();
+			else if (selectedName.find("Cube") != std::string::npos) data = PrimitiveGenerator::GetCubeData();
+			
+			// Transform by the object's current world transform
+			data.TransformBy(obj->GetTransform().GetModelMatrix());
+			found = true;
+		}
 	}
-	else if (selectedName.find("Sphere") != std::string::npos) {
-		outputs[0].data.meshData = ::PrimitiveGenerator::GetSphereData();
-	}
-	else if (selectedName.find("Cube") != std::string::npos) {
-		outputs[0].data.meshData = ::PrimitiveGenerator::GetCubeData();
+
+	if (found) {
+		outputs[0].data.meshData = data;
 	}
 }

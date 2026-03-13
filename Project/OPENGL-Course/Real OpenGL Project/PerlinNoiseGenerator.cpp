@@ -4,8 +4,9 @@
 #include <algorithm>
 
 PerlinNoiseGenerator::PerlinNoiseGenerator()
-	: gridSize(100), scale(1.0f), amplitude(10.0f),
-	  frequency(1.0f), octaves(4), persistence(0.5f), seed(42)
+	: gridSize(128), scale(1.0f), amplitude(15.0f),
+	  frequency(0.02f), octaves(6), persistence(0.5f), seed(42),
+	  offsetX(0.0f), offsetZ(0.0f)
 {
 	InitPermutation();
 }
@@ -105,11 +106,7 @@ void PerlinNoiseGenerator::RenderUI()
 	ImGui::DragFloat("Amplitude", &amplitude, 0.05f, 0.0f, 100.0f);
 	ImGui::DragFloat("Frequency", &frequency, 0.001f, 0.001f, 1.0f);
 	
-	static float offsetX = 0, offsetZ = 0;
-	if (ImGui::DragFloat2("Offset", &offsetX, 0.1f)) {
-		// We can reuse persistence or add new fields for offset if we want them saved
-		// For now let's just use what's available or assume UI state is enough
-	}
+	ImGui::DragFloat2("Offset", &offsetX, 0.1f);
 
 	ImGui::SliderInt("Octaves", &octaves, 1, 10);
 	ImGui::DragFloat("Persistence", &persistence, 0.01f, 0.01f, 1.0f);
@@ -148,8 +145,9 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 			for (int x = 0; x < verticesPerSide; x++) {
 				float worldX = (float)x * fallbackScale - halfSize;
 				float worldZ = (float)z * fallbackScale - halfSize;
-				float height = FractalNoise(worldX * frequency, worldZ * frequency) * amplitude;
-				data.AddVertex(worldX, height, worldZ, (float)x/50.0f, (float)z/50.0f, 0,1,0, 1,0,0, 0,0,1);
+				// Add small shifts (0.123) to avoid exact-integer-sampling zero pits
+				float noise = FractalNoise((worldX + offsetX + 0.123f) * frequency, (worldZ + offsetZ + 0.123f) * frequency) * amplitude;
+				data.AddVertex(worldX, noise, worldZ, (float)x/50.0f, (float)z/50.0f, 0,1,0, 1,0,0, 0,0,1);
 			}
 		}
 		for (int z = 0; z < 50; z++) {
@@ -175,8 +173,8 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 			float z = data.vertices[base + 2];
 
 			// Apply noise to Y (index base + 1)
-			// We sample based on world X/Z
-			float noise = FractalNoise(x * frequency, z * frequency);
+			// Apply sampling with offset and small shift to avoid integer-coordinate zero-return
+			float noise = FractalNoise((x + offsetX + 0.1234f) * frequency, (z + offsetZ + 0.1234f) * frequency);
 			data.vertices[base + 1] += noise * amplitude;
 		}
 	}

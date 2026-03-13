@@ -27,14 +27,12 @@ public:
 		inputs.push_back(objectIn);
 
 		// Outputs
-		Pin transformsOut(graph.NextPinId(), PinDataType::TransformList, "Transforms");
 		Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Combined");
-		outputs.push_back(transformsOut);
 		outputs.push_back(meshOut);
 	}
 
 	void RenderContent(SceneManager* scene) override;
-	void Execute() override;
+	void Execute(SceneManager& scene) override;
 
 private:
 	int count = 50;
@@ -51,6 +49,7 @@ private:
 
 	// Persistence for spawned objects (to cleanup/replace)
 	std::vector<std::string> spawnedNames;
+	TransformList lastTransforms; // Internal storage for spawning, not exposed as pin
 
 	// Random float in [min, max]
 	float RandRange(float min, float max);
@@ -69,4 +68,5 @@ public:
 	int GetParentIndex() const { return targetParentIndex; }
 	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
 	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }
+	const TransformList& GetLastTransforms() const { return lastTransforms; }
 };

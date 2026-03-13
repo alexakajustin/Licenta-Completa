@@ -28,6 +28,8 @@ private:
 	float frequency;      // Noise sampling frequency
 	int octaves;          // Fractal noise octaves
 	float persistence;    // Amplitude decay per octave
+	float offsetX;        // Sampling offset X
+	float offsetZ;        // Sampling offset Z
 	int seed;             // Random seed
 
 	// Internal Perlin noise implementation

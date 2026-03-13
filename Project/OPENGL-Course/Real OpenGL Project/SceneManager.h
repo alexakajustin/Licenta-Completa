@@ -30,19 +30,18 @@ public:
 	std::vector<LightObject*>& GetLights() { return lights; }
 
 	// ========== Selection ==========
-	void SetSelectedIndex(int index) { 
-		selectedObjectIndex = index; 
-		activeDragAxis = 0; // Reset drag state on selection change
-		if (index >= 0) selectedLightIndex = -1;
-	}
-	int GetSelectedIndex() const { return selectedObjectIndex; }
+	void ClearSelection() { selectedObjectIndices.clear(); selectedLightIndices.clear(); activeDragAxis = 0; }
 	
-	void SetSelectedLightIndex(int index) { 
-		selectedLightIndex = index; 
-		activeDragAxis = 0; // Reset drag state on selection change
-		if (index >= 0) selectedObjectIndex = -1;
-	}
-	int GetSelectedLightIndex() const { return selectedLightIndex; }
+	void SetSelectedIndex(int index, bool multiSelect = false, bool rangeSelect = false);
+	int GetSelectedIndex() const; // Returns the "anchor" or last selected object
+	const std::vector<int>& GetSelectedObjectIndices() const { return selectedObjectIndices; }
+	bool IsObjectSelected(int index) const;
+
+	void SetSelectedLightIndex(int index, bool multiSelect = false, bool rangeSelect = false);
+	int GetSelectedLightIndex() const; // Returns the "anchor" or last selected light
+	const std::vector<int>& GetSelectedLightIndices() const { return selectedLightIndices; }
+	bool IsLightSelected(int index) const;
+
 	std::string GetSelectedName() const;
 
 	// ========== Rendering ==========
@@ -87,8 +86,9 @@ public:
 private:
 	std::vector<GameObject*> objects;
 	std::vector<LightObject*> lights;
-	int selectedObjectIndex;
-	int selectedLightIndex;
+	
+	std::vector<int> selectedObjectIndices; // Ordered by selection time, last is primary
+	std::vector<int> selectedLightIndices;
 
 	Texture* defaultTexture = nullptr;
 	Material* defaultMaterial = nullptr;

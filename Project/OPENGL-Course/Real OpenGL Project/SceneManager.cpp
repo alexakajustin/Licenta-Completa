@@ -9,7 +9,7 @@
 // =====================================================================
 
 SceneManager::SceneManager()
-	: selectedObjectIndex(-1), selectedLightIndex(-1), pickingFBO(0), pickingTexture(0), pickingDepth(0),
+	: pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
 	  lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
 {
@@ -46,13 +46,16 @@ void SceneManager::RemoveObject(const std::string& name)
 			delete *it;
 			objects.erase(it);
 
-			// Selection safety
-			if (selectedObjectIndex == index) {
-				selectedObjectIndex = -1;
-				activeDragAxis = 0;
-			} else if (selectedObjectIndex > index) {
-				selectedObjectIndex--;
+			// Update selection indices
+			std::vector<int> newSelection;
+			for (int selIdx : selectedObjectIndices) {
+				if (selIdx == index) continue;
+				if (selIdx > index) newSelection.push_back(selIdx - 1);
+				else newSelection.push_back(selIdx);
 			}
+			selectedObjectIndices = newSelection;
+			
+			if (selectedObjectIndices.empty()) activeDragAxis = 0;
 			return;
 		}
 	}
@@ -88,8 +91,8 @@ void SceneManager::Clear()
 	for (auto* light : lights) delete light;
 	lights.clear();
 	
-	selectedObjectIndex = -1;
-	selectedLightIndex = -1;
+	selectedObjectIndices.clear();
+	selectedLightIndices.clear();
 }
 
 // =====================================================================
@@ -99,8 +102,9 @@ void SceneManager::Clear()
 glm::mat4 SceneManager::GetSelectedRotationMatrix() const
 {
 	glm::mat4 rot(1.0f);
-	if (selectedObjectIndex != -1) {
-		glm::vec3 r = objects[selectedObjectIndex]->GetTransform().GetRotation();
+	int sel = GetSelectedIndex();
+	if (sel != -1) {
+		glm::vec3 r = objects[sel]->GetTransform().GetRotation();
 		rot = glm::rotate(rot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
 		rot = glm::rotate(rot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
 		rot = glm::rotate(rot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -110,12 +114,15 @@ glm::mat4 SceneManager::GetSelectedRotationMatrix() const
 
 bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 {
-	if (selectedObjectIndex != -1) {
-		outPos = objects[selectedObjectIndex]->GetTransform().GetPosition();
+	int selObj = GetSelectedIndex();
+	if (selObj != -1) {
+		outPos = objects[selObj]->GetTransform().GetPosition();
 		return true;
 	}
-	else if (selectedLightIndex != -1) {
-		glm::vec3* lightPos = lights[selectedLightIndex]->GetPositionPtr();
+	
+	int selLight = GetSelectedLightIndex();
+	if (selLight != -1) {
+		glm::vec3* lightPos = lights[selLight]->GetPositionPtr();
 		if (lightPos) { outPos = *lightPos; return true; }
 	}
 	return false;
@@ -123,11 +130,97 @@ bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 
 std::string SceneManager::GetSelectedName() const
 {
-	if (selectedObjectIndex != -1 && selectedObjectIndex < (int)objects.size())
-		return objects[selectedObjectIndex]->GetName();
-	else if (selectedLightIndex != -1 && selectedLightIndex < (int)lights.size())
-		return lights[selectedLightIndex]->GetName();
+	int obj = GetSelectedIndex();
+	int light = GetSelectedLightIndex();
+	
+	if (obj != -1 && obj < (int)objects.size())
+		return objects[obj]->GetName();
+	else if (light != -1 && light < (int)lights.size())
+		return lights[light]->GetName();
 	return "None";
+}
+
+// ========== Selection Implementation ==========
+
+void SceneManager::SetSelectedIndex(int index, bool multiSelect, bool rangeSelect)
+{
+	if (!multiSelect && !rangeSelect) {
+		selectedObjectIndices.clear();
+		selectedLightIndices.clear();
+	}
+
+	if (index < 0) return;
+	selectedLightIndices.clear(); // Cannot select both lights and objects in multi-select for now
+
+	if (rangeSelect && !selectedObjectIndices.empty()) {
+		int start = selectedObjectIndices.back();
+		int end = index;
+		if (start > end) std::swap(start, end);
+		
+		for (int i = start; i <= end; i++) {
+			if (!IsObjectSelected(i)) selectedObjectIndices.push_back(i);
+		}
+	} else if (multiSelect) {
+		auto it = std::find(selectedObjectIndices.begin(), selectedObjectIndices.end(), index);
+		if (it != selectedObjectIndices.end()) {
+			selectedObjectIndices.erase(it);
+		} else {
+			selectedObjectIndices.push_back(index);
+		}
+	} else {
+		selectedObjectIndices.push_back(index);
+	}
+	activeDragAxis = 0;
+}
+
+int SceneManager::GetSelectedIndex() const 
+{ 
+	return selectedObjectIndices.empty() ? -1 : selectedObjectIndices.back(); 
+}
+
+bool SceneManager::IsObjectSelected(int index) const 
+{
+	return std::find(selectedObjectIndices.begin(), selectedObjectIndices.end(), index) != selectedObjectIndices.end();
+}
+
+void SceneManager::SetSelectedLightIndex(int index, bool multiSelect, bool rangeSelect)
+{
+	if (!multiSelect && !rangeSelect) {
+		selectedObjectIndices.clear();
+		selectedLightIndices.clear();
+	}
+
+	if (index < 0) return;
+	selectedObjectIndices.clear();
+
+	if (rangeSelect && !selectedLightIndices.empty()) {
+		int start = selectedLightIndices.back();
+		int end = index;
+		if (start > end) std::swap(start, end);
+		for (int i = start; i <= end; i++) {
+			if (!IsLightSelected(i)) selectedLightIndices.push_back(i);
+		}
+	} else if (multiSelect) {
+		auto it = std::find(selectedLightIndices.begin(), selectedLightIndices.end(), index);
+		if (it != selectedLightIndices.end()) {
+			selectedLightIndices.erase(it);
+		} else {
+			selectedLightIndices.push_back(index);
+		}
+	} else {
+		selectedLightIndices.push_back(index);
+	}
+	activeDragAxis = 0;
+}
+
+int SceneManager::GetSelectedLightIndex() const 
+{ 
+	return selectedLightIndices.empty() ? -1 : selectedLightIndices.back(); 
+}
+
+bool SceneManager::IsLightSelected(int index) const 
+{
+	return std::find(selectedLightIndices.begin(), selectedLightIndices.end(), index) != selectedLightIndices.end();
 }
 
 // =====================================================================
@@ -143,9 +236,7 @@ void SceneManager::CreateGameObject(const std::string& type)
 	else if (type == "Sphere") newObj->SetMesh(PrimitiveGenerator::CreateSphere());
 
 	objects.push_back(newObj);
-	selectedObjectIndex = (int)objects.size() - 1;
-	selectedLightIndex = -1;
-	activeDragAxis = 0;
+	SetSelectedIndex((int)objects.size() - 1);
 }
 
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
@@ -158,9 +249,7 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	newObj->SetModel(model);
 
 	objects.push_back(newObj);
-	selectedObjectIndex = (int)objects.size() - 1;
-	selectedLightIndex = -1;
-	activeDragAxis = 0; // Reset drag on instantiation
+	SetSelectedIndex((int)objects.size() - 1);
 	
 	printf("Instantiated model: %s\n", path.string().c_str());
 }
@@ -175,8 +264,7 @@ void SceneManager::CreateLight(LightType type)
 			LightObject* newLightObj = new LightObject("Point Light " + std::to_string(lights.size()), &globalPointLights[idx]);
 			lights.push_back(newLightObj);
 			(*globalPointLightCount)++;
-			selectedLightIndex = (int)lights.size() - 1;
-			selectedObjectIndex = -1;
+			SetSelectedLightIndex((int)lights.size() - 1);
 		}
 	} else if (type == LightType::Spot) {
 		if (globalSpotLights && globalSpotLightCount && *globalSpotLightCount < MAX_SPOT_LIGHTS) {
@@ -186,8 +274,7 @@ void SceneManager::CreateLight(LightType type)
 			LightObject* newLightObj = new LightObject("Spot Light " + std::to_string(lights.size()), &globalSpotLights[idx]);
 			lights.push_back(newLightObj);
 			(*globalSpotLightCount)++;
-			selectedLightIndex = (int)lights.size() - 1;
-			selectedObjectIndex = -1;
+			SetSelectedLightIndex((int)lights.size() - 1);
 		}
 	}
 }
@@ -234,7 +321,7 @@ void SceneManager::DeleteLight(int index)
 
 	delete light;
 	lights.erase(lights.begin() + index);
-	selectedLightIndex = -1;
+	selectedLightIndices.clear();
 }
 
 // =====================================================================
@@ -403,16 +490,13 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	if (pickedID > 0 && pickedID <= (int)objects.size()) {
-		selectedObjectIndex = pickedID - 1;
-		selectedLightIndex = -1;
+		SetSelectedIndex(pickedID - 1);
 	}
 	else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size()) {
-		selectedLightIndex = pickedID - 10000;
-		selectedObjectIndex = -1;
+		SetSelectedLightIndex(pickedID - 10000);
 	}
 	else if (pickedID < 20000) {
-		selectedObjectIndex = -1;
-		selectedLightIndex = -1;
+		ClearSelection();
 	}
 
 	return pickedID;
@@ -654,13 +738,17 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				activeDragAxis = pickedID;
 				printf("Gizmo Rotation START: Axis %d\n", activeDragAxis);
 
-				if (selectedObjectIndex != -1) {
-					dragInitialObjectRot = objects[selectedObjectIndex]->GetTransform().GetRotation();
-					dragRotationCenter = objects[selectedObjectIndex]->GetTransform().GetPosition();
-				} else if (selectedLightIndex != -1) {
-					dragInitialObjectRot = glm::vec3(0.0f);
-					glm::vec3* lp = lights[selectedLightIndex]->GetPositionPtr();
-					if (lp) dragRotationCenter = *lp;
+				int selObj = GetSelectedIndex();
+				if (selObj != -1) {
+					dragInitialObjectRot = objects[selObj]->GetTransform().GetRotation();
+					dragRotationCenter = objects[selObj]->GetTransform().GetPosition();
+				} else {
+					int selLight = GetSelectedLightIndex();
+					if (selLight != -1) {
+						dragInitialObjectRot = glm::vec3(0.0f);
+						glm::vec3* lp = lights[selLight]->GetPositionPtr();
+						if (lp) dragRotationCenter = *lp;
+					}
 				}
 
 				// Rotation axis in world space
@@ -716,12 +804,15 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 
 		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
 		
-		if (selectedObjectIndex != -1) objects[selectedObjectIndex]->GetTransform().SetPosition(newPos);
-		else if (selectedLightIndex != -1) lights[selectedLightIndex]->SetPosition(newPos);
+		int selObj = GetSelectedIndex();
+		int selLight = GetSelectedLightIndex();
+		if (selObj != -1) objects[selObj]->GetTransform().SetPosition(newPos);
+		else if (selLight != -1) lights[selLight]->SetPosition(newPos);
 	}
 	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
 		// === ROTATION ===
-		if (selectedObjectIndex == -1) return;
+		int selObj = GetSelectedIndex();
+		if (selObj == -1) return;
 
 		glm::vec3 hitPoint;
 		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
@@ -734,7 +825,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 			else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
 			else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
 
-			objects[selectedObjectIndex]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
+			objects[selObj]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
 			return;
 		}
 
@@ -755,7 +846,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
 		else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
 
-		objects[selectedObjectIndex]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
+		objects[selObj]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
 	}
 }
 

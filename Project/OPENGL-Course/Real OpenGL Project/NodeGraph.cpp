@@ -131,32 +131,7 @@ void NodeGraph::RemoveLink(int linkId)
 		[linkId](const Link& l) { return l.id == linkId; }), links.end());
 }
 
-void NodeGraph::PropagateData()
-{
-	for (auto& link : links)
-	{
-		// Find source output pin
-		Pin* srcPin = nullptr;
-		for (auto* n : nodes)
-		{
-			srcPin = n->FindOutputPin(link.startPinId);
-			if (srcPin) break;
-		}
 
-		// Find destination input pin
-		Pin* dstPin = nullptr;
-		for (auto* n : nodes)
-		{
-			dstPin = n->FindInputPin(link.endPinId);
-			if (dstPin) break;
-		}
-
-		if (srcPin && dstPin)
-		{
-			dstPin->data = srcPin->data;
-		}
-	}
-}
 
 std::vector<GraphNode*> NodeGraph::TopologicalSort()
 {
@@ -230,11 +205,26 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 	for (auto* node : sorted)
 	{
-		// Propagate data from connected outputs to this node's inputs
-		PropagateData();
-
 		// Execute the node
-		node->Execute();
+		node->Execute(scene);
+
+		// Propagate data from this node's outputs to connected inputs
+		for (auto& link : links)
+		{
+			Pin* srcPin = node->FindOutputPin(link.startPinId);
+			if (srcPin)
+			{
+				GraphNode* dstNode = FindNodeByPinId(link.endPinId);
+				if (dstNode)
+				{
+					Pin* dstPin = dstNode->FindInputPin(link.endPinId);
+					if (dstPin)
+					{
+						dstPin->data = srcPin->data;
+					}
+				}
+			}
+		}
 	}
 
 	// After execution, process nodes that modify the scene
@@ -264,7 +254,13 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							(unsigned int)meshInput.data.meshData.vertices.size(),
 							(unsigned int)meshInput.data.meshData.indices.size()
 						);
-						printf("Updated mesh for object: %s\n", target->GetName().c_str());
+						
+						// Reset transform to identity since mesh is baked in world space
+						target->GetTransform().SetPosition(glm::vec3(0.0f));
+						target->GetTransform().SetRotation(glm::vec3(0.0f));
+						target->GetTransform().SetScale(glm::vec3(1.0f, 1.0f, 1.0f));
+						
+						printf("Updated mesh (World Space) for object: %s\n", target->GetName().c_str());
 					}
 					else
 					{
@@ -293,7 +289,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 				// Optional: Set some parenting logic here if SceneManager supports it.
 				// For now, we spawn them in the scene with a name prefix.
 
-				auto& transforms = node->outputs[0].data.transforms;
+				auto& transforms = scatterNode->GetLastTransforms();
 				std::vector<std::string> newSpawned;
 
 				for (int i = 0; i < (int)transforms.size(); i++)

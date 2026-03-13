@@ -67,6 +67,39 @@ struct MeshData
 		indices.push_back(i2);
 	}
 
+	void TransformBy(const glm::mat4& matrix)
+	{
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(matrix)));
+		int count = GetVertexCount();
+		for (int i = 0; i < count; i++)
+		{
+			int base = i * 14;
+			// Position
+			glm::vec4 p = matrix * glm::vec4(vertices[base], vertices[base + 1], vertices[base + 2], 1.0f);
+			vertices[base] = p.x;
+			vertices[base + 1] = p.y;
+			vertices[base + 2] = p.z;
+
+			// Normal
+			glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(vertices[base + 5], vertices[base + 6], vertices[base + 7]));
+			vertices[base + 5] = n.x;
+			vertices[base + 6] = n.y;
+			vertices[base + 7] = n.z;
+
+			// Tangent
+			glm::vec3 t = glm::normalize(normalMatrix * glm::vec3(vertices[base + 8], vertices[base + 9], vertices[base + 10]));
+			vertices[base + 8] = t.x;
+			vertices[base + 9] = t.y;
+			vertices[base + 10] = t.z;
+
+			// Bitangent
+			glm::vec3 b = glm::normalize(normalMatrix * glm::vec3(vertices[base + 11], vertices[base + 12], vertices[base + 13]));
+			vertices[base + 11] = b.x;
+			vertices[base + 12] = b.y;
+			vertices[base + 13] = b.z;
+		}
+	}
+
 	// Get position of vertex at index
 	glm::vec3 GetPosition(int vertIndex) const
 	{

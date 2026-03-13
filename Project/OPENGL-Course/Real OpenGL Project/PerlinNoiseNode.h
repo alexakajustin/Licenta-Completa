@@ -27,7 +27,7 @@ public:
 		generator.RenderUI();
 	}
 
-	void Execute() override
+	void Execute(SceneManager& scene) override
 	{
 		// Process input
 		MeshData* inputMesh = nullptr;

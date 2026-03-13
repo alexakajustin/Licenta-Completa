@@ -2127,6 +2127,9 @@
     <ClInclude Include="External Libs\imnodes\imnodes_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PerlinTerrainNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icons\Light.png">

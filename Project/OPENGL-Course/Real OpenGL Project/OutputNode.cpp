@@ -37,7 +37,7 @@ void OutputNode::RenderContent(SceneManager* scene)
 		ImGui::TextColored(ImVec4(0, 1, 0, 1), "Target: %s", objects[targetIndex]->GetName().c_str());
 }
 
-void OutputNode::Execute()
+void OutputNode::Execute(SceneManager& scene)
 {
 	// Logic is handled in NodeGraph::Execute because it needs access to SceneManager
 }

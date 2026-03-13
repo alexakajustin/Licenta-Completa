@@ -6,6 +6,7 @@
 #include "ScatterNode.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <random>
 
 void ScatterNode::RenderContent(SceneManager* scene)
 {
@@ -46,6 +47,7 @@ void ScatterNode::RenderContent(SceneManager* scene)
 
 float ScatterNode::RandRange(float min, float max)
 {
+	// This is a legacy helper, but we'll use mt19937 for real work
 	float t = (float)std::rand() / (float)RAND_MAX;
 	return min + t * (max - min);
 }
@@ -160,12 +162,11 @@ void ScatterNode::MergeTransformed(const MeshData& objectMesh, const glm::vec3& 
 	}
 }
 
-void ScatterNode::Execute()
+void ScatterNode::Execute(SceneManager& scene)
 {
-	outputs[0].data.Clear(); // Transforms
-	outputs[0].data.type = PinDataType::TransformList;
-	outputs[1].data.Clear(); // Mesh
-	outputs[1].data.type = PinDataType::Mesh;
+	lastTransforms.clear();
+	outputs[0].data.Clear(); // Mesh
+	outputs[0].data.type = PinDataType::Mesh;
 
 	// Get surface mesh from input 0
 	MeshData& surfaceMesh = inputs[0].data.meshData;
@@ -182,24 +183,58 @@ void ScatterNode::Execute()
 		return;
 	}
 
-	std::srand(seed);
-	MeshData result;
-	TransformList transforms;
+	// Use a modern random engine to avoid biased std::rand() (especially on Windows where RAND_MAX is 32767)
+	std::mt19937 gen(seed);
+	std::uniform_int_distribution<> triDist(0, (int)surfaceMesh.indices.size() / 3 - 1);
+	std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
+	std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
+	std::uniform_real_distribution<float> scaleDist(minScale, maxScale);
+
+	MeshData result = surfaceMesh;
+	int addedVerts = count * objectMesh.GetVertexCount();
+	int addedIndices = count * objectMesh.indices.size();
+	result.vertices.reserve(result.vertices.size() + addedVerts * 14);
+	result.indices.reserve(result.indices.size() + addedIndices);
 
 	for (int i = 0; i < count; i++)
 	{
-		glm::vec3 pos, normal;
-		RandomPointOnMesh(surfaceMesh, pos, normal);
+		// Pick a random triangle properly
+		int triIdx = triDist(gen);
+		unsigned int i0 = surfaceMesh.indices[triIdx * 3];
+		unsigned int i1 = surfaceMesh.indices[triIdx * 3 + 1];
+		unsigned int i2 = surfaceMesh.indices[triIdx * 3 + 2];
+
+		glm::vec3 v0 = surfaceMesh.GetPosition(i0);
+		glm::vec3 v1 = surfaceMesh.GetPosition(i1);
+		glm::vec3 v2 = surfaceMesh.GetPosition(i2);
+
+		// Random barycentric coordinates
+		float r1 = floatDist(gen);
+		float r2 = floatDist(gen);
+		if (r1 + r2 > 1.0f)
+		{
+			r1 = 1.0f - r1;
+			r2 = 1.0f - r2;
+		}
+		float r0 = 1.0f - r1 - r2;
+
+		glm::vec3 pos = v0 * r0 + v1 * r1 + v2 * r2;
+
+		// Interpolate normal
+		glm::vec3 n0 = surfaceMesh.GetNormal(i0);
+		glm::vec3 n1 = surfaceMesh.GetNormal(i1);
+		glm::vec3 n2 = surfaceMesh.GetNormal(i2);
+		glm::vec3 normal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
 
 		// Random scale
-		float s = RandRange(minScale, maxScale);
+		float s = scaleDist(gen);
 		glm::vec3 scaleVec(s);
 
 		// Random rotation
 		glm::vec3 rot(0.0f);
 		if (randomRotation)
 		{
-			rot.y = RandRange(0.0f, 360.0f);
+			rot.y = rotDist(gen);
 		}
 
 		// Store transform
@@ -207,13 +242,10 @@ void ScatterNode::Execute()
 		t.position = pos;
 		t.rotation = rot;
 		t.scale = scaleVec;
-		// Special handling for alignToNormal: we'll store the surface normal in rotation.x temporarily?
-		// No, let's keep it simple for now or bake it if merging.
-		transforms.push_back(t);
+		lastTransforms.push_back(t);
 
 		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, result);
 	}
 
-	outputs[0].data.transforms = transforms;
-	outputs[1].data.meshData = result;
+	outputs[0].data.meshData = result;
 }

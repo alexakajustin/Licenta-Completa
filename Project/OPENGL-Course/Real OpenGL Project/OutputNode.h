@@ -15,7 +15,7 @@ public:
 	OutputNode(NodeGraph& graph);
 
 	void RenderContent(SceneManager* scene) override;
-	void Execute() override;
+	void Execute(SceneManager& scene) override;
 
 	// Helper for the graph execution to find where to push the mesh
 	int GetTargetIndex() const { return targetIndex; }
