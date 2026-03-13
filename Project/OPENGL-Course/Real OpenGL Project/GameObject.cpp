@@ -44,7 +44,15 @@ void GameObject::SetParent(GameObject* newParent)
 
 	// Update local transform to maintain world position, rotation, and scale
 	if (parent) {
-		glm::mat4 invParent = glm::inverse(parent->GetWorldMatrix());
+		glm::mat4 pMat = parent->GetWorldMatrix();
+		if (!inheritScale) {
+			// If not inheriting scale, we want to maintain world pose relative 
+			// to a scale-neutral parent to avoid squashing the local transform.
+			pMat[0] = glm::normalize(pMat[0]);
+			pMat[1] = glm::normalize(pMat[1]);
+			pMat[2] = glm::normalize(pMat[2]);
+		}
+		glm::mat4 invParent = glm::inverse(pMat);
 		glm::mat4 localMat = invParent * worldMat;
 		transform.SetFromMatrix(localMat);
 	} else {
@@ -54,10 +62,26 @@ void GameObject::SetParent(GameObject* newParent)
 
 glm::mat4 GameObject::GetWorldMatrix() const
 {
+	glm::mat4 localModel = transform.GetModelMatrix();
 	if (parent) {
-		return parent->GetWorldMatrix() * transform.GetModelMatrix();
+		glm::mat4 pWorld = parent->GetWorldMatrix();
+		if (!inheritScale) {
+			// 1. Calculate world position with FULL parent scale
+			glm::vec3 worldPos = glm::vec3(pWorld * localModel[3]);
+
+			// 2. Calculate world orientation/scale without parent scale
+			pWorld[0] = glm::normalize(pWorld[0]);
+			pWorld[1] = glm::normalize(pWorld[1]);
+			pWorld[2] = glm::normalize(pWorld[2]);
+			pWorld[3] = glm::vec4(0, 0, 0, 1);
+
+			glm::mat4 worldMat = pWorld * localModel;
+			worldMat[3] = glm::vec4(worldPos, 1.0f);
+			return worldMat;
+		}
+		return pWorld * localModel;
 	}
-	return transform.GetModelMatrix();
+	return localModel;
 }
 
 void GameObject::AddChild(GameObject* child)
@@ -85,7 +109,27 @@ void GameObject::RemoveChild(GameObject* child)
 void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix)
 {
 	// Apply transform relative to parent
-	glm::mat4 modelMatrix = parentMatrix * transform.GetModelMatrix();
+	glm::mat4 localModel = transform.GetModelMatrix();
+	glm::mat4 modelMatrix;
+
+	if (!inheritScale) {
+		// Compute world position with full parent scale
+		// Note: parentMatrix here is already the cumulative world matrix of the parent
+		glm::vec3 worldPos = glm::vec3(parentMatrix * localModel[3]);
+
+		// Compute orientation/scale with normalized parent basis
+		glm::mat4 pBasis = parentMatrix;
+		pBasis[0] = glm::normalize(pBasis[0]);
+		pBasis[1] = glm::normalize(pBasis[1]);
+		pBasis[2] = glm::normalize(pBasis[2]);
+		pBasis[3] = glm::vec4(0, 0, 0, 1);
+
+		modelMatrix = pBasis * localModel;
+		modelMatrix[3] = glm::vec4(worldPos, 1.0f);
+	}
+	else {
+		modelMatrix = parentMatrix * localModel;
+	}
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
 	// Apply material if available

@@ -28,5 +28,4 @@ public:
 private:
 	int selectedIndex = -1;
 	std::string selectedName = "(none)";
-	bool bakeTransform = true;
 };

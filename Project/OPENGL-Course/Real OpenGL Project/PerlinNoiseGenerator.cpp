@@ -5,7 +5,7 @@
 
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 	: gridSize(128), scale(1.0f), amplitude(15.0f),
-	  frequency(0.02f), octaves(6), persistence(0.5f), seed(42),
+	  frequency(0.028f), octaves(10), persistence(1.0f), seed(42),
 	  offsetX(0.0f), offsetZ(0.0f)
 {
 	InitPermutation();

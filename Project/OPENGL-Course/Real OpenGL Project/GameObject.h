@@ -45,6 +45,9 @@ public:
 	void AddChild(GameObject* child);
 	void RemoveChild(GameObject* child);
 
+	void SetInheritScale(bool inherit) { inheritScale = inherit; }
+	bool GetInheritScale() const { return inheritScale; }
+
 	// Render this object
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
 
@@ -54,6 +57,7 @@ private:
 
 	GameObject* parent = nullptr;
 	std::vector<GameObject*> children;
+	bool inheritScale = true;
 
 	Model* model;      // For loaded .obj models
 	Mesh* mesh;        // For primitive meshes

@@ -255,12 +255,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							(unsigned int)meshInput.data.meshData.indices.size()
 						);
 						
-						// Reset transform to identity since mesh is baked in world space
-						target->GetTransform().SetPosition(glm::vec3(0.0f));
-						target->GetTransform().SetRotation(glm::vec3(0.0f));
-						target->GetTransform().SetScale(glm::vec3(1.0f, 1.0f, 1.0f));
-						
-						printf("Updated mesh (World Space) for object: %s\n", target->GetName().c_str());
+						printf("Updated mesh for object: %s\n", target->GetName().c_str());
 					}
 					else
 					{
@@ -314,7 +309,13 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					std::string name = "Instance_" + std::to_string(node->id) + "_" + std::to_string(i);
 					GameObject* obj = new GameObject(name);
 					
-					// Build world-space pose with normal alignment
+					// 1. Set parenting first (this allows us to set the local transform relative to the parent)
+					obj->SetParent(targetParent);
+
+					// 2. Prevent distortion from non-uniform parent scale
+					obj->SetInheritScale(false);
+
+					// 3. Build the desired transform (relative to a scale-neutral parent)
 					glm::mat4 model = glm::mat4(1.0f);
 					model = glm::translate(model, transforms[i].position);
 
@@ -340,7 +341,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					// Apply scale
 					model = glm::scale(model, transforms[i].scale);
 
-					// Set the world pose
+					// 4. Set the final local pose
 					obj->GetTransform().SetFromMatrix(model);
 
 					// Use object mesh from input 1 if available
@@ -352,9 +353,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					
 					if (defaultTex) obj->SetTexture(defaultTex);
 					if (defaultMat) obj->SetMaterial(defaultMat);
-
-					// Set parenting (SetParent maintains world pose)
-					obj->SetParent(targetParent);
 
 					scene.AddObject(obj);
 					newSpawned.push_back(name);

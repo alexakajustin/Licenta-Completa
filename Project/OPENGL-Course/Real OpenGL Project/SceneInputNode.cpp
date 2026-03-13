@@ -29,10 +29,7 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 				selectedName = objects[i]->GetName();
 			}
 		}
-		ImGui::EndCombo();
 	}
-
-	ImGui::Checkbox("Bake Transform", &bakeTransform);
 }
 
 void SceneInputNode::Execute(SceneManager& scene)
@@ -57,17 +54,6 @@ void SceneInputNode::Execute(SceneManager& scene)
 			else if (selectedName.find("Sphere") != std::string::npos) data = PrimitiveGenerator::GetSphereData();
 			else if (selectedName.find("Cube") != std::string::npos) data = PrimitiveGenerator::GetCubeData();
 			
-			if (bakeTransform)
-			{
-				// Transform by the object's Scale and Rotation only (Template should be at origin)
-				glm::mat4 templateMat = glm::mat4(1.0f);
-				templateMat = glm::rotate(templateMat, glm::radians(obj->GetTransform().GetRotation().y), glm::vec3(0, 1, 0));
-				templateMat = glm::rotate(templateMat, glm::radians(obj->GetTransform().GetRotation().x), glm::vec3(1, 0, 0));
-				templateMat = glm::rotate(templateMat, glm::radians(obj->GetTransform().GetRotation().z), glm::vec3(0, 0, 1));
-				templateMat = glm::scale(templateMat, obj->GetTransform().GetScale());
-
-				data.TransformBy(templateMat);
-			}
 			found = true;
 		}
 	}
