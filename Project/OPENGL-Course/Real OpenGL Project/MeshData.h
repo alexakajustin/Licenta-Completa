@@ -3,6 +3,7 @@
 #include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <string>
 #include "Mesh.h"
 
 // ========== Transform Data ==========
@@ -101,6 +102,22 @@ struct MeshData
 		}
 	}
 
+	void Append(const MeshData& other)
+	{
+		if (other.vertices.empty()) return;
+
+		int baseVertex = GetVertexCount();
+		
+		// Append vertices
+		vertices.insert(vertices.end(), other.vertices.begin(), other.vertices.end());
+		
+		// Append indices with offset
+		for (unsigned int idx : other.indices)
+		{
+			indices.push_back(idx + baseVertex);
+		}
+	}
+
 	// Get position of vertex at index
 	glm::vec3 GetPosition(int vertIndex) const
 	{
@@ -127,11 +144,15 @@ struct PinData
 	PinDataType type = PinDataType::None;
 	MeshData meshData;
 	TransformList transforms;
+	std::vector<MeshData> instanceMeshes;
+	std::string sourceObjectName = "(none)";
 
 	void Clear()
 	{
 		type = PinDataType::None;
 		meshData.Clear();
 		transforms.clear();
+		instanceMeshes.clear();
+		sourceObjectName = "(none)";
 	}
 };

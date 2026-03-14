@@ -16,7 +16,7 @@ public:
 	NodeEditorUI();
 	~NodeEditorUI();
 
-	void Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat);
+	void Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, bool* p_open = nullptr, bool forceLayout = false);
 
 private:
 	bool isOpen;

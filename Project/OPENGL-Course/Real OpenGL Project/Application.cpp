@@ -164,38 +164,39 @@ void Application::Run()
 		debugOverlay.SetSelectionInfo(sceneManager.GetSelectedName());
 		debugOverlay.SetViewportInfo(fbw, fbh);
 
-		// Editor UI
+		// Editor UI 
 		// Since docking is not available, we use fixed window layout to emulate Unity
-		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(300, 600), ImGuiCond_FirstUseEver);
-		// ... (EditorUI handles its own windows)
+		
+		// 1. Render Top Bar first
+		editorUI.RenderMainMenuBar(sceneManager, nodeGraph);
+
+		EditorUI::WindowState& uiState = editorUI.GetWindowState();
 
 		// ... (EditorUI handles its own windows)
 
 		// Update projection matrix if window resized
 		projection = glm::perspective(glm::radians(60.0f), (GLfloat)fbw / (GLfloat)fbh, 0.1f, 1000.0f);
-
 		glm::mat4 view = camera.calculateViewMatrix();
-		
-		// Main render pass directly to screen
+
+		// Main render pass directly to backbuffer
 		glViewport(0, 0, fbw, fbh);
 		
-		// Shadow passes (already bind their own FBOs)
+		// Shadow passes
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
 		for (unsigned int i = 0; i < spotLightCount; i++)
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
 
-		// Main render pass into FBO
+		// Final Scene Render (Background)
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, fbw, fbh);
 		
-
-		// Now render ImGui windows
+		// Now render ImGui windows using centralized states over the scene
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), 0, &camera);
-		assetBrowser.Render(sceneManager);
-		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial);
+		
+		assetBrowser.Render(sceneManager, &uiState.isAssetBrowserOpen, uiState.forceLayout);
+		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, &uiState.isNodeEditorOpen, uiState.forceLayout);
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection);
@@ -206,7 +207,7 @@ void Application::Run()
 		debugOverlay.EndFrame();
 
 		// Debug overlay + ImGui render
-		debugOverlay.Render();
+		debugOverlay.Render(&uiState.isDebugOverlayOpen);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

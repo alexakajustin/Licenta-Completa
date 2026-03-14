@@ -109,9 +109,12 @@ void DebugOverlay::ResetCounters()
 	triangleCount = 0;
 }
 
-void DebugOverlay::Render()
+void DebugOverlay::Render(bool* p_open)
 {
-	if (!isOpen) return;
+	if (p_open && !*p_open) return;
+	if (!p_open && !isOpen) return;
+
+	bool* activeOpen = p_open ? p_open : &isOpen;
 
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
@@ -119,7 +122,7 @@ void DebugOverlay::Render()
 	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.3f, (float)bufferHeight * 0.3f), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowBgAlpha(0.85f);
 
-	ImGui::Begin("GPU Debug", &isOpen, ImGuiWindowFlags_NoFocusOnAppearing);
+	ImGui::Begin("GPU Debug", activeOpen, ImGuiWindowFlags_NoFocusOnAppearing);
 
 	// --- GPU Info ---
 	ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "GPU Info");

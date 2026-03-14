@@ -2,6 +2,7 @@
 
 #include "NodeGraph.h"
 #include "imgui.h"
+#include "PerlinNoiseGenerator.h"
 #include <cmath>
 #include <cstdlib>
 
@@ -28,7 +29,9 @@ public:
 
 		// Outputs
 		Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Combined");
+		Pin instancesOut(graph.NextPinId(), PinDataType::Mesh, "Instances Only");
 		outputs.push_back(meshOut);
+		outputs.push_back(instancesOut);
 	}
 
 	void RenderContent(SceneManager* scene) override;
@@ -42,14 +45,9 @@ private:
 	bool alignToNormal = true;
 	int seed = 42;
 
-	// In-place modification mode
-	bool spawnAsObjects = false;
-	std::string targetParentName = "(none)";
-	int targetParentIndex = -1;
-
-	// Persistence for spawned objects (to cleanup/replace)
+	// Persistence for spawned objects (handled by Output node now)
 	std::vector<std::string> spawnedNames;
-	TransformList lastTransforms; // Internal storage for spawning, not exposed as pin
+	TransformList lastTransforms; 
 
 	// Random float in [min, max]
 	float RandRange(float min, float max);
@@ -64,10 +62,7 @@ private:
 		const glm::vec3& surfaceNormal, MeshData& output);
 
 public:
-	bool IsSpawnMode() const { return spawnAsObjects; }
 	bool IsAlignToNormal() const { return alignToNormal; }
-	int GetParentIndex() const { return targetParentIndex; }
 	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
 	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }
-	const TransformList& GetLastTransforms() const { return lastTransforms; }
 };

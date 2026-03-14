@@ -20,6 +20,8 @@ public:
 	void RenderUI() override;
 	MeshData Generate(const MeshData* input) override;
 
+	void SetOffset(float x, float z) { offsetX = x; offsetZ = z; }
+
 private:
 	// Configurable parameters
 	int gridSize;         // Grid resolution (gridSize x gridSize quads)

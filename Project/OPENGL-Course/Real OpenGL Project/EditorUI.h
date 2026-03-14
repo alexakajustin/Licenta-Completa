@@ -12,6 +12,7 @@
 class SceneManager;
 class Camera;
 class GameObject;
+class NodeGraph;
 
 class EditorUI
 {
@@ -21,6 +22,8 @@ public:
 
 	// Draw all editor panels (hierarchy + inspector)
 	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr);
+
+	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph);
 
 private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
@@ -34,11 +37,19 @@ private:
 	// Helper: handle ASSET_PATH drag-drop (DRY — used by hierarchy, inspector, and viewport)
 	static void HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos = glm::vec3(0.0f));
 
+public:
 	struct WindowState {
 		bool isHierarchyOpen = true;
 		bool isInspectorOpen = true;
-		bool isViewportOpen = true;
+		bool isAssetBrowserOpen = true;
+		bool isNodeEditorOpen = true;
+		bool isDebugOverlayOpen = true;
+		bool forceLayout = false;
 	} windowState;
+
+	WindowState& GetWindowState() { return windowState; }
+
+private:
 
 	// Material preview sphere
 	void InitMaterialPreview();

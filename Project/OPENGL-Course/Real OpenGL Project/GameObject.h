@@ -9,6 +9,7 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Material.h"
+#include "MeshData.h"
 
 class GameObject
 {
@@ -51,6 +52,12 @@ public:
 	// Render this object
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
 
+	// Mesh Persistence
+	void SetCPUMeshData(const MeshData& data) { cpuMeshData = data; hasCustomMesh = true; }
+	const MeshData& GetCPUMeshData() const { return cpuMeshData; }
+	bool HasCustomMesh() const { return hasCustomMesh; }
+	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.Clear(); }
+
 private:
 	std::string name;
 	Transform transform;
@@ -66,4 +73,8 @@ private:
 	Texture* texture;
 	Texture* normalMap;
 	Material* material;
+
+	// Persistent mesh data for procedural generation
+	MeshData cpuMeshData;
+	bool hasCustomMesh = false;
 };

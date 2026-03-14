@@ -35,7 +35,7 @@ public:
 	~AssetBrowser();
 
 	void Init();
-	void Render(SceneManager& scene);
+	void Render(SceneManager& scene, bool* p_open = nullptr, bool forceLayout = false);
 	void RefreshAssetList();
 
 private:

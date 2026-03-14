@@ -3,6 +3,7 @@
 #include "PerlinNoiseNode.h"
 #include "SceneInputNode.h"
 #include "ScatterNode.h"
+#include "MergeMeshNode.h"
 #include "OutputNode.h"
 
 #include "imgui.h"
@@ -18,16 +19,21 @@ NodeEditorUI::~NodeEditorUI()
 {
 }
 
-void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat)
+void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, bool* p_open, bool forceLayout)
 {
-	if (!isOpen) return;
+	if (p_open && !*p_open) return;
+	if (!p_open && !isOpen) return;
+
+	bool* activeOpen = p_open ? p_open : &isOpen;
 
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.3f, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.7f, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	
+	ImGuiCond layoutCond = forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 19), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.8f - 300.0f, (float)bufferHeight * 0.7f - 19), layoutCond);
 
-	ImGui::Begin("Node Editor", &isOpen, ImGuiWindowFlags_MenuBar);
+	ImGui::Begin("Node Editor", activeOpen, ImGuiWindowFlags_MenuBar);
 
 	// Menu Bar
 	if (ImGui::BeginMenuBar())
@@ -182,6 +188,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Perlin Noise")) newNode = new PerlinNoiseNode(graph);
 		if (ImGui::MenuItem("Scene Input")) newNode = new SceneInputNode(graph);
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
+		if (ImGui::MenuItem("Merge Mesh")) newNode = new MergeMeshNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
 
 		if (newNode)
@@ -216,7 +223,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 
 	// Node Deletion (Delete key)
 	const int numSelected = ImNodes::NumSelectedNodes();
-	if (numSelected > 0 && ImGui::IsKeyReleased(ImGuiKey_Delete))
+	if (numSelected > 0 && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyReleased(ImGuiKey_Delete))
 	{
 		std::vector<int> selectedNodes(numSelected);
 		ImNodes::GetSelectedNodes(selectedNodes.data());

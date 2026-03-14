@@ -22,26 +22,6 @@ void ScatterNode::RenderContent(SceneManager* scene)
 	if (ImGui::Button("Rand"))
 		seed = std::rand();
 
-	ImGui::Separator();
-	ImGui::Checkbox("Spawn as Objects", &spawnAsObjects);
-	if (spawnAsObjects && scene)
-	{
-		auto& objects = scene->GetObjects();
-		if (ImGui::BeginCombo("Parent", targetParentName.c_str()))
-		{
-			for (int i = 0; i < (int)objects.size(); i++)
-			{
-				bool isSelected = (targetParentIndex == i);
-				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
-				{
-					targetParentIndex = i;
-					targetParentName = objects[i]->GetName();
-				}
-			}
-			ImGui::EndCombo();
-		}
-	}
-
 	ImGui::PopID();
 }
 
@@ -165,8 +145,10 @@ void ScatterNode::MergeTransformed(const MeshData& objectMesh, const glm::vec3& 
 void ScatterNode::Execute(SceneManager& scene)
 {
 	lastTransforms.clear();
-	outputs[0].data.Clear(); // Mesh
+	outputs[0].data.Clear(); // Combined
 	outputs[0].data.type = PinDataType::Mesh;
+	outputs[1].data.Clear(); // Instances Only
+	outputs[1].data.type = PinDataType::Mesh;
 
 	// Get surface mesh from input 0
 	MeshData& surfaceMesh = inputs[0].data.meshData;
@@ -178,23 +160,32 @@ void ScatterNode::Execute(SceneManager& scene)
 
 	if (!hasSurface || !hasObject)
 	{
-		// If no object mesh connected, just pass through the surface
-		if (hasSurface) outputs[1].data.meshData = surfaceMesh;
+		// If no object mesh connected, just pass through the surface to Combined
+		if (hasSurface) outputs[0].data.meshData = surfaceMesh;
 		return;
 	}
 
-	// Use a modern random engine to avoid biased std::rand() (especially on Windows where RAND_MAX is 32767)
+	// Use a modern random engine to avoid biased std::rand()
 	std::mt19937 gen(seed);
 	std::uniform_int_distribution<> triDist(0, (int)surfaceMesh.indices.size() / 3 - 1);
 	std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
 	std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
 	std::uniform_real_distribution<float> scaleDist(minScale, maxScale);
 
-	MeshData result = surfaceMesh;
+	MeshData combinedResult = surfaceMesh;
+	MeshData instancesOnly;
+
 	int addedVerts = count * objectMesh.GetVertexCount();
 	int addedIndices = count * objectMesh.indices.size();
-	result.vertices.reserve(result.vertices.size() + addedVerts * 14);
-	result.indices.reserve(result.indices.size() + addedIndices);
+	
+	combinedResult.vertices.reserve(combinedResult.vertices.size() + addedVerts * 14);
+	combinedResult.indices.reserve(combinedResult.indices.size() + addedIndices);
+	instancesOnly.vertices.reserve(addedVerts * 14);
+	instancesOnly.indices.reserve(addedIndices);
+
+	// Setup modular output lists
+	outputs[1].data.transforms.reserve(count);
+	outputs[1].data.instanceMeshes.reserve(count);
 
 	for (int i = 0; i < count; i++)
 	{
@@ -237,20 +228,24 @@ void ScatterNode::Execute(SceneManager& scene)
 			rot.y = rotDist(gen);
 		}
 
-		// Store transform for object spawning pass in NodeGraph
+		// Store transform for modular downstream use
 		TransformData t;
 		t.position = pos;
 		t.rotation = rot;
 		t.scale = scaleVec;
 		t.normal = normal;
-		lastTransforms.push_back(t);
+		lastTransforms.push_back(t); // Compatibility
+		outputs[1].data.transforms.push_back(t);
+		outputs[1].data.instanceMeshes.push_back(objectMesh); // Modular: individual copy for noise node to hit
 
-		// ONLY merge into the baked mesh if we are NOT spawning separate GameObjects
-		if (!spawnAsObjects)
-		{
-			MergeTransformed(objectMesh, pos, rot, scaleVec, normal, result);
-		}
+		// Compute baked result for Combined and Instances Only
+		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, combinedResult);
+		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, instancesOnly);
 	}
 
-	outputs[0].data.meshData = result;
+	outputs[0].data.meshData = combinedResult;
+	outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName; // Combined takes surface name
+
+	outputs[1].data.meshData = instancesOnly;
+	outputs[1].data.sourceObjectName = "(none)"; 
 }

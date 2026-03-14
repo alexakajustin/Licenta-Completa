@@ -311,16 +311,21 @@ void AssetBrowser::RefreshAssetList()
 	}
 }
 
-void AssetBrowser::Render(SceneManager& scene)
+void AssetBrowser::Render(SceneManager& scene, bool* p_open, bool forceLayout)
 {
-	if (!isOpen) return;
+	if (p_open && !*p_open) return;
+	if (!p_open && !isOpen) return;
+
+	bool* activeOpen = p_open ? p_open : &isOpen;
 
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
-	ImGui::SetNextWindowPos(ImVec2(0, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.7f, (float)bufferHeight * 0.3f), ImGuiCond_FirstUseEver);
+	
+	ImGuiCond layoutCond = forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2(0, (float)bufferHeight * 0.7f), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth, (float)bufferHeight * 0.3f), layoutCond);
 
-	if (ImGui::Begin("Project", &isOpen))
+	if (ImGui::Begin("Project", activeOpen))
 	{
 		if (ImGui::Button("Refresh")) {
 			RefreshAssetList();

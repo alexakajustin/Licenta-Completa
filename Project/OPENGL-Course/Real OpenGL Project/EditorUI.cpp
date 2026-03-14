@@ -5,6 +5,12 @@
 #include "PrimitiveGenerator.h"
 #include "Material.h"
 #include "Camera.h"
+#include "NodeGraph.h"
+#include "SceneInputNode.h"
+#include "PerlinNoiseNode.h"
+#include "ScatterNode.h"
+#include "MergeMeshNode.h"
+#include "OutputNode.h"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -177,6 +183,155 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 
 	RenderHierarchy(scene, bufferHeight, camera);
 	RenderInspector(scene, bufferWidth, bufferHeight);
+	
+	// Reset force layout after one frame
+	windowState.forceLayout = false;
+}
+
+void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
+{
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("New Scene")) { /* TODO */ }
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S")) { /* TODO */ }
+			if (ImGui::MenuItem("Load Scene", "Ctrl+L")) { /* TODO */ }
+			ImGui::Separator();
+			if (ImGui::MenuItem("Exit", "Alt+F4")) { glfwSetWindowShouldClose(glfwGetCurrentContext(), true); }
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("GameObject"))
+		{
+			if (ImGui::MenuItem("Create Empty")) { scene.CreateGameObject("Empty Object"); }
+			ImGui::Separator();
+			if (ImGui::MenuItem("3D Object -> Plane")) { scene.CreateGameObject("Plane"); }
+			if (ImGui::MenuItem("3D Object -> Cube")) { scene.CreateGameObject("Cube"); }
+			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere"); }
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Light"))
+			{
+				if (ImGui::MenuItem("Point Light")) { scene.CreateLight(LightType::Point); }
+				if (ImGui::MenuItem("Spot Light")) { scene.CreateLight(LightType::Spot); }
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Window"))
+		{
+			ImGui::MenuItem("Scene Hierarchy", nullptr, &windowState.isHierarchyOpen);
+			ImGui::MenuItem("Inspector", nullptr, &windowState.isInspectorOpen);
+			ImGui::MenuItem("Project (Asset Browser)", nullptr, &windowState.isAssetBrowserOpen);
+			ImGui::MenuItem("Node Editor", nullptr, &windowState.isNodeEditorOpen);
+			ImGui::Separator();
+			ImGui::MenuItem("Debug Overlay", nullptr, &windowState.isDebugOverlayOpen);
+			
+			if (ImGui::BeginMenu("Layout"))
+			{
+				if (ImGui::MenuItem("Reset Layout"))
+				{
+					windowState.isHierarchyOpen = true;
+					windowState.isInspectorOpen = true;
+					windowState.isAssetBrowserOpen = true;
+					windowState.isNodeEditorOpen = true;
+					windowState.isDebugOverlayOpen = true;
+					windowState.forceLayout = true;
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Templates"))
+		{
+			if (ImGui::MenuItem("Procedural Terrain"))
+			{
+				nodeGraph.Clear();
+				SceneInputNode* input = new SceneInputNode(nodeGraph);
+				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
+				OutputNode* output = new OutputNode(nodeGraph);
+
+				input->editorPos = glm::vec2(50, 100);
+				noise->editorPos = glm::vec2(300, 100);
+				output->editorPos = glm::vec2(550, 100);
+
+				nodeGraph.AddNode(input);
+				nodeGraph.AddNode(noise);
+				nodeGraph.AddNode(output);
+
+				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
+				nodeGraph.AddLink(noise->outputs[0].id, output->inputs[0].id);
+
+				// Auto-setup: try to find "Plane"
+				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
+					if (scene.GetObjects()[i]->GetName() == "Plane") {
+						input->SetSelection(i, "Plane");
+						break;
+					}
+				}
+			}
+
+			if (ImGui::MenuItem("Distributed Nature"))
+			{
+				nodeGraph.Clear();
+				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
+				SceneInputNode* rockInput = new SceneInputNode(nodeGraph);
+				PerlinNoiseNode* groundNoise = new PerlinNoiseNode(nodeGraph);
+				ScatterNode* scatter = new ScatterNode(nodeGraph);
+				PerlinNoiseNode* rockNoise = new PerlinNoiseNode(nodeGraph);
+				OutputNode* groundOutput = new OutputNode(nodeGraph);
+				OutputNode* rockOutput = new OutputNode(nodeGraph);
+
+				groundInput->editorPos = glm::vec2(50, 50);
+				rockInput->editorPos = glm::vec2(50, 250);
+				groundNoise->editorPos = glm::vec2(250, 50);
+				scatter->editorPos = glm::vec2(250, 250);
+				rockNoise->editorPos = glm::vec2(450, 250);
+				groundOutput->editorPos = glm::vec2(450, 50);
+				rockOutput->editorPos = glm::vec2(650, 250);
+
+				rockOutput->SetSpawnAsObjects(true);
+				rockOutput->SetSameAsInput(false); // Target Plane or Group manually or by auto-setup below
+				groundOutput->SetSameAsInput(true);
+
+				nodeGraph.AddNode(groundInput);
+				nodeGraph.AddNode(rockInput);
+				nodeGraph.AddNode(groundNoise);
+				nodeGraph.AddNode(scatter);
+				nodeGraph.AddNode(rockNoise);
+				nodeGraph.AddNode(groundOutput);
+				nodeGraph.AddNode(rockOutput);
+
+				// Connect Ground Pipeline
+				nodeGraph.AddLink(groundInput->outputs[0].id, groundNoise->inputs[0].id);
+				nodeGraph.AddLink(groundNoise->outputs[0].id, groundOutput->inputs[0].id);
+
+				// Connect Scattering
+				nodeGraph.AddLink(groundNoise->outputs[0].id, scatter->inputs[0].id);
+				nodeGraph.AddLink(rockInput->outputs[0].id, scatter->inputs[1].id);
+
+				// Connect Rock Pipeline (modular!)
+				nodeGraph.AddLink(scatter->outputs[1].id, rockNoise->inputs[0].id);
+				nodeGraph.AddLink(rockNoise->outputs[0].id, rockOutput->inputs[0].id);
+
+				// Auto-setup: try to find "Plane" and "Cube 1"
+				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
+					std::string name = scene.GetObjects()[i]->GetName();
+					if (name == "Plane") {
+						groundInput->SetSelection(i, "Plane");
+					}
+					if (name == "Cube 1") {
+						rockInput->SetSelection(i, "Cube 1");
+					}
+				}
+			}
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
 }
 
 void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID)
@@ -188,7 +343,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.5f, (float)bufferHeight * 0.7f), ImGuiCond_Always);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	if (ImGui::Begin("Scene", &windowState.isViewportOpen))
+	if (ImGui::Begin("Scene"))
 	{
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 		
@@ -244,8 +399,9 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* ca
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, nullptr);
 
 	// Hierarchy on the left
-	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.3f, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2(0, 19), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.2f, (float)bufferHeight * 0.7f - 19), layoutCond);
 	if (!windowState.isHierarchyOpen) return;
 
 	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen))
@@ -440,10 +596,10 @@ void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferH
 	bool showObjectInspector = (selectedObj >= 0 && selectedLight < 0);
 	bool showLightInspector = (selectedLight >= 0 && selectedObj < 0);
 
-	// Inspector - Usually tabbed with hierarchy or on the far side. 
-	// For this layout, we'll place it as a float or tabbed if needed, but for now let's prioritize the 3-column top
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth - 300.0f, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(300, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
+	// Inspector on the right
+	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth - 300.0f, 19), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(300, (float)bufferHeight * 0.7f - 19), layoutCond);
 	if (!windowState.isInspectorOpen) return;
 
 	if (!showObjectInspector && !showLightInspector) {

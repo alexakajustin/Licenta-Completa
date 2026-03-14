@@ -16,7 +16,7 @@ public:
 	void EndFrame();
 
 	// Call inside ImGui frame
-	void Render();
+	void Render(bool* p_open = nullptr);
 
 	// Global access
 	static DebugOverlay* GetInstance() { return instance; }
