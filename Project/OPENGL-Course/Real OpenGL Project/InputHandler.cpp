@@ -2,6 +2,7 @@
 #include "Window.h"
 #include "Camera.h"
 #include "SceneManager.h"
+#include "EditorUI.h"
 
 #include "imgui.h"
 
@@ -25,7 +26,7 @@ void InputHandler::UpdateCamera(Window& window, Camera& camera, GLfloat deltaTim
 }
 
 void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& scene,
-								const glm::mat4& projection)
+								const glm::mat4& projection, const EditorUI& editorUI)
 {
 	if (!window.isCursorEnabled())
 	{
@@ -33,46 +34,58 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 		return;
 	}
 
+	// Viewport-relative mouse logic
+	glm::vec2 vPos = editorUI.GetViewportPos();
+	glm::vec2 vSize = editorUI.GetViewportSize();
+	bool vHovered = editorUI.IsViewportHovered();
+
 	// Editor mode — handle picking and gizmo dragging
 	bool currentLMB = window.getMouseButtons()[GLFW_MOUSE_BUTTON_LEFT];
-	bool wantCapture = ImGui::GetIO().WantCaptureMouse;
+
+	// We only want to pick if we are hovering the viewport OR already dragging a gizmo
+	bool isDraggingGizmo = (scene.GetActiveDragAxis() != 0);
+	if (!vHovered && !isDraggingGizmo) {
+		lastLMBState = currentLMB;
+		return;
+	}
 
 	glm::mat4 view = camera.calculateViewMatrix();
 
-	// Use screen coordinates for scaling math in HandleMousePress (SceneManager::PickObject handles pixel scaling)
+	// Get raw mouse position from GLFW
 	double mouseX, mouseY;
 	glfwGetCursorPos(window.getWindow(), &mouseX, &mouseY);
 
+	// Translate to screen space (taking care of any window/framebuffer scaling)
 	int winW, winH;
 	glfwGetWindowSize(window.getWindow(), &winW, &winH);
-	float screenW = (float)winW;
-	float screenH = (float)winH;
-
 	int fbw, fbh;
 	glfwGetFramebufferSize(window.getWindow(), &fbw, &fbh);
 
-	// Scale GLFW's logical cursor coordinates to raw pixel coordinates
-	float pixelMouseX = (float)mouseX * ((float)fbw / screenW);
-	float pixelMouseY = (float)mouseY * ((float)fbh / screenH);
+	float screenX = (float)mouseX * ((float)fbw / (float)winW);
+	float screenY = (float)mouseY * ((float)fbh / (float)winH);
 
-	if (currentLMB && !lastLMBState && !wantCapture)
+	// Offset by viewport position
+	float relativeX = screenX - vPos.x;
+	float relativeY = screenY - vPos.y;
+
+	if (currentLMB && !lastLMBState)
 	{
 		scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
-			pixelMouseX, pixelMouseY, projection, view,
-			camera.getCameraPosition(), (float)fbw, (float)fbh);
+			relativeX, relativeY, projection, view,
+			camera.getCameraPosition(), vSize.x, vSize.y);
 	}
 	else if (!currentLMB && lastLMBState)
 	{
 		scene.HandleMousePress(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE,
 			0, 0, projection, view,
-			camera.getCameraPosition(), (float)fbw, (float)fbh);
+			camera.getCameraPosition(), vSize.x, vSize.y);
 	}
 
 	// Update mouse drag
 	if (scene.GetActiveDragAxis() != 0)
 	{
-		scene.HandleMouseMove(pixelMouseX, pixelMouseY,
-			projection, view, (float)fbw, (float)fbh);
+		scene.HandleMouseMove(relativeX, relativeY,
+			projection, view, vSize.x, vSize.y);
 	}
 
 	lastLMBState = currentLMB;

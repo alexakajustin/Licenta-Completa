@@ -77,21 +77,31 @@ void SceneInputNode::Execute(SceneManager& scene)
 	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
 	{
 		GameObject* obj = objects[selectedIndex];
-		if (obj->GetMesh())
+		
+		// 1. Try to retrieve persisted procedural mesh data if available
+		if (obj->HasCustomMesh())
 		{
-			// Try to retrieve persisted procedural mesh data if available
-			if (obj->HasCustomMesh())
+			data = obj->GetCPUMeshData();
+			found = true;
+		}
+		// 2. Fallback to primitive data if it matches standard names
+		else if (selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
+		else if (selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
+		else if (selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
+		// 3. Extract from Model if available (for loaded assets)
+		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
+		{
+			const auto& meshes = obj->GetModel()->GetMeshDataList();
+			for (const auto& m : meshes)
 			{
-				data = obj->GetCPUMeshData();
-				found = true;
+				int baseIdx = (int)data.vertices.size() / 14;
+				data.vertices.insert(data.vertices.end(), m.vertices.begin(), m.vertices.end());
+				for (unsigned int idx : m.indices)
+				{
+					data.indices.push_back(idx + baseIdx);
+				}
 			}
-			else
-			{
-				// Fallback to primitive data if it's one of the standard primitives
-				if (selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
-				else if (selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
-				else if (selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
-			}
+			if (!data.vertices.empty()) found = true;
 		}
 	}
 

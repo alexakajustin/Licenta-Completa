@@ -221,6 +221,13 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		graph.RemoveLink(linkId);
 	}
 
+	// Link Detaching (Drag from pin into empty space)
+	int droppedPinId;
+	if (ImNodes::IsLinkDropped(&droppedPinId, false))
+	{
+		graph.RemoveLinkByPinId(droppedPinId);
+	}
+
 	// Node Deletion (Delete key)
 	const int numSelected = ImNodes::NumSelectedNodes();
 	if (numSelected > 0 && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyReleased(ImGuiKey_Delete))

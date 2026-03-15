@@ -174,13 +174,17 @@ void Application::Run()
 
 		// ... (EditorUI handles its own windows)
 
-		// Update projection matrix if window resized
-		projection = glm::perspective(glm::radians(60.0f), (GLfloat)fbw / (GLfloat)fbh, 0.1f, 1000.0f);
+		// Update projection matrix if viewport exists, otherwise fallback to window
+		glm::vec2 vSize = editorUI.GetViewportSize();
+		float aspect = (vSize.x > 0 && vSize.y > 0) ? (vSize.x / vSize.y) : ((GLfloat)fbw / (GLfloat)fbh);
+		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 1000.0f);
 		glm::mat4 view = camera.calculateViewMatrix();
 
-		// Main render pass directly to backbuffer
+		// Main render pass — clear backbuffer
 		glViewport(0, 0, fbw, fbh);
-		
+		glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		// Shadow passes
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
 		for (unsigned int i = 0; i < pointLightCount; i++)
@@ -188,18 +192,24 @@ void Application::Run()
 		for (unsigned int i = 0; i < spotLightCount; i++)
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
 
-		// Final Scene Render (Background)
+		// Final Scene Render (Viewport FBO)
+		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+		glViewport(0, 0, fbw, fbh);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, fbw, fbh);
 		
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		// Now render ImGui windows using centralized states over the scene
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), 0, &camera);
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera);
 		
 		assetBrowser.Render(sceneManager, &uiState.isAssetBrowserOpen, uiState.forceLayout);
 		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, &uiState.isNodeEditorOpen, uiState.forceLayout);
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
-		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection);
+		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);
 
 		glUseProgram(0);
 

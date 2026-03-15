@@ -14,7 +14,7 @@ void Model::LoadModel(const std::string& fileName)
 	const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
 	if (!scene)
 	{
-		printf("Model [%s] failed to load: %s!\n", fileName, importer.GetErrorString());
+		printf("Model [%s] failed to load: %s!\n", fileName.c_str(), importer.GetErrorString());
 		return;
 	}
 
@@ -106,9 +106,15 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 
 	// create mesh and add to meshlist
 	Mesh* newMesh = new Mesh();
-	newMesh->CreateMesh(&vertices[0], &indices[0], vertices.size(), indices.size());
+	newMesh->CreateMesh(&vertices[0], &indices[0], (unsigned int)vertices.size(), (unsigned int)indices.size());
 	meshList.push_back(newMesh);
 	meshToTex.push_back(mesh->mMaterialIndex);
+
+	// Store CPU-side MeshData for node graph access
+	MeshData md;
+	md.vertices = vertices;
+	md.indices = indices;
+	meshDataList.push_back(md);
 }
 
 void Model::LoadMaterials(const aiScene* scene)

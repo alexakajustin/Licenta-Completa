@@ -164,14 +164,33 @@ void EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 
 void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 {
-	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+	const ImGuiPayload* payload = nullptr;
+	bool isAsset = false;
+	bool isMaterial = false;
+
+	if (payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) isAsset = true;
+	else if (payload = ImGui::AcceptDragDropPayload("MATERIAL_PATH")) isMaterial = true;
+
+	if (payload) {
 		const char* pathStr = (const char*)payload->Data;
 		std::filesystem::path path(pathStr);
 		std::string ext = path.extension().string();
 		for (auto& c : ext) c = tolower(c);
 
-		if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+		if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae")) {
 			scene.InstantiateModel(path, spawnPos);
+		}
+		else if (isMaterial || ext == ".mat") {
+			// If we dropped on a specific object window (handled by Hierarchy/Inspector), 
+			// it usually handles the application itself. This global helper is for 
+			// general instantiation or "current selection" application.
+			Material* loadedMat = Material::LoadFromFile(pathStr);
+			if (loadedMat) {
+				int sel = scene.GetSelectedIndex();
+				if (sel >= 0 && sel < (int)scene.GetObjects().size()) {
+					scene.GetObjects()[sel]->SetMaterial(loadedMat);
+				}
+			}
 		}
 	}
 }
@@ -182,6 +201,7 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
 	RenderHierarchy(scene, bufferHeight, camera);
+	RenderViewport(scene, projection, view, cameraPos, sceneTextureID);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 	
 	// Reset force layout after one frame
@@ -335,27 +355,45 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 0), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.5f, (float)bufferHeight * 0.7f), ImGuiCond_Always);
+	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+
+	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 19), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.5f, (float)bufferHeight * 0.7f - 19), layoutCond);
+
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
+	if (ImGui::IsAnyItemActive()) windowFlags |= ImGuiWindowFlags_NoMove; 
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	if (ImGui::Begin("Scene"))
+	if (ImGui::Begin("Scene", nullptr, windowFlags))
 	{
+		viewportPos = glm::vec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		
+		viewportSize = glm::vec2(viewportPanelSize.x, viewportPanelSize.y);
+		viewportHovered = ImGui::IsWindowHovered();
+
 		// Render the scene texture
-		// Need to flip V because OpenGL textures are bottom-up
 		ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
+
+		// Overlay an invisible button to capture clicks and prevent window dragging when interacting with the scene
+		ImGui::SetCursorPos(ImVec2(0, 0));
+		ImGui::InvisibleButton("ViewportInteraction", viewportPanelSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
 		// Drag and Drop support for viewport
 		if (ImGui::BeginDragDropTarget()) {
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+			const ImGuiPayload* payload = nullptr;
+			bool isAsset = false;
+			bool isMaterial = false;
+
+			if (payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) isAsset = true;
+			else if (payload = ImGui::AcceptDragDropPayload("MATERIAL_PATH")) isMaterial = true;
+
+			if (payload) {
 				const char* pathStr = (const char*)payload->Data;
 				std::filesystem::path path(pathStr);
 				std::string ext = path.extension().string();
 				for (auto& c : ext) c = tolower(c);
 
-				if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+				if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae")) {
 					// Calculate world position from mouse ray
 					ImVec2 mousePos = ImGui::GetMousePos();
 					ImVec2 winPos = ImGui::GetWindowPos();
@@ -367,7 +405,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 					}
 					scene.InstantiateModel(path, spawnPos);
 				}
-				else if (ext == ".mat") {
+				else if (isMaterial || ext == ".mat") {
 					// Material drop: apply to object under mouse
 					ImVec2 mousePos = ImGui::GetMousePos();
 					ImVec2 winPos = ImGui::GetWindowPos();

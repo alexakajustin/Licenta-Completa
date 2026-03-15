@@ -76,6 +76,7 @@ public:
 	// Link management
 	bool AddLink(int outputPinId, int inputPinId);
 	void RemoveLink(int linkId);
+	void RemoveLinkByPinId(int pinId);
 	bool CanLink(int outputPinId, int inputPinId);
 
 	// Execution

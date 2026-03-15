@@ -10,6 +10,7 @@
 
 #include "Mesh.h"
 #include "Texture.h"
+#include "MeshData.h"
 
 class Model
 {
@@ -30,6 +31,8 @@ public:
 		return false;
 	}
 
+	const std::vector<MeshData>& GetMeshDataList() const { return meshDataList; }
+
 private:
 	// scene contains all data, node is just one part of that list of data
 	void LoadNode(aiNode* node, const aiScene* scene);
@@ -40,6 +43,7 @@ private:
 	std::vector <Texture*> textureList;
 	std::vector <Texture*> normalMapList;
 	std::vector<unsigned int> meshToTex;
+	std::vector<MeshData> meshDataList;
 
 	glm::vec3 minBound = glm::vec3(1e10);
 	glm::vec3 maxBound = glm::vec3(-1e10);

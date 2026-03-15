@@ -49,6 +49,16 @@ public:
 
 	WindowState& GetWindowState() { return windowState; }
 
+	// Viewport Info for InputHandler
+	glm::vec2 GetViewportPos() const { return viewportPos; }
+	glm::vec2 GetViewportSize() const { return viewportSize; }
+	bool IsViewportHovered() const { return viewportHovered; }
+
+private:
+	glm::vec2 viewportPos = glm::vec2(0.0f);
+	glm::vec2 viewportSize = glm::vec2(1.0f, 1.0f);
+	bool viewportHovered = false;
+
 private:
 
 	// Material preview sphere

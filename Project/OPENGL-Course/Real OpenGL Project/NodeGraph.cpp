@@ -131,6 +131,12 @@ void NodeGraph::RemoveLink(int linkId)
 		[linkId](const Link& l) { return l.id == linkId; }), links.end());
 }
 
+void NodeGraph::RemoveLinkByPinId(int pinId)
+{
+	links.erase(std::remove_if(links.begin(), links.end(),
+		[pinId](const Link& l) { return l.startPinId == pinId || l.endPinId == pinId; }), links.end());
+}
+
 
 
 std::vector<GraphNode*> NodeGraph::TopologicalSort()
