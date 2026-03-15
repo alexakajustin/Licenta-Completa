@@ -108,5 +108,12 @@ void SceneInputNode::Execute(SceneManager& scene)
 		}
 		outputs[0].data.meshData = data;
 		outputs[0].data.sourceObjectName = selectedName;
+
+		// Propagate transform data so downstream nodes can handle scale/restore
+		TransformData t;
+		t.position = objects[selectedIndex]->GetTransform().GetPosition();
+		t.rotation = objects[selectedIndex]->GetTransform().GetRotation();
+		t.scale = objects[selectedIndex]->GetTransform().GetScale();
+		outputs[0].data.transforms.push_back(t);
 	}
 }

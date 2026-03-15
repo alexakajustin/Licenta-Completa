@@ -21,6 +21,8 @@ void OutputNode::RenderContent(SceneManager* scene)
 	auto& objects = scene->GetObjects();
 
 	ImGui::Checkbox("Same As Input", &sameAsInput);
+	ImGui::SameLine();
+	ImGui::Checkbox("Update Target Mesh", &updateMesh);
 
 	if (!sameAsInput)
 	{
@@ -69,25 +71,6 @@ void OutputNode::RenderContent(SceneManager* scene)
 
 	if (targetIndex >= 0 && targetIndex < (int)objects.size())
 		ImGui::TextColored(ImVec4(0, 1, 0, 1), "Target: %s", objects[targetIndex]->GetName().c_str());
-	}
-
-	ImGui::Separator();
-	ImGui::Checkbox("Spawn as Objects", &spawnAsObjects);
-	if (spawnAsObjects)
-	{
-		if (ImGui::BeginCombo("Spawning Parent", targetParentName.c_str()))
-		{
-			for (int i = 0; i < (int)objects.size(); i++)
-			{
-				bool isSelected = (targetParentIndex == i);
-				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
-				{
-					targetParentIndex = i;
-					targetParentName = objects[i]->GetName();
-				}
-			}
-			ImGui::EndCombo();
-		}
 	}
 }
 

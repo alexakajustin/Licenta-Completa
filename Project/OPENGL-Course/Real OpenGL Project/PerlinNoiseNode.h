@@ -76,6 +76,7 @@ public:
 		{
 			// Standard single-mesh mode
 			outputs[0].data.meshData = generator.Generate(&inputs[0].data.meshData);
+			outputs[0].data.transforms = inputs[0].data.transforms; // Propagate transform
 		}
 	}
 

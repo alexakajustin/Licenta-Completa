@@ -279,42 +279,38 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
 				SceneInputNode* rockInput = new SceneInputNode(nodeGraph);
 				PerlinNoiseNode* groundNoise = new PerlinNoiseNode(nodeGraph);
+				PerlinNoiseNode* rockNoise = new PerlinNoiseNode(nodeGraph); // Applied BEFORE scatter
 				ScatterNode* scatter = new ScatterNode(nodeGraph);
-				PerlinNoiseNode* rockNoise = new PerlinNoiseNode(nodeGraph);
 				OutputNode* groundOutput = new OutputNode(nodeGraph);
-				OutputNode* rockOutput = new OutputNode(nodeGraph);
 
 				groundInput->editorPos = glm::vec2(50, 50);
-				rockInput->editorPos = glm::vec2(50, 250);
 				groundNoise->editorPos = glm::vec2(250, 50);
-				scatter->editorPos = glm::vec2(250, 250);
-				rockNoise->editorPos = glm::vec2(450, 250);
 				groundOutput->editorPos = glm::vec2(450, 50);
-				rockOutput->editorPos = glm::vec2(650, 250);
 
-				rockOutput->SetSpawnAsObjects(true);
-				rockOutput->SetSameAsInput(false); // Target Plane or Group manually or by auto-setup below
+				rockInput->editorPos = glm::vec2(50, 250);
+				rockNoise->editorPos = glm::vec2(250, 250);
+				scatter->editorPos = glm::vec2(450, 250);
+
+				scatter->SetSpawnAsObjects(true);
 				groundOutput->SetSameAsInput(true);
 
 				nodeGraph.AddNode(groundInput);
 				nodeGraph.AddNode(rockInput);
 				nodeGraph.AddNode(groundNoise);
-				nodeGraph.AddNode(scatter);
 				nodeGraph.AddNode(rockNoise);
+				nodeGraph.AddNode(scatter);
 				nodeGraph.AddNode(groundOutput);
-				nodeGraph.AddNode(rockOutput);
 
 				// Connect Ground Pipeline
 				nodeGraph.AddLink(groundInput->outputs[0].id, groundNoise->inputs[0].id);
 				nodeGraph.AddLink(groundNoise->outputs[0].id, groundOutput->inputs[0].id);
 
-				// Connect Scattering
-				nodeGraph.AddLink(groundNoise->outputs[0].id, scatter->inputs[0].id);
-				nodeGraph.AddLink(rockInput->outputs[0].id, scatter->inputs[1].id);
+				// Connect Rock Pipeline (Noise -> Scatter)
+				nodeGraph.AddLink(rockInput->outputs[0].id, rockNoise->inputs[0].id);
+				nodeGraph.AddLink(rockNoise->outputs[0].id, scatter->inputs[1].id); // Input 1 is "Object"
 
-				// Connect Rock Pipeline (modular!)
-				nodeGraph.AddLink(scatter->outputs[1].id, rockNoise->inputs[0].id);
-				nodeGraph.AddLink(rockNoise->outputs[0].id, rockOutput->inputs[0].id);
+				// Connect Scatter Surface (from noisy ground)
+				nodeGraph.AddLink(groundNoise->outputs[0].id, scatter->inputs[0].id);
 
 				// Auto-setup: try to find "Plane" and "Cube 1"
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {

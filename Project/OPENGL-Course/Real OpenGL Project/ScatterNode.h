@@ -45,8 +45,12 @@ private:
 	bool alignToNormal = true;
 	int seed = 42;
 
-	// Persistence for spawned objects (handled by Output node now)
+	// Spawning Settings
+	bool spawnAsObjects = false;
+	std::string targetParentName = "(none)";
+	int targetParentIndex = -1;
 	std::vector<std::string> spawnedNames;
+	
 	TransformList lastTransforms; 
 
 	// Random float in [min, max]
@@ -63,6 +67,13 @@ private:
 
 public:
 	bool IsAlignToNormal() const { return alignToNormal; }
+	bool IsSpawnMode() const { return spawnAsObjects; }
+	int GetParentIndex() const { return targetParentIndex; }
+	std::string GetParentName() const { return targetParentName; }
 	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
 	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }
+
+	// Setters for programmatic setup (templates)
+	void SetSpawnAsObjects(bool value) { spawnAsObjects = value; }
+	void SetTargetParent(int index, const std::string& name) { targetParentIndex = index; targetParentName = name; }
 };

@@ -66,16 +66,17 @@ glm::mat4 GameObject::GetWorldMatrix() const
 	if (parent) {
 		glm::mat4 pWorld = parent->GetWorldMatrix();
 		if (!inheritScale) {
-			// 1. Calculate world position with FULL parent scale
-			glm::vec3 worldPos = glm::vec3(pWorld * localModel[3]);
+			// 1. Calculate world position with NORMALIZED parent basis (for translation only)
+			glm::mat4 pBasis = pWorld;
+			pBasis[0] = glm::normalize(pBasis[0]);
+			pBasis[1] = glm::normalize(pBasis[1]);
+			pBasis[2] = glm::normalize(pBasis[2]);
+			
+			glm::vec3 worldPos = glm::vec3(pBasis * localModel[3]);
 
 			// 2. Calculate world orientation/scale without parent scale
-			pWorld[0] = glm::normalize(pWorld[0]);
-			pWorld[1] = glm::normalize(pWorld[1]);
-			pWorld[2] = glm::normalize(pWorld[2]);
-			pWorld[3] = glm::vec4(0, 0, 0, 1);
-
-			glm::mat4 worldMat = pWorld * localModel;
+			pBasis[3] = glm::vec4(0, 0, 0, 1);
+			glm::mat4 worldMat = pBasis * localModel;
 			worldMat[3] = glm::vec4(worldPos, 1.0f);
 			return worldMat;
 		}
@@ -113,15 +114,16 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 	glm::mat4 modelMatrix;
 
 	if (!inheritScale) {
-		// Compute world position with full parent scale
-		// Note: parentMatrix here is already the cumulative world matrix of the parent
-		glm::vec3 worldPos = glm::vec3(parentMatrix * localModel[3]);
-
-		// Compute orientation/scale with normalized parent basis
+		// Compute world position with NORMALIZED parent scale
+		// to avoid stretching local offsets by parent scale
 		glm::mat4 pBasis = parentMatrix;
 		pBasis[0] = glm::normalize(pBasis[0]);
 		pBasis[1] = glm::normalize(pBasis[1]);
 		pBasis[2] = glm::normalize(pBasis[2]);
+
+		glm::vec3 worldPos = glm::vec3(pBasis * localModel[3]);
+
+		// Compute orientation/scale with normalized parent basis (for purely local rot/scale)
 		pBasis[3] = glm::vec4(0, 0, 0, 1);
 
 		modelMatrix = pBasis * localModel;

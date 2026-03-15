@@ -232,7 +232,89 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 	for (auto* node : sorted)
 	{
-		// 1. Handle OutputNode
+		// 1. Handle ScatterNode (Modular Spawning)
+		if (node->title == "Scatter")
+		{
+			ScatterNode* scatterNode = static_cast<ScatterNode*>(node);
+			if (scatterNode->IsSpawnMode())
+			{
+				// 1. Cleanup old spawned objects owned by THIS ScatterNode
+				for (const auto& name : scatterNode->GetSpawnedNames())
+				{
+					scene.RemoveObject(name);
+				}
+				scatterNode->SetSpawnedNames({});
+
+				Pin& instancesPin = node->outputs[1]; // "Instances Only"
+				auto& transforms = instancesPin.data.transforms;
+				auto& instanceMeshes = instancesPin.data.instanceMeshes;
+
+				if (!transforms.empty())
+				{
+					int parentIdx = scatterNode->GetParentIndex();
+					GameObject* targetParent = nullptr;
+
+					if (parentIdx >= 0 && parentIdx < (int)objects.size())
+						targetParent = objects[parentIdx];
+
+					if (!targetParent)
+					{
+						std::string groupName = "Scatter_Group_" + std::to_string(node->id);
+						targetParent = scene.FindObject(groupName);
+						if (!targetParent)
+						{
+							targetParent = new GameObject(groupName);
+							scene.AddObject(targetParent);
+						}
+					}
+
+					std::vector<std::string> newSpawned;
+					for (int i = 0; i < (int)transforms.size(); i++)
+					{
+						std::string name = "Instance_" + std::to_string(node->id) + "_" + std::to_string(i);
+						GameObject* obj = new GameObject(name);
+
+						glm::mat4 worldModel = glm::mat4(1.0f);
+						worldModel = glm::translate(worldModel, transforms[i].position);
+						
+						glm::vec3 n = transforms[i].normal;
+						if (glm::length(n) > 0.001f)
+						{
+							glm::vec3 up(0, 1, 0);
+							if (glm::abs(glm::dot(up, n)) < 0.999f)
+							{
+								glm::vec3 axis = glm::normalize(glm::cross(up, n));
+								float angle = acos(glm::clamp(glm::dot(up, n), -1.0f, 1.0f));
+								worldModel = glm::rotate(worldModel, angle, axis);
+							}
+						}
+						
+						worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.x), glm::vec3(1, 0, 0));
+						worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.y), glm::vec3(0, 1, 0));
+						worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.z), glm::vec3(0, 0, 1));
+						worldModel = glm::scale(worldModel, transforms[i].scale);
+
+						// Set world pose BEFORE parenting, so SetParent can calculate correct local offset
+						obj->GetTransform().SetFromMatrix(worldModel);
+						obj->SetInheritScale(false); // Important: Set this BEFORE parenting so local scale isn't crushed
+						obj->SetParent(targetParent);
+
+						if (i < (int)instanceMeshes.size() && !instanceMeshes[i].vertices.empty())
+							obj->SetMesh(instanceMeshes[i].ToMesh());
+
+						if (defaultTex) obj->SetTexture(defaultTex);
+						if (defaultMat) obj->SetMaterial(defaultMat);
+
+						scene.AddObject(obj);
+						newSpawned.push_back(name);
+					}
+					scatterNode->SetSpawnedNames(newSpawned);
+					printf("Scatter spawned %d modular objects.\n", (int)newSpawned.size());
+				}
+			}
+		}
+
+		// 2. Handle OutputNode (Mesh Update)
 		if (node->title == "Output")
 		{
 			OutputNode* updateNode = static_cast<OutputNode*>(node);
@@ -255,28 +337,54 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 			
 			if (targetIdx >= 0 && targetIdx < (int)objects.size())
 			{
-				Pin& meshInput = node->inputs[0];
-				if (meshInput.data.type == PinDataType::Mesh && !meshInput.data.meshData.vertices.empty())
+				if (updateNode->ShouldUpdateMesh() && meshInput.data.type == PinDataType::Mesh && !meshInput.data.meshData.vertices.empty())
 				{
 						// Update the existing mesh
 						GameObject* target = objects[targetIdx];
 						if (target->GetMesh())
 						{
+							MeshData uploadData = meshInput.data.meshData;
+							bool restoredScale = false;
+
+							// If we have transform data, we can "un-bake" the mesh to restore hierarchy scale
+							if (!meshInput.data.transforms.empty())
+							{
+								glm::vec3 originalScale = meshInput.data.transforms[0].scale;
+								if (glm::length(originalScale) > 0.001f)
+								{
+									for (size_t i = 0; i < uploadData.vertices.size(); i += 14)
+									{
+										uploadData.vertices[i] /= originalScale.x;
+										uploadData.vertices[i + 1] /= originalScale.y;
+										uploadData.vertices[i + 2] /= originalScale.z;
+									}
+									restoredScale = true;
+								}
+							}
+
 							// Reuse VAO/VBO/IBO by calling CreateMesh again
 							target->GetMesh()->CreateMesh(
-								meshInput.data.meshData.vertices.data(),
-								meshInput.data.meshData.indices.data(),
-								(unsigned int)meshInput.data.meshData.vertices.size(),
-								(unsigned int)meshInput.data.meshData.indices.size()
+								uploadData.vertices.data(),
+								uploadData.indices.data(),
+								(unsigned int)uploadData.vertices.size(),
+								(unsigned int)uploadData.indices.size()
 							);
 
-							// Reset scale to avoid double-scaling the baked procedural mesh
-							target->GetTransform().SetScale(glm::vec3(1.0f));
+							// Only reset scale if we DIDN'T restore it (e.g. for primitives or new objects)
+							if (!restoredScale)
+							{
+								target->GetTransform().SetScale(glm::vec3(1.0f));
+							}
+							else
+							{
+								// Ensure the target object actually has the correct scale in its transform
+								target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
+							}
 
 							// PERSIST: Save the CPU-side data so it can be retrieved by SceneInputNode later
-							target->SetCPUMeshData(meshInput.data.meshData);
+							target->SetCPUMeshData(uploadData);
 							
-							printf("Updated mesh for object: %s (and saved for persistence)\n", target->GetName().c_str());
+							printf("Updated mesh for object: %s (restoredScale: %s)\n", target->GetName().c_str(), restoredScale ? "true" : "false");
 						}
 					else
 					{
@@ -284,84 +392,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						Mesh* newMesh = meshInput.data.meshData.ToMesh();
 						target->SetMesh(newMesh);
 						target->SetCPUMeshData(meshInput.data.meshData);
-					}
-				}
-
-				// --- MODULAR SPAWNING PASS ---
-				if (updateNode->IsSpawnMode())
-				{
-					// 1. Cleanup old spawned objects owned by THIS OutputNode
-					for (const auto& name : updateNode->GetSpawnedNames())
-					{
-						scene.RemoveObject(name);
-					}
-					updateNode->SetSpawnedNames({});
-
-					auto& transforms = meshInput.data.transforms;
-					auto& instanceMeshes = meshInput.data.instanceMeshes;
-
-					if (!transforms.empty())
-					{
-						int parentIdx = updateNode->GetParentIndex();
-						GameObject* targetParent = nullptr;
-
-						if (parentIdx >= 0 && parentIdx < (int)objects.size())
-							targetParent = objects[parentIdx];
-
-						if (!targetParent)
-						{
-							std::string groupName = "Output_Group_" + std::to_string(node->id);
-							targetParent = scene.FindObject(groupName);
-							if (!targetParent)
-							{
-								targetParent = new GameObject(groupName);
-								scene.AddObject(targetParent);
-							}
-						}
-
-						std::vector<std::string> newSpawned;
-						for (int i = 0; i < (int)transforms.size(); i++)
-						{
-							std::string name = "Instance_" + std::to_string(node->id) + "_" + std::to_string(i);
-							GameObject* obj = new GameObject(name);
-							obj->SetParent(targetParent);
-							obj->SetInheritScale(false);
-
-							glm::mat4 model = glm::mat4(1.0f);
-							model = glm::translate(model, transforms[i].position);
-							
-							glm::vec3 n = transforms[i].normal;
-							if (glm::length(n) > 0.001f)
-							{
-								glm::vec3 up(0, 1, 0);
-								if (glm::abs(glm::dot(up, n)) < 0.999f)
-								{
-									glm::vec3 axis = glm::normalize(glm::cross(up, n));
-									float angle = acos(glm::clamp(glm::dot(up, n), -1.0f, 1.0f));
-									model = glm::rotate(model, angle, axis);
-								}
-							}
-							
-							model = glm::rotate(model, glm::radians(transforms[i].rotation.x), glm::vec3(1, 0, 0));
-							model = glm::rotate(model, glm::radians(transforms[i].rotation.y), glm::vec3(0, 1, 0));
-							model = glm::rotate(model, glm::radians(transforms[i].rotation.z), glm::vec3(0, 0, 1));
-							model = glm::scale(model, transforms[i].scale);
-
-							obj->GetTransform().SetFromMatrix(model);
-
-							if (i < (int)instanceMeshes.size() && !instanceMeshes[i].vertices.empty())
-								obj->SetMesh(instanceMeshes[i].ToMesh());
-							else if (!meshInput.data.meshData.vertices.empty())
-								obj->SetMesh(meshInput.data.meshData.ToMesh());
-
-							if (defaultTex) obj->SetTexture(defaultTex);
-							if (defaultMat) obj->SetMaterial(defaultMat);
-
-							scene.AddObject(obj);
-							newSpawned.push_back(name);
-						}
-						updateNode->SetSpawnedNames(newSpawned);
-						printf("Output spawned %d modular objects.\n", (int)newSpawned.size());
 					}
 				}
 			}

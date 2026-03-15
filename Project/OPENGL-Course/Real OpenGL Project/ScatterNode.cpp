@@ -22,6 +22,48 @@ void ScatterNode::RenderContent(SceneManager* scene)
 	if (ImGui::Button("Rand"))
 		seed = std::rand();
 
+	ImGui::Separator();
+	ImGui::Checkbox("Spawn as Objects", &spawnAsObjects);
+	if (spawnAsObjects && scene)
+	{
+		auto& objects = scene->GetObjects();
+
+		// Validation/Recovery logic for parent
+		bool valid = false;
+		if (targetParentIndex >= 0 && targetParentIndex < (int)objects.size())
+		{
+			if (objects[targetParentIndex]->GetName() == targetParentName) valid = true;
+		}
+
+		if (!valid && targetParentName != "(none)")
+		{
+			targetParentIndex = -1;
+			for (int i = 0; i < (int)objects.size(); i++)
+			{
+				if (objects[i]->GetName() == targetParentName)
+				{
+					targetParentIndex = i;
+					valid = true;
+					break;
+				}
+			}
+		}
+
+		if (ImGui::BeginCombo("Spawning Parent", targetParentName.c_str()))
+		{
+			for (int i = 0; i < (int)objects.size(); i++)
+			{
+				bool isSelected = (targetParentIndex == i);
+				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
+				{
+					targetParentIndex = i;
+					targetParentName = objects[i]->GetName();
+				}
+			}
+			ImGui::EndCombo();
+		}
+	}
+
 	ImGui::PopID();
 }
 
@@ -187,6 +229,17 @@ void ScatterNode::Execute(SceneManager& scene)
 	outputs[1].data.transforms.reserve(count);
 	outputs[1].data.instanceMeshes.reserve(count);
 
+	// Calculate surface world matrix (excluding scale, because scale is baked into vertices)
+	glm::mat4 surfaceWorldNoScale = glm::mat4(1.0f);
+	if (!inputs[0].data.transforms.empty())
+	{
+		const TransformData& st = inputs[0].data.transforms[0];
+		surfaceWorldNoScale = glm::translate(surfaceWorldNoScale, st.position);
+		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.x), glm::vec3(1, 0, 0));
+		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.y), glm::vec3(0, 1, 0));
+		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.z), glm::vec3(0, 0, 1));
+	}
+
 	for (int i = 0; i < count; i++)
 	{
 		// Pick a random triangle properly
@@ -209,13 +262,17 @@ void ScatterNode::Execute(SceneManager& scene)
 		}
 		float r0 = 1.0f - r1 - r2;
 
-		glm::vec3 pos = v0 * r0 + v1 * r1 + v2 * r2;
+		glm::vec3 localPos = v0 * r0 + v1 * r1 + v2 * r2;
 
 		// Interpolate normal
 		glm::vec3 n0 = surfaceMesh.GetNormal(i0);
 		glm::vec3 n1 = surfaceMesh.GetNormal(i1);
 		glm::vec3 n2 = surfaceMesh.GetNormal(i2);
-		glm::vec3 normal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
+		glm::vec3 localNormal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
+
+		// Transform to World Space
+		glm::vec3 worldPos = glm::vec3(surfaceWorldNoScale * glm::vec4(localPos, 1.0f));
+		glm::vec3 worldNormal = glm::normalize(glm::mat3(surfaceWorldNoScale) * localNormal);
 
 		// Random scale
 		float s = scaleDist(gen);
@@ -228,23 +285,25 @@ void ScatterNode::Execute(SceneManager& scene)
 			rot.y = rotDist(gen);
 		}
 
-		// Store transform for modular downstream use
+		// Store transform for modular downstream use (World Space!)
 		TransformData t;
-		t.position = pos;
-		t.rotation = rot;
+		t.position = worldPos;
+		t.rotation = rot; // Note: rotation might need to be added to surface rotation if total-world-rot desired
 		t.scale = scaleVec;
-		t.normal = normal;
+		t.normal = worldNormal;
+		
 		lastTransforms.push_back(t); // Compatibility
 		outputs[1].data.transforms.push_back(t);
-		outputs[1].data.instanceMeshes.push_back(objectMesh); // Modular: individual copy for noise node to hit
+		outputs[1].data.instanceMeshes.push_back(objectMesh); 
 
-		// Compute baked result for Combined and Instances Only
-		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, combinedResult);
-		MergeTransformed(objectMesh, pos, rot, scaleVec, normal, instancesOnly);
+		// Compute baked result (these stay local to the merged mesh)
+		MergeTransformed(objectMesh, localPos, rot, scaleVec, localNormal, combinedResult);
+		MergeTransformed(objectMesh, localPos, rot, scaleVec, localNormal, instancesOnly);
 	}
 
 	outputs[0].data.meshData = combinedResult;
-	outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName; // Combined takes surface name
+	outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName;
+	outputs[0].data.transforms = inputs[0].data.transforms; // Propagate surface transform for OutputNode scale-back
 
 	outputs[1].data.meshData = instancesOnly;
 	outputs[1].data.sourceObjectName = "(none)"; 
