@@ -14,6 +14,8 @@ out mat3 TBN;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform vec2 tiling;
+uniform vec2 offset;
 
 void main()
 {
@@ -22,7 +24,7 @@ void main()
     
     mat3 normalMatrix = mat3(transpose(inverse(model)));
     Normal = normalMatrix * norm;
-    TexCoord = tex;
+    TexCoord = tex * tiling + offset;
     
     // TBN matrix for normal mapping
     vec3 T = normalize(normalMatrix * tangent);

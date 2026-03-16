@@ -135,6 +135,9 @@ void Application::Run()
 {
 	while (!mainWindow.getShouldClose())
 	{
+		// Input and Window system events
+		glfwPollEvents();
+
 		// Timing
 		GLfloat now = (GLfloat)glfwGetTime();
 		deltaTime = now - lastTime;
@@ -148,15 +151,38 @@ void Application::Run()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-
-		// Input — camera only (no ImGui dependency)
-		glfwPollEvents();
-		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
-
-		// Get live framebuffer size
+		
+		// Get physical framebuffer size (pixels) for 3D
 		int fbw, fbh;
 		glfwGetFramebufferSize(mainWindow.getWindow(), &fbw, &fbh);
 		if (fbw == 0 || fbh == 0) { fbw = 1; fbh = 1; }
+
+		// Get logical window size (screen units) for UI layout
+		int ww, wh;
+		glfwGetWindowSize(mainWindow.getWindow(), &ww, &wh);
+		
+		bool isMinimized = glfwGetWindowAttrib(mainWindow.getWindow(), GLFW_ICONIFIED);
+
+		if (ww < 1000 || wh < 700 || isMinimized) {
+			editorUI.GetWindowState().skipLayoutSave = true;
+		} else {
+			editorUI.GetWindowState().skipLayoutSave = false;
+		}
+
+		// Layout Responsiveness: If main window size changed, force UI items back to their relative positions
+		if (fbw != lastWindowWidth || fbh != lastWindowHeight)
+		{
+			if (!isMinimized && fbw > 0 && fbh > 0) {
+				editorUI.GetWindowState().forceLayout = true;
+			}
+			lastWindowWidth = fbw;
+			lastWindowHeight = fbh;
+		}
+
+		// Update viewport metadata (size/pos) AFTER potential resize detection but BEFORE rendering 3D
+		editorUI.UpdateViewportMetadata();
+
+		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
 
 		// Debug info
 		debugOverlay.SetCameraInfo(camera.getCameraPosition(), camera.getCameraDirection());
@@ -174,18 +200,27 @@ void Application::Run()
 
 		// ... (EditorUI handles its own windows)
 
-		// Update projection matrix if viewport exists, otherwise fallback to window
+		// Update projection matrix based on FRESH viewport info
 		glm::vec2 vSize = editorUI.GetViewportSize();
-		float aspect = (vSize.x > 0 && vSize.y > 0) ? (vSize.x / vSize.y) : ((GLfloat)fbw / (GLfloat)fbh);
+		int vWidth = (int)vSize.x;
+		int vHeight = (int)vSize.y;
+
+		// Minimal safety
+		if (vWidth < 1) vWidth = 1;
+		if (vHeight < 1) vHeight = 1;
+
+		ResizeViewportFBO(vWidth, vHeight);
+
+		float aspect = (float)vWidth / (float)vHeight;
 		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 1000.0f);
 		glm::mat4 view = camera.calculateViewMatrix();
 
-		// Main render pass — clear backbuffer
+		// Main render pass — clear backbuffer (the part around the UI)
 		glViewport(0, 0, fbw, fbh);
 		glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Shadow passes
+		// Shadow passes (use main window resolution or fixed size for shadows)
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
@@ -194,19 +229,19 @@ void Application::Run()
 
 		// Final Scene Render (Viewport FBO)
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
-		glViewport(0, 0, fbw, fbh);
+		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, fbw, fbh);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// Now render ImGui windows using centralized states over the scene
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera);
 		
-		assetBrowser.Render(sceneManager, &uiState.isAssetBrowserOpen, uiState.forceLayout);
-		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, &uiState.isNodeEditorOpen, uiState.forceLayout);
+		assetBrowser.Render(sceneManager, uiState);
+		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, uiState);
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);
@@ -217,7 +252,7 @@ void Application::Run()
 		debugOverlay.EndFrame();
 
 		// Debug overlay + ImGui render
-		debugOverlay.Render(&uiState.isDebugOverlayOpen);
+		debugOverlay.Render(uiState);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -225,34 +260,62 @@ void Application::Run()
 		UpdateProjection();
 
 		mainWindow.swapBuffers();
+
+		// Reset forceLayout after ALL ImGui panels have rendered for this frame
+		editorUI.GetWindowState().forceLayout = false;
 	}
 }
 
 void Application::InitViewportFBO()
 {
-	if (viewportFBO) glDeleteFramebuffers(1, &viewportFBO);
-	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
-	if (viewportDepth) glDeleteRenderbuffers(1, &viewportDepth);
+	int w = (int)mainWindow.getBufferWidth();
+	int h = (int)mainWindow.getBufferHeight();
+	if (w < 1) w = 1;
+	if (h < 1) h = 1;
+
+	currentViewportWidth = w;
+	currentViewportHeight = h;
 
 	glGenFramebuffers(1, &viewportFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 
 	glGenTextures(1, &viewportTexture);
 	glBindTexture(GL_TEXTURE_2D, viewportTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)mainWindow.getBufferWidth(), (GLsizei)mainWindow.getBufferHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, viewportTexture, 0);
 
 	glGenRenderbuffers(1, &viewportDepth);
 	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, (GLsizei)mainWindow.getBufferWidth(), (GLsizei)mainWindow.getBufferHeight());
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, viewportDepth);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("Viewport Framebuffer not complete!\n");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::ResizeViewportFBO(int width, int height)
+{
+	if (width < 1) width = 1;
+	if (height < 1) height = 1;
+
+	if (width == currentViewportWidth && height == currentViewportHeight) return;
+
+	currentViewportWidth = width;
+	currentViewportHeight = height;
+
+	// Update Texture
+	glBindTexture(GL_TEXTURE_2D, viewportTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	// Update Depth Buffer
+	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+	printf("Viewport FBO resized to %dx%d\n", width, height);
 }
 
 void Application::SetupDockSpace()

@@ -33,6 +33,7 @@ private:
 	float offsetX;        // Sampling offset X
 	float offsetZ;        // Sampling offset Z
 	int seed;             // Random seed
+	bool useNormalDisplacement; // If true, displace along normal instead of just Y
 
 	// Internal Perlin noise implementation
 	int permutation[512];

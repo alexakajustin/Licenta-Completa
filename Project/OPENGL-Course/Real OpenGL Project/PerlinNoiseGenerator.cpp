@@ -6,7 +6,7 @@
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 	: gridSize(128), scale(1.0f), amplitude(15.0f),
 	  frequency(0.028f), octaves(10), persistence(1.0f), seed(42),
-	  offsetX(0.0f), offsetZ(0.0f)
+	  offsetX(0.0f), offsetZ(0.0f), useNormalDisplacement(false)
 {
 	InitPermutation();
 }
@@ -103,6 +103,7 @@ void PerlinNoiseGenerator::RenderUI()
 	bool seedChanged = false;
 
 	ImGui::Text("Noise Settings");
+	ImGui::Checkbox("Use Normal Displacement", &useNormalDisplacement);
 	ImGui::DragFloat("Amplitude", &amplitude, 0.05f, 0.0f, 100.0f);
 	ImGui::DragFloat("Frequency", &frequency, 0.001f, 0.001f, 1.0f);
 	
@@ -169,13 +170,30 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 		for (int i = 0; i < vertCount; i++)
 		{
 			int base = i * 14;
-			float x = data.vertices[base];
-			float z = data.vertices[base + 2];
+			float vx = data.vertices[base];
+			float vy = data.vertices[base + 1];
+			float vz = data.vertices[base + 2];
 
-			// Apply noise to Y (index base + 1)
-			// Apply sampling with offset and small shift to avoid integer-coordinate zero-return
-			float noise = FractalNoise((x + offsetX + 0.1234f) * frequency, (z + offsetZ + 0.1234f) * frequency);
-			data.vertices[base + 1] += noise * amplitude;
+			// Sampling coordinates (add small shift to avoid zero-sampling)
+			float sx = (vx + offsetX + 0.1234f);
+			float sz = (vz + offsetZ + 0.1234f);
+
+			float noise = FractalNoise(sx * frequency, sz * frequency);
+
+			if (useNormalDisplacement)
+			{
+				float nx = data.vertices[base + 5];
+				float ny = data.vertices[base + 6];
+				float nz = data.vertices[base + 7];
+
+				data.vertices[base] += nx * noise * amplitude;
+				data.vertices[base + 1] += ny * noise * amplitude;
+				data.vertices[base + 2] += nz * noise * amplitude;
+			}
+			else
+			{
+				data.vertices[base + 1] += noise * amplitude;
+			}
 		}
 	}
 

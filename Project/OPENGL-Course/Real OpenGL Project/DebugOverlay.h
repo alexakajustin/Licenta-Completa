@@ -5,6 +5,8 @@
 #include <deque>
 #include <glm/glm.hpp>
 
+#include "EditorUI.h"
+
 class DebugOverlay
 {
 public:
@@ -16,7 +18,7 @@ public:
 	void EndFrame();
 
 	// Call inside ImGui frame
-	void Render(bool* p_open = nullptr);
+	void Render(EditorUI::WindowState& uiState);
 
 	// Global access
 	static DebugOverlay* GetInstance() { return instance; }

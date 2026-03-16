@@ -48,6 +48,8 @@ struct Material {
 	 float specularIntensity;
 	 float shininess;
 	 vec3 baseColor;
+	 vec2 tiling;
+	 vec2 offset;
 };
 
 struct OmniShadowMap

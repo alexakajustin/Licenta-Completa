@@ -59,7 +59,7 @@ void EditorUI::InitMaterialPreview()
 	previewInitialized = true;
 }
 
-void EditorUI::RenderMaterialPreview(float specular, float shininess, glm::vec3 color, Texture* diffuse, Texture* normal)
+void EditorUI::RenderMaterialPreview(float specular, float shininess, glm::vec3 color, Texture* diffuse, Texture* normal, glm::vec2 tiling, glm::vec2 offset)
 {
 	if (!previewInitialized) InitMaterialPreview();
 	if (!previewSphere || previewShader.GetShaderID() == 0) return;
@@ -112,6 +112,9 @@ void EditorUI::RenderMaterialPreview(float specular, float shininess, glm::vec3 
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, normal->GetTextureID());
 	}
+	
+	glUniform2f(glGetUniformLocation(shaderID, "tiling"), tiling.x, tiling.y);
+	glUniform2f(glGetUniformLocation(shaderID, "offset"), offset.x, offset.y);
 
 	previewSphere->RenderMesh();
 
@@ -200,12 +203,37 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
+	UpdateViewportMetadata(); // Ensure we have latest info if called before Render
 	RenderHierarchy(scene, bufferHeight, camera);
 	RenderViewport(scene, projection, view, cameraPos, sceneTextureID);
 	RenderInspector(scene, bufferWidth, bufferHeight);
+}
+
+void EditorUI::UpdateViewportMetadata()
+{
+	// Use ImGui display size to perfectly tile
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winWidth = displaySize.x;
+	float winHeight = displaySize.y;
+	float menuHeight = 19.0f;
+
+	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+
+	// Center Fill (Scene Viewport)
+	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), layoutCond);
 	
-	// Reset force layout after one frame
-	windowState.forceLayout = false;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse;
+	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+	if (ImGui::Begin("Scene", nullptr, windowFlags))
+	{
+		ImVec2 panelSize = ImGui::GetContentRegionAvail();
+		viewportSize = glm::vec2(panelSize.x, panelSize.y);
+		viewportPos = glm::vec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
+		viewportHovered = ImGui::IsWindowHovered();
+	}
+	ImGui::End();
 }
 
 void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
@@ -257,6 +285,12 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 					windowState.isAssetBrowserOpen = true;
 					windowState.isNodeEditorOpen = true;
 					windowState.isDebugOverlayOpen = true;
+
+					windowState.leftWidth = 260.0f;
+					windowState.rightWidth = 450.0f;
+					windowState.bottomHeightRatio = 0.3f;
+					windowState.hierarchyHeightRatio = 0.35f;
+
 					windowState.forceLayout = true;
 				}
 				ImGui::EndMenu();
@@ -352,29 +386,30 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 
 void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID)
 {
-	int bufferWidth, bufferHeight;
-	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winWidth = displaySize.x;
+	float winHeight = displaySize.y;
+	float menuHeight = 19.0f;
 
 	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), layoutCond);
 
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 19), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.5f, (float)bufferHeight * 0.7f - 19), layoutCond);
-
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
-	if (ImGui::IsAnyItemActive()) windowFlags |= ImGuiWindowFlags_NoMove; 
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse;
+	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	if (ImGui::Begin("Scene", nullptr, windowFlags))
 	{
-		viewportPos = glm::vec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		viewportSize = glm::vec2(viewportPanelSize.x, viewportPanelSize.y);
-		viewportHovered = ImGui::IsWindowHovered();
+		
+		// Render the scene texture (ensuring it fills the panel)
+		if (textureID != 0)
+		{
+			ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
+		}
 
-		// Render the scene texture
-		ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
-
-		// Overlay an invisible button to capture clicks and prevent window dragging when interacting with the scene
+		// Overlay interaction Capture
 		ImGui::SetCursorPos(ImVec2(0, 0));
 		ImGui::InvisibleButton("ViewportInteraction", viewportPanelSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
@@ -427,19 +462,28 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	ImGui::PopStyleVar();
 }
 
-void EditorUI::RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera)
+void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camera)
 {
-	int bufferWidth;
-	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, nullptr);
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winHeightParam = displaySize.y;
+	float menuHeight = 19.0f;
 
-	// Hierarchy on the left
+	// Hierarchy on top-left
 	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2(0, 19), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.2f, (float)bufferHeight * 0.7f - 19), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio), layoutCond);
 	if (!windowState.isHierarchyOpen) return;
 
-	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen))
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse;
+	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen, windowFlags))
 	{
+		if (!windowState.forceLayout && !windowState.skipLayoutSave) {
+			windowState.leftWidth = ImGui::GetWindowSize().x;
+			windowState.hierarchyHeightRatio = ImGui::GetWindowSize().y / (winHeightParam - menuHeight);
+		}
+
 		auto& objects = scene.GetObjects();
 		auto& lights = scene.GetLights();
 
@@ -620,7 +664,7 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 	ImGui::PopID();
 }
 
-void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight)
+void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 {
 	auto& objects = scene.GetObjects();
 	auto& lights = scene.GetLights();
@@ -630,23 +674,34 @@ void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferH
 	bool showObjectInspector = (selectedObj >= 0 && selectedLight < 0);
 	bool showLightInspector = (selectedLight >= 0 && selectedObj < 0);
 
-	// Inspector on the right
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winH = displaySize.y;
+	float menuHeight = 19.0f;
+
+	// Inspector on bottom-left
 	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth - 300.0f, 19), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(300, (float)bufferHeight * 0.7f - 19), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio)), layoutCond);
 	if (!windowState.isInspectorOpen) return;
+
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse;
+	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
 	if (!showObjectInspector && !showLightInspector) {
 		// Even if empty, show a blank Inspector window for docking consistency
-		if (ImGui::Begin("Inspector", &windowState.isInspectorOpen)) {
+		if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags)) {
 			ImGui::TextDisabled("Select an object to inspect");
 		}
 		ImGui::End();
 		return;
 	}
 
-	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen))
+	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags))
 	{
+		if (!windowState.forceLayout && !windowState.skipLayoutSave) {
+			windowState.leftWidth = ImGui::GetWindowSize().x;
+		}
+
 		if (showObjectInspector)
 		{
 			GameObject* selected = objects[selectedObj];
@@ -752,9 +807,19 @@ void EditorUI::RenderInspector(SceneManager& scene, int bufferWidth, int bufferH
 					if (ImGui::ColorEdit3("Base Color", &matCol.x)) {
 						mat->SetColor(matCol);
 					}
+
+					glm::vec2 tiling = mat->GetTiling();
+					if (ImGui::DragFloat2("Tiling", &tiling.x, 0.1f, 0.01f, 100.0f)) {
+						mat->SetTiling(tiling);
+					}
+
+					glm::vec2 offset = mat->GetOffset();
+					if (ImGui::DragFloat2("Offset", &offset.x, 0.01f)) {
+						mat->SetOffset(offset);
+					}
 					
 					// Live preview sphere (shows diffuse + normal + material properties)
-					RenderMaterialPreview(specular, shininess, matCol, selected->GetTexture(), selected->GetNormalMap());
+					RenderMaterialPreview(specular, shininess, matCol, selected->GetTexture(), selected->GetNormalMap(), tiling, offset);
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
 					}

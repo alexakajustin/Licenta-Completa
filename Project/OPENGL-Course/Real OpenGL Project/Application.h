@@ -57,10 +57,13 @@ private:
 
 	// Viewport FBO
 	void InitViewportFBO();
+	void ResizeViewportFBO(int width, int height);
 	void SetupDockSpace();
 	GLuint viewportFBO = 0;
 	GLuint viewportTexture = 0;
 	GLuint viewportDepth = 0;
+	int currentViewportWidth = 0;
+	int currentViewportHeight = 0;
 
 	// Models
 	// (None currently hardcoded in Application)
@@ -68,6 +71,10 @@ private:
 	// Frame timing
 	GLfloat deltaTime;
 	GLfloat lastTime;
+
+	// Window tracking
+	int lastWindowWidth = 0;
+	int lastWindowHeight = 0;
 
 	// Projection
 	glm::mat4 projection;

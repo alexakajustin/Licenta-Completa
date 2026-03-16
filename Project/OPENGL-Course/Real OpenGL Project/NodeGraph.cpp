@@ -233,7 +233,11 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 		}
 	}
 
-	// After execution, process nodes that modify the scene
+	// Cache for sharing GPU meshes across instances
+	// Mapping from a pair of data pointer + size to a Mesh*
+	struct MeshRef { const float* verts; size_t vSize; const unsigned int* indices; size_t iSize; };
+	auto meshHash = [](const MeshRef& m) { return m.vSize ^ m.iSize; }; // Simple hash for illustration, ideally use a better one
+	std::map<size_t, Mesh*> meshCache; 
 	auto& objects = scene.GetObjects();
 
 	for (auto* node : sorted)
@@ -244,16 +248,15 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 			ScatterNode* scatterNode = static_cast<ScatterNode*>(node);
 			if (scatterNode->IsSpawnMode())
 			{
-				// 1. Cleanup old spawned objects owned by THIS ScatterNode
+				// 1. Cleanup old spawned objects
 				for (const auto& name : scatterNode->GetSpawnedNames())
-				{
 					scene.RemoveObject(name);
-				}
 				scatterNode->SetSpawnedNames({});
 
-				Pin& instancesPin = node->outputs[1]; // "Instances Only"
+				Pin& instancesPin = node->outputs[1];
 				auto& transforms = instancesPin.data.transforms;
 				auto& instanceMeshes = instancesPin.data.instanceMeshes;
+				MeshData& defaultObjectMesh = node->inputs[1].data.meshData;
 
 				if (!transforms.empty())
 				{
@@ -267,11 +270,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					{
 						std::string groupName = "Scatter_Group_" + std::to_string(node->id);
 						targetParent = scene.FindObject(groupName);
-						if (!targetParent)
-						{
-							targetParent = new GameObject(groupName);
-							scene.AddObject(targetParent);
-						}
+						if (!targetParent) { targetParent = new GameObject(groupName); scene.AddObject(targetParent); }
 					}
 
 					std::vector<std::string> newSpawned;
@@ -300,13 +299,23 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.z), glm::vec3(0, 0, 1));
 						worldModel = glm::scale(worldModel, transforms[i].scale);
 
-						// Set world pose BEFORE parenting, so SetParent can calculate correct local offset
 						obj->GetTransform().SetFromMatrix(worldModel);
-						obj->SetInheritScale(false); // Important: Set this BEFORE parenting so local scale isn't crushed
+						obj->SetInheritScale(false);
 						obj->SetParent(targetParent);
 
+						// OPTIMIZATION: Share GPU Mesh
+						// If unique instance meshes exist (e.g. from noise), use them, otherwise use the shared input mesh
+						MeshData* targetData = &defaultObjectMesh;
 						if (i < (int)instanceMeshes.size() && !instanceMeshes[i].vertices.empty())
-							obj->SetMesh(instanceMeshes[i].ToMesh());
+							targetData = &instanceMeshes[i];
+
+						// Simple caching based on vector addresses (fine within one execution pass)
+						size_t dataKey = (size_t)targetData->vertices.data() ^ (size_t)targetData->vertices.size();
+						if (meshCache.find(dataKey) == meshCache.end())
+						{
+							meshCache[dataKey] = targetData->ToMesh();
+						}
+						obj->SetMesh(meshCache[dataKey]);
 
 						if (defaultTex) obj->SetTexture(defaultTex);
 						if (defaultMat) obj->SetMaterial(defaultMat);
@@ -315,7 +324,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						newSpawned.push_back(name);
 					}
 					scatterNode->SetSpawnedNames(newSpawned);
-					printf("Scatter spawned %d modular objects.\n", (int)newSpawned.size());
+					printf("Scatter spawned %d modular objects (Sharing %d GPU meshes).\n", (int)newSpawned.size(), (int)meshCache.size());
 				}
 			}
 		}
@@ -327,77 +336,60 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 			int targetIdx = updateNode->GetTargetIndex();
 			Pin& meshInput = node->inputs[0];
 
-			// Modular Targeting: If "Same As Input" is on, find object by its name passed in the data
 			if (updateNode->IsSameAsInput() && meshInput.data.sourceObjectName != "(none)")
 			{
 				targetIdx = -1;
 				for (int i = 0; i < (int)objects.size(); i++)
-				{
-					if (objects[i]->GetName() == meshInput.data.sourceObjectName)
-					{
-						targetIdx = i;
-						break;
-					}
-				}
+					if (objects[i]->GetName() == meshInput.data.sourceObjectName) { targetIdx = i; break; }
 			}
 			
 			if (targetIdx >= 0 && targetIdx < (int)objects.size())
 			{
 				if (updateNode->ShouldUpdateMesh() && meshInput.data.type == PinDataType::Mesh && !meshInput.data.meshData.vertices.empty())
 				{
-						// Update the existing mesh
-						GameObject* target = objects[targetIdx];
-						if (target->GetMesh())
+					GameObject* target = objects[targetIdx];
+					MeshData& uploadData = meshInput.data.meshData;
+
+					bool isShared = false;
+					if (target->GetMesh())
+					{
+						for (auto* obj : objects)
 						{
-							MeshData uploadData = meshInput.data.meshData;
-							bool restoredScale = false;
-
-							// If we have transform data, we can "un-bake" the mesh to restore hierarchy scale
-							if (!meshInput.data.transforms.empty())
+							if (obj != target && obj->GetMesh() == target->GetMesh())
 							{
-								glm::vec3 originalScale = meshInput.data.transforms[0].scale;
-								if (glm::length(originalScale) > 0.001f)
-								{
-									for (size_t i = 0; i < uploadData.vertices.size(); i += 14)
-									{
-										uploadData.vertices[i] /= originalScale.x;
-										uploadData.vertices[i + 1] /= originalScale.y;
-										uploadData.vertices[i + 2] /= originalScale.z;
-									}
-									restoredScale = true;
-								}
+								isShared = true;
+								break;
 							}
-
-							// Reuse VAO/VBO/IBO by calling CreateMesh again
-							target->GetMesh()->CreateMesh(
-								uploadData.vertices.data(),
-								uploadData.indices.data(),
-								(unsigned int)uploadData.vertices.size(),
-								(unsigned int)uploadData.indices.size()
-							);
-
-							// Only reset scale if we DIDN'T restore it (e.g. for primitives or new objects)
-							if (!restoredScale)
-							{
-								target->GetTransform().SetScale(glm::vec3(1.0f));
-							}
-							else
-							{
-								// Ensure the target object actually has the correct scale in its transform
-								target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
-							}
-
-							// PERSIST: Save the CPU-side data so it can be retrieved by SceneInputNode later
-							target->SetCPUMeshData(uploadData);
-							
-							printf("Updated mesh for object: %s (restoredScale: %s)\n", target->GetName().c_str(), restoredScale ? "true" : "false");
 						}
+					}
+
+					if (target->GetMesh() && !isShared)
+					{
+						// Mesh is uniquely owned by this target. We can safely overwrite it in-place for fast real-time updates.
+						target->GetMesh()->CreateMesh(
+							uploadData.vertices.data(),
+							uploadData.indices.data(),
+							(unsigned int)uploadData.vertices.size(),
+							(unsigned int)uploadData.indices.size()
+						);
+
+						// Always strictly apply the scale from the input transform
+						if (!meshInput.data.transforms.empty())
+							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
+
+						target->SetCPUMeshData(uploadData);
+						// printf("Updated unique mesh for object: %s\n", target->GetName().c_str());
+					}
 					else
 					{
-						// If object has no mesh, create one
-						Mesh* newMesh = meshInput.data.meshData.ToMesh();
+						// Mesh is either null or shared with other instances (e.g. from ScatterNode).
+						// We must allocate a new unique mesh to avoid mutating other objects.
+						Mesh* newMesh = uploadData.ToMesh();
 						target->SetMesh(newMesh);
-						target->SetCPUMeshData(meshInput.data.meshData);
+						if (!meshInput.data.transforms.empty())
+							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
+						target->SetCPUMeshData(uploadData);
+						printf("Branched new unique mesh for object: %s\n", target->GetName().c_str());
 					}
 				}
 			}

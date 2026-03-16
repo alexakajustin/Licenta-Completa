@@ -107,15 +107,7 @@ void SceneInputNode::Execute(SceneManager& scene)
 
 	if (found) {
 		glm::vec3 scale = objects[selectedIndex]->GetTransform().GetScale();
-		if (scale != glm::vec3(1.0f))
-		{
-			for (size_t i = 0; i < data.vertices.size(); i += 14)
-			{
-				data.vertices[i] *= scale.x;
-				data.vertices[i + 1] *= scale.y;
-				data.vertices[i + 2] *= scale.z;
-			}
-		}
+		
 		outputs[0].data.meshData = data;
 		outputs[0].data.sourceObjectName = selectedName;
 

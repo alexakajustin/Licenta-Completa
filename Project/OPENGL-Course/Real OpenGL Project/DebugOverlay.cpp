@@ -109,20 +109,24 @@ void DebugOverlay::ResetCounters()
 	triangleCount = 0;
 }
 
-void DebugOverlay::Render(bool* p_open)
+void DebugOverlay::Render(EditorUI::WindowState& uiState)
 {
-	if (p_open && !*p_open) return;
-	if (!p_open && !isOpen) return;
+	if (!uiState.isDebugOverlayOpen) return;
 
-	bool* activeOpen = p_open ? p_open : &isOpen;
-
-	int bufferWidth, bufferHeight;
-	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.7f, (float)bufferHeight * 0.7f), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.3f, (float)bufferHeight * 0.3f), ImGuiCond_FirstUseEver);
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winWidth = displaySize.x;
+	float winHeight = displaySize.y;
+	float menuHeight = 19.0f;
+	
+	ImGuiCond layoutCond = uiState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio), layoutCond);
 	ImGui::SetNextWindowBgAlpha(0.85f);
 
-	ImGui::Begin("GPU Debug", activeOpen, ImGuiWindowFlags_NoFocusOnAppearing);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoCollapse;
+	if (uiState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+	ImGui::Begin("GPU Debug", &uiState.isDebugOverlayOpen, windowFlags);
 
 	// --- GPU Info ---
 	ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "GPU Info");

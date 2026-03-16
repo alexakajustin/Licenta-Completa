@@ -23,6 +23,9 @@ public:
 	// Draw all editor panels (hierarchy + inspector)
 	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr);
 
+	// Viewport metadata update (to eliminate 1-frame lag)
+	void UpdateViewportMetadata();
+
 	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph);
 
 private:
@@ -45,6 +48,14 @@ public:
 		bool isNodeEditorOpen = true;
 		bool isDebugOverlayOpen = true;
 		bool forceLayout = false;
+
+		// Dynamic layout memory to persist manual user resizing OS window changes
+		float leftWidth = 260.0f;
+		float rightWidth = 450.0f;
+		float bottomHeightRatio = 0.3f;
+		float hierarchyHeightRatio = 0.35f;
+
+		bool skipLayoutSave = false;
 	} windowState;
 
 	WindowState& GetWindowState() { return windowState; }
@@ -63,7 +74,7 @@ private:
 
 	// Material preview sphere
 	void InitMaterialPreview();
-	void RenderMaterialPreview(float specular, float shininess, glm::vec3 color, Texture* diffuse = nullptr, Texture* normal = nullptr);
+	void RenderMaterialPreview(float specular, float shininess, glm::vec3 color, Texture* diffuse, Texture* normal, glm::vec2 tiling = glm::vec2(1,1), glm::vec2 offset = glm::vec2(0,0));
 	GLuint previewFBO = 0;
 	GLuint previewTexture = 0;
 	GLuint previewDepth = 0;

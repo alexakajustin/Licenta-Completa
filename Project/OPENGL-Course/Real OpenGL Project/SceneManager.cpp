@@ -128,13 +128,17 @@ GameObject* SceneManager::FindObject(const std::string& name)
 	return nullptr;
 }
 
-void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture)
+void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
+	GLint uniformTiling, GLint uniformOffset,
+	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture)
 {
 	for (auto* obj : objects)
 	{
 		if (obj->GetParent() == nullptr)
 		{
-			obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture);
+			obj->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
+				uniformTiling, uniformOffset,
+				uniformUseNormalMap, uniformUseDiffuseTexture);
 		}
 	}
 }
@@ -941,7 +945,13 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		if (selObj != -1) {
 			GameObject* target = objects[selObj];
 			if (target->GetParent()) {
-				glm::mat4 invParent = glm::inverse(target->GetParent()->GetWorldMatrix());
+				glm::mat4 parentWorld = target->GetParent()->GetWorldMatrix();
+				if (!target->GetInheritScale()) {
+					parentWorld[0] = glm::normalize(parentWorld[0]);
+					parentWorld[1] = glm::normalize(parentWorld[1]);
+					parentWorld[2] = glm::normalize(parentWorld[2]);
+				}
+				glm::mat4 invParent = glm::inverse(parentWorld);
 				glm::vec4 localPos = invParent * glm::vec4(newPos, 1.0f);
 				target->GetTransform().SetPosition(glm::vec3(localPos));
 			} else {

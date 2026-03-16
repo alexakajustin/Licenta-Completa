@@ -107,7 +107,9 @@ void GameObject::RemoveChild(GameObject* child)
 	}
 }
 
-void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix)
+void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
+	GLint uniformTiling, GLint uniformOffset,
+	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix)
 {
 	// Apply transform relative to parent
 	glm::mat4 localModel = transform.GetModelMatrix();
@@ -137,17 +139,19 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 	// Apply material if available
 	if (material)
 	{
-		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor);
+		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
 	}
 	else
 	{
 		glUniform1f(uniformSpecularIntensity, 0.0f);
 		glUniform1f(uniformShininess, 1.0f);
 		glUniform3f(uniformMaterialColor, 1.0f, 1.0f, 1.0f);
+		glUniform2f(uniformTiling, 1.0f, 1.0f);
+		glUniform2f(uniformOffset, 0.0f, 0.0f);
 	}
 
 	// Render the visual component
-	if (model)
+	if (model && !hasCustomMesh)
 	{
 		bool hasOverrideTex = (texture != nullptr);
 		bool hasOverrideNorm = (normalMap != nullptr);
@@ -170,10 +174,6 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 			model->RenderModelGeometryOnly();
 		} else {
 			// No overrides — model uses its own per-mesh textures
-			// Note: model->RenderModel handles its own uniformUseDiffuseTexture/uniformUseNormalMap if needed,
-			// but we should ensure it has access to the locations or set a default.
-			// Actually, model->RenderModel takes uniformUseNormalMap as argument currently.
-			// We should probably update Model::RenderModel too to be consistent.
 			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture);
 		}
 	}
@@ -202,6 +202,8 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 	// Recursive render for children
 	for (auto* child : children)
 	{
-		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformUseNormalMap, uniformUseDiffuseTexture, modelMatrix);
+		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
+			uniformTiling, uniformOffset,
+			uniformUseNormalMap, uniformUseDiffuseTexture, modelMatrix);
 	}
 }

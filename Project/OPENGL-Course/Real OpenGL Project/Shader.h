@@ -42,6 +42,8 @@ public:
 	GLint GetEyePositionLocation();
 	GLint getOmniLightPosLocation();
 	GLint getFarPlaneLocation();
+	GLint GetTilingLocation() { return uniformTiling; }
+	GLint GetOffsetLocation() { return uniformOffset; }
 
 	void SetDirectionalLight(DirectionalLight* directionalLight);
 	void SetPointLights(PointLight* pointLight, unsigned int lightCount, unsigned int textureUnit, unsigned int offset);
@@ -67,7 +69,8 @@ private:
 		uniformSpecularIntensity, uniformShininess,
 		uniformTexture, uniformNormalMap, uniformUseNormalMap,
 		uniformDirectionalLightTransform, uniformDirectionalShadowMap,
-		uniformOmniLightPos, uniformFarPlane;
+		uniformOmniLightPos, uniformFarPlane,
+		uniformTiling, uniformOffset;
 
 	GLint uniformLightMatrices[6];
 

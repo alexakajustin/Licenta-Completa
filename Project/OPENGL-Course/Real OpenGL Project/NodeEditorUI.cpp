@@ -19,22 +19,29 @@ NodeEditorUI::~NodeEditorUI()
 {
 }
 
-void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, bool* p_open, bool forceLayout)
+void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState)
 {
-	if (p_open && !*p_open) return;
-	if (!p_open && !isOpen) return;
+	if (!uiState.isNodeEditorOpen) return;
 
-	bool* activeOpen = p_open ? p_open : &isOpen;
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winWidth = displaySize.x;
+	float winHeight = displaySize.y;
+	float menuHeight = 19.0f;
 
-	int bufferWidth, bufferHeight;
-	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
+	ImGuiCond layoutCond = uiState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
 	
-	ImGuiCond layoutCond = forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2((float)bufferWidth * 0.2f, 19), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2((float)bufferWidth * 0.8f - 300.0f, (float)bufferHeight * 0.7f - 19), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight), layoutCond);
+	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), layoutCond);
 
-	ImGui::Begin("Node Editor", activeOpen, ImGuiWindowFlags_MenuBar);
+	ImGuiWindowFlags windowFlags = 0;
+	if (uiState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
+	if (ImGui::Begin("Node Editor", &uiState.isNodeEditorOpen, windowFlags))
+	{
+		if (!uiState.forceLayout && !uiState.skipLayoutSave) {
+			uiState.rightWidth = ImGui::GetWindowSize().x;
+		}
+	}
 	// Menu Bar
 	if (ImGui::BeginMenuBar())
 	{

@@ -1,2 +1,9 @@
-﻿  SceneInputNode.cpp
+﻿  EditorUI.cpp
+  GameObject.cpp
+  GenerationPipelineUI.cpp
+  NodeEditorUI.cpp
+  NodeGraph.cpp
+  PerlinNoiseGenerator.cpp
+  ScatterNode.cpp
+  Generating Code...
   Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

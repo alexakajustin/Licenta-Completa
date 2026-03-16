@@ -44,9 +44,11 @@ private:
 	Skybox skybox;
 
 	// Cached uniform locations (fetched once at init)
-	GLint uniformModel, uniformProjection, uniformView;
-	GLint uniformEyePosition, uniformSpecularIntensity, uniformShininess, uniformMaterialColor;
-	GLint uniformOmniLightPos, uniformFarPlane, uniformUseNormalMap, uniformUseDiffuseTexture;
+	GLint uniformModel, uniformProjection, uniformView, uniformEyePosition,
+		uniformSpecularIntensity, uniformShininess, uniformMaterialColor,
+		uniformTiling, uniformOffset,
+		uniformOmniLightPos, uniformFarPlane,
+		uniformUseNormalMap, uniformUseDiffuseTexture;
 
 	void CacheUniforms();
 };

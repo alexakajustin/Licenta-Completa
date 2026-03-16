@@ -11,7 +11,8 @@ public:
 	Material(GLfloat specularIntensity, GLfloat shininess, glm::vec3 color = glm::vec3(1.0f));
 	~Material();
 
-	void UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation);
+	void UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, 
+		GLint tilingLocation, GLint offsetLocation);
 
 	// File I/O
 	static Material* LoadFromFile(const std::string& path);
@@ -24,9 +25,16 @@ public:
 	glm::vec3 GetColor() const { return color; }
 	void SetColor(glm::vec3 val) { color = val; }
 
+	glm::vec2 GetTiling() const { return textureTiling; }
+	void SetTiling(glm::vec2 val) { textureTiling = val; }
+	glm::vec2 GetOffset() const { return textureOffset; }
+	void SetOffset(glm::vec2 val) { textureOffset = val; }
+
 private:
 	GLfloat specularIntensity;
 	GLfloat shininess;	
 	glm::vec3 color;
+	glm::vec2 textureTiling;
+	glm::vec2 textureOffset;
 };
 

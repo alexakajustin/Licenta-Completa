@@ -28,6 +28,8 @@ struct AssetInfo {
 	Texture* thumbnail = nullptr;
 };
 
+#include "EditorUI.h"
+
 class AssetBrowser
 {
 public:
@@ -35,7 +37,7 @@ public:
 	~AssetBrowser();
 
 	void Init();
-	void Render(SceneManager& scene, bool* p_open = nullptr, bool forceLayout = false);
+	void Render(SceneManager& scene, EditorUI::WindowState& uiState);
 	void RefreshAssetList();
 
 private:

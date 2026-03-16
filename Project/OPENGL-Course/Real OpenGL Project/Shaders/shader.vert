@@ -23,6 +23,14 @@ uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 directionalLightTransform;
+struct Material {
+	 float specularIntensity;
+	 float shininess;
+	 vec3 baseColor;
+	 vec2 tiling;
+	 vec2 offset;
+};
+uniform Material material;
 
 
 void main()
@@ -32,7 +40,7 @@ void main()
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	
-	TexCoord = tex;
+	TexCoord = tex * material.tiling + material.offset;
 	
 	Normal = mat3(transpose(inverse(model))) * norm;
 	

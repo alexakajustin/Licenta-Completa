@@ -50,7 +50,9 @@ public:
 	bool GetInheritScale() const { return inheritScale; }
 
 	// Render this object
-	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
+	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
+		GLint uniformTiling, GLint uniformOffset,
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
 
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data) { cpuMeshData = data; hasCustomMesh = true; }

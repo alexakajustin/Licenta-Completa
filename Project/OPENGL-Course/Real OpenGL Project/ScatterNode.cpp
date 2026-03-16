@@ -229,15 +229,19 @@ void ScatterNode::Execute(SceneManager& scene)
 	outputs[1].data.transforms.reserve(count);
 	outputs[1].data.instanceMeshes.reserve(count);
 
-	// Calculate surface world matrix (excluding scale, because scale is baked into vertices)
-	glm::mat4 surfaceWorldNoScale = glm::mat4(1.0f);
+	// Calculate surface world matrix (INCLUDING scale, so spawned objects spread properly over scaled surfaces)
+	glm::mat4 surfaceWorld = glm::mat4(1.0f);
+	glm::mat3 surfaceNormalMatrix = glm::mat3(1.0f);
 	if (!inputs[0].data.transforms.empty())
 	{
 		const TransformData& st = inputs[0].data.transforms[0];
-		surfaceWorldNoScale = glm::translate(surfaceWorldNoScale, st.position);
-		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.x), glm::vec3(1, 0, 0));
-		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.y), glm::vec3(0, 1, 0));
-		surfaceWorldNoScale = glm::rotate(surfaceWorldNoScale, glm::radians(st.rotation.z), glm::vec3(0, 0, 1));
+		surfaceWorld = glm::translate(surfaceWorld, st.position);
+		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.x), glm::vec3(1, 0, 0));
+		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.y), glm::vec3(0, 1, 0));
+		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.z), glm::vec3(0, 0, 1));
+		surfaceWorld = glm::scale(surfaceWorld, st.scale);
+		
+		surfaceNormalMatrix = glm::transpose(glm::inverse(glm::mat3(surfaceWorld)));
 	}
 
 	for (int i = 0; i < count; i++)
@@ -271,8 +275,8 @@ void ScatterNode::Execute(SceneManager& scene)
 		glm::vec3 localNormal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
 
 		// Transform to World Space
-		glm::vec3 worldPos = glm::vec3(surfaceWorldNoScale * glm::vec4(localPos, 1.0f));
-		glm::vec3 worldNormal = glm::normalize(glm::mat3(surfaceWorldNoScale) * localNormal);
+		glm::vec3 worldPos = glm::vec3(surfaceWorld * glm::vec4(localPos, 1.0f));
+		glm::vec3 worldNormal = glm::normalize(surfaceNormalMatrix * localNormal);
 
 		// Random scale
 		float s = scaleDist(gen);
@@ -294,7 +298,8 @@ void ScatterNode::Execute(SceneManager& scene)
 		
 		lastTransforms.push_back(t); // Compatibility
 		outputs[1].data.transforms.push_back(t);
-		outputs[1].data.instanceMeshes.push_back(objectMesh); 
+		// Optimization: We don't fill instanceMeshes here. NodeGraph will fallback to the input mesh.
+		// This saves massive amounts of RAM and CPU time during Execute.
 
 		// Compute baked result (these stay local to the merged mesh)
 		MergeTransformed(objectMesh, localPos, rot, scaleVec, localNormal, combinedResult);

@@ -9,6 +9,8 @@ class SceneManager;
 class Texture;
 class Material;
 
+#include "EditorUI.h"
+
 // ImGui visual editor for the procedural generation NodeGraph.
 class NodeEditorUI
 {
@@ -16,7 +18,7 @@ public:
 	NodeEditorUI();
 	~NodeEditorUI();
 
-	void Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, bool* p_open = nullptr, bool forceLayout = false);
+	void Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState);
 
 private:
 	bool isOpen;
