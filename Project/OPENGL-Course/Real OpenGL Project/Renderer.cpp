@@ -2,13 +2,14 @@
 #include "SceneManager.h"
 #include "Camera.h"
 #include "Window.h"
+#include "Frustum.h"
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
 	  uniformEyePosition(-1), uniformSpecularIntensity(-1), uniformShininess(-1),
 	  uniformTiling(-1), uniformOffset(-1),
 	  uniformOmniLightPos(-1), uniformFarPlane(-1), 
-	  uniformUseNormalMap(-1), uniformUseDiffuseTexture(-1)
+	  uniformUseNormalMap(-1), uniformUseDiffuseTexture(-1), uniformUseInstancing(-1)
 {
 }
 
@@ -45,6 +46,7 @@ void Renderer::CacheUniforms()
 	uniformFarPlane = mainShader.getFarPlaneLocation();
 	uniformUseNormalMap = glGetUniformLocation(mainShader.GetShaderID(), "useNormalMap");
 	uniformUseDiffuseTexture = glGetUniformLocation(mainShader.GetShaderID(), "useDiffuseTexture");
+	uniformUseInstancing = glGetUniformLocation(mainShader.GetShaderID(), "useInstancing");
 }
 
 void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene)
@@ -61,7 +63,8 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 
 	directionalShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1);
+	Frustum lightFrustum = Frustum::CreateFrustumFromMatrix(light->CalculateLightTransform());
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, &lightFrustum);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -85,7 +88,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1);
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -125,10 +128,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 
 	mainShader.Validate();
 
-	// Scene objects
+	// Scene objects with Frustum Culling
+	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
 	scene.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
 		uniformTiling, uniformOffset,
-		uniformUseNormalMap, uniformUseDiffuseTexture);
+		uniformUseNormalMap, uniformUseDiffuseTexture, uniformUseInstancing, &frustum);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude
 	glClear(GL_DEPTH_BUFFER_BIT);

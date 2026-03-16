@@ -426,6 +426,14 @@ void ScatterNode::Execute(SceneManager& scene)
 
 	outputs[1].data.meshData = std::move(instancesOnly);
 	outputs[1].data.sourceObjectName = "(none)"; 
+	outputs[1].data.sourceMaterial = inputs[1].data.sourceMaterial;
+	outputs[1].data.sourceTexture = inputs[1].data.sourceTexture;
+	outputs[1].data.sourceNormalMap = inputs[1].data.sourceNormalMap;
+
+	// Also propagate to Combined output for consistency
+	outputs[0].data.sourceMaterial = inputs[1].data.sourceMaterial;
+	outputs[0].data.sourceTexture = inputs[1].data.sourceTexture;
+	outputs[0].data.sourceNormalMap = inputs[1].data.sourceNormalMap;
   }
   catch (const std::exception& e) {
 	printf("[ScatterNode] Execution failed (Memory exhausted): %s\n", e.what());

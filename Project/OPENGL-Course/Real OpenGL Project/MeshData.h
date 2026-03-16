@@ -6,6 +6,9 @@
 #include <string>
 #include "Mesh.h"
 
+class Material;
+class Texture;
+
 // ========== Transform Data ==========
 struct TransformData
 {
@@ -33,18 +36,36 @@ struct MeshData
 	std::vector<unsigned int> indices;
 
 	// Upload to GPU and return a new Mesh
-	Mesh* ToMesh() const
+	Mesh* ToMesh(int maxInstances = 0) const
 	{
 		if (vertices.empty() || indices.empty()) return nullptr;
 
 		try {
 			Mesh* mesh = new Mesh();
-			mesh->CreateMesh(
-				const_cast<GLfloat*>(vertices.data()),
-				const_cast<unsigned int*>(indices.data()),
-				(unsigned int)vertices.size(),
-				(unsigned int)indices.size()
-			);
+			if (maxInstances > 0)
+			{
+				mesh->CreateInstancedMesh(
+					const_cast<GLfloat*>(vertices.data()),
+					const_cast<unsigned int*>(indices.data()),
+					(unsigned int)vertices.size(),
+					(unsigned int)indices.size(),
+					maxInstances
+				);
+			}
+			else
+			{
+				mesh->CreateMesh(
+					const_cast<GLfloat*>(vertices.data()),
+					const_cast<unsigned int*>(indices.data()),
+					(unsigned int)vertices.size(),
+					(unsigned int)indices.size()
+				);
+			}
+			
+			glm::vec3 min, max;
+			GetBounds(min, max);
+			mesh->SetBounds(min, max);
+
 			return mesh;
 		}
 		catch (const std::exception& e) {
@@ -150,6 +171,23 @@ struct MeshData
 		return glm::vec3(vertices[base + 5], vertices[base + 6], vertices[base + 7]);
 	}
 
+	void GetBounds(glm::vec3& min, glm::vec3& max) const
+	{
+		if (vertices.empty()) {
+			min = glm::vec3(0.0f);
+			max = glm::vec3(0.0f);
+			return;
+		}
+		min = glm::vec3(1e10f);
+		max = glm::vec3(-1e10f);
+		int count = GetVertexCount();
+		for (int i = 0; i < count; i++) {
+			glm::vec3 p = GetPosition(i);
+			min = glm::min(min, p);
+			max = glm::max(max, p);
+		}
+	}
+
 	int GetVertexCount() const { return (int)vertices.size() / 14; }
 	int GetTriangleCount() const { return (int)indices.size() / 3; }
 
@@ -171,6 +209,9 @@ struct PinData
 	TransformList transforms;
 	std::vector<MeshData> instanceMeshes;
 	std::string sourceObjectName = "(none)";
+	Material* sourceMaterial = nullptr;
+	Texture* sourceTexture = nullptr;
+	Texture* sourceNormalMap = nullptr;
 
 	void Clear()
 	{
@@ -179,6 +220,9 @@ struct PinData
 		transforms.clear();
 		instanceMeshes.clear();
 		sourceObjectName = "(none)";
+		sourceMaterial = nullptr;
+		sourceTexture = nullptr;
+		sourceNormalMap = nullptr;
 	}
 
 	void DeepClear()
@@ -189,5 +233,8 @@ struct PinData
 		for (auto& m : instanceMeshes) m.DeepClear();
 		std::vector<MeshData>().swap(instanceMeshes);
 		sourceObjectName = "(none)";
+		sourceMaterial = nullptr;
+		sourceTexture = nullptr;
+		sourceNormalMap = nullptr;
 	}
 };

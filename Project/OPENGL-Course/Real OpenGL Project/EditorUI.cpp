@@ -818,7 +818,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 						mat->SetOffset(offset);
 					}
 					
-					// Live preview sphere (shows diffuse + normal + material properties)
+					// Live preview sphere
 					RenderMaterialPreview(specular, shininess, matCol, selected->GetTexture(), selected->GetNormalMap(), tiling, offset);
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));

@@ -74,9 +74,10 @@ void SceneInputNode::Execute(SceneManager& scene)
 
 	// Check if it's a primitive or a scene object
 	auto& objects = scene.GetObjects();
+	GameObject* obj = nullptr;
 	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
 	{
-		GameObject* obj = objects[selectedIndex];
+		obj = objects[selectedIndex];
 		
 		// 1. Try to retrieve persisted procedural mesh data if available
 		if (obj->HasCustomMesh())
@@ -110,12 +111,15 @@ void SceneInputNode::Execute(SceneManager& scene)
 		
 		outputs[0].data.meshData = data;
 		outputs[0].data.sourceObjectName = selectedName;
+		outputs[0].data.sourceMaterial = obj->GetMaterial();
+		outputs[0].data.sourceTexture = obj->GetTexture();
+		outputs[0].data.sourceNormalMap = obj->GetNormalMap();
 
 		// Propagate transform data so downstream nodes can handle scale/restore
 		TransformData t;
-		t.position = objects[selectedIndex]->GetTransform().GetPosition();
-		t.rotation = objects[selectedIndex]->GetTransform().GetRotation();
-		t.scale = objects[selectedIndex]->GetTransform().GetScale();
+		t.position = obj->GetTransform().GetPosition();
+		t.rotation = obj->GetTransform().GetRotation();
+		t.scale = obj->GetTransform().GetScale();
 		outputs[0].data.transforms.push_back(t);
 	}
 }

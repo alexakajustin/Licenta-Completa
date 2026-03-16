@@ -48,7 +48,7 @@ private:
 		uniformSpecularIntensity, uniformShininess, uniformMaterialColor,
 		uniformTiling, uniformOffset,
 		uniformOmniLightPos, uniformFarPlane,
-		uniformUseNormalMap, uniformUseDiffuseTexture;
+		uniformUseNormalMap, uniformUseDiffuseTexture, uniformUseInstancing;
 
 	void CacheUniforms();
 };

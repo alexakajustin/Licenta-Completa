@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "Frustum.h"
 
 GameObject::GameObject()
 	: name("GameObject"), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
@@ -52,8 +53,6 @@ void GameObject::SetParent(GameObject* newParent)
 	if (parent) {
 		glm::mat4 pMat = parent->GetWorldMatrix();
 		if (!inheritScale) {
-			// If not inheriting scale, we want to maintain world pose relative 
-			// to a scale-neutral parent to avoid squashing the local transform.
 			pMat[0] = glm::normalize(pMat[0]);
 			pMat[1] = glm::normalize(pMat[1]);
 			pMat[2] = glm::normalize(pMat[2]);
@@ -64,10 +63,14 @@ void GameObject::SetParent(GameObject* newParent)
 	} else {
 		transform.SetFromMatrix(worldMat);
 	}
+
+	SetDirty();
 }
 
-glm::mat4 GameObject::GetWorldMatrix() const
+glm::mat4 GameObject::GetWorldMatrix()
 {
+	if (!worldDirty) return cachedWorldMatrix;
+
 	glm::mat4 localModel = transform.GetModelMatrix();
 	if (parent) {
 		glm::mat4 pWorld = parent->GetWorldMatrix();
@@ -82,13 +85,30 @@ glm::mat4 GameObject::GetWorldMatrix() const
 
 			// 2. Calculate world orientation/scale without parent scale
 			pBasis[3] = glm::vec4(0, 0, 0, 1);
-			glm::mat4 worldMat = pBasis * localModel;
-			worldMat[3] = glm::vec4(worldPos, 1.0f);
-			return worldMat;
+			cachedWorldMatrix = pBasis * localModel;
+			cachedWorldMatrix[3] = glm::vec4(worldPos, 1.0f);
+		} else {
+			cachedWorldMatrix = pWorld * localModel;
 		}
-		return pWorld * localModel;
+	} else {
+		cachedWorldMatrix = localModel;
 	}
-	return localModel;
+
+	worldDirty = false;
+	return cachedWorldMatrix;
+}
+
+void GameObject::SetDirty()
+{
+	transform.MarkDirty();
+	if (worldDirty && boundsDirty) return; // Already dirty
+
+	worldDirty = true;
+	boundsDirty = true;
+
+	for (auto* child : children) {
+		child->SetDirty();
+	}
 }
 
 void GameObject::AddChild(GameObject* child)
@@ -100,6 +120,7 @@ void GameObject::AddChild(GameObject* child)
 
 	children.push_back(child);
 	child->parent = this;
+	child->SetDirty();
 }
 
 void GameObject::RemoveChild(GameObject* child)
@@ -107,6 +128,7 @@ void GameObject::RemoveChild(GameObject* child)
 	for (auto it = children.begin(); it != children.end(); ++it) {
 		if (*it == child) {
 			child->parent = nullptr;
+			child->SetDirty();
 			children.erase(it);
 			return;
 		}
@@ -115,34 +137,38 @@ void GameObject::RemoveChild(GameObject* child)
 
 void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 	GLint uniformTiling, GLint uniformOffset,
-	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix)
+	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+	const glm::mat4& parentMatrix, const Frustum* frustum)
 {
-	// Apply transform relative to parent
-	glm::mat4 localModel = transform.GetModelMatrix();
-	glm::mat4 modelMatrix;
-
-	if (!inheritScale) {
-		// Compute world position with NORMALIZED parent scale
-		// to avoid stretching local offsets by parent scale
-		glm::mat4 pBasis = parentMatrix;
-		pBasis[0] = glm::normalize(pBasis[0]);
-		pBasis[1] = glm::normalize(pBasis[1]);
-		pBasis[2] = glm::normalize(pBasis[2]);
-
-		glm::vec3 worldPos = glm::vec3(pBasis * localModel[3]);
-
-		// Compute orientation/scale with normalized parent basis (for purely local rot/scale)
-		pBasis[3] = glm::vec4(0, 0, 0, 1);
-
-		modelMatrix = pBasis * localModel;
-		modelMatrix[3] = glm::vec4(worldPos, 1.0f);
+	// FRUSTUM CULLING CHECK
+	if (frustum && (model || mesh))
+	{
+		glm::vec3 min, max;
+		GetWorldBounds(min, max);
+		if (!frustum->IsBoxVisible(min, max)) return;
 	}
-	else {
-		modelMatrix = parentMatrix * localModel;
+
+	glm::mat4 modelMatrix = GetWorldMatrix();
+	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap);
+
+	// Recursive render for children
+	for (auto* child : children)
+	{
+		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
+			uniformTiling, uniformOffset,
+			uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, modelMatrix, frustum);
 	}
+}
+
+void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
+	GLint uniformTiling, GLint uniformOffset, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap)
+{
+	if (!mesh && !model) return;
+
+	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
-	// Apply material if available
+	// Apply material if available, otherwise reset to defaults
 	if (material)
 	{
 		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
@@ -166,6 +192,7 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 			// Inspector overrides: bind our textures, skip model's own
 			if (hasOverrideTex) {
 				glUniform1i(uniformUseDiffuseTexture, 1);
+				glUniform1i(uniformDiffuseTexture, 0); // Unit 0
 				texture->UseTexture();
 			} else {
 				glUniform1i(uniformUseDiffuseTexture, 0);
@@ -173,6 +200,7 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 
 			if (hasOverrideNorm) {
 				glUniform1i(uniformUseNormalMap, 1);
+				glUniform1i(uniformNormalMap, 1); // Unit 1
 				normalMap->UseNormalMap();
 			} else {
 				glUniform1i(uniformUseNormalMap, 0);
@@ -180,37 +208,27 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 			model->RenderModelGeometryOnly();
 		} else {
 			// No overrides — model uses its own per-mesh textures
-			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture);
+			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture, uniformNormalMap, uniformDiffuseTexture);
 		}
 	}
 	else if (mesh)
 	{
 		if (texture) {
 			glUniform1i(uniformUseDiffuseTexture, 1);
-			texture->UseTexture();
+			glUniform1i(uniformDiffuseTexture, 0); // Unit 0
+			texture->UseTexture(); // Internal glActiveTexture(GL_TEXTURE0)
 		} else {
 			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
-		if (normalMap)
-		{
+		if (normalMap) {
 			glUniform1i(uniformUseNormalMap, 1);
-			normalMap->UseNormalMap();
-		}
-		else
-		{
+			glUniform1i(uniformNormalMap, 1); // Unit 1
+			normalMap->UseNormalMap(); // Internal glActiveTexture(GL_TEXTURE1)
+		} else {
 			glUniform1i(uniformUseNormalMap, 0);
 		}
-		
 		mesh->RenderMesh();
-	}
-
-	// Recursive render for children
-	for (auto* child : children)
-	{
-		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
-			uniformTiling, uniformOffset,
-			uniformUseNormalMap, uniformUseDiffuseTexture, modelMatrix);
 	}
 }
 
@@ -229,6 +247,7 @@ void GameObject::SetMesh(Mesh* newMesh)
 	{
 		mesh->AddRef();
 	}
+	SetDirty();
 }
 
 void GameObject::SetCPUMeshData(const MeshData& data)
@@ -249,4 +268,55 @@ void GameObject::SetCPUMeshData(const MeshData& data)
 
 	cpuMeshData = data;
 	hasCustomMesh = true;
+	SetDirty();
+}
+
+void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)
+{
+	if (!boundsDirty) {
+		min = cachedWorldMin;
+		max = cachedWorldMax;
+		return;
+	}
+
+	glm::vec3 localMin(0.0f), localMax(0.0f);
+	if (model && !hasCustomMesh) {
+		localMin = model->GetMinBound();
+		localMax = model->GetMaxBound();
+	}
+	else if (mesh) {
+		mesh->GetBounds(localMin, localMax);
+	}
+	else {
+		min = transform.GetPosition();
+		max = transform.GetPosition();
+		cachedWorldMin = min;
+		cachedWorldMax = max;
+		boundsDirty = false;
+		return;
+	}
+
+	glm::mat4 world = GetWorldMatrix();
+	glm::vec3 corners[8] = {
+		{localMin.x, localMin.y, localMin.z},
+		{localMax.x, localMin.y, localMin.z},
+		{localMin.x, localMax.y, localMin.z},
+		{localMin.x, localMin.y, localMax.z},
+		{localMax.x, localMax.y, localMin.z},
+		{localMax.x, localMin.y, localMax.z},
+		{localMin.x, localMax.y, localMax.z},
+		{localMax.x, localMax.y, localMax.z},
+	};
+
+	min = glm::vec3(1e10f);
+	max = glm::vec3(-1e10f);
+	for (int i = 0; i < 8; i++) {
+		glm::vec3 worldCorner = glm::vec3(world * glm::vec4(corners[i], 1.0f));
+		min = glm::min(min, worldCorner);
+		max = glm::max(max, worldCorner);
+	}
+
+	cachedWorldMin = min;
+	cachedWorldMax = max;
+	boundsDirty = false;
 }

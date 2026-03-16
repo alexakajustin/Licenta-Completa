@@ -1,6 +1,8 @@
 #pragma once
 
 #include <GL\glew.h>
+#include <glm/glm.hpp>
+#include <vector>
 
 class Mesh
 {
@@ -8,8 +10,15 @@ public:
 	Mesh();
 
 	void CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices);
+	void CreateInstancedMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices, unsigned int maxInstances);
 	void RenderMesh();
+	void RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices);
 	void ClearMesh();
+
+	bool IsInstanced() const { return instanceVBO != 0; }
+
+	void SetBounds(glm::vec3 min, glm::vec3 max) { minBound = min; maxBound = max; }
+	void GetBounds(glm::vec3& min, glm::vec3& max) const { min = minBound; max = maxBound; }
 
 	void AddRef() { refCount++; }
 	void Release() { if (--refCount <= 0) delete this; }
@@ -17,7 +26,11 @@ public:
 	~Mesh();
 
 private:
-	GLuint VAO, VBO, IBO;
+	GLuint VAO, VBO, IBO, instanceVBO;
 	GLsizei indexCount;
 	int refCount;
+	unsigned int maxInstanceCount = 0;
+
+	glm::vec3 minBound = glm::vec3(-1.0f);
+	glm::vec3 maxBound = glm::vec3(1.0f);
 };

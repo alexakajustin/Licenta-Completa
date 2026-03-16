@@ -167,7 +167,9 @@ bool AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	GLuint useNormalLoc = glGetUniformLocation(thumbnailShader.GetShaderID(), "useNormalMap"); // Fallback if shader doesn't have it
 
 	// Use RenderModel properly by passing the correct uniform locations
-	tempModel->RenderModel(useNormalLoc, useDiffuseLoc); 
+	tempModel->RenderModel(useNormalLoc, useDiffuseLoc, 
+		glGetUniformLocation(thumbnailShader.GetShaderID(), "normalMap"),
+		glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture")); 
 
 	// Read back
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -252,7 +254,7 @@ void AssetBrowser::GenerateMaterialThumbnail(const std::string& matPath, Texture
 	glUniformMatrix4fv(thumbnailShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
 	glUniformMatrix4fv(thumbnailShader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
-	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), 0);
+	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "useDiffuseTexture"), 0);
 
 	sphereMesh->RenderMesh();
 

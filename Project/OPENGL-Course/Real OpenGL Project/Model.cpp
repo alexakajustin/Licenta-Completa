@@ -40,6 +40,16 @@ void Model::LoadModelGPU()
 	{
 		Mesh* newMesh = new Mesh();
 		newMesh->CreateMesh(&im.vertices[0], &im.indices[0], (unsigned int)im.vertices.size(), (unsigned int)im.indices.size());
+		
+		// Set bounds from CPU data
+		glm::vec3 min(1e10f), max(-1e10f);
+		for (size_t v = 0; v < im.vertices.size() / 14; v++) {
+			glm::vec3 p(im.vertices[v * 14], im.vertices[v * 14 + 1], im.vertices[v * 14 + 2]);
+			min = glm::min(min, p);
+			max = glm::max(max, p);
+		}
+		newMesh->SetBounds(min, max);
+
 		meshList.push_back(newMesh);
 		meshToTex.push_back(im.materialIndex);
 
@@ -204,7 +214,7 @@ void Model::ClearModel()
 	}
 }
 
-void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture)
+void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture, GLuint uniformNormalMapSampler, GLuint uniformDiffuseTextureSampler)
 {
 	if (!isGPUReady) return;
 
@@ -215,6 +225,7 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 		if (materialIndex < textureList.size() && textureList[materialIndex])
 		{
 			glUniform1i(uniformUseDiffuseTexture, 1);
+			glUniform1i(uniformDiffuseTextureSampler, 0); // Diffuse to Unit 0
 			textureList[materialIndex]->UseTexture();
 		}
 		else
@@ -225,6 +236,7 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 		if (materialIndex < normalMapList.size() && normalMapList[materialIndex])
 		{
 			glUniform1i(uniformUseNormalMap, 1);
+			glUniform1i(uniformNormalMapSampler, 1); // Normal to Unit 1
 			normalMapList[materialIndex]->UseNormalMap();
 		}
 		else

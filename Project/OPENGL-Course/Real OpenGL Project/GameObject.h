@@ -11,6 +11,8 @@
 #include "Material.h"
 #include "MeshData.h"
 
+struct Frustum;
+
 class GameObject
 {
 public:
@@ -20,9 +22,9 @@ public:
 
 	// Getters
 	std::string GetName() const { return name; }
-	Transform& GetTransform() { return transform; }
+	Transform& GetTransform() { SetDirty(); return transform; }
 	const Transform& GetTransform() const { return transform; }
-	glm::mat4 GetWorldMatrix() const;
+	glm::mat4 GetWorldMatrix();
 
 	// Setters for components
 	void SetName(const std::string& newName) { name = newName; }
@@ -52,13 +54,23 @@ public:
 	// Render this object
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
-		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap, 
+		const glm::mat4& parentMatrix = glm::mat4(1.0f), const Frustum* frustum = nullptr);
+
+	// Separate render for a single object (used by SceneManager batching/loop)
+	void RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor,
+		GLint uniformTiling, GLint uniformOffset,
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap);
 
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data);
 	const MeshData& GetCPUMeshData() const { return cpuMeshData; }
 	bool HasCustomMesh() const { return hasCustomMesh; }
 	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.Clear(); }
+
+	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
+	
+	void SetDirty(); // Dirties this and all children recursively
 
 private:
 	std::string name;
@@ -79,4 +91,12 @@ private:
 	// Persistent mesh data for procedural generation
 	MeshData cpuMeshData;
 	bool hasCustomMesh = false;
+
+	// CPU Caching for Performance
+	glm::mat4 cachedWorldMatrix = glm::mat4(1.0f);
+	bool worldDirty = true;
+
+	glm::vec3 cachedWorldMin = glm::vec3(0.0f);
+	glm::vec3 cachedWorldMax = glm::vec3(0.0f);
+	bool boundsDirty = true;
 };

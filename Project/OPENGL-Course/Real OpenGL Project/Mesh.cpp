@@ -6,6 +6,7 @@ Mesh::Mesh()
 	VAO = 0;
 	VBO = 0;
 	IBO = 0;
+	instanceVBO = 0;
 	indexCount = 0;
 	refCount = 0;
 }
@@ -69,6 +70,29 @@ void Mesh::CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int num
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // unbind IBO
 }
 
+void Mesh::CreateInstancedMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices, unsigned int maxInstances)
+{
+	CreateMesh(vertices, indices, numberOfVertices, numberOfIndices);
+	maxInstanceCount = maxInstances;
+
+	glBindVertexArray(VAO);
+
+	glGenBuffers(1, &instanceVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4) * maxInstanceCount, NULL, GL_DYNAMIC_DRAW);
+
+	// A mat4 is 4 vec4s. Each vec4 takes one attribute slot.
+	// Layout location 5, 6, 7, 8 for instance matrix
+	for (int i = 0; i < 4; i++) {
+		glEnableVertexAttribArray(5 + i);
+		glVertexAttribPointer(5 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4) * i));
+		glVertexAttribDivisor(5 + i, 1); // Per-instance
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
 void Mesh::RenderMesh()
 {
 	// use this VAO
@@ -90,6 +114,30 @@ void Mesh::RenderMesh()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
 }
 
+void Mesh::RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices)
+{
+	if (instanceCount == 0) return;
+	
+	// Safety cap to avoid buffer overflow if we exceed initial allocation
+	unsigned int count = (instanceCount > maxInstanceCount) ? maxInstanceCount : instanceCount;
+
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4) * count, instanceMatrices);
+
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0, count);
+
+	// Track stats
+	if (DebugOverlay::GetInstance()) {
+		DebugOverlay::GetInstance()->CountDrawCall();
+		DebugOverlay::GetInstance()->CountTriangles((indexCount / 3) * count);
+	}
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
 void Mesh::ClearMesh()
 {
 	if (IBO != 0)
@@ -108,6 +156,12 @@ void Mesh::ClearMesh()
 	{
 		glDeleteVertexArrays(1, &VAO);
 		VAO = 0;
+	}
+
+	if (instanceVBO != 0)
+	{
+		glDeleteBuffers(1, &instanceVBO);
+		instanceVBO = 0;
 	}
 
 	indexCount = 0;

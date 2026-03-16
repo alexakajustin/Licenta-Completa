@@ -6,12 +6,14 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <map>
 
 #include "imgui.h"
 #include "GameObject.h"
 #include "LightObject.h"
 #include "Shader.h"
 #include "Texture.h"
+#include "Frustum.h"
 
 class SceneManager
 {
@@ -44,10 +46,9 @@ public:
 
 	std::string GetSelectedName() const;
 
-	// ========== Rendering ==========
 	void RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
-		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture);
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, const Frustum* frustum = nullptr);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 

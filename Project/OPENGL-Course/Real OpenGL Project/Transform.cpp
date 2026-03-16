@@ -1,12 +1,12 @@
 #include "Transform.h"
 
 Transform::Transform()
-	: position(glm::vec3(0.0f)), rotation(glm::vec3(0.0f)), scale(glm::vec3(1.0f))
+	: position(glm::vec3(0.0f)), rotation(glm::vec3(0.0f)), scale(glm::vec3(1.0f)), isDirty(true), cachedModelMatrix(1.0f)
 {
 }
 
 Transform::Transform(glm::vec3 position, glm::vec3 rotation, glm::vec3 scale)
-	: position(position), rotation(rotation), scale(scale)
+	: position(position), rotation(rotation), scale(scale), isDirty(true), cachedModelMatrix(1.0f)
 {
 }
 
@@ -16,6 +16,8 @@ Transform::~Transform()
 
 glm::mat4 Transform::GetModelMatrix() const
 {
+	if (!isDirty) return cachedModelMatrix;
+
 	glm::mat4 model(1.0f);
 
 	// Translation
@@ -29,7 +31,10 @@ glm::mat4 Transform::GetModelMatrix() const
 	// Scale
 	model = glm::scale(model, scale);
 
-	return model;
+	cachedModelMatrix = model;
+	isDirty = false;
+
+	return cachedModelMatrix;
 }
 
 void Transform::SetFromMatrix(const glm::mat4& matrix)
@@ -64,4 +69,5 @@ void Transform::SetFromMatrix(const glm::mat4& matrix)
 			rotation.z = 0.0f;
 		}
 	}
+	isDirty = true;
 }

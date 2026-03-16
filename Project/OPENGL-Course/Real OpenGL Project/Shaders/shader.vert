@@ -5,6 +5,7 @@ layout (location = 1) in vec2 tex;
 layout (location = 2) in vec3 norm;
 layout (location = 3) in vec3 tangent;
 layout (location = 4) in vec3 bitangent;
+layout (location = 5) in mat4 instanceMatrix;
 
 out vec4 vertex_color;
 out vec2 TexCoord;
@@ -23,6 +24,7 @@ uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 directionalLightTransform;
+uniform int useInstancing;
 struct Material {
 	 float specularIntensity;
 	 float shininess;
@@ -35,19 +37,24 @@ uniform Material material;
 
 void main()
 {
-	gl_Position = projection * view * model * vec4(pos, 1.0);
-	DirectionalLightSpacePos = directionalLightTransform * model * vec4(pos, 1.0f);
+	mat4 modelMatrix = model;
+	if (useInstancing == 1) {
+		modelMatrix = instanceMatrix;
+	}
+
+	gl_Position = projection * view * modelMatrix * vec4(pos, 1.0);
+	DirectionalLightSpacePos = directionalLightTransform * modelMatrix * vec4(pos, 1.0f);
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	
 	TexCoord = tex * material.tiling + material.offset;
 	
-	Normal = mat3(transpose(inverse(model))) * norm;
+	Normal = mat3(transpose(inverse(modelMatrix))) * norm;
 	
-	FragPos = (model * vec4(pos, 1.0)).xyz; 
+	FragPos = (modelMatrix * vec4(pos, 1.0)).xyz; 
 
 	// Transform TBN vectors to world space for normal mapping
-	mat3 normalMatrix = mat3(transpose(inverse(model)));
+	mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
 	TangentWorld = normalize(normalMatrix * tangent);
 	BitangentWorld = normalize(normalMatrix * bitangent);
 	NormalWorld = normalize(normalMatrix * norm);

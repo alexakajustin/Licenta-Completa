@@ -313,12 +313,29 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						size_t dataKey = (size_t)targetData->vertices.data() ^ (size_t)targetData->vertices.size();
 						if (meshCache.find(dataKey) == meshCache.end())
 						{
-							meshCache[dataKey] = targetData->ToMesh();
+							meshCache[dataKey] = targetData->ToMesh((int)transforms.size());
 						}
 						obj->SetMesh(meshCache[dataKey]);
+						
+						// --- Material Handling ---
+						Material* finalMat = instancesPin.data.sourceMaterial;
+						if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap))
+						{
+							// Create a shared material for this group if none exists
+							static Material* groupMat = nullptr;
+							if (!groupMat || groupMat->GetColor() != glm::vec3(1,1,1)) {
+								groupMat = new Material(0.1f, 32.0f);
+							}
+							finalMat = groupMat;
+						}
 
-						if (defaultTex) obj->SetTexture(defaultTex);
-						if (defaultMat) obj->SetMaterial(defaultMat);
+						if (finalMat) obj->SetMaterial(finalMat);
+						else if (defaultMat) obj->SetMaterial(defaultMat);
+
+						if (instancesPin.data.sourceTexture) obj->SetTexture(instancesPin.data.sourceTexture);
+						else if (defaultTex) obj->SetTexture(defaultTex);
+
+						if (instancesPin.data.sourceNormalMap) obj->SetNormalMap(instancesPin.data.sourceNormalMap);
 
 						scene.AddObject(obj);
 						newSpawned.push_back(name);
@@ -391,6 +408,17 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						target->SetCPUMeshData(uploadData);
 						printf("Branched new unique mesh for object: %s\n", target->GetName().c_str());
 					}
+
+					// Inherit visual properties
+					if (meshInput.data.sourceMaterial) target->SetMaterial(meshInput.data.sourceMaterial);
+					else if (!target->GetMaterial() && (meshInput.data.sourceTexture || meshInput.data.sourceNormalMap))
+					{
+						// Create a default material if none exists but textures do
+						target->SetMaterial(new Material(0.1f, 32.0f));
+					}
+
+					if (meshInput.data.sourceTexture) target->SetTexture(meshInput.data.sourceTexture);
+					if (meshInput.data.sourceNormalMap) target->SetNormalMap(meshInput.data.sourceNormalMap);
 				}
 			}
 		}

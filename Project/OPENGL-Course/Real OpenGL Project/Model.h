@@ -25,7 +25,7 @@ public:
 	bool IsCPUReady() const { return isCPUReady; }
 	bool IsFailed() const { return loadFailed; }
 	
-	void RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture);
+	void RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture, GLuint uniformNormalMapSampler, GLuint uniformDiffuseTextureSampler);
 	void RenderModelGeometryOnly(); // Render meshes without binding model textures (for overrides)
 	void ClearModel();
 
