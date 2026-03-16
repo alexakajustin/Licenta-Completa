@@ -304,19 +304,21 @@ void SceneManager::CreateGameObject(const std::string& type)
 	SetSelectedIndex((int)objects.size() - 1);
 }
 
+#include "AssetManager.h"
+
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
 {
 	std::string name = path.stem().string();
 	GameObject* newObj = new GameObject(name + " " + std::to_string(objects.size()));
 	newObj->GetTransform().SetPosition(spawnPos);
-	Model* model = new Model();
-	model->LoadModel(path.string());
+	
+	Model* model = AssetManager::Get().GetModel(path.string());
 	newObj->SetModel(model);
 
 	objects.push_back(newObj);
 	SetSelectedIndex((int)objects.size() - 1);
 	
-	printf("Instantiated model: %s\n", path.string().c_str());
+	printf("Instantiated model: %s (via AssetManager)\n", path.string().c_str());
 }
 
 void SceneManager::CreateLight(LightType type)
@@ -742,10 +744,12 @@ void SceneManager::InitGizmo()
 	}
 
 	gizmoArrowModel = new Model();
-	gizmoArrowModel->LoadModel("Utils/arrow.obj");
+	gizmoArrowModel->LoadModelCPU("Utils/arrow.obj");
+	gizmoArrowModel->LoadModelGPU();
 
 	gizmoTorusModel = new Model();
-	gizmoTorusModel->LoadModel("Utils/torus.obj");
+	gizmoTorusModel->LoadModelCPU("Utils/torus.obj");
+	gizmoTorusModel->LoadModelGPU();
 }
 
 void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos)

@@ -17,7 +17,14 @@ class Model
 public:
 	Model();
 	
-	void LoadModel(const std::string& fileName);
+	// Split loading for multithreading
+	void LoadModelCPU(const std::string& fileName);
+	void LoadModelGPU();
+
+	bool IsReady() const { return isGPUReady; }
+	bool IsCPUReady() const { return isCPUReady; }
+	bool IsFailed() const { return loadFailed; }
+	
 	void RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture);
 	void RenderModelGeometryOnly(); // Render meshes without binding model textures (for overrides)
 	void ClearModel();
@@ -44,6 +51,17 @@ private:
 	std::vector <Texture*> normalMapList;
 	std::vector<unsigned int> meshToTex;
 	std::vector<MeshData> meshDataList;
+
+	bool isCPUReady = false;
+	bool isGPUReady = false;
+	bool loadFailed = false;
+	
+	struct IntermediateMeshData {
+		std::vector<GLfloat> vertices;
+		std::vector<unsigned int> indices;
+		unsigned int materialIndex;
+	};
+	std::vector<IntermediateMeshData> intermediateMeshes;
 
 	glm::vec3 minBound = glm::vec3(1e10);
 	glm::vec3 maxBound = glm::vec3(-1e10);

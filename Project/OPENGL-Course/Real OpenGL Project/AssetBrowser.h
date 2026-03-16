@@ -44,7 +44,7 @@ private:
 	void LoadAssetIcons();
 	void InitThumbnailFBO();
 	void CleanupThumbnailFBO();
-	void GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot);
+	bool GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot);
 	void GenerateMaterialThumbnail(const std::string& matPath, Texture* targetSlot);
 
 	// State
@@ -57,6 +57,7 @@ private:
 	// Icons
 	Texture* folderIconSlot = nullptr;
 	Texture* modelIconSlot = nullptr;
+	std::map<std::string, bool> thumbnailGenerationMap; // Paths that have ALREADY attempted/finished generation
 
 	// Thumbnail resources
 	GLuint thumbnailFBO = 0;

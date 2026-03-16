@@ -14,6 +14,7 @@
 #include "DebugOverlay.h"
 #include "External Libs/imnodes/imnodes.h"
 #include "PrimitiveGenerator.h"
+#include "AssetManager.h"
 
 Application::Application()
 	: pointLightCount(0), spotLightCount(0),
@@ -142,6 +143,8 @@ void Application::Run()
 		GLfloat now = (GLfloat)glfwGetTime();
 		deltaTime = now - lastTime;
 		lastTime = now;
+
+		AssetManager::Get().Update();
 
 		// Debug overlay timing
 		debugOverlay.BeginFrame();

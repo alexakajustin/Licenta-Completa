@@ -2,11 +2,17 @@
 #include "SceneManager.h"
 #include "Material.h"
 #include "PrimitiveGenerator.h"
+#include "AssetManager.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <algorithm>
+#include <iostream>
+#include <new>
+#define NOMINMAX
+#include <windows.h>
+#include <psapi.h>
 
 AssetBrowser::AssetBrowser()
 	: currentAssetPath("Assets")
@@ -81,12 +87,34 @@ void AssetBrowser::CleanupThumbnailFBO()
 	if (thumbnailDepth != 0) { glDeleteRenderbuffers(1, &thumbnailDepth); thumbnailDepth = 0; }
 }
 
-void AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot)
+bool AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath, Texture* targetSlot)
 {
-	if (thumbnailFBO == 0) return;
+	if (thumbnailFBO == 0) return false;
 
-	Model tempModel;
-	tempModel.LoadModel(modelPath.string());
+	// === GLOBAL 32-BIT MEMORY SAFETY ===
+	// If RAM is nearly full (>1.8GB), skip thumbnail generation to avoid crash
+	PROCESS_MEMORY_COUNTERS_EX pmc;
+	if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
+	{
+		size_t usedBytes = pmc.PrivateUsage;
+		const size_t CRITICAL_THRESHOLD = (size_t)(1800 * 1024 * 1024); // 1.8GB
+		if (usedBytes > CRITICAL_THRESHOLD) {
+			printf("[AssetBrowser] RAM critical (%.0f MB used). Skipping thumbnail for safety: %s\n", usedBytes / (1024.0f * 1024.0f), modelPath.string().c_str());
+			thumbnailGenerationMap[modelPath.string()] = true; // Mark as "done/skipped" so we don't spam the console/RAM check
+			return true; 
+		}
+	}
+
+	Model* tempModel = AssetManager::Get().GetModel(modelPath.string());
+	
+	if (!tempModel->IsReady()) {
+		if (tempModel->IsFailed()) {
+			printf("[AssetBrowser] Model failed to load for thumbnail: %s\n", modelPath.string().c_str());
+			// Set a placeholder or just return true to stop trying
+			return true; 
+		}
+		return false; // Not ready yet
+	}
 
 	// Flush pending GL errors
 	while (glGetError() != GL_NO_ERROR);
@@ -105,14 +133,19 @@ void AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	glBindFramebuffer(GL_FRAMEBUFFER, thumbnailFBO);
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 	glDisable(GL_CULL_FACE);
+	
+	GLboolean oldBlend = glIsEnabled(GL_BLEND);
+	glDisable(GL_BLEND);
 
 	thumbnailShader.UseShader();
 	
 	// Auto-frame with robust camera
-	glm::vec3 minB = tempModel.GetMinBound();
-	glm::vec3 maxB = tempModel.GetMaxBound();
+	glm::vec3 minB = tempModel->GetMinBound();
+	glm::vec3 maxB = tempModel->GetMaxBound();
 	glm::vec3 center = (minB + maxB) * 0.5f;
 	glm::vec3 size = maxB - minB;
 	float maxDim = std::max({ size.x, size.y, size.z });
@@ -130,13 +163,27 @@ void AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	glUniformMatrix4fv(thumbnailShader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
-	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "hasTexture"), tempModel.HasTextures() ? 1 : 0); 
+	GLuint useDiffuseLoc = glGetUniformLocation(thumbnailShader.GetShaderID(), "useDiffuseTexture");
+	GLuint useNormalLoc = glGetUniformLocation(thumbnailShader.GetShaderID(), "useNormalMap"); // Fallback if shader doesn't have it
 
-	tempModel.RenderModel(-1, 0);
+	// Use RenderModel properly by passing the correct uniform locations
+	tempModel->RenderModel(useNormalLoc, useDiffuseLoc); 
 
 	// Read back
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	unsigned char* data = new unsigned char[thumbnailSize * thumbnailSize * 4];
+	unsigned char* data = new(std::nothrow) unsigned char[thumbnailSize * thumbnailSize * 4];
+	if (!data) {
+		printf("[AssetBrowser] Critical: Memory exhausted, cannot generate thumbnail.\n");
+		// Restore GL state and bail
+		glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+		glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+		glUseProgram(oldProgram);
+		if (oldCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+		if (oldDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+		if (oldBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+		return true; // Return true to stop trying to generate this one
+	}
+	
 	glReadPixels(0, 0, thumbnailSize, thumbnailSize, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	GLuint newTexID;
@@ -158,8 +205,10 @@ void AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	glUseProgram(oldProgram);
 	if (oldCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
 	if (oldDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+	if (oldBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
 
-	tempModel.ClearModel();
+	thumbnailGenerationMap[modelPath.string()] = true; // Mark as SUCCESS
+	return true;
 }
 
 void AssetBrowser::GenerateMaterialThumbnail(const std::string& matPath, Texture* targetSlot)
@@ -276,15 +325,16 @@ void AssetBrowser::RefreshAssetList()
 					}
 				}
 			}
-			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae") {
+			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf") {
 				info.type = AssetType::Model;
 				std::string pStr = entry.path().string();
 				if (assetTextureCache.count(pStr)) {
 					info.thumbnail = assetTextureCache[pStr];
 				}
 				else {
-					Texture* tex = new Texture();
-					GenerateModelThumbnail(entry.path(), tex);
+					// Use a placeholder first, we will generate the thumbnail once ready in Render()
+					Texture* tex = new Texture("Assets/Textures/plain.png");
+					tex->LoadTextureA();
 					assetTextureCache[pStr] = tex;
 					info.thumbnail = tex;
 				}
@@ -330,6 +380,24 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 	if (ImGui::Begin("Project", &uiState.isAssetBrowserOpen, windowFlags))
 	{
+		// Update deferred thumbnails
+		for (auto& asset : currentAssets) {
+			if (asset.type == AssetType::Model) {
+				std::string pStr = asset.path.string();
+				
+				// ONLY try to generate if we haven't successfully done so before
+				if (thumbnailGenerationMap.find(pStr) == thumbnailGenerationMap.end()) {
+					Model* model = AssetManager::Get().GetModel(pStr);
+					if (model->IsReady() && !model->IsFailed()) {
+						GenerateModelThumbnail(asset.path, asset.thumbnail);
+					}
+					else if (model->IsFailed()) {
+						thumbnailGenerationMap[pStr] = true; // Just mark as "done" so we don't keep checking failed models
+					}
+				}
+			}
+		}
+
 		if (!uiState.forceLayout && !uiState.skipLayoutSave) {
 			uiState.bottomHeightRatio = ImGui::GetWindowSize().y / (winHeight - menuHeight);
 		}
@@ -394,19 +462,31 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				ImGui::EndDragDropSource();
 			}
 
-			ImGui::SetCursorPos(startPos);
-			ImGui::BeginGroup();
-			
+			// Icon / Thumbnail
+			ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + 5));
 			if (currentAssets[i].thumbnail) {
-				ImGui::ImageWithBg((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(cellSize, cellSize), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0, 0, 0, 0), tint);
+				ImTextureID texID = (ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID();
+				
+				// Use ImageWithBg to support the 'tint' parameter for folders
+				ImGui::ImageWithBg(texID, ImVec2(cellSize - 10, cellSize - 10), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0,0,0,0), tint);
+				
+				// Show "Loading..." overlay for models that haven't generated their thumbnail yet
+				if (currentAssets[i].type == AssetType::Model) {
+					if (thumbnailGenerationMap.find(currentAssets[i].path.string()) == thumbnailGenerationMap.end()) {
+						ImGui::SetCursorPos(ImVec2(startPos.x + 10, startPos.y + cellSize / 2 - 5));
+						ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Loading...");
+					}
+				}
 			}
 			else {
 				ImGui::Button("??", ImVec2(cellSize, cellSize));
 			}
 
-			ImGui::TextWrapped("%s", currentAssets[i].name.c_str());
-			ImGui::EndGroup();
-			
+			ImGui::SetCursorPos(ImVec2(startPos.x, startPos.y + cellSize + 5));
+			ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + cellSize);
+			ImGui::Text("%s", currentAssets[i].name.c_str());
+			ImGui::PopTextWrapPos();
+
 			ImGui::NextColumn();
 			ImGui::PopID();
 		}

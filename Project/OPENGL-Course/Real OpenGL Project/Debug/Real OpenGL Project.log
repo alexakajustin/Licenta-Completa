@@ -1,9 +1,7 @@
-﻿  EditorUI.cpp
-  GameObject.cpp
-  GenerationPipelineUI.cpp
-  NodeEditorUI.cpp
-  NodeGraph.cpp
-  PerlinNoiseGenerator.cpp
-  ScatterNode.cpp
-  Generating Code...
+﻿  AssetBrowser.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared\minwindef.h(130,9): warning C4005: 'APIENTRY': macro redefinition
+  (compiling source file 'AssetBrowser.cpp')
+      C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\External Libs\GLFW\include\GLFW\glfw3.h(123,11):
+      see previous definition of 'APIENTRY'
+  
   Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

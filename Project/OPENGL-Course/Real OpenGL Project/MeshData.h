@@ -37,14 +37,20 @@ struct MeshData
 	{
 		if (vertices.empty() || indices.empty()) return nullptr;
 
-		Mesh* mesh = new Mesh();
-		mesh->CreateMesh(
-			const_cast<GLfloat*>(vertices.data()),
-			const_cast<unsigned int*>(indices.data()),
-			(unsigned int)vertices.size(),
-			(unsigned int)indices.size()
-		);
-		return mesh;
+		try {
+			Mesh* mesh = new Mesh();
+			mesh->CreateMesh(
+				const_cast<GLfloat*>(vertices.data()),
+				const_cast<unsigned int*>(indices.data()),
+				(unsigned int)vertices.size(),
+				(unsigned int)indices.size()
+			);
+			return mesh;
+		}
+		catch (const std::exception& e) {
+			printf("[MeshData] GPU Upload failed: %s\n", e.what());
+			return nullptr;
+		}
 	}
 
 	// Helper: add a vertex (14 floats)
@@ -106,15 +112,24 @@ struct MeshData
 	{
 		if (other.vertices.empty()) return;
 
-		int baseVertex = GetVertexCount();
-		
-		// Append vertices
-		vertices.insert(vertices.end(), other.vertices.begin(), other.vertices.end());
-		
-		// Append indices with offset
-		for (unsigned int idx : other.indices)
-		{
-			indices.push_back(idx + baseVertex);
+		try {
+			size_t oldVertSize = vertices.size();
+			size_t oldIndexSize = indices.size();
+			unsigned int baseVertex = (unsigned int)(oldVertSize / 14);
+			
+			// Bulk append vertices
+			vertices.insert(vertices.end(), other.vertices.begin(), other.vertices.end());
+			
+			// Bulk append and offset indices
+			size_t otherIndexCount = other.indices.size();
+			indices.resize(oldIndexSize + otherIndexCount);
+			for (size_t i = 0; i < otherIndexCount; i++)
+			{
+				indices[oldIndexSize + i] = other.indices[i] + baseVertex;
+			}
+		}
+		catch (const std::exception& e) {
+			printf("[MeshData] Append failed (RAM full): %s\n", e.what());
 		}
 	}
 

@@ -5,7 +5,7 @@ Model::Model()
 {
 }
 
-void Model::LoadModel(const std::string& fileName)
+void Model::LoadModelCPU(const std::string& fileName)
 {
 	minBound = glm::vec3(1e10);
 	maxBound = glm::vec3(-1e10);
@@ -15,21 +15,56 @@ void Model::LoadModel(const std::string& fileName)
 	if (!scene)
 	{
 		printf("Model [%s] failed to load: %s!\n", fileName.c_str(), importer.GetErrorString());
+		loadFailed = true;
 		return;
 	}
 
 	// start from first node
 	LoadNode(scene->mRootNode, scene);
 
+	// LoadMaterials now only prepares the paths, loading happens in GPU phase or deferred
 	LoadMaterials(scene);
 
+	isCPUReady = true;
+}
+
+void Model::LoadModelGPU()
+{
+	if (isGPUReady) return;
+	if (loadFailed || !isCPUReady) {
+		isGPUReady = true; // Still mark as ready so waiters aren't blocked, but with no meshes
+		return;
+	}
+
+	for (auto& im : intermediateMeshes)
+	{
+		Mesh* newMesh = new Mesh();
+		newMesh->CreateMesh(&im.vertices[0], &im.indices[0], (unsigned int)im.vertices.size(), (unsigned int)im.indices.size());
+		meshList.push_back(newMesh);
+		meshToTex.push_back(im.materialIndex);
+
+		MeshData md;
+		md.vertices = im.vertices;
+		md.indices = im.indices;
+		meshDataList.push_back(md);
+	}
+
+	// Load textures (GPU side)
+	for (auto* tex : textureList) {
+		if (tex) tex->LoadTexture();
+	}
+	for (auto* tex : normalMapList) {
+		if (tex) tex->LoadTexture();
+	}
+
+	intermediateMeshes.clear();
+	isGPUReady = true;
 }
 
 void Model::LoadNode(aiNode* node, const aiScene* scene)
 {
 	for (size_t i = 0; i < node->mNumMeshes; i++)
 	{
-		// nodemmeshes[i] holds an id and the scene references it
 		LoadMesh(scene->mMeshes[node->mMeshes[i]], scene);
 	}
 
@@ -43,7 +78,6 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 {
 	std::vector<GLfloat> vertices;
 	std::vector<unsigned int> indices;
-
 
 	// add vertices
 	for (size_t i = 0; i < mesh->mNumVertices; i++)
@@ -72,49 +106,25 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 		// normals
 		vertices.insert(vertices.end(), { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z });
 
-		// tangents
 		if (mesh->mTangents)
-		{
 			vertices.insert(vertices.end(), { mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z });
-		}
 		else
-		{
 			vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
-		}
 
-		// bitangents
 		if (mesh->mBitangents)
-		{
 			vertices.insert(vertices.end(), { mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z });
-		}
 		else
-		{
 			vertices.insert(vertices.end(), { 0.0f, 0.0f, 0.0f });
-		}
 	}
 
-	// go thru the faces so we can add the indices
-	// each face has 3 values
 	for (size_t i = 0; i < mesh->mNumFaces; i++)
 	{
 		aiFace face = mesh->mFaces[i];
 		for (size_t j = 0; j < face.mNumIndices; j++)
-		{
 			indices.push_back(face.mIndices[j]);
-		}
 	}
 
-	// create mesh and add to meshlist
-	Mesh* newMesh = new Mesh();
-	newMesh->CreateMesh(&vertices[0], &indices[0], (unsigned int)vertices.size(), (unsigned int)indices.size());
-	meshList.push_back(newMesh);
-	meshToTex.push_back(mesh->mMaterialIndex);
-
-	// Store CPU-side MeshData for node graph access
-	MeshData md;
-	md.vertices = vertices;
-	md.indices = indices;
-	meshDataList.push_back(md);
+	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex });
 }
 
 void Model::LoadMaterials(const aiScene* scene)
@@ -136,44 +146,22 @@ void Model::LoadMaterials(const aiScene* scene)
 			{
 				int idx = std::string(path.data).rfind("\\");
 				std::string filename = std::string(path.data).substr(idx + 1);
-
 				std::string texPath = std::string("Assets/Textures/") + filename;
 
 				textureList[i] = new Texture(texPath.c_str());
-
-				if (!textureList[i]->LoadTexture())
+				// LoadTexture() will be called in LoadModelGPU
+				
+				// Predetermine normal map path
+				size_t dotPos = texPath.rfind('.');
+				if (dotPos != std::string::npos)
 				{
-					printf("Failed to load texture at: %s!\n", texPath.c_str());
-					delete textureList[i];
-					textureList[i] = nullptr;
-				}
-				else
-				{
-					// Auto-detect normal map using _normal naming convention
-					// e.g. "Textures/brick.png" -> "Textures/brick_normal.png"
-					size_t dotPos = texPath.rfind('.');
-					if (dotPos != std::string::npos)
+					std::string normalPath = texPath.substr(0, dotPos) + "_normal" + texPath.substr(dotPos);
+					FILE* testFile = nullptr;
+					fopen_s(&testFile, normalPath.c_str(), "r");
+					if (testFile)
 					{
-						std::string normalPath = texPath.substr(0, dotPos) + "_normal" + texPath.substr(dotPos);
-
-						// Check if file exists using fopen
-						FILE* testFile = nullptr;
-						fopen_s(&testFile, normalPath.c_str(), "r");
-						if (testFile)
-						{
-							fclose(testFile);
-							normalMapList[i] = new Texture(normalPath.c_str());
-							if (!normalMapList[i]->LoadTexture())
-							{
-								printf("Failed to load normal map at: %s!\n", normalPath.c_str());
-								delete normalMapList[i];
-								normalMapList[i] = nullptr;
-							}
-							else
-							{
-								printf("Normal map loaded: %s\n", normalPath.c_str());
-							}
-						}
+						fclose(testFile);
+						normalMapList[i] = new Texture(normalPath.c_str());
 					}
 				}
 			}
@@ -181,7 +169,6 @@ void Model::LoadMaterials(const aiScene* scene)
 		if (!textureList[i])
 		{
 			textureList[i] = new Texture("Assets/Textures/plain.png");
-			textureList[i]->LoadTextureA();
 		}
 	}
 }
@@ -219,6 +206,8 @@ void Model::ClearModel()
 
 void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture)
 {
+	if (!isGPUReady) return;
+
 	for (size_t i = 0; i < meshList.size(); i++)
 	{
 		unsigned int materialIndex = meshToTex[i];
@@ -249,6 +238,8 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 
 void Model::RenderModelGeometryOnly()
 {
+	if (!isGPUReady) return;
+
 	for (size_t i = 0; i < meshList.size(); i++)
 	{
 		meshList[i]->RenderMesh();
