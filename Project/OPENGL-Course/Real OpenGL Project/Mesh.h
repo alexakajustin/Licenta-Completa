@@ -11,13 +11,13 @@ public:
 	void RenderMesh();
 	void ClearMesh();
 
-	GLuint GetVAO() { return VAO; }
-	GLuint GetIBO() { return IBO; }
-	GLuint GetIndexCount() { return indexCount; }
+	void AddRef() { refCount++; }
+	void Release() { if (--refCount <= 0) delete this; }
 
 	~Mesh();
 
 private:
 	GLuint VAO, VBO, IBO;
 	GLsizei indexCount;
+	int refCount;
 };

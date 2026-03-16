@@ -16,7 +16,7 @@ void ScatterNode::RenderContent(SceneManager* scene)
 {
 	ImGui::PushID(this);
 
-	ImGui::SliderInt("Count", &count, 1, 1000);
+	ImGui::DragInt("Count", &count, 1.0f, 1, 1000000);
 	ImGui::DragFloat("Min Scale", &minScale, 0.01f, 0.01f, 10.0f);
 	ImGui::DragFloat("Max Scale", &maxScale, 0.01f, 0.01f, 10.0f);
 	ImGui::Checkbox("Random Rotation", &randomRotation);
@@ -225,9 +225,9 @@ void ScatterNode::Execute(SceneManager& scene)
 	MeshData instancesOnly;
 
 	// 1. Determine how many transforms we want (Spawning/Instancing)
-	// We cap this at a high but safe number (e.g. 50,000) because transforms are tiny.
+	// We cap this at a high but safe number (e.g. 500,000) for transform storage.
 	int workingCount = count;
-	if (workingCount > 50000) workingCount = 50000;
+	if (workingCount > 500000) workingCount = 500000;
 
 	// 2. Determine how many meshes can fit in the "Combined" output
 	int meshCount = workingCount;

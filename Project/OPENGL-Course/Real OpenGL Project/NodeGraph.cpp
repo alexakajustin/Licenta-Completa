@@ -395,6 +395,14 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 			}
 		}
 	}
+
+	// TRIPLE CRITICAL: Clear all pin data at the end of execution to free RAM!
+	// Pins are transient vehicles; keeping 400M triangles in them after spawning is a massive leak.
+	for (auto* n : nodes)
+	{
+		for (auto& p : n->inputs) p.data.DeepClear();
+		for (auto& p : n->outputs) p.data.DeepClear();
+	}
 }
 
 // SceneInputNode and OutputNode implementations moved to separate .cpp files

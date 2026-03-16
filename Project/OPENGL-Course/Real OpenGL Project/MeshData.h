@@ -117,15 +117,18 @@ struct MeshData
 			size_t oldIndexSize = indices.size();
 			unsigned int baseVertex = (unsigned int)(oldVertSize / 14);
 			
+			// Reserve to avoid multiple reallocations and temporary capacity doubling
+			vertices.reserve(oldVertSize + other.vertices.size());
+			indices.reserve(oldIndexSize + other.indices.size());
+
 			// Bulk append vertices
 			vertices.insert(vertices.end(), other.vertices.begin(), other.vertices.end());
 			
 			// Bulk append and offset indices
 			size_t otherIndexCount = other.indices.size();
-			indices.resize(oldIndexSize + otherIndexCount);
 			for (size_t i = 0; i < otherIndexCount; i++)
 			{
-				indices[oldIndexSize + i] = other.indices[i] + baseVertex;
+				indices.push_back(other.indices[i] + baseVertex);
 			}
 		}
 		catch (const std::exception& e) {
@@ -151,6 +154,13 @@ struct MeshData
 	int GetTriangleCount() const { return (int)indices.size() / 3; }
 
 	void Clear() { vertices.clear(); indices.clear(); }
+
+	// Truly free RAM by swapping with empty vectors (standard C++ swap trick)
+	void DeepClear()
+	{
+		std::vector<GLfloat>().swap(vertices);
+		std::vector<unsigned int>().swap(indices);
+	}
 };
 
 // ========== Tagged union for data flowing between nodes ==========
@@ -168,6 +178,16 @@ struct PinData
 		meshData.Clear();
 		transforms.clear();
 		instanceMeshes.clear();
+		sourceObjectName = "(none)";
+	}
+
+	void DeepClear()
+	{
+		type = PinDataType::None;
+		meshData.DeepClear();
+		std::vector<TransformData>().swap(transforms);
+		for (auto& m : instanceMeshes) m.DeepClear();
+		std::vector<MeshData>().swap(instanceMeshes);
 		sourceObjectName = "(none)";
 	}
 };

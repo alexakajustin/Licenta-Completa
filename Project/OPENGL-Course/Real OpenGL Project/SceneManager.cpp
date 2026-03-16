@@ -25,6 +25,7 @@ SceneManager::~SceneManager()
 
 	if (gizmoArrowModel) { gizmoArrowModel->ClearModel(); delete gizmoArrowModel; }
 	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
+	if (iconMesh) { iconMesh->Release(); iconMesh = nullptr; }
 }
 
 // =====================================================================

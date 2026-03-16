@@ -15,6 +15,12 @@ GameObject::~GameObject()
 	if (parent) {
 		parent->RemoveChild(this);
 	}
+	
+	if (mesh) {
+		mesh->Release();
+		mesh = nullptr;
+	}
+
 	// Note: We don't delete children here because SceneManager owns them in the 'objects' list.
 	// We just need to make sure they are orphaned if the parent is deleted alone, 
 	// OR better, SceneManager should delete them recursively.
@@ -206,4 +212,41 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 			uniformTiling, uniformOffset,
 			uniformUseNormalMap, uniformUseDiffuseTexture, modelMatrix);
 	}
+}
+
+void GameObject::SetMesh(Mesh* newMesh)
+{
+	if (mesh == newMesh) return;
+
+	if (mesh)
+	{
+		mesh->Release();
+	}
+
+	mesh = newMesh;
+
+	if (mesh)
+	{
+		mesh->AddRef();
+	}
+}
+
+void GameObject::SetCPUMeshData(const MeshData& data)
+{
+	// RAM Safety: If the mesh data is massive (e.g. > 50MB), 
+	// don't keep a permanent copy in RAM once it's on the GPU.
+	// This prevents 32-bit address space exhaustion (4GB limit).
+	size_t estimatedBytes = data.vertices.size() * sizeof(GLfloat) + data.indices.size() * sizeof(unsigned int);
+	const size_t RAM_SAFETY_THRESHOLD = 50 * 1024 * 1024; // 50MB
+
+	if (estimatedBytes > RAM_SAFETY_THRESHOLD)
+	{
+		printf("[GameObject] RAM Safety: Mesh data is large (%.1f MB). Storing GPU reference only.\n", (float)estimatedBytes / (1024.0f * 1024.0f));
+		cpuMeshData.Clear(); // Just clear, don't allocate
+		hasCustomMesh = true; // Still marked as custom to prevent SetModel logic
+		return;
+	}
+
+	cpuMeshData = data;
+	hasCustomMesh = true;
 }

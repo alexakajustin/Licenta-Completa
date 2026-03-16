@@ -27,7 +27,7 @@ public:
 	// Setters for components
 	void SetName(const std::string& newName) { name = newName; }
 	void SetModel(Model* mdl) { model = mdl; }
-	void SetMesh(Mesh* msh) { mesh = msh; }
+	void SetMesh(Mesh* msh);
 	void SetTexture(Texture* tex) { texture = tex; }
 	void SetNormalMap(Texture* normal) { normalMap = normal; }
 	void SetMaterial(Material* mat) { material = mat; }
@@ -55,7 +55,7 @@ public:
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, const glm::mat4& parentMatrix = glm::mat4(1.0f));
 
 	// Mesh Persistence
-	void SetCPUMeshData(const MeshData& data) { cpuMeshData = data; hasCustomMesh = true; }
+	void SetCPUMeshData(const MeshData& data);
 	const MeshData& GetCPUMeshData() const { return cpuMeshData; }
 	bool HasCustomMesh() const { return hasCustomMesh; }
 	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.Clear(); }
