@@ -10,6 +10,7 @@
 #include "DebugOverlay.h"
 #include "NodeGraph.h"
 #include "NodeEditorUI.h"
+#include "NodeBuilderUI.h"
 #include "Texture.h"
 #include "Material.h"
 #include "DirectionalLight.h"
@@ -43,6 +44,7 @@ private:
 	DebugOverlay debugOverlay;
 	NodeGraph nodeGraph;
 	NodeEditorUI nodeEditorUI;
+	NodeBuilderUI nodeBuilderUI;
 
 	// Resources
 	Texture plainTexture;

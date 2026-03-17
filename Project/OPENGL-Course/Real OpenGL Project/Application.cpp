@@ -15,6 +15,7 @@
 #include "External Libs/imnodes/imnodes.h"
 #include "PrimitiveGenerator.h"
 #include "AssetManager.h"
+#include "AllOperations.h"
 
 Application::Application()
 	: pointLightCount(0), spotLightCount(0),
@@ -245,6 +246,7 @@ void Application::Run()
 		
 		assetBrowser.Render(sceneManager, uiState);
 		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, uiState);
+		nodeBuilderUI.Render(nodeGraph, uiState);
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);

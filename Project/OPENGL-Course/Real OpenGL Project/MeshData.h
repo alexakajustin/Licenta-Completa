@@ -25,7 +25,12 @@ enum class PinDataType
 {
 	None,
 	Mesh,
-	TransformList
+	TransformList,
+	Float,
+	Int,
+	Vec3,
+	Vec2,
+	Bool
 };
 
 // ========== CPU-side Mesh Data ==========
@@ -213,6 +218,13 @@ struct PinData
 	Texture* sourceTexture = nullptr;
 	Texture* sourceNormalMap = nullptr;
 
+	// Scalar values for new pin types
+	float floatValue = 0.0f;
+	int intValue = 0;
+	glm::vec3 vec3Value = glm::vec3(0.0f);
+	glm::vec2 vec2Value = glm::vec2(0.0f);
+	bool boolValue = false;
+
 	void Clear()
 	{
 		type = PinDataType::None;
@@ -223,6 +235,11 @@ struct PinData
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
+		floatValue = 0.0f;
+		intValue = 0;
+		vec3Value = glm::vec3(0.0f);
+		vec2Value = glm::vec2(0.0f);
+		boolValue = false;
 	}
 
 	void DeepClear()
@@ -236,5 +253,10 @@ struct PinData
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
+		floatValue = 0.0f;
+		intValue = 0;
+		vec3Value = glm::vec3(0.0f);
+		vec2Value = glm::vec2(0.0f);
+		boolValue = false;
 	}
 };

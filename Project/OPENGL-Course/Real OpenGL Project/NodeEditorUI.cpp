@@ -5,6 +5,8 @@
 #include "ScatterNode.h"
 #include "MergeMeshNode.h"
 #include "OutputNode.h"
+#include "CustomNode.h"
+#include "NodeBuilderUI.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -197,6 +199,22 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
 		if (ImGui::MenuItem("Merge Mesh")) newNode = new MergeMeshNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
+
+		// Custom Nodes from saved definitions
+		const auto& customDefs = NodeBuilderUI::GetSavedDefinitions();
+		if (!customDefs.empty())
+		{
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Custom Nodes"))
+			{
+				for (const auto& def : customDefs)
+				{
+					if (ImGui::MenuItem(def.name.c_str()))
+						newNode = new CustomNode(graph, def);
+				}
+				ImGui::EndMenu();
+			}
+		}
 
 		if (newNode)
 		{

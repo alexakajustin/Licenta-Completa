@@ -151,6 +151,8 @@
     <ClCompile Include="AssetBrowser.cpp" />
     <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CustomNode.cpp" />
+    <ClCompile Include="CustomNodeDef.cpp" />
     <ClCompile Include="DebugOverlay.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
     <ClCompile Include="External Libs\GLM\glm\detail\dummy.cpp" />
@@ -173,7 +175,9 @@
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="NodeBuilderUI.cpp" />
     <ClCompile Include="OmniShadowMap.cpp" />
+    <ClCompile Include="Operation.cpp" />
     <ClCompile Include="PerlinNoiseGenerator.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGenerator.cpp" />
@@ -506,9 +510,12 @@
     <None Include="imgui.ini" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AllOperations.h" />
     <ClInclude Include="AssetManager.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CommonValues.h" />
+    <ClInclude Include="CustomNode.h" />
+    <ClInclude Include="CustomNodeDef.h" />
     <ClInclude Include="DebugOverlay.h" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
@@ -878,6 +885,7 @@
     <ClInclude Include="Application.h" />
     <ClInclude Include="AssetBrowser.h" />
     <ClInclude Include="EditorUI.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GenerationPipelineUI.h" />
     <ClInclude Include="GenerationStack.h" />
@@ -889,6 +897,9 @@
     <ClInclude Include="MergeMeshNode.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="MeshData.h" />
+    <ClInclude Include="NodeBuilderUI.h" />
+    <ClInclude Include="Operation.h" />
+    <ClInclude Include="OperationRegistry.h" />
     <ClInclude Include="OutputNode.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OmniShadowMap.h" />

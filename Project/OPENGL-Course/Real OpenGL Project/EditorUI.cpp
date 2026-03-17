@@ -273,6 +273,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 			ImGui::MenuItem("Inspector", nullptr, &windowState.isInspectorOpen);
 			ImGui::MenuItem("Project (Asset Browser)", nullptr, &windowState.isAssetBrowserOpen);
 			ImGui::MenuItem("Node Editor", nullptr, &windowState.isNodeEditorOpen);
+			ImGui::MenuItem("Node Builder", nullptr, &windowState.isNodeBuilderOpen);
 			ImGui::Separator();
 			ImGui::MenuItem("Debug Overlay", nullptr, &windowState.isDebugOverlayOpen);
 			

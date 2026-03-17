@@ -47,6 +47,7 @@ public:
 		bool isAssetBrowserOpen = true;
 		bool isNodeEditorOpen = true;
 		bool isDebugOverlayOpen = true;
+		bool isNodeBuilderOpen = false; // Node Builder panel (off by default)
 		bool forceLayout = false;
 
 		// Dynamic layout memory to persist manual user resizing OS window changes
