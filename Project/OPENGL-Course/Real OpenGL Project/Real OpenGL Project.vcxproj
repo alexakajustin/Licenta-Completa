@@ -204,6 +204,11 @@
     <ClCompile Include="External Libs\imnodes\imnodes.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\CustomNodes\Alien_Sphere.json" />
+    <None Include="Assets\CustomNodes\Mirror___Smooth.json" />
+    <None Include="Assets\CustomNodes\Rocky_Surface.json" />
+    <None Include="Assets\CustomNodes\Terrain_Generator.json" />
+    <None Include="Assets\CustomNodes\Twisted_Column.json" />
     <None Include="assimp-vc143-mt.dll" />
     <None Include="External Libs\ASSIMP\include\assimp\color4.inl" />
     <None Include="External Libs\ASSIMP\include\assimp\material.inl" />

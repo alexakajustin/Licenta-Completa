@@ -928,6 +928,11 @@
     <None Include="External Libs\GLM\glm\gtx\quaternion.inl">
       <Filter>Header Files</Filter>
     </None>
+    <None Include="Assets\CustomNodes\Alien_Sphere.json" />
+    <None Include="Assets\CustomNodes\Mirror___Smooth.json" />
+    <None Include="Assets\CustomNodes\Rocky_Surface.json" />
+    <None Include="Assets\CustomNodes\Terrain_Generator.json" />
+    <None Include="Assets\CustomNodes\Twisted_Column.json" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="External Libs\GLEW\include\GL\eglew.h">

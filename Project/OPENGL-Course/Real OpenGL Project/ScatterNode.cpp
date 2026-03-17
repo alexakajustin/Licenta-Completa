@@ -317,9 +317,12 @@ void ScatterNode::Execute(SceneManager& scene)
 		glm::vec3 worldPos = glm::vec3(surfaceWorld * glm::vec4(localPos, 1.0f));
 		glm::vec3 worldNormal = glm::normalize(surfaceNormalMatrix * localNormal);
 
-		// Random scale
+		// Random scale, preserving the original object's scale
 		float s = scaleDist(gen);
-		glm::vec3 scaleVec(s);
+		glm::vec3 baseScale(1.0f);
+		if (!inputs[1].data.transforms.empty())
+			baseScale = inputs[1].data.transforms[0].scale;
+		glm::vec3 scaleVec = baseScale * s;
 
 		// Random rotation
 		glm::vec3 rot(0.0f);
@@ -344,6 +347,7 @@ void ScatterNode::Execute(SceneManager& scene)
 	unsigned int numThreads = std::thread::hardware_concurrency();
 	if (numThreads == 0) numThreads = 4;
 	if (numThreads > (unsigned int)meshCount) numThreads = (unsigned int)meshCount;
+
 
 	std::vector<std::future<void>> futures;
 	int instancesPerThread = meshCount / numThreads;

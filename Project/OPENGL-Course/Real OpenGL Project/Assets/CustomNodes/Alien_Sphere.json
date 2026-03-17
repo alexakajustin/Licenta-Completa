@@ -1,0 +1,108 @@
+{
+  "name": "Alien Sphere",
+  "category": "Generators",
+  "inputs": [
+  ],
+  "outputs": [
+    { "name": "Result", "type": "Mesh" }
+  ],
+  "operations": [
+    {
+      "type": "Primitive",
+      "params": {
+        "Shape": {
+          "type": "Enum",
+          "value": 2
+        },
+        "Resolution": {
+          "type": "Int",
+          "value": 32
+        },
+        "Size": {
+          "type": "Float",
+          "value": 2.0
+        }
+      }
+    },
+    {
+      "type": "Wave Deform",
+      "params": {
+        "Wave Type": {
+          "type": "Enum",
+          "value": 0
+        },
+        "Axis": {
+          "type": "Enum",
+          "value": 1
+        },
+        "Frequency": {
+          "type": "Float",
+          "value": 5.0
+        },
+        "Amplitude": {
+          "type": "Float",
+          "value": 0.3
+        },
+        "Phase": {
+          "type": "Float",
+          "value": 0.0
+        }
+      }
+    },
+    {
+      "type": "Perlin Displace",
+      "params": {
+        "Frequency": {
+          "type": "Float",
+          "value": 2.5
+        },
+        "Amplitude": {
+          "type": "Float",
+          "value": 0.4
+        },
+        "Octaves": {
+          "type": "Int",
+          "value": 4
+        },
+        "Persistence": {
+          "type": "Float",
+          "value": 0.5
+        },
+        "Seed": {
+          "type": "Int",
+          "value": 256
+        },
+        "Along Normal": {
+          "type": "Bool",
+          "value": true
+        },
+        "Offset": {
+          "type": "Vec2",
+          "value": [0, 0]
+        }
+      }
+    },
+    {
+      "type": "Smooth",
+      "params": {
+        "Iterations": {
+          "type": "Int",
+          "value": 2
+        },
+        "Strength": {
+          "type": "Float",
+          "value": 0.4
+        }
+      }
+    },
+    {
+      "type": "Recalc Normals",
+      "params": {
+        "Smooth": {
+          "type": "Bool",
+          "value": true
+        }
+      }
+    }
+  ]
+}

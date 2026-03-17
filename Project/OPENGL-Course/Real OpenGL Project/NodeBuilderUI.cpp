@@ -31,6 +31,8 @@ NodeBuilderUI::NodeBuilderUI()
 	strncpy_s(newOutputPinName, sizeof(newOutputPinName), "Result", _TRUNCATE);
 
 	ClearEditor();
+	LoadSavedDefinitions();
+	definitionsLoaded = true;
 }
 
 NodeBuilderUI::~NodeBuilderUI()
@@ -121,12 +123,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 {
 	if (!uiState.isNodeBuilderOpen) return;
 
-	// Load definitions if not done yet
-	if (!definitionsLoaded)
-	{
-		LoadSavedDefinitions();
-		definitionsLoaded = true;
-	}
+	if (!uiState.isNodeBuilderOpen) return;
 
 	ImGui::SetNextWindowSize(ImVec2(400, 700), ImGuiCond_FirstUseEver);
 

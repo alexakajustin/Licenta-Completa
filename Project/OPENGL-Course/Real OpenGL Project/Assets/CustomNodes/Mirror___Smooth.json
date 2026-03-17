@@ -1,0 +1,56 @@
+{
+  "name": "Mirror & Smooth",
+  "category": "Modifiers",
+  "inputs": [
+    { "name": "Mesh", "type": "Mesh" }
+  ],
+  "outputs": [
+    { "name": "Result", "type": "Mesh" }
+  ],
+  "operations": [
+    {
+      "type": "Mirror",
+      "params": {
+        "Axis": {
+          "type": "Enum",
+          "value": 0
+        },
+        "Merge Original": {
+          "type": "Bool",
+          "value": true
+        }
+      }
+    },
+    {
+      "type": "Subdivide",
+      "params": {
+        "Iterations": {
+          "type": "Int",
+          "value": 1
+        }
+      }
+    },
+    {
+      "type": "Smooth",
+      "params": {
+        "Iterations": {
+          "type": "Int",
+          "value": 3
+        },
+        "Strength": {
+          "type": "Float",
+          "value": 0.5
+        }
+      }
+    },
+    {
+      "type": "Recalc Normals",
+      "params": {
+        "Smooth": {
+          "type": "Bool",
+          "value": true
+        }
+      }
+    }
+  ]
+}
