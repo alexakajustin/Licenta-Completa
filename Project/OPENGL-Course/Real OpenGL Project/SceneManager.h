@@ -48,7 +48,8 @@ public:
 
 	void RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
-		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, const Frustum* frustum = nullptr);
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, 
+		const Frustum* frustum = nullptr, glm::vec3 cullCenter = glm::vec3(0), float cullRadius = 0.0f);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 

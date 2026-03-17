@@ -88,7 +88,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1);
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, nullptr, light->GetPosition(), light->GetFarPlane());
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

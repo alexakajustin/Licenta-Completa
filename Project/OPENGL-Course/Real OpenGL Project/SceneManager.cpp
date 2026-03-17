@@ -132,7 +132,8 @@ GameObject* SceneManager::FindObject(const std::string& name)
 
 void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 	GLint uniformTiling, GLint uniformOffset,
-	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, const Frustum* frustum)
+	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, 
+	const Frustum* frustum, glm::vec3 cullCenter, float cullRadius)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -142,8 +143,8 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 		std::vector<glm::mat4> matrices;
 	};
 	
-	static std::vector<Batch> batches;
-	for (auto& b : batches) b.matrices.clear();
+	// Use a vector for batches to maintain order, but we reconstruct it every frame for safety
+	std::vector<Batch> batchList;
 
 	GLint shaderID;
 	glGetIntegerv(GL_CURRENT_PROGRAM, &shaderID);
@@ -157,7 +158,17 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 
 		if (msh || obj->GetModel()) {
 			bool visible = true;
-			if (frustum) {
+
+			// Distance Culling (for point lights)
+			if (cullRadius > 0.0f) {
+				glm::vec3 pos = obj->GetTransform().GetPosition();
+				if (glm::distance(pos, cullCenter) > cullRadius + 5.0f) { // Extra padding
+					visible = false;
+				}
+			}
+
+			// Frustum Culling
+			if (visible && frustum) {
 				glm::vec3 min, max;
 				obj->GetWorldBounds(min, max);
 				visible = frustum->IsBoxVisible(min, max);
@@ -166,20 +177,29 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 			if (visible) {
 				if (msh && !obj->GetModel() && msh->IsInstanced()) {
 					bool found = false;
-					for (auto& b : batches) {
+					// For primitive meshes, we still do simple linear search as there are usually very few unique primitives
+					for (auto& b : batchList) {
 						if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
 							b.matrices.push_back(obj->GetWorldMatrix());
 							found = true;
 							break;
 						}
 					}
-					if (!found) batches.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
+					if (!found) batchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
 				} else {
-					// Use the new RenderSingle to ensure all uniforms are correctly set/reset
+					static GLint texLoc = -1;
+					static GLint normLoc = -1;
+					static GLuint lastShader = 0;
+					if (shaderID != lastShader) {
+						texLoc = glGetUniformLocation(shaderID, "theTexture");
+						normLoc = glGetUniformLocation(shaderID, "normalMap");
+						lastShader = shaderID;
+					}
+
 					glUniform1i(uniformUseInstancing, 0);
 					obj->RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor,
 						uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture,
-						glGetUniformLocation(shaderID, "theTexture"), glGetUniformLocation(shaderID, "normalMap"));
+						texLoc, normLoc);
 				}
 			}
 		}
@@ -187,10 +207,9 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 
 	// 2. Render Batches
 	glUniform1i(uniformUseInstancing, 1);
-	for (auto& b : batches) {
+	for (auto& b : batchList) {
 		if (b.matrices.empty()) continue;
 
-		// 1. Apply primary material
 		if (b.material) {
 			b.material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
 		} else {
