@@ -10,6 +10,10 @@ class Texture
 public:
 	Texture();
 	Texture(const char* fileLoc);
+	Texture(const Texture& other);
+	Texture& operator=(const Texture& other);
+	Texture(Texture&& other) noexcept;
+	Texture& operator=(Texture&& other) noexcept;
 
 	bool LoadTexture();
 	bool LoadTextureA(); // texture with alpha

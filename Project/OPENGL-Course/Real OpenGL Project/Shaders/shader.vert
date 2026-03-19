@@ -32,6 +32,8 @@ struct Material {
 	 vec2 tiling;
 	 vec2 offset;
 };
+uniform int useDiffuseTexture;
+uniform int useNormalMap;
 uniform Material material;
 
 

@@ -98,6 +98,9 @@ void Skybox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 
 	skyMesh->RenderMesh();
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
 	glDepthMask(GL_TRUE);
 }
 

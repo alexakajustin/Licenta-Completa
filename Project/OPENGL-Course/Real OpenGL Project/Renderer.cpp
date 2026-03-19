@@ -102,6 +102,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glDisable(GL_BLEND); // Ensure blending is off for main scene
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Skybox
@@ -122,12 +123,12 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalLightTransform(mainLight.CalculateLightTransform());
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
-	mainShader.SetTexture(1);
-	mainShader.SetNormalMap(2);
+	mainShader.SetTexture(0);
+	mainShader.SetNormalMap(1);
 	mainShader.SetDirectionalShadowMap(3);
 
-	mainShader.Validate();
-
+	// mainShader.Validate(); 
+	
 	// Scene objects with Frustum Culling
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
 	scene.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 

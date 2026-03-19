@@ -1,25 +1,79 @@
 #include "Texture.h"
 
 Texture::Texture()
+	: textureID(0), width(0), height(0), bitDepth(0), fileLocation(nullptr)
 {
-	textureID = 0;
-	width = 0;
-	height = 0;
-	bitDepth = 0;
-	fileLocation = new char[1];
-	fileLocation[0] = '\0';
 }
 
 Texture::Texture(const char* fileLoc)
+	: textureID(0), width(0), height(0), bitDepth(0)
 {
-	textureID = 0;
-	width = 0;
-	height = 0;
-	bitDepth = 0;
-
 	size_t len = strlen(fileLoc) + 1;
 	fileLocation = new char[len];
 	strcpy_s(fileLocation, len, fileLoc);
+}
+
+// Copy constructor (Shallow copy for ID, deep copy for path)
+Texture::Texture(const Texture& other)
+	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth)
+{
+	if (other.fileLocation) {
+		size_t len = strlen(other.fileLocation) + 1;
+		fileLocation = new char[len];
+		strcpy_s(fileLocation, len, other.fileLocation);
+	} else {
+		fileLocation = nullptr;
+	}
+	// Note: In this simple implementation, we don't handle reference counting for ID.
+	// However, preventing deletion in temporaries using Move helps.
+}
+
+// Copy assignment
+Texture& Texture::operator=(const Texture& other)
+{
+	if (this != &other) {
+		ClearTexture(); // Delete old texture
+		
+		textureID = other.textureID;
+		width = other.width;
+		height = other.height;
+		bitDepth = other.bitDepth;
+		
+		if (other.fileLocation) {
+			size_t len = strlen(other.fileLocation) + 1;
+			fileLocation = new char[len];
+			strcpy_s(fileLocation, len, other.fileLocation);
+		} else {
+			fileLocation = nullptr;
+		}
+	}
+	return *this;
+}
+
+// Move constructor
+Texture::Texture(Texture&& other) noexcept
+	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation)
+{
+	other.textureID = 0; // Prevent deletion in other's destructor
+	other.fileLocation = nullptr;
+}
+
+// Move assignment
+Texture& Texture::operator=(Texture&& other) noexcept
+{
+	if (this != &other) {
+		ClearTexture();
+		
+		textureID = other.textureID;
+		width = other.width;
+		height = other.height;
+		bitDepth = other.bitDepth;
+		fileLocation = other.fileLocation;
+		
+		other.textureID = 0;
+		other.fileLocation = nullptr;
+	}
+	return *this;
 }
 
 bool Texture::LoadTexture()
