@@ -31,4 +31,28 @@ public:
 private:
 	int selectedIndex = -1;
 	std::string selectedName = "(none)";
+
+	// Fallback Cache (Protects against user deleting the base object)
+	std::string cachedPrimitiveType = "";
+	std::string cachedModelPath = "";
+	glm::vec3 cachedPosition = glm::vec3(0.0f);
+	glm::vec3 cachedRotation = glm::vec3(0.0f);
+	glm::vec3 cachedScale = glm::vec3(1.0f);
+
+	std::string cachedTexturePath = "";
+	std::string cachedNormalMapPath = "";
+
+	bool hasCachedMaterial = false;
+	float cachedMatSpecular = 0.5f;
+	float cachedMatShininess = 32.0f;
+	glm::vec3 cachedMatColor = glm::vec3(1.0f);
+	glm::vec2 cachedMatTiling = glm::vec2(1.0f);
+	glm::vec2 cachedMatOffset = glm::vec2(0.0f);
+
+	// Instances created purely for fallback
+	Texture* fallbackTexture = nullptr;
+	Texture* fallbackNormalMap = nullptr;
+	Material* fallbackMaterial = nullptr;
+	
+	~SceneInputNode(); // Need destructor to clean up fallback memory
 };
