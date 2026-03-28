@@ -12,6 +12,8 @@ public:
 	void UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation,
 		GLuint diffuseIntensityLocation, GLuint directionLocation);
 
+	void SetShadowFrustum(float size, float near, float far);
+
 	glm::mat4 CalculateLightTransform();
 
 	// Getter for editing

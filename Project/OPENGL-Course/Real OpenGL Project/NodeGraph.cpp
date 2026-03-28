@@ -2,6 +2,7 @@
 #include "OutputNode.h"
 #include "SceneInputNode.h"
 #include "PerlinNoiseNode.h"
+#include "HydraulicErosionNode.h"
 #include "CustomNode.h"
 #include "MergeMeshNode.h"
 #include "NodeBuilderUI.h"
@@ -570,6 +571,7 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "Output") node = new OutputNode(*this);
 			else if (title == "Scene Input") node = new SceneInputNode(*this);
 			else if (title == "Perlin Noise") node = new PerlinNoiseNode(*this);
+			else if (title == "Hydraulic Erosion") node = new HydraulicErosionNode(*this);
 			else if (title == "Merge Mesh") node = new MergeMeshNode(*this);
 			else
 			{

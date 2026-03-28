@@ -202,6 +202,12 @@
     <ClCompile Include="SceneInputNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FluidSimulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HydraulicErosionNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="External Libs\imnodes\imnodes.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -524,6 +530,9 @@
     <ClInclude Include="CustomNodeDef.h" />
     <ClInclude Include="DebugOverlay.h" />
     <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="FluidSimulation.h" />
+    <ClInclude Include="Grid2D.h" />
+    <ClInclude Include="HydraulicErosionNode.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\ai_assert.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\anim.h" />

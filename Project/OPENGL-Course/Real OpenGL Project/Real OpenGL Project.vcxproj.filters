@@ -147,6 +147,12 @@
     <ClCompile Include="SceneInputNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FluidSimulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HydraulicErosionNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="External Libs\imnodes\imnodes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1557,6 +1563,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LightObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FluidSimulation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Grid2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HydraulicErosionNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h">

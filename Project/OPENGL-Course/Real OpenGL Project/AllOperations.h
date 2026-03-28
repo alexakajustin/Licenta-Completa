@@ -18,3 +18,4 @@
 #include "Operations/Op_Mesh.h"
 #include "Operations/Op_Selection.h"
 #include "Operations/Op_Utility.h"
+#include "Operations/Op_Erosion.h"

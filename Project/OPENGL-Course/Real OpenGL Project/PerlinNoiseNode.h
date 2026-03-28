@@ -30,6 +30,7 @@ public:
 		j["octaves"] = generator.GetOctaves();
 		j["persistence"] = generator.GetPersistence();
 		j["seed"] = generator.GetSeed();
+		j["ridged"] = generator.GetRidged();
 		return j;
 	}
 
@@ -41,6 +42,7 @@ public:
 		generator.SetOctaves(j.value("octaves", 4));
 		generator.SetPersistence(j.value("persistence", 0.5f));
 		generator.SetSeed(j.value("seed", 42));
+		generator.SetRidged(j.value("ridged", false));
 	}
 
 	void RenderContent(SceneManager* scene) override
@@ -100,6 +102,11 @@ public:
 			outputs[0].data.transforms = inputs[0].data.transforms; // Propagate transform
 		}
 	}
+
+	void SetAmplitude(float a) { generator.SetAmplitude(a); }
+	void SetFrequency(float f) { generator.SetFrequency(f); }
+	void SetRidged(bool r) { generator.SetRidged(r); }
+	void SetOctaves(int o) { generator.SetOctaves(o); }
 
 private:
 	PerlinNoiseGenerator generator;

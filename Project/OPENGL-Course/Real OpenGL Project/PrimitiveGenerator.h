@@ -8,11 +8,11 @@
 class PrimitiveGenerator
 {
 public:
-    static Mesh* CreatePlane(int resolutionX = 100, int resolutionZ = 100);
+    static Mesh* CreatePlane(int resolutionX = 250, int resolutionZ = 250);
     static Mesh* CreateCube();
     static Mesh* CreateSphere(unsigned int rings = 20, unsigned int sectors = 20);
 
-    static MeshData GetPlaneData(int resolutionX = 100, int resolutionZ = 100);
+    static MeshData GetPlaneData(int resolutionX = 250, int resolutionZ = 250);
     static MeshData GetCubeData();
     static MeshData GetSphereData(unsigned int rings = 20, unsigned int sectors = 20);
 

@@ -23,6 +23,11 @@ void DirectionalLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientC
 	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
 }
 
+void DirectionalLight::SetShadowFrustum(float size, float near, float far)
+{
+	lightProj = glm::ortho(-size, size, -size, size, near, far);
+}
+
 glm::mat4 DirectionalLight::CalculateLightTransform()
 {
 	// go from the origin to the light!

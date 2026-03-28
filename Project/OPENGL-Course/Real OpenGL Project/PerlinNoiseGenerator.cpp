@@ -6,7 +6,7 @@
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 	: gridSize(128), scale(1.0f), amplitude(15.0f),
 	  frequency(0.028f), octaves(10), persistence(1.0f), seed(42),
-	  offsetX(0.0f), offsetZ(0.0f), useNormalDisplacement(false)
+	  offsetX(0.0f), offsetZ(0.0f), useNormalDisplacement(false), useRidged(false)
 {
 	InitPermutation();
 }
@@ -85,7 +85,14 @@ float PerlinNoiseGenerator::FractalNoise(float x, float y)
 
 	for (int i = 0; i < octaves; i++)
 	{
-		total += PerlinNoise2D(x * freq, y * freq) * amp;
+		float n = PerlinNoise2D(x * freq, y * freq);
+		if (useRidged)
+		{
+			n = 1.0f - std::abs(n);
+			n = n * n; // Square for sharper peaks
+		}
+
+		total += n * amp;
 		maxVal += amp;
 		amp *= persistence;
 		freq *= 2.0f;
@@ -104,12 +111,13 @@ void PerlinNoiseGenerator::RenderUI()
 
 	ImGui::Text("Noise Settings");
 	ImGui::Checkbox("Use Normal Displacement", &useNormalDisplacement);
-	ImGui::DragFloat("Amplitude", &amplitude, 0.05f, 0.0f, 100.0f);
-	ImGui::DragFloat("Frequency", &frequency, 0.001f, 0.001f, 1.0f);
+	ImGui::Checkbox("Ridged Mode", &useRidged);
+	ImGui::DragFloat("Amplitude", &amplitude, 0.1f, 0.0f, 1000.0f);
+	ImGui::DragFloat("Frequency", &frequency, 0.0001f, 0.0001f, 1.0f);
 	
 	ImGui::DragFloat2("Offset", &offsetX, 0.1f);
 
-	ImGui::SliderInt("Octaves", &octaves, 1, 10);
+	ImGui::SliderInt("Octaves", &octaves, 1, 12);
 	ImGui::DragFloat("Persistence", &persistence, 0.01f, 0.01f, 1.0f);
 
 	ImGui::Separator();
@@ -174,9 +182,9 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 			float vy = data.vertices[base + 1];
 			float vz = data.vertices[base + 2];
 
-			// Sampling coordinates (add small shift to avoid zero-sampling)
-			float sx = (vx + offsetX + 0.1234f);
-			float sz = (vz + offsetZ + 0.1234f);
+			// Sampling coordinates (add large offset to avoid zero-sampling seams at origin)
+			float sx = (vx + offsetX + 10000.1234f);
+			float sz = (vz + offsetZ + 10000.1234f);
 
 			float noise = FractalNoise(sx * frequency, sz * frequency);
 

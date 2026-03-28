@@ -91,20 +91,20 @@ bool Application::Init()
 
 void Application::LoadResources()
 {
-	plainTexture = Texture("Assets/Textures/plain.png");
+	plainTexture = Texture("Assets/Textures/grid_prototype.png");
 	plainTexture.LoadTextureA();
 
 	plainMaterial = Material(0.1f, 32.0f);
+	plainMaterial.SetTiling(glm::vec2(10.0f, 10.0f));
 
 	sceneManager.SetDefaultResources(&plainTexture, &plainMaterial);
 
-	// Initial Directional Light
-	mainLight = DirectionalLight(2048, 2048,
+	// Initial Directional Light - 4096 resolution for large landscapes
+	mainLight = DirectionalLight(4096, 4096,
 		1.0f, 1.0f, 1.0f,
 		0.4f, 0.6f,
 		-10.0f, -5.0f, 20.0f);
-
-	pointLightCount = 0;
+	mainLight.SetShadowFrustum(1500.0f, 0.1f, 3000.0f);
 	spotLightCount = 0;
 }
 
@@ -114,7 +114,9 @@ void Application::SetupScene()
 	
 	// Create Plane
 	GameObject* plane = new GameObject("Plane");
-	plane->GetTransform().SetScale(glm::vec3(100.0f, 1.0f, 100.0f));
+	plane->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f));
+	// Set position to 0, -500, 0
+	plane->GetTransform().SetPosition(glm::vec3(0.0f, -500.0f, 0.0f));
 	plane->SetMesh(PrimitiveGenerator::CreatePlane());
 	plane->SetTexture(&plainTexture);
 	plane->SetMaterial(&plainMaterial);
@@ -245,7 +247,7 @@ void Application::Run()
 		ResizeViewportFBO(vWidth, vHeight);
 
 		float aspect = (float)vWidth / (float)vHeight;
-		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 1000.0f);
+		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 2000.0f);
 		glm::mat4 view = camera.calculateViewMatrix();
 
 		// Main render pass — clear backbuffer (the part around the UI)

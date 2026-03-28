@@ -38,6 +38,10 @@ public:
 	void SetGridSize(int g) { gridSize = g; }
 	void SetScale(float s) { scale = s; }
 
+	// Ridged multifractal mode
+	void SetRidged(bool r) { useRidged = r; }
+	bool GetRidged() const { return useRidged; }
+
 private:
 	// Configurable parameters
 	int gridSize;         // Grid resolution (gridSize x gridSize quads)
@@ -50,6 +54,7 @@ private:
 	float offsetZ;        // Sampling offset Z
 	int seed;             // Random seed
 	bool useNormalDisplacement; // If true, displace along normal instead of just Y
+	bool useRidged;             // If true, use ridged multifractal noise (1.0 - abs(n))
 
 	// Internal Perlin noise implementation
 	int permutation[512];

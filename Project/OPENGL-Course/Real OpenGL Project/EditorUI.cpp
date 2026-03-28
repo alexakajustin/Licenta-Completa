@@ -11,6 +11,7 @@
 #include "ScatterNode.h"
 #include "MergeMeshNode.h"
 #include "OutputNode.h"
+#include "HydraulicErosionNode.h"
 #include "SceneSerializer.h"
 
 #include <GL/glew.h>
@@ -391,6 +392,51 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 					}
 					if (name == "Cube 1") {
 						rockInput->SetSelection(i, "Cube 1");
+					}
+				}
+			}
+
+			if (ImGui::MenuItem("Cinematic Mountains (1000m)"))
+			{
+				nodeGraph.Clear();
+				SceneInputNode* input = new SceneInputNode(nodeGraph);
+				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
+				HydraulicErosionNode* erosion = new HydraulicErosionNode(nodeGraph);
+				OutputNode* output = new OutputNode(nodeGraph);
+
+				// Boost parameters for cinematic rocky mountains
+				noise->SetRidged(true);
+				noise->SetAmplitude(500.0f);
+				noise->SetFrequency(0.035f);
+				noise->SetOctaves(8);
+				
+				// Set erosion to deep carving defaults
+				erosion->SetSteps(10);
+				erosion->SetRainRate(0.1f);
+				erosion->SetKs(0.12f);
+				erosion->SetKd(0.12f);
+				erosion->SetMaxDelta(8.0f); // Allow very sharp ridges
+
+				input->editorPos = glm::vec2(50, 150);
+				noise->editorPos = glm::vec2(250, 150);
+				erosion->editorPos = glm::vec2(450, 150);
+				output->editorPos = glm::vec2(650, 150);
+
+				nodeGraph.AddNode(input);
+				nodeGraph.AddNode(noise);
+				nodeGraph.AddNode(erosion);
+				nodeGraph.AddNode(output);
+
+				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
+				nodeGraph.AddLink(noise->outputs[0].id, erosion->inputs[0].id);
+				nodeGraph.AddLink(erosion->outputs[0].id, output->inputs[0].id);
+
+				// Auto-assign Plane and set good erosion defaults
+				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
+					if (scene.GetObjects()[i]->GetName() == "Plane") {
+						input->SetSelection(i, "Plane");
+						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
+						break;
 					}
 				}
 			}
