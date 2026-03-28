@@ -74,6 +74,23 @@ void OutputNode::RenderContent(SceneManager* scene)
 	}
 }
 
+json OutputNode::Serialize() const
+{
+	json j = GraphNode::Serialize();
+	j["targetName"] = targetName;
+	j["sameAsInput"] = sameAsInput;
+	j["updateMesh"] = updateMesh;
+	return j;
+}
+
+void OutputNode::Deserialize(const json& j)
+{
+	GraphNode::Deserialize(j);
+	targetName = j.value("targetName", "(none)");
+	sameAsInput = j.value("sameAsInput", false);
+	updateMesh = j.value("updateMesh", true);
+}
+
 void OutputNode::Execute(SceneManager& scene)
 {
 	// Logic is handled in NodeGraph::Execute because it needs access to SceneManager

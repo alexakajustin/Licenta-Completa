@@ -18,35 +18,6 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 	if (!scene) return;
 	auto& objects = scene->GetObjects();
 
-	// RE-VALIDATE: If reference is lost or index shifted, try to find by name
-	bool valid = false;
-	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
-	{
-		if (objects[selectedIndex]->GetName() == selectedName) valid = true;
-	}
-
-	if (!valid && selectedName != "(none)")
-	{
-		// Try to recover index by name
-		selectedIndex = -1;
-		for (int i = 0; i < (int)objects.size(); i++)
-		{
-			if (objects[i]->GetName() == selectedName)
-			{
-				selectedIndex = i;
-				valid = true;
-				break;
-			}
-		}
-
-		// If still not found, object was deleted
-		if (!valid)
-		{
-			selectedName = "(none)";
-			selectedIndex = -1;
-		}
-	}
-
 	if (ImGui::BeginCombo("Object", selectedName.c_str()))
 	{
 		for (int i = 0; i < (int)objects.size(); i++)
@@ -62,6 +33,20 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 	}
 }
 
+json SceneInputNode::Serialize() const
+{
+	json j = GraphNode::Serialize();
+	j["selectedName"] = selectedName;
+	return j;
+}
+
+void SceneInputNode::Deserialize(const json& j)
+{
+	GraphNode::Deserialize(j);
+	selectedName = j.value("selectedName", "(none)");
+	selectedIndex = -1; // Force re-resolution on first Execute
+}
+
 void SceneInputNode::Execute(SceneManager& scene)
 {
 	outputs[0].data.Clear();
@@ -69,12 +54,26 @@ void SceneInputNode::Execute(SceneManager& scene)
 
 	if (selectedName == "(none)") return;
 
+	auto& objects = scene.GetObjects();
+	GameObject* obj = nullptr;
+
+	// Resolve index by name if needed (essential for load from file)
+	if (selectedIndex < 0 || selectedIndex >= (int)objects.size() || objects[selectedIndex]->GetName() != selectedName)
+	{
+		selectedIndex = -1;
+		for (int i = 0; i < (int)objects.size(); i++)
+		{
+			if (objects[i]->GetName() == selectedName)
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+	}
+
 	MeshData data;
 	bool found = false;
 
-	// Check if it's a primitive or a scene object
-	auto& objects = scene.GetObjects();
-	GameObject* obj = nullptr;
 	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
 	{
 		obj = objects[selectedIndex];
@@ -85,10 +84,10 @@ void SceneInputNode::Execute(SceneManager& scene)
 			data = obj->GetCPUMeshData();
 			found = true;
 		}
-		// 2. Fallback to primitive data if it matches standard names
-		else if (selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
-		else if (selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
-		else if (selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
+		// 2. Fallback to primitive data if it matches standard names or primitive type
+		else if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
+		else if (obj->GetPrimitiveType() == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
+		else if (obj->GetPrimitiveType() == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// 3. Extract from Model if available (for loaded assets)
 		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
 		{

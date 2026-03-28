@@ -1,3 +1,7 @@
+#define NOMINMAX
+#include <windows.h>
+#include <psapi.h>
+
 #include "AssetBrowser.h"
 #include "SceneManager.h"
 #include "Material.h"
@@ -10,9 +14,6 @@
 #include <algorithm>
 #include <iostream>
 #include <new>
-#define NOMINMAX
-#include <windows.h>
-#include <psapi.h>
 
 AssetBrowser::AssetBrowser()
 	: currentAssetPath("Assets")

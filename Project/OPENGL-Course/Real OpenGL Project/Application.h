@@ -42,7 +42,6 @@ private:
 	EditorUI editorUI;
 	AssetBrowser assetBrowser;
 	DebugOverlay debugOverlay;
-	NodeGraph nodeGraph;
 	NodeEditorUI nodeEditorUI;
 	NodeBuilderUI nodeBuilderUI;
 

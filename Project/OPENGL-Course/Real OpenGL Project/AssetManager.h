@@ -26,6 +26,9 @@ public:
 	// Called every frame to handle deferred GPU uploads on the main thread
 	void Update();
 
+	// Block current thread until all pending activeTasks are completed, then upload to GPU.
+	void WaitForAll();
+
 	void Clear();
 
 private:

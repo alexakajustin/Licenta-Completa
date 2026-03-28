@@ -12,6 +12,34 @@
 #include <stdexcept>
 #include <mutex>
 
+json ScatterNode::Serialize() const
+{
+	json j = GraphNode::Serialize();
+	j["count"] = count;
+	j["minScale"] = minScale;
+	j["maxScale"] = maxScale;
+	j["randomRotation"] = randomRotation;
+	j["alignToNormal"] = alignToNormal;
+	j["seed"] = seed;
+	j["spawnAsObjects"] = spawnAsObjects;
+	j["targetParentName"] = targetParentName;
+	return j;
+}
+
+void ScatterNode::Deserialize(const json& j)
+{
+	GraphNode::Deserialize(j);
+	count = j.value("count", 50);
+	minScale = j.value("minScale", 0.8f);
+	maxScale = j.value("maxScale", 1.2f);
+	randomRotation = j.value("randomRotation", true);
+	alignToNormal = j.value("alignToNormal", true);
+	seed = j.value("seed", 42);
+	spawnAsObjects = j.value("spawnAsObjects", false);
+	targetParentName = j.value("targetParentName", "(none)");
+	targetParentIndex = -1; // Force re-resolution on first Execute
+}
+
 void ScatterNode::RenderContent(SceneManager* scene)
 {
 	ImGui::PushID(this);
@@ -31,27 +59,6 @@ void ScatterNode::RenderContent(SceneManager* scene)
 	if (spawnAsObjects && scene)
 	{
 		auto& objects = scene->GetObjects();
-
-		// Validation/Recovery logic for parent
-		bool valid = false;
-		if (targetParentIndex >= 0 && targetParentIndex < (int)objects.size())
-		{
-			if (objects[targetParentIndex]->GetName() == targetParentName) valid = true;
-		}
-
-		if (!valid && targetParentName != "(none)")
-		{
-			targetParentIndex = -1;
-			for (int i = 0; i < (int)objects.size(); i++)
-			{
-				if (objects[i]->GetName() == targetParentName)
-				{
-					targetParentIndex = i;
-					valid = true;
-					break;
-				}
-			}
-		}
 
 		if (ImGui::BeginCombo("Spawning Parent", targetParentName.c_str()))
 		{

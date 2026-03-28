@@ -16,6 +16,9 @@ public:
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene) override;
 
+	json Serialize() const override;
+	void Deserialize(const json& j) override;
+
 	std::string GetSelectedName() const { return selectedName; }
 	int GetSelectedIndex() const { return selectedIndex; }
 

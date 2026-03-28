@@ -1,7 +1,10 @@
-#include "NodeGraph.h"
+#include "ScatterNode.h"
 #include "OutputNode.h"
 #include "SceneInputNode.h"
-#include "ScatterNode.h"
+#include "PerlinNoiseNode.h"
+#include "CustomNode.h"
+#include "MergeMeshNode.h"
+#include "NodeBuilderUI.h"
 #include "SceneManager.h"
 #include "GameObject.h"
 #include "PrimitiveGenerator.h"
@@ -35,6 +38,47 @@ Pin* GraphNode::FindOutputPin(int pinId)
 	for (auto& pin : outputs)
 		if (pin.id == pinId) return &pin;
 	return nullptr;
+}
+
+json GraphNode::Serialize() const
+{
+	json j;
+	j["id"] = id;
+	j["title"] = title;
+	j["editorPos"] = { editorPos.x, editorPos.y };
+	
+	json inPins = json::array();
+	for (const auto& p : inputs) inPins.push_back(p.id);
+	j["inputPins"] = inPins;
+
+	json outPins = json::array();
+	for (const auto& p : outputs) outPins.push_back(p.id);
+	j["outputPins"] = outPins;
+
+	return j;
+}
+
+void GraphNode::Deserialize(const json& j)
+{
+	id = j.value("id", 0);
+	title = j.value("title", "");
+	if (j.contains("editorPos")) {
+		editorPos.x = j["editorPos"][0];
+		editorPos.y = j["editorPos"][1];
+		positionSet = false; // Trigger UI snap on next frame
+	}
+
+	// Restore Pin IDs (very important for links!)
+	if (j.contains("inputPins")) {
+		const auto& pinIds = j["inputPins"];
+		for (size_t i = 0; i < pinIds.size() && (size_t)i < inputs.size(); i++)
+			inputs[i].id = pinIds[i].get<int>();
+	}
+	if (j.contains("outputPins")) {
+		const auto& pinIds = j["outputPins"];
+		for (size_t i = 0; i < pinIds.size() && (size_t)i < outputs.size(); i++)
+			outputs[i].id = pinIds[i].get<int>();
+	}
 }
 
 // ========== NodeGraph ==========
@@ -260,9 +304,28 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 				if (!transforms.empty())
 				{
+					// Resolve parent by name if needed (essential for load from file)
 					int parentIdx = scatterNode->GetParentIndex();
-					GameObject* targetParent = nullptr;
+					std::string parentName = scatterNode->GetParentName();
 
+					if (parentIdx < 0 || parentIdx >= (int)objects.size() || objects[parentIdx]->GetName() != parentName)
+					{
+						parentIdx = -1;
+						if (parentName != "(none)")
+						{
+							for (int i = 0; i < (int)objects.size(); i++)
+							{
+								if (objects[i]->GetName() == parentName)
+								{
+									parentIdx = i;
+									scatterNode->SetTargetParent(i, parentName); // Update node for future frames
+									break;
+								}
+							}
+						}
+					}
+
+					GameObject* targetParent = nullptr;
 					if (parentIdx >= 0 && parentIdx < (int)objects.size())
 						targetParent = objects[parentIdx];
 
@@ -317,6 +380,16 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						}
 						obj->SetMesh(meshCache[dataKey]);
 						
+						// Optimized: Share CPU Mesh Memory
+						static std::shared_ptr<MeshData> sharedInputMesh = nullptr;
+						static MeshData* lastSource = nullptr;
+
+						if (lastSource != targetData) {
+							sharedInputMesh = std::make_shared<MeshData>(*targetData);
+							lastSource = targetData;
+						}
+						obj->SetCPUMeshData(sharedInputMesh);
+						
 						// --- Material Handling ---
 						Material* finalMat = instancesPin.data.sourceMaterial;
 						if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap))
@@ -351,13 +424,34 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 		{
 			OutputNode* updateNode = static_cast<OutputNode*>(node);
 			int targetIdx = updateNode->GetTargetIndex();
+			std::string targetName = updateNode->GetTargetName();
 			Pin& meshInput = node->inputs[0];
 
-			if (updateNode->IsSameAsInput() && meshInput.data.sourceObjectName != "(none)")
+			if (updateNode->IsSameAsInput())
 			{
 				targetIdx = -1;
-				for (int i = 0; i < (int)objects.size(); i++)
-					if (objects[i]->GetName() == meshInput.data.sourceObjectName) { targetIdx = i; break; }
+				if (meshInput.data.sourceObjectName != "(none)")
+				{
+					for (int i = 0; i < (int)objects.size(); i++)
+						if (objects[i]->GetName() == meshInput.data.sourceObjectName) { targetIdx = i; break; }
+				}
+			}
+			else if (targetIdx < 0 || targetIdx >= (int)objects.size() || objects[targetIdx]->GetName() != targetName)
+			{
+				// Resolve by name for manual target mode
+				targetIdx = -1;
+				if (targetName != "(none)")
+				{
+					for (int i = 0; i < (int)objects.size(); i++)
+					{
+						if (objects[i]->GetName() == targetName)
+						{
+							targetIdx = i;
+							updateNode->SetTargetIndex(i, targetName);
+							break;
+						}
+					}
+				}
 			}
 			
 			if (targetIdx >= 0 && targetIdx < (int)objects.size())
@@ -435,7 +529,89 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 // SceneInputNode and OutputNode implementations moved to separate .cpp files
 
+json NodeGraph::Serialize() const
+{
+	json j;
+	j["nextId"] = nextId;
 
+	json nodesArray = json::array();
+	for (auto* n : nodes) nodesArray.push_back(n->Serialize());
+	j["nodes"] = nodesArray;
+
+	json linksArray = json::array();
+	for (const auto& l : links)
+	{
+		json lj;
+		lj["id"] = l.id;
+		lj["start"] = l.startPinId;
+		lj["end"] = l.endPinId;
+		linksArray.push_back(lj);
+	}
+	j["links"] = linksArray;
+
+	return j;
+}
+
+void NodeGraph::Deserialize(const json& j, SceneManager& scene)
+{
+	Clear();
+	generatedObjectNames.clear();
+	nextId = j.value("nextId", 1);
+
+	if (j.contains("nodes"))
+	{
+		for (const auto& nj : j["nodes"])
+		{
+			std::string title = nj.value("title", "");
+			GraphNode* node = nullptr;
+
+			// Factory based on title
+			if (title == "Scatter") node = new ScatterNode(*this);
+			else if (title == "Output") node = new OutputNode(*this);
+			else if (title == "Scene Input") node = new SceneInputNode(*this);
+			else if (title == "Perlin Noise") node = new PerlinNoiseNode(*this);
+			else if (title == "Merge Mesh") node = new MergeMeshNode(*this);
+			else
+			{
+				// Check if it's a Custom Node
+				const auto& defs = NodeBuilderUI::GetSavedDefinitions();
+				std::string defName = nj.value("definitionName", "");
+				for (const auto& def : defs)
+					if (def.name == defName) { node = new CustomNode(*this, def); break; }
+			}
+
+			if (node)
+			{
+				node->Deserialize(nj);
+				AddNode(node);
+			}
+		}
+	}
+
+	if (j.contains("links"))
+	{
+		for (const auto& lj : j["links"])
+		{
+			int id = lj.value("id", 0);
+			int start = lj.value("start", 0);
+			int end = lj.value("end", 0);
+			links.push_back(Link(id, start, end));
+		}
+	}
+}
+
+bool NodeGraph::IsObjectGenerated(const std::string& name) const
+{
+	for (const auto& spawned : generatedObjectNames)
+		if (spawned == name) return true;
+	
+	// Also check child objects of generated groups
+	// (ScatterNode uses 'Instance_X_Y' pattern)
+	if (name.find("Instance_") != std::string::npos || name.find("Scatter_Group_") != std::string::npos)
+		return true;
+
+	return false;
+}
 void NodeGraph::Clear()
 {
 	for (auto* n : nodes)

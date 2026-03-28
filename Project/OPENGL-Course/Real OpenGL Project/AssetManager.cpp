@@ -49,6 +49,21 @@ void AssetManager::Update()
 	}
 }
 
+void AssetManager::WaitForAll()
+{
+	std::lock_guard<std::mutex> lock(cacheMutex);
+
+	for (auto& task : activeTasks)
+	{
+		if (task.future.valid())
+			task.future.wait();
+
+		task.model->LoadModelGPU();
+		printf("[AssetManager] Finished loading model (Sync Load): %s\n", task.path.c_str());
+	}
+	activeTasks.clear();
+}
+
 void AssetManager::Clear()
 {
 	std::lock_guard<std::mutex> lock(cacheMutex);

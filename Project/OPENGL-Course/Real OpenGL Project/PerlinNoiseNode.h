@@ -22,6 +22,27 @@ public:
 		outputs.push_back(meshOut);
 	}
 
+	json Serialize() const override
+	{
+		json j = GraphNode::Serialize();
+		j["frequency"] = generator.GetFrequency();
+		j["amplitude"] = generator.GetAmplitude();
+		j["octaves"] = generator.GetOctaves();
+		j["persistence"] = generator.GetPersistence();
+		j["seed"] = generator.GetSeed();
+		return j;
+	}
+
+	void Deserialize(const json& j) override
+	{
+		GraphNode::Deserialize(j);
+		generator.SetFrequency(j.value("frequency", 1.0f));
+		generator.SetAmplitude(j.value("amplitude", 1.0f));
+		generator.SetOctaves(j.value("octaves", 4));
+		generator.SetPersistence(j.value("persistence", 0.5f));
+		generator.SetSeed(j.value("seed", 42));
+	}
+
 	void RenderContent(SceneManager* scene) override
 	{
 		generator.RenderUI();

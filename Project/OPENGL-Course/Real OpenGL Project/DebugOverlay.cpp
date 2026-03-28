@@ -1,11 +1,13 @@
+#define NOMINMAX
+#include <windows.h>
+#include <psapi.h>
+
 #include "DebugOverlay.h"
 #include "imgui.h"
 #include <GLFW/glfw3.h>
 #include <cstdio>
 #include <algorithm>
 #include <vector>
-#include <windows.h>
-#include <psapi.h>
 #include <glm/gtc/type_ptr.hpp>
 
 DebugOverlay* DebugOverlay::instance = nullptr;

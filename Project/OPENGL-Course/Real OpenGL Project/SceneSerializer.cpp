@@ -90,10 +90,22 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 	json j;
 	j["version"] = 1;
 
-	// ========== Serialize Objects ==========
+	// ========== Serialize Node Graph (The "Recipe") ==========
+	json graphJson = scene.GetNodeGraph().Serialize();
+	j["nodeGraph"] = graphJson;
+
+	// ========== Serialize Objects (The "Results") ==========
 	json objectsArray = json::array();
+	json assetsArray = json::array();
+	std::map<MeshData*, int> meshToAssetId;
+
 	for (auto* obj : scene.GetObjects())
 	{
+		// SMART FILTER: Skip objects managed by the Node Graph
+		// They will be regenerated on load via NodeGraph::Execute()
+		if (scene.GetNodeGraph().IsObjectGenerated(obj->GetName()))
+			continue;
+
 		json objJson;
 		objJson["name"] = obj->GetName();
 		objJson["primitiveType"] = obj->GetPrimitiveType();
@@ -124,9 +136,29 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			objJson["material"]["offset"] = { mat->GetOffset().x, mat->GetOffset().y };
 		}
 
+		// Custom Mesh Data (with deduplication)
+		if (obj->HasCustomMesh())
+		{
+			const MeshData& data = obj->GetCPUMeshData();
+			// Since MeshData is now shared via shared_ptr, we can check pointers
+			MeshData* dataPtr = const_cast<MeshData*>(&data);
+
+			if (meshToAssetId.find(dataPtr) == meshToAssetId.end())
+			{
+				int newId = (int)assetsArray.size();
+				json assetJson;
+				assetJson["vertices"] = data.vertices;
+				assetJson["indices"] = data.indices;
+				assetsArray.push_back(assetJson);
+				meshToAssetId[dataPtr] = newId;
+			}
+			objJson["meshAssetId"] = meshToAssetId[dataPtr];
+		}
+
 		objectsArray.push_back(objJson);
 	}
 	j["objects"] = objectsArray;
+	j["assets"] = assetsArray;
 
 	// ========== Serialize Lights ==========
 	json lightsArray = json::array();
@@ -220,8 +252,22 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 	// ========== Clear existing scene ==========
 	scene.Clear();
+	scene.GetNodeGraph().Clear();
 	pointLightCount = 0;
 	spotLightCount = 0;
+
+	// ========== Load Asset Library ==========
+	std::vector<std::shared_ptr<MeshData>> assetLibrary;
+	if (j.contains("assets"))
+	{
+		for (const auto& aj : j["assets"])
+		{
+			auto data = std::make_shared<MeshData>();
+			data->vertices = aj["vertices"].get<std::vector<GLfloat>>();
+			data->indices = aj["indices"].get<std::vector<unsigned int>>();
+			assetLibrary.push_back(data);
+		}
+	}
 
 	// ========== Load Objects ==========
 	if (j.contains("objects"))
@@ -247,6 +293,40 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				Model* model = AssetManager::Get().GetModel(modelPath);
 				obj->SetModel(model);
 				obj->SetModelSourcePath(modelPath);
+			}
+
+			// Mesh Asset override (Deduplication)
+			if (objJson.contains("meshAssetId"))
+			{
+				int assetId = objJson["meshAssetId"];
+				if (assetId >= 0 && assetId < (int)assetLibrary.size())
+				{
+					auto data = assetLibrary[assetId];
+					Mesh* newMesh = data->ToMesh();
+					if (newMesh)
+					{
+						obj->SetMesh(newMesh);
+						obj->SetCPUMeshData(data);
+					}
+				}
+			}
+			// Legacy Custom Mesh support
+			else if (objJson.contains("customMesh"))
+			{
+				auto& meshJson = objJson["customMesh"];
+				if (meshJson.contains("vertices") && meshJson.contains("indices"))
+				{
+					auto data = std::make_shared<MeshData>();
+					data->vertices = meshJson["vertices"].get<std::vector<GLfloat>>();
+					data->indices = meshJson["indices"].get<std::vector<unsigned int>>();
+
+					Mesh* newMesh = data->ToMesh();
+					if (newMesh)
+					{
+						obj->SetMesh(newMesh);
+						obj->SetCPUMeshData(data);
+					}
+				}
 			}
 
 			// Transform
@@ -456,6 +536,20 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				}
 			}
 		}
+	}
+
+	// ========== Load Node Graph (The "Recipe") ==========
+	if (j.contains("nodeGraph"))
+	{
+		scene.GetNodeGraph().Deserialize(j["nodeGraph"], scene);
+		
+		// Wait for all assets to finish loading before auto-execution.
+		// Otherwise, models used by the scatter nodes will be empty, and instances will not spawn.
+		AssetManager::Get().WaitForAll();
+
+		// AUTO-EXECUTE: Recreate the millions of objects
+		scene.GetNodeGraph().Execute(scene, defaultTexture, defaultMaterial);
+		printf("[SceneSerializer] Node Graph restored and auto-executed.\n");
 	}
 
 	printf("[SceneSerializer] Scene loaded from: %s (%d objects, %d lights)\n",

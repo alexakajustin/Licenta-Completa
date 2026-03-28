@@ -105,6 +105,8 @@ int Window::Initialise()
 	// this helps us get around that
 	// this basically binds the glfw window to the pointer of my window object!
 	glfwSetWindowUserPointer(mainWindow, this); // second parameter is any type of class
+
+	return 0;
 }
 
 GLfloat Window::getXChange()

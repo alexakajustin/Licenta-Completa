@@ -14,6 +14,7 @@
 #include "Shader.h"
 #include "Texture.h"
 #include "Frustum.h"
+#include "NodeGraph.h"
 
 class SceneManager
 {
@@ -80,6 +81,7 @@ public:
 		globalSpotLightCount = sCount;
 	}
 	void SetDefaultResources(Texture* tex, Material* mat) { defaultTexture = tex; defaultMaterial = mat; }
+	NodeGraph& GetNodeGraph() { return nodeGraph; }
 
 	// ========== Utilities (public for EditorUI viewport drop) ==========
 	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight);
@@ -142,4 +144,6 @@ private:
 	glm::mat4 GetSelectedRotationMatrix() const;
 	// Helper: get the gizmo position (from object or light)
 	bool GetGizmoPosition(glm::vec3& outPos) const;
+
+	NodeGraph nodeGraph;
 };

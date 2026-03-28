@@ -33,6 +33,9 @@ public:
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene) override;
 
+	json Serialize() const override;
+	void Deserialize(const json& j) override;
+
 	// Access the definition (for serialization, display, etc.)
 	const CustomNodeDef& GetDefinition() const { return definition; }
 

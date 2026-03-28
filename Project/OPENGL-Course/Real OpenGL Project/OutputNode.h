@@ -17,9 +17,13 @@ public:
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene) override;
 
+	json Serialize() const override;
+	void Deserialize(const json& j) override;
+
 	// Helper for the graph execution to find where to push the mesh
 	int GetTargetIndex() const { return targetIndex; }
 	std::string GetTargetName() const { return targetName; }
+	void SetTargetIndex(int index, const std::string& name) { targetIndex = index; targetName = name; }
 	bool IsSameAsInput() const { return sameAsInput; }
 
 	void SetSameAsInput(bool value) { sameAsInput = value; }

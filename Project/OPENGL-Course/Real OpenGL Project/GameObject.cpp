@@ -252,23 +252,24 @@ void GameObject::SetMesh(Mesh* newMesh)
 
 void GameObject::SetCPUMeshData(const MeshData& data)
 {
-	// RAM Safety: If the mesh data is massive (e.g. > 50MB), 
-	// don't keep a permanent copy in RAM once it's on the GPU.
-	// This prevents 32-bit address space exhaustion (4GB limit).
-	size_t estimatedBytes = data.vertices.size() * sizeof(GLfloat) + data.indices.size() * sizeof(unsigned int);
-	const size_t RAM_SAFETY_THRESHOLD = 50 * 1024 * 1024; // 50MB
-
-	if (estimatedBytes > RAM_SAFETY_THRESHOLD)
-	{
-		printf("[GameObject] RAM Safety: Mesh data is large (%.1f MB). Storing GPU reference only.\n", (float)estimatedBytes / (1024.0f * 1024.0f));
-		cpuMeshData.Clear(); // Just clear, don't allocate
-		hasCustomMesh = true; // Still marked as custom to prevent SetModel logic
-		return;
-	}
-
-	cpuMeshData = data;
+	// Store a unique copy (standard behavior)
+	cpuMeshData = std::make_shared<MeshData>(data);
 	hasCustomMesh = true;
 	SetDirty();
+}
+
+void GameObject::SetCPUMeshData(std::shared_ptr<MeshData> data)
+{
+	// Store a shared reference (memory efficient)
+	cpuMeshData = data;
+	hasCustomMesh = (cpuMeshData != nullptr);
+	SetDirty();
+}
+
+const MeshData& GameObject::GetCPUMeshData() const
+{
+	static MeshData empty;
+	return cpuMeshData ? *cpuMeshData : empty;
 }
 
 void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)

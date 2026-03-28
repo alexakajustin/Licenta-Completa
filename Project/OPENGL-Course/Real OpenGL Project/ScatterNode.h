@@ -34,6 +34,9 @@ public:
 		outputs.push_back(instancesOut);
 	}
 
+	json Serialize() const override;
+	void Deserialize(const json& j) override;
+
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene) override;
 

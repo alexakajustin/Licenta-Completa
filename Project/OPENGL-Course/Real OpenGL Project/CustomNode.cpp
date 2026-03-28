@@ -73,9 +73,45 @@ void CustomNode::RebuildOperations()
 		definition.name.c_str(), (int)operationInstances.size());
 }
 
-// =====================================================================
-//  RenderContent — show operation parameters inside the node
-// =====================================================================
+json CustomNode::Serialize() const
+{
+	json j = GraphNode::Serialize();
+	j["definitionName"] = definition.name;
+	
+	json ops = json::array();
+	for (auto* op : operationInstances)
+	{
+		json oj;
+		oj["name"] = op->GetName();
+		oj["params"] = op->GetParams(); // Uses the to_json we just added to ParamValue
+		ops.push_back(oj);
+	}
+	j["operations"] = ops;
+	return j;
+}
+
+void CustomNode::Deserialize(const json& j)
+{
+	GraphNode::Deserialize(j);
+	// Note: definition is usually set by factory during NodeGraph::Deserialize
+	
+	if (j.contains("operations"))
+	{
+		const auto& ops = j["operations"];
+		for (size_t i = 0; i < ops.size() && i < operationInstances.size(); i++)
+		{
+			Operation* op = operationInstances[i];
+			if (ops[i].contains("params"))
+			{
+				auto params = ops[i]["params"].get<std::map<std::string, ParamValue>>();
+				for (const auto& p : params)
+				{
+					op->GetParams()[p.first] = p.second;
+				}
+			}
+		}
+	}
+}
 
 void CustomNode::RenderContent(SceneManager* scene)
 {

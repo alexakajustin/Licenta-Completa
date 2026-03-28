@@ -22,6 +22,22 @@ public:
 
 	void SetOffset(float x, float z) { offsetX = x; offsetZ = z; }
 
+	// Getters for serialization
+	float GetFrequency() const { return frequency; }
+	float GetAmplitude() const { return amplitude; }
+	int GetOctaves() const { return octaves; }
+	float GetPersistence() const { return persistence; }
+	int GetSeed() const { return seed; }
+
+	// Setters for serialization
+	void SetFrequency(float f) { frequency = f; }
+	void SetAmplitude(float a) { amplitude = a; }
+	void SetOctaves(int o) { octaves = o; }
+	void SetPersistence(float p) { persistence = p; }
+	void SetSeed(int s) { seed = s; InitPermutation(); }
+	void SetGridSize(int g) { gridSize = g; }
+	void SetScale(float s) { scale = s; }
+
 private:
 	// Configurable parameters
 	int gridSize;         // Grid resolution (gridSize x gridSize quads)

@@ -6,6 +6,10 @@
 #include <glm/glm.hpp>
 #include "MeshData.h"
 
+#include "External Libs/nlohmann/json.hpp"
+
+using json = nlohmann::json;
+
 class SceneManager;
 class Texture;
 class Material;
@@ -58,6 +62,10 @@ public:
 	Pin* FindPin(int pinId);
 	Pin* FindInputPin(int pinId);
 	Pin* FindOutputPin(int pinId);
+
+	// Serialization
+	virtual json Serialize() const;
+	virtual void Deserialize(const json& j);
 };
 
 // ========== Node Graph ==========
@@ -86,10 +94,16 @@ public:
 	std::vector<GraphNode*>& GetNodes() { return nodes; }
 	std::vector<Link>& GetLinks() { return links; }
 
-	// ID generation (unique across session)
+	int NextLinkId() { return nextId++; }
 	int NextNodeId() { return nextId++; }
 	int NextPinId() { return nextId++; }
-	int NextLinkId() { return nextId++; }
+
+	// Serialization
+	json Serialize() const;
+	void Deserialize(const json& j, SceneManager& scene);
+
+	// Track generated objects for cleanup (objects that won't be saved in objects array)
+	bool IsObjectGenerated(const std::string& name) const;
 
 	void Clear();
 

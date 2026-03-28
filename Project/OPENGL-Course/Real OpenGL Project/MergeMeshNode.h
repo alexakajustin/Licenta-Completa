@@ -22,6 +22,9 @@ public:
 		outputs.push_back(meshOut);
 	}
 
+	json Serialize() const override { return GraphNode::Serialize(); }
+	void Deserialize(const json& j) override { GraphNode::Deserialize(j); }
+
 	void RenderContent(SceneManager* scene) override
 	{
 		ImGui::Text("Combines two mesh inputs.");

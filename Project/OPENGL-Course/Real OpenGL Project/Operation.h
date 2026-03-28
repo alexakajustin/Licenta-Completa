@@ -4,7 +4,10 @@
 #include <vector>
 #include <map>
 #include <glm/glm.hpp>
+#include "External Libs/nlohmann/json.hpp"
 #include "MeshData.h"
+
+using json = nlohmann::json;
 
 // =====================================================================
 //  Parameter System — type-safe, serializable parameter definitions
@@ -19,6 +22,15 @@ enum class ParamType
 	Bool,
 	Enum
 };
+
+NLOHMANN_JSON_SERIALIZE_ENUM(ParamType, {
+	{ParamType::Float, "Float"},
+	{ParamType::Int,   "Int"},
+	{ParamType::Vec2,  "Vec2"},
+	{ParamType::Vec3,  "Vec3"},
+	{ParamType::Bool,  "Bool"},
+	{ParamType::Enum,  "Enum"},
+})
 
 // A single parameter value (tagged union)
 struct ParamValue
@@ -39,6 +51,33 @@ struct ParamValue
 	static ParamValue MakeVec3(glm::vec3 v)  { ParamValue p; p.type = ParamType::Vec3;  p.vec3Val = v;  return p; }
 	static ParamValue MakeBool(bool v)       { ParamValue p; p.type = ParamType::Bool;  p.boolVal = v;  return p; }
 	static ParamValue MakeEnum(int v)        { ParamValue p; p.type = ParamType::Enum;  p.enumVal = v;  return p; }
+
+	// JSON Serialization
+	friend void to_json(json& j, const ParamValue& p) {
+		j = json{ {"type", p.type} };
+		switch (p.type) {
+			case ParamType::Float: j["value"] = p.floatVal; break;
+			case ParamType::Int:   j["value"] = p.intVal;   break;
+			case ParamType::Vec2:  j["value"] = {p.vec2Val.x, p.vec2Val.y}; break;
+			case ParamType::Vec3:  j["value"] = {p.vec3Val.x, p.vec3Val.y, p.vec3Val.z}; break;
+			case ParamType::Bool:  j["value"] = p.boolVal;  break;
+			case ParamType::Enum:  j["value"] = p.enumVal;  j["name"] = p.stringVal; break;
+		}
+	}
+
+	friend void from_json(const json& j, ParamValue& p) {
+		p.type = j.at("type").get<ParamType>();
+		if (j.contains("value")) {
+			switch (p.type) {
+				case ParamType::Float: p.floatVal = j.at("value").get<float>(); break;
+				case ParamType::Int:   p.intVal   = j.at("value").get<int>();   break;
+				case ParamType::Vec2:  p.vec2Val  = glm::vec2(j.at("value")[0], j.at("value")[1]); break;
+				case ParamType::Vec3:  p.vec3Val  = glm::vec3(j.at("value")[0], j.at("value")[1], j.at("value")[2]); break;
+				case ParamType::Bool:  p.boolVal  = j.at("value").get<bool>();  break;
+				case ParamType::Enum:  p.enumVal  = j.at("value").get<int>();   p.stringVal = j.value("name", ""); break;
+			}
+		}
+	}
 };
 
 // Definition of a parameter (metadata + default value)

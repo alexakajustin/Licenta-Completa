@@ -258,6 +258,7 @@ void SceneManager::Clear()
 	
 	selectedObjectIndices.clear();
 	selectedLightIndices.clear();
+	nodeGraph.Clear();
 }
 
 // =====================================================================

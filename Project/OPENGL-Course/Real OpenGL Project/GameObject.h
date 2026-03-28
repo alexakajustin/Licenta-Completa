@@ -9,6 +9,7 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Material.h"
+#include <memory>
 #include "MeshData.h"
 
 struct Frustum;
@@ -64,9 +65,10 @@ public:
 
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data);
-	const MeshData& GetCPUMeshData() const { return cpuMeshData; }
+	void SetCPUMeshData(std::shared_ptr<MeshData> data);
+	const MeshData& GetCPUMeshData() const;
 	bool HasCustomMesh() const { return hasCustomMesh; }
-	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.Clear(); }
+	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.reset(); }
 
 	// Serialization helpers (track how the object was created)
 	void SetPrimitiveType(const std::string& type) { primitiveType = type; }
@@ -95,7 +97,7 @@ private:
 	Material* material;
 
 	// Persistent mesh data for procedural generation
-	MeshData cpuMeshData;
+	std::shared_ptr<MeshData> cpuMeshData;
 	bool hasCustomMesh = false;
 
 	// Serialization: track creation source

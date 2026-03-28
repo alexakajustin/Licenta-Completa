@@ -1,4 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define NOMINMAX
+#include <Windows.h>
 #include "Application.h"
 
 #include "imgui.h"
@@ -6,7 +8,6 @@
 #include "imgui_impl_opengl3.h"
 
 #include <cmath>
-#include <Windows.h>
 
 #include "Model.h"
 #include "Mesh.h"
@@ -200,7 +201,7 @@ void Application::Run()
 		// Since docking is not available, we use fixed window layout to emulate Unity
 		
 		// 1. Render Top Bar first
-		editorUI.RenderMainMenuBar(sceneManager, nodeGraph);
+		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph());
 
 		// Handle pending scene file actions
 		auto sceneAction = editorUI.GetPendingSceneAction();
@@ -212,14 +213,14 @@ void Application::Run()
 			}
 			else if (sceneAction == EditorUI::SceneAction::Load)
 			{
-				nodeGraph.Clear();
+				sceneManager.GetNodeGraph().Clear();
 				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
 					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
 					&plainTexture, &plainMaterial);
 			}
 			else if (sceneAction == EditorUI::SceneAction::New)
 			{
-				nodeGraph.Clear();
+				sceneManager.GetNodeGraph().Clear();
 				sceneManager.Clear();
 				pointLightCount = 0;
 				spotLightCount = 0;
@@ -273,8 +274,8 @@ void Application::Run()
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera);
 		
 		assetBrowser.Render(sceneManager, uiState);
-		nodeEditorUI.Render(nodeGraph, sceneManager, &plainTexture, &plainMaterial, uiState);
-		nodeBuilderUI.Render(nodeGraph, uiState);
+		nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
+		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);
@@ -362,6 +363,8 @@ void Application::Shutdown()
 	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
 	if (viewportDepth) glDeleteRenderbuffers(1, &viewportDepth);
 
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
 	ImNodes::DestroyContext();
 	ImGui::DestroyContext();
 }
