@@ -166,6 +166,10 @@ bool AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 	GLuint useDiffuseLoc = glGetUniformLocation(thumbnailShader.GetShaderID(), "useDiffuseTexture");
 	GLuint useNormalLoc = glGetUniformLocation(thumbnailShader.GetShaderID(), "useNormalMap"); // Fallback if shader doesn't have it
 
+	// Disable material mode for model thumbnails (models use their own textures)
+	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "useMaterial"), 0);
+	glUniform3f(glGetUniformLocation(thumbnailShader.GetShaderID(), "materialColor"), 1.0f, 1.0f, 1.0f);
+
 	// Use RenderModel properly by passing the correct uniform locations
 	tempModel->RenderModel(useNormalLoc, useDiffuseLoc, 
 		glGetUniformLocation(thumbnailShader.GetShaderID(), "normalMap"),
@@ -255,6 +259,14 @@ void AssetBrowser::GenerateMaterialThumbnail(const std::string& matPath, Texture
 	glUniformMatrix4fv(thumbnailShader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(model));
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "theTexture"), 0);
 	glUniform1i(glGetUniformLocation(thumbnailShader.GetShaderID(), "useDiffuseTexture"), 0);
+
+	// Pass material properties so each material thumbnail looks different
+	GLuint shaderID = thumbnailShader.GetShaderID();
+	glm::vec3 matColor = mat->GetColor();
+	glUniform3f(glGetUniformLocation(shaderID, "materialColor"), matColor.r, matColor.g, matColor.b);
+	glUniform1f(glGetUniformLocation(shaderID, "specularIntensity"), mat->GetSpecularIntensity());
+	glUniform1f(glGetUniformLocation(shaderID, "shininess"), mat->GetShininess());
+	glUniform1i(glGetUniformLocation(shaderID, "useMaterial"), 1);
 
 	sphereMesh->RenderMesh();
 

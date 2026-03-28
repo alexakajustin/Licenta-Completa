@@ -26,6 +26,12 @@ public:
 	// Viewport metadata update (to eliminate 1-frame lag)
 	void UpdateViewportMetadata();
 
+	// Scene file actions (signaled from menu bar, handled by Application)
+	enum class SceneAction { None, New, Save, Load };
+	SceneAction GetPendingSceneAction() const { return pendingSceneAction; }
+	const std::string& GetPendingScenePath() const { return pendingScenePath; }
+	void ClearPendingSceneAction() { pendingSceneAction = SceneAction::None; pendingScenePath.clear(); }
+
 	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph);
 
 private:
@@ -70,6 +76,10 @@ private:
 	glm::vec2 viewportPos = glm::vec2(0.0f);
 	glm::vec2 viewportSize = glm::vec2(1.0f, 1.0f);
 	bool viewportHovered = false;
+
+	// Scene file action state
+	SceneAction pendingSceneAction = SceneAction::None;
+	std::string pendingScenePath;
 
 private:
 

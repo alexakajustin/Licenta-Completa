@@ -400,6 +400,8 @@ void SceneManager::CreateGameObject(const std::string& type)
 	else if (type == "Cube") newObj->SetMesh(PrimitiveGenerator::CreateCube());
 	else if (type == "Sphere") newObj->SetMesh(PrimitiveGenerator::CreateSphere());
 
+	newObj->SetPrimitiveType(type == "Empty Object" ? "Empty" : type);
+
 	objects.push_back(newObj);
 	SetSelectedIndex((int)objects.size() - 1);
 }
@@ -414,6 +416,7 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	
 	Model* model = AssetManager::Get().GetModel(path.string());
 	newObj->SetModel(model);
+	newObj->SetModelSourcePath(path.string());
 
 	objects.push_back(newObj);
 	SetSelectedIndex((int)objects.size() - 1);

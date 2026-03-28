@@ -27,43 +27,34 @@ void main()
         norm = normalize(Normal);
     }
     
-    // Camera is at (0, 0, 3), sphere at origin
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 3.0) - FragPos);
+    // Match thumbnail.frag lighting exactly
+    vec3 keyLightDir  = normalize(vec3(0.5, 0.8, 1.0));
+    vec3 fillLightDir = normalize(vec3(-0.7, 0.2, 0.5));
     
-    // Key light: FROM the camera position (dead front)
-    vec3 lightPos = vec3(0.0, 0.5, 3.0);
-    vec3 lightDir1 = normalize(lightPos - FragPos);
-    
-    // Fill light: from the left
-    vec3 lightDir2 = normalize(vec3(-1.0, 0.3, 0.5) - FragPos);
-    
-    // Ambient
-    float ambient = 0.2;
-    
-    // Diffuse
-    float diff1 = max(dot(norm, lightDir1), 0.0);
-    float diff2 = max(dot(norm, lightDir2), 0.0) * 0.3;
-    
-    // Specular (Blinn-Phong) — from key light at camera = highlight dead center
-    vec3 halfDir = normalize(lightDir1 + viewDir);
-    float spec = pow(max(dot(norm, halfDir), 0.0), max(shininess, 1.0)) * specularIntensity;
+    float keyDiff  = max(dot(norm, keyLightDir), 0.0);
+    float fillDiff = max(dot(norm, fillLightDir), 0.0) * 0.25;
+    float ambient  = 0.15;
     
     // Base color
-    vec3 baseColor;
+    vec3 baseColor = materialColor;
     if (hasDiffuse > 0) {
-        baseColor = texture(diffuseMap, TexCoord).rgb * materialColor;
-    } else {
-        baseColor = materialColor;
+        baseColor *= texture(diffuseMap, TexCoord).rgb;
     }
     
-    // Rim
+    // Specular (Blinn-Phong) — same as thumbnail
+    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
+    float spec = 0.0;
+    if (shininess > 0.0) {
+        vec3 halfDir = normalize(keyLightDir + viewDir);
+        spec = pow(max(dot(norm, halfDir), 0.0), max(shininess, 1.0)) * specularIntensity;
+    }
+    
+    // Subtle rim light
     float rim = 1.0 - max(dot(norm, viewDir), 0.0);
-    rim = pow(rim, 3.5) * 0.15;
+    rim = pow(rim, 3.0) * 0.12;
     
-    vec3 result = baseColor * (ambient + diff1 + diff2) + vec3(spec + rim);
-    
-    // Apply gamma correction (approximate sRGB) for accurate colors
-    result = pow(result, vec3(1.0 / 2.2));
+    vec3 result = baseColor * (ambient + keyDiff * 0.7 + fillDiff) + vec3(spec + rim);
+    result = clamp(result, 0.0, 1.0);
     
     color = vec4(result, 1.0);
 }

@@ -68,6 +68,12 @@ public:
 	bool HasCustomMesh() const { return hasCustomMesh; }
 	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.Clear(); }
 
+	// Serialization helpers (track how the object was created)
+	void SetPrimitiveType(const std::string& type) { primitiveType = type; }
+	const std::string& GetPrimitiveType() const { return primitiveType; }
+	void SetModelSourcePath(const std::string& path) { modelSourcePath = path; }
+	const std::string& GetModelSourcePath() const { return modelSourcePath; }
+
 	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
 	
 	void SetDirty(); // Dirties this and all children recursively
@@ -91,6 +97,10 @@ private:
 	// Persistent mesh data for procedural generation
 	MeshData cpuMeshData;
 	bool hasCustomMesh = false;
+
+	// Serialization: track creation source
+	std::string primitiveType;    // "Plane", "Cube", "Sphere", "Empty", or ""
+	std::string modelSourcePath;  // File path for model-based objects
 
 	// CPU Caching for Performance
 	glm::mat4 cachedWorldMatrix = glm::mat4(1.0f);

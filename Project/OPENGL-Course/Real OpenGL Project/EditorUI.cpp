@@ -11,6 +11,7 @@
 #include "ScatterNode.h"
 #include "MergeMeshNode.h"
 #include "OutputNode.h"
+#include "SceneSerializer.h"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -242,9 +243,28 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("New Scene")) { /* TODO */ }
-			if (ImGui::MenuItem("Save Scene", "Ctrl+S")) { /* TODO */ }
-			if (ImGui::MenuItem("Load Scene", "Ctrl+L")) { /* TODO */ }
+			if (ImGui::MenuItem("New Scene"))
+			{
+				pendingSceneAction = SceneAction::New;
+			}
+			if (ImGui::MenuItem("Save Scene"))
+			{
+				std::string path = SceneSerializer::SaveFileDialog();
+				if (!path.empty())
+				{
+					pendingSceneAction = SceneAction::Save;
+					pendingScenePath = path;
+				}
+			}
+			if (ImGui::MenuItem("Load Scene"))
+			{
+				std::string path = SceneSerializer::OpenFileDialog();
+				if (!path.empty())
+				{
+					pendingSceneAction = SceneAction::Load;
+					pendingScenePath = path;
+				}
+			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit", "Alt+F4")) { glfwSetWindowShouldClose(glfwGetCurrentContext(), true); }
 			ImGui::EndMenu();

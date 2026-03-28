@@ -16,6 +16,7 @@
 #include "PrimitiveGenerator.h"
 #include "AssetManager.h"
 #include "AllOperations.h"
+#include "SceneSerializer.h"
 
 Application::Application()
 	: pointLightCount(0), spotLightCount(0),
@@ -116,6 +117,7 @@ void Application::SetupScene()
 	plane->SetMesh(PrimitiveGenerator::CreatePlane());
 	plane->SetTexture(&plainTexture);
 	plane->SetMaterial(&plainMaterial);
+	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
 
 	// Create Directional Light
@@ -199,6 +201,32 @@ void Application::Run()
 		
 		// 1. Render Top Bar first
 		editorUI.RenderMainMenuBar(sceneManager, nodeGraph);
+
+		// Handle pending scene file actions
+		auto sceneAction = editorUI.GetPendingSceneAction();
+		if (sceneAction != EditorUI::SceneAction::None)
+		{
+			if (sceneAction == EditorUI::SceneAction::Save)
+			{
+				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager);
+			}
+			else if (sceneAction == EditorUI::SceneAction::Load)
+			{
+				nodeGraph.Clear();
+				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
+					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
+					&plainTexture, &plainMaterial);
+			}
+			else if (sceneAction == EditorUI::SceneAction::New)
+			{
+				nodeGraph.Clear();
+				sceneManager.Clear();
+				pointLightCount = 0;
+				spotLightCount = 0;
+				SetupScene();
+			}
+			editorUI.ClearPendingSceneAction();
+		}
 
 		EditorUI::WindowState& uiState = editorUI.GetWindowState();
 
