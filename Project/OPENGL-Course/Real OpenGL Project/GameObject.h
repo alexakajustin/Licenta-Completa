@@ -108,6 +108,10 @@ private:
 	// Persistent mesh data for procedural generation
 	std::shared_ptr<MeshData> cpuMeshData;
 	bool hasCustomMesh = false;
+	// Cached bounds for custom CPU mesh data
+	glm::vec3 customMeshMin = glm::vec3(0.0f);
+	glm::vec3 customMeshMax = glm::vec3(0.0f);
+	bool customBoundsDirty = true;
 
 	// Serialization: track creation source
 	std::string primitiveType;    // "Plane", "Cube", "Sphere", "Empty", or ""

@@ -360,6 +360,9 @@ void GameObject::SetCPUMeshData(const MeshData& data)
 	// Store a unique copy (standard behavior)
 	cpuMeshData = std::make_shared<MeshData>(data);
 	hasCustomMesh = true;
+	// Compute bounds once and cache them
+	cpuMeshData->GetBounds(customMeshMin, customMeshMax);
+	customBoundsDirty = false;
 	SetDirty();
 }
 
@@ -368,6 +371,12 @@ void GameObject::SetCPUMeshData(std::shared_ptr<MeshData> data)
 	// Store a shared reference (memory efficient)
 	cpuMeshData = data;
 	hasCustomMesh = (cpuMeshData != nullptr);
+	if (hasCustomMesh) {
+		cpuMeshData->GetBounds(customMeshMin, customMeshMax);
+		customBoundsDirty = false;
+	} else {
+		customBoundsDirty = true;
+	}
 	SetDirty();
 }
 
@@ -401,6 +410,17 @@ void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)
 	if (model && !hasCustomMesh) {
 		localMin = model->GetMinBound();
 		localMax = model->GetMaxBound();
+	}
+	else if (hasCustomMesh) {
+		if (customBoundsDirty) {
+			// Recompute bounds if mesh data changed
+			if (cpuMeshData) {
+				cpuMeshData->GetBounds(customMeshMin, customMeshMax);
+			}
+			customBoundsDirty = false;
+		}
+		localMin = customMeshMin;
+		localMax = customMeshMax;
 	}
 	else if (mesh) {
 		mesh->GetBounds(localMin, localMax);
