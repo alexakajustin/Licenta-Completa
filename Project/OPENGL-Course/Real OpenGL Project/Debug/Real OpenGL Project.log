@@ -1,2 +1,11 @@
-﻿  GameObject.cpp
+﻿  EditorUI.cpp
+  Renderer.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Renderer.cpp')
+  
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
+  (compiling source file 'Renderer.cpp')
+  
+  SceneManager.cpp
+  Generating Code...
   Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

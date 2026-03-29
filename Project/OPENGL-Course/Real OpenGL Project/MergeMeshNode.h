@@ -47,5 +47,11 @@ public:
 		std::string target = inputs[1].data.sourceObjectName;
 		if (target == "(none)") target = inputs[0].data.sourceObjectName;
 		outputs[0].data.sourceObjectName = target;
+
+		PinData& prefSrc = (target == inputs[1].data.sourceObjectName) ? inputs[1].data : inputs[0].data;
+		outputs[0].data.sourceMaterial = prefSrc.sourceMaterial;
+		outputs[0].data.sourceTexture = prefSrc.sourceTexture;
+		outputs[0].data.sourceNormalMap = prefSrc.sourceNormalMap;
+		outputs[0].data.textureLayers = prefSrc.textureLayers;
 	}
 };

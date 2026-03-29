@@ -237,6 +237,7 @@ void SceneInputNode::Execute(SceneManager& scene)
 			outputs[0].data.sourceMaterial = obj->GetMaterial();
 			outputs[0].data.sourceTexture = obj->GetTexture();
 			outputs[0].data.sourceNormalMap = obj->GetNormalMap();
+			outputs[0].data.textureLayers = obj->GetTextureLayers();
 		} else {
 			// WE SURVIVED VIA FALLBACK: Recreate all visual properties from cache
 			if (!fallbackTexture && !cachedTexturePath.empty()) {

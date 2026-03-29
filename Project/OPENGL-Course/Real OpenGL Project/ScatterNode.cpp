@@ -440,11 +440,16 @@ void ScatterNode::Execute(SceneManager& scene)
 	outputs[1].data.sourceMaterial = inputs[1].data.sourceMaterial;
 	outputs[1].data.sourceTexture = inputs[1].data.sourceTexture;
 	outputs[1].data.sourceNormalMap = inputs[1].data.sourceNormalMap;
+	outputs[1].data.textureLayers = inputs[1].data.textureLayers;
 
-	// Also propagate to Combined output for consistency
-	outputs[0].data.sourceMaterial = inputs[1].data.sourceMaterial;
-	outputs[0].data.sourceTexture = inputs[1].data.sourceTexture;
-	outputs[0].data.sourceNormalMap = inputs[1].data.sourceNormalMap;
+	// Combined output represents the full terrain surface visually:
+	// - Material/texture/normal come from the SURFACE (inputs[0]) so the terrain renders correctly.
+	// - Texture layers come from the SURFACE (inputs[0]) for the same reason.
+	// The Instances-Only output already has the object's layers (set above).
+	outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
+	outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
+	outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
+	outputs[0].data.textureLayers = inputs[0].data.textureLayers;
   }
   catch (const std::exception& e) {
 	printf("[ScatterNode] Execution failed (Memory exhausted): %s\n", e.what());

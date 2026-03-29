@@ -175,7 +175,10 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 			}
 
 			if (visible) {
-				if (msh && !obj->GetModel() && msh->IsInstanced()) {
+				// Objects with texture layers MUST go through RenderSingle so their layers are bound correctly.
+				// The instanced-batch path has no layer binding, so it would render them as blank gray.
+				bool hasLayers = !obj->GetTextureLayers().empty();
+				if (msh && !obj->GetModel() && msh->IsInstanced() && !hasLayers) {
 					bool found = false;
 					// For primitive meshes, we still do simple linear search as there are usually very few unique primitives
 					for (auto& b : batchList) {
@@ -205,10 +208,19 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 		}
 	}
 
-	// 2. Render Batches
+	// 2. Render Batches (these have NO texture layers, cleared above)
 	glUniform1i(uniformUseInstancing, 1);
 	for (auto& b : batchList) {
 		if (b.matrices.empty()) continue;
+
+		// Reset texture layer count to 0 for batched objects — they never have layers (layer-objects took the RenderSingle path)
+		static GLint uLayerCountBatch = -1;
+		static GLuint lastShaderBatch = 0;
+		if (lastShaderBatch != (GLuint)shaderID) {
+			uLayerCountBatch = glGetUniformLocation(shaderID, "textureLayerCount");
+			lastShaderBatch = (GLuint)shaderID;
+		}
+		if (uLayerCountBatch != -1) glUniform1i(uLayerCountBatch, 0);
 
 		if (b.material) {
 			b.material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
@@ -220,7 +232,7 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 			glUniform2f(uniformOffset, 0.0f, 0.0f);
 		}
 
-		// 2. Apply texture overrides
+		// Apply texture overrides
 		if (b.texture) {
 			glUniform1i(uniformUseDiffuseTexture, 1);
 			glUniform1i(glGetUniformLocation(shaderID, "theTexture"), 0); 
@@ -229,7 +241,7 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
-		// 3. Apply normal map overrides
+		// Apply normal map overrides
 		if (b.normalMap) {
 			glUniform1i(uniformUseNormalMap, 1);
 			glUniform1i(glGetUniformLocation(shaderID, "normalMap"), 1);

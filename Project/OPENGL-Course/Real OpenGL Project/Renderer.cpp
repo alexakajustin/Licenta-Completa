@@ -113,6 +113,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	// Main shader
 	mainShader.UseShader();
 
+	// Safe defaults: ensure textureLayerCount=0 at frame start so the vertex shader
+	// never reads stale state before any object has overridden it.
+	GLint layerCountLoc = glGetUniformLocation(mainShader.GetShaderID(), "textureLayerCount");
+	if (layerCountLoc != -1) glUniform1i(layerCountLoc, 0);
+
 	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(view));
 	glUniform3f(uniformEyePosition, cameraPos.x, cameraPos.y, cameraPos.z);

@@ -2201,6 +2201,9 @@
     <ClInclude Include="SceneSerializer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TextureLayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icons\Light.png">

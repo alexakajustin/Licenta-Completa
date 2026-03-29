@@ -55,6 +55,10 @@ public:
 		outputs[0].data.Clear();
 		outputs[0].data.type = PinDataType::Mesh;
 		outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName;
+		outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
+		outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
+		outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
+		outputs[0].data.textureLayers = inputs[0].data.textureLayers;
 
 		if (inputs[0].data.type != PinDataType::Mesh) return;
 

@@ -337,6 +337,11 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						if (!targetParent) { targetParent = new GameObject(groupName); scene.AddObject(targetParent); }
 					}
 
+					// Per-batch temporaries for mesh/material sharing (NOT static — reset each Execute).
+					std::shared_ptr<MeshData> sharedInputMesh = nullptr;
+					MeshData* lastSource = nullptr;
+					Material* groupMat = nullptr;
+
 					std::vector<std::string> newSpawned;
 					for (int i = 0; i < (int)transforms.size(); i++)
 					{
@@ -381,25 +386,21 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						}
 						obj->SetMesh(meshCache[dataKey]);
 						
-						// Optimized: Share CPU Mesh Memory
-						static std::shared_ptr<MeshData> sharedInputMesh = nullptr;
-						static MeshData* lastSource = nullptr;
-
+						// Optimized: Share CPU Mesh Memory across instances of the same source mesh.
+						// NOTE: NOT static — must be reset each Execute() call to avoid stale pointers.
 						if (lastSource != targetData) {
 							sharedInputMesh = std::make_shared<MeshData>(*targetData);
 							lastSource = targetData;
 						}
 						obj->SetCPUMeshData(sharedInputMesh);
-						
+
 						// --- Material Handling ---
+						// Priority: sourceMaterial from object input > a fresh default material (if textures exist) > scene defaultMat.
 						Material* finalMat = instancesPin.data.sourceMaterial;
 						if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap))
 						{
-							// Create a shared material for this group if none exists
-							static Material* groupMat = nullptr;
-							if (!groupMat || groupMat->GetColor() != glm::vec3(1,1,1)) {
-								groupMat = new Material(0.1f, 32.0f);
-							}
+							// Create a fresh unique material per scatter group (NOT static — avoids stale/leaked materials).
+							if (i == 0) groupMat = new Material(0.1f, 32.0f); // Only allocate once per scatter batch
 							finalMat = groupMat;
 						}
 
@@ -410,6 +411,13 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						else if (defaultTex) obj->SetTexture(defaultTex);
 
 						if (instancesPin.data.sourceNormalMap) obj->SetNormalMap(instancesPin.data.sourceNormalMap);
+
+						// Apply texture layers from the scatter OBJECT (inputs[1]), not the surface.
+						// These were already filtered to inputs[1] in ScatterNode::Execute().
+						for (const auto& layer : instancesPin.data.textureLayers)
+						{
+							obj->AddTextureLayer(layer);
+						}
 
 						scene.AddObject(obj);
 						newSpawned.push_back(name);
@@ -504,16 +512,20 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						printf("Branched new unique mesh for object: %s\n", target->GetName().c_str());
 					}
 
-					// Inherit visual properties
-					if (meshInput.data.sourceMaterial) target->SetMaterial(meshInput.data.sourceMaterial);
-					else if (!target->GetMaterial() && (meshInput.data.sourceTexture || meshInput.data.sourceNormalMap))
-					{
-						// Create a default material if none exists but textures do
-						target->SetMaterial(new Material(0.1f, 32.0f));
-					}
+					// Inherit visual properties from the pipeline ONLY if this target has none set yet.
+					// Existing material/texture/layers set via the Inspector are NEVER overwritten by the
+					// node pipeline — they are authoritative user data.
+					if (meshInput.data.sourceMaterial && !target->GetMaterial())
+						target->SetMaterial(meshInput.data.sourceMaterial);
 
-					if (meshInput.data.sourceTexture) target->SetTexture(meshInput.data.sourceTexture);
-					if (meshInput.data.sourceNormalMap) target->SetNormalMap(meshInput.data.sourceNormalMap);
+					if (meshInput.data.sourceTexture && !target->GetTexture())
+						target->SetTexture(meshInput.data.sourceTexture);
+					if (meshInput.data.sourceNormalMap && !target->GetNormalMap())
+						target->SetNormalMap(meshInput.data.sourceNormalMap);
+
+					// IMPORTANT: Texture layers are NEVER copied from pin data to the target object.
+					// Layers are managed exclusively through the Inspector UI per-object.
+					// Copying them here caused terrain layers to bleed into scatter instances and vice versa.
 				}
 			}
 		}

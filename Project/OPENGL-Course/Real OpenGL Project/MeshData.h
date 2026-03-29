@@ -8,6 +8,7 @@
 
 class Material;
 class Texture;
+#include "TextureLayer.h"
 
 // ========== Transform Data ==========
 struct TransformData
@@ -217,6 +218,7 @@ struct PinData
 	Material* sourceMaterial = nullptr;
 	Texture* sourceTexture = nullptr;
 	Texture* sourceNormalMap = nullptr;
+	std::vector<TextureLayer> textureLayers;
 
 	// Scalar values for new pin types
 	float floatValue = 0.0f;
@@ -235,6 +237,7 @@ struct PinData
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
+		textureLayers.clear();
 		floatValue = 0.0f;
 		intValue = 0;
 		vec3Value = glm::vec3(0.0f);
@@ -253,6 +256,7 @@ struct PinData
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
+		std::vector<TextureLayer>().swap(textureLayers);
 		floatValue = 0.0f;
 		intValue = 0;
 		vec3Value = glm::vec3(0.0f);

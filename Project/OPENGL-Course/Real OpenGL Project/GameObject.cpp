@@ -245,10 +245,23 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 					layer.texture->UseTextureOnUnit(GL_TEXTURE0 + diffuseUnits[i]);
 					glUniform1i(uLayerSamplers[i], diffuseUnits[i]);
 				}
+				else
+				{
+					glActiveTexture(GL_TEXTURE0 + diffuseUnits[i]);
+					glBindTexture(GL_TEXTURE_2D, 0);
+					glUniform1i(uLayerSamplers[i], diffuseUnits[i]);
+				}
+
 				bool hasNorm = (layer.normalMap != nullptr);
 				if (hasNorm)
 				{
 					layer.normalMap->UseTextureOnUnit(GL_TEXTURE0 + normalUnits[i]);
+					glUniform1i(uLayerNormalSamplers[i], normalUnits[i]);
+				}
+				else
+				{
+					glActiveTexture(GL_TEXTURE0 + normalUnits[i]);
+					glBindTexture(GL_TEXTURE_2D, 0);
 					glUniform1i(uLayerNormalSamplers[i], normalUnits[i]);
 				}
 

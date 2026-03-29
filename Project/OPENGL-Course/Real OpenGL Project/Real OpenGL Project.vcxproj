@@ -931,6 +931,7 @@
     <ClInclude Include="SpotLight.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="TextureLayer.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="NodeGraph.h" />

@@ -172,6 +172,7 @@ void CustomNode::MapInputsToContext(OperationContext& ctx)
 				ctx.sourceMaterial = data.sourceMaterial;
 				ctx.sourceTexture = data.sourceTexture;
 				ctx.sourceNormalMap = data.sourceNormalMap;
+				ctx.textureLayers = data.textureLayers;
 			}
 			else
 			{
@@ -232,6 +233,7 @@ void CustomNode::MapContextToOutputs(OperationContext& ctx)
 			data.sourceMaterial = ctx.sourceMaterial;
 			data.sourceTexture = ctx.sourceTexture;
 			data.sourceNormalMap = ctx.sourceNormalMap;
+			data.textureLayers = ctx.textureLayers;
 			break;
 
 		case PinDataType::Float:

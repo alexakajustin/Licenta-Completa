@@ -919,20 +919,32 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 						mat->SetColor(matCol);
 					}
 
-					glm::vec2 tiling = mat->GetTiling();
-					if (ImGui::DragFloat2("Tiling", &tiling.x, 0.1f, 0.01f, 100.0f)) {
-						mat->SetTiling(tiling);
-					}
-
-					glm::vec2 offset = mat->GetOffset();
-					if (ImGui::DragFloat2("Offset", &offset.x, 0.01f)) {
-						mat->SetOffset(offset);
+					// Tiling / Offset: only meaningful for the legacy single-texture path.
+					// When Texture Layers are active the vertex shader bypasses material.tiling entirely,
+					// and each layer has its own Tiling field. Hide these to avoid confusion.
+					bool hasLayersForTiling = !selected->GetTextureLayers().empty();
+					if (hasLayersForTiling) {
+						// Silently reset to neutral so the value never leaks into the shader.
+						if (mat->GetTiling() != glm::vec2(1.0f)) mat->SetTiling(glm::vec2(1.0f));
+						if (mat->GetOffset() != glm::vec2(0.0f)) mat->SetOffset(glm::vec2(0.0f));
+						ImGui::TextDisabled("Tiling: handled per Texture Layer");
+					} else {
+						glm::vec2 tiling = mat->GetTiling();
+						if (ImGui::DragFloat2("Tiling", &tiling.x, 0.1f, 0.01f, 100.0f)) {
+							mat->SetTiling(tiling);
+						}
+						glm::vec2 offset = mat->GetOffset();
+						if (ImGui::DragFloat2("Offset", &offset.x, 0.01f)) {
+							mat->SetOffset(offset);
+						}
 					}
 					
 					// Live preview sphere (use first layer's textures if available)
+					// Read tiling/offset directly from mat — the scoped variables above may not be in scope here
+					// (if layers are active, tiling was reset to (1,1) already by the layer path above)
 					Texture* previewDiff = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture();
 					Texture* previewNorm = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].normalMap : selected->GetNormalMap();
-					RenderMaterialPreview(specular, shininess, matCol, previewDiff, previewNorm, tiling, offset);
+					RenderMaterialPreview(specular, shininess, matCol, previewDiff, previewNorm, mat->GetTiling(), mat->GetOffset());
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
 					}

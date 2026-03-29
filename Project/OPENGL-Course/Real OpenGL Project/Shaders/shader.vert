@@ -38,6 +38,7 @@ struct Material {
 uniform int useDiffuseTexture;
 uniform int useNormalMap;
 uniform Material material;
+uniform int textureLayerCount;  // Passed in so vertex shader can skip material tiling when layers are active
 
 
 void main()
@@ -52,7 +53,13 @@ void main()
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	
-	TexCoord = tex * material.tiling + material.offset;
+	// When texture layers are active, each layer applies its own tiling in the fragment shader.
+	// Applying material.tiling here too would double-tile. Skip it when layers are in use.
+	if (textureLayerCount > 0) {
+		TexCoord = tex; // raw UVs — layers compute 'tex * layerData[i].tiling' themselves
+	} else {
+		TexCoord = tex * material.tiling + material.offset; // legacy single-texture path
+	}
 	
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;
 	

@@ -180,6 +180,7 @@ struct OperationContext
 	Material* sourceMaterial = nullptr;
 	Texture* sourceTexture = nullptr;
 	Texture* sourceNormalMap = nullptr;
+	std::vector<TextureLayer> textureLayers;
 
 	// Utility: check if a vertex is selected (empty selection = all selected)
 	bool IsVertexSelected(int index) const
@@ -212,6 +213,7 @@ struct OperationContext
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
+		textureLayers.clear();
 	}
 };
 
