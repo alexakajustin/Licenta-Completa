@@ -41,6 +41,8 @@ private:
 
 	std::string cachedTexturePath = "";
 	std::string cachedNormalMapPath = "";
+	
+	std::vector<TextureLayer> cachedTextureLayers;
 
 	bool hasCachedMaterial = false;
 	float cachedMatSpecular = 0.5f;
@@ -54,5 +56,9 @@ private:
 	Texture* fallbackNormalMap = nullptr;
 	Material* fallbackMaterial = nullptr;
 	
+	std::vector<Texture*> fallbackLayersTextures;
+	std::vector<Texture*> fallbackLayersNormals;
+
 	~SceneInputNode(); // Need destructor to clean up fallback memory
+	void CleanupFallbacks();
 };

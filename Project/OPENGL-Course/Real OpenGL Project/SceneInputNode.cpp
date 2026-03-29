@@ -16,9 +16,20 @@ SceneInputNode::SceneInputNode(NodeGraph& graph)
 
 SceneInputNode::~SceneInputNode()
 {
-	if (fallbackTexture) delete fallbackTexture;
-	if (fallbackNormalMap) delete fallbackNormalMap;
-	if (fallbackMaterial) delete fallbackMaterial;
+	CleanupFallbacks();
+}
+
+void SceneInputNode::CleanupFallbacks()
+{
+	if (fallbackTexture) { delete fallbackTexture; fallbackTexture = nullptr; }
+	if (fallbackNormalMap) { delete fallbackNormalMap; fallbackNormalMap = nullptr; }
+	if (fallbackMaterial) { delete fallbackMaterial; fallbackMaterial = nullptr; }
+
+	for (auto* t : fallbackLayersTextures) if (t) delete t;
+	fallbackLayersTextures.clear();
+
+	for (auto* n : fallbackLayersNormals) if (n) delete n;
+	fallbackLayersNormals.clear();
 }
 
 void SceneInputNode::RenderContent(SceneManager* scene)
@@ -56,6 +67,25 @@ json SceneInputNode::Serialize() const
 	j["cachedTexturePath"] = cachedTexturePath;
 	j["cachedNormalMapPath"] = cachedNormalMapPath;
 	
+	// Cache Texture Layers
+	json layersArray = json::array();
+	for (const auto& layer : cachedTextureLayers)
+	{
+		json lj;
+		lj["texturePath"] = layer.texturePath;
+		lj["normalMapPath"] = layer.normalMapPath;
+		lj["blendMode"] = (int)layer.blendMode;
+		lj["opacity"] = layer.opacity;
+		lj["tiling"] = layer.tiling;
+		lj["heightMin"] = layer.heightMin;
+		lj["heightMax"] = layer.heightMax;
+		lj["slopeMin"] = layer.slopeMin;
+		lj["slopeMax"] = layer.slopeMax;
+		lj["invert"] = layer.invert;
+		layersArray.push_back(lj);
+	}
+	j["cachedTextureLayers"] = layersArray;
+
 	j["hasCachedMaterial"] = hasCachedMaterial;
 	if (hasCachedMaterial)
 	{
@@ -96,6 +126,26 @@ void SceneInputNode::Deserialize(const json& j)
 
 	cachedTexturePath = j.value("cachedTexturePath", "");
 	cachedNormalMapPath = j.value("cachedNormalMapPath", "");
+
+	cachedTextureLayers.clear();
+	if (j.contains("cachedTextureLayers"))
+	{
+		for (const auto& lj : j["cachedTextureLayers"])
+		{
+			TextureLayer layer;
+			layer.texturePath = lj.value("texturePath", "");
+			layer.normalMapPath = lj.value("normalMapPath", "");
+			layer.blendMode = (LayerBlendMode)lj.value("blendMode", 0);
+			layer.opacity = lj.value("opacity", 1.0f);
+			layer.tiling = lj.value("tiling", 1.0f);
+			layer.heightMin = lj.value("heightMin", 0.0f);
+			layer.heightMax = lj.value("heightMax", 100.0f);
+			layer.slopeMin = lj.value("slopeMin", 0.0f);
+			layer.slopeMax = lj.value("slopeMax", 0.5f);
+			layer.invert = lj.value("invert", false);
+			cachedTextureLayers.push_back(layer);
+		}
+	}
 
 	hasCachedMaterial = j.value("hasCachedMaterial", false);
 	if (hasCachedMaterial)
@@ -191,6 +241,9 @@ void SceneInputNode::Execute(SceneManager& scene)
 			Texture* norm = obj->GetNormalMap();
 			cachedNormalMapPath = (norm && norm->GetFileLocation()) ? norm->GetFileLocation() : "";
 
+			// Cache Layers
+			cachedTextureLayers = obj->GetTextureLayers();
+
 			Material* mat = obj->GetMaterial();
 			if (mat) {
 				hasCachedMaterial = true;
@@ -259,7 +312,41 @@ void SceneInputNode::Execute(SceneManager& scene)
 			outputs[0].data.sourceMaterial = fallbackMaterial;
 			outputs[0].data.sourceTexture = fallbackTexture;
 			outputs[0].data.sourceNormalMap = fallbackNormalMap;
+
+			// RECREATE LAYERS FROM CACHE
+			std::vector<TextureLayer> restoredLayers = cachedTextureLayers;
+			for (auto& layer : restoredLayers)
+			{
+				layer.texture = nullptr;
+				layer.normalMap = nullptr;
+
+				if (!layer.texturePath.empty())
+				{
+					Texture* tex = new Texture(layer.texturePath.c_str());
+					if (tex->LoadTextureA()) {
+						fallbackLayersTextures.push_back(tex);
+						layer.texture = tex;
+					} else {
+						delete tex;
+					}
+				}
+
+				if (!layer.normalMapPath.empty())
+				{
+					Texture* norm = new Texture(layer.normalMapPath.c_str());
+					if (norm->LoadTextureA()) {
+						fallbackLayersNormals.push_back(norm);
+						layer.normalMap = norm;
+					} else {
+						delete norm;
+					}
+				}
+			}
+			outputs[0].data.textureLayers = restoredLayers;
 		}
+
+		// CLEAR FALLBACKS ON SUCCESSFUL NEW RUN (Switching objects, etc.)
+		if (obj) CleanupFallbacks();
 
 		// Propagate transform data so downstream nodes can handle scale/restore
 		TransformData t;
