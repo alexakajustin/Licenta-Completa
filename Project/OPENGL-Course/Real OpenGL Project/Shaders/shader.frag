@@ -11,6 +11,9 @@ in vec3 TangentWorld;
 in vec3 BitangentWorld;
 in vec3 NormalWorld;
 
+// Object-space position for height-based layer blending
+in vec3 LocalPos;
+
 out vec4 colour;	
 
 const int MAX_POINT_LIGHTS = 3;
@@ -78,33 +81,58 @@ uniform Material material;
 // camera position
 uniform vec3 eyePosition;
 
-// Compute the effective normal: either from normal map or from vertex normal
+// ========== Texture Layers ==========
+const int MAX_TEXTURE_LAYERS = 4;
+
+struct TextureLayerData {
+	int blendMode;       // 0=Normal, 1=Height, 2=Slope, 3=HeightSlope
+	float opacity;
+	float tiling;
+	float heightMin;
+	float heightMax;
+	float slopeMin;
+	float slopeMax;
+	int invert;
+	int hasNormalMap;    // 1 if this layer has a normal map
+};
+
+uniform int textureLayerCount;
+uniform sampler2D textureLayers[MAX_TEXTURE_LAYERS];     // Diffuse samplers
+uniform sampler2D layerNormalMaps[MAX_TEXTURE_LAYERS];   // Normal map samplers
+uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
+
+// Global override normal: set by layer blending, used by lighting functions
+vec3 gBlendedNormal = vec3(0.0, 1.0, 0.0);
+bool gUseBlendedNormal = false;
+
+// Build the TBN matrix (reused by multiple functions)
+mat3 GetTBN()
+{
+	vec3 N = normalize(NormalWorld);
+	vec3 T = normalize(TangentWorld);
+	vec3 B = normalize(BitangentWorld);
+	T = normalize(T - dot(T, N) * N);
+	B = normalize(B - dot(B, N) * N - dot(B, T) * T);
+	return mat3(T, B, N);
+}
+
+// Transform a tangent-space normal map sample to world space
+vec3 TangentToWorld(vec3 tangentNormal, mat3 TBN)
+{
+	return normalize(TBN * tangentNormal);
+}
+
+// Compute the effective normal: from layer blending, single normal map, or vertex normal
 vec3 GetEffectiveNormal()
 {
+	// If layers already computed a blended normal, use it
+	if(gUseBlendedNormal) return gBlendedNormal;
+
 	if(useNormalMap == 1)
 	{
-		// Sample normal map and convert from [0,1] to [-1,1]
 		vec3 sampledNormal = texture(normalMap, TexCoord).rgb;
-		sampledNormal = sampledNormal * 2.0 - 1.0;
-
-		// Remapped normal must be normalized again to ensure it's a unit vector
-		sampledNormal = normalize(sampledNormal);
-
-		// Re-orthogonalize TBN matrix using Gram-Schmidt process
-		// We use the interpolated vectors from the vertex shader.
-		// Using the provided BitangentWorld instead of cross(N, T) preserves handedness/mirrored UVs.
-		vec3 N = normalize(NormalWorld);
-		vec3 T = normalize(TangentWorld);
-		vec3 B = normalize(BitangentWorld);
-
-		// Re-orthogonalize T and B to N
-		T = normalize(T - dot(T, N) * N);
-		B = normalize(B - dot(B, N) * N - dot(B, T) * T);
-		
-		mat3 TBN = mat3(T, B, N);
-
-		// Transform from tangent space to world space
-		return normalize(TBN * sampledNormal);
+		sampledNormal = normalize(sampledNormal * 2.0 - 1.0);
+		return TangentToWorld(sampledNormal, GetTBN());
 	}
 	else
 	{
@@ -283,18 +311,99 @@ vec3 CalcSpotLights()
 
 
 
+// ========== Texture Layer Blending ==========
+// Computes blended diffuse color AND blended normal from all active layers.
+// Sets gBlendedNormal/gUseBlendedNormal before lighting runs.
+void CalcLayeredSurface(out vec3 outColor)
+{
+	// Start with vertex normal (geometry normal for slope computation)
+	vec3 geometryNormal = normalize(Normal);
+	float slope = 1.0 - max(dot(geometryNormal, vec3(0.0, 1.0, 0.0)), 0.0);
+
+	mat3 TBN = GetTBN();
+	vec3 baseColor = material.baseColor;
+	vec3 blendedNorm = geometryNormal;
+	float totalWeight = 0.0;
+
+	for (int i = 0; i < textureLayerCount && i < MAX_TEXTURE_LAYERS; i++)
+	{
+		// Compute UVs
+		vec2 layerUV;
+		if (layerData[i].blendMode == 0) {
+			// Normal mode: use mesh UVs
+			layerUV = TexCoord * layerData[i].tiling;
+		} else {
+			// Terrain/Structured modes: use object-space XZ for tiling
+			layerUV = LocalPos.xz * layerData[i].tiling;
+		}
+
+		vec4 layerSample = texture(textureLayers[i], layerUV);
+
+		// Compute blend weight
+		float weight = 1.0;
+
+		if (layerData[i].blendMode == 1) {
+			// Height: hard cutoff at heightMin. heightMax adds optional transition width.
+			float range = max(layerData[i].heightMax - layerData[i].heightMin, 0.01);
+			weight = clamp((LocalPos.y - layerData[i].heightMin) / range, 0.0, 1.0);
+		}
+		else if (layerData[i].blendMode == 2) {
+			// Slope: hard cutoff at slopeMin with optional transition
+			float range = max(layerData[i].slopeMax - layerData[i].slopeMin, 0.001);
+			weight = clamp((slope - layerData[i].slopeMin) / range, 0.0, 1.0);
+		}
+		else if (layerData[i].blendMode == 3) {
+			// Height + Slope combined: both hard cutoffs
+			float hRange = max(layerData[i].heightMax - layerData[i].heightMin, 0.01);
+			float hWeight = clamp((LocalPos.y - layerData[i].heightMin) / hRange, 0.0, 1.0);
+			float sRange = max(layerData[i].slopeMax - layerData[i].slopeMin, 0.001);
+			float sWeight = clamp((slope - layerData[i].slopeMin) / sRange, 0.0, 1.0);
+			weight = hWeight * sWeight;
+		}
+
+		if (layerData[i].invert == 1) {
+			weight = 1.0 - weight;
+		}
+
+		weight *= layerData[i].opacity * layerSample.a;
+		weight = clamp(weight, 0.0, 1.0);
+
+		// Blend diffuse color
+		baseColor = mix(baseColor, layerSample.rgb, weight);
+
+		// Blend normal map if this layer has one
+		if (layerData[i].hasNormalMap == 1) {
+			vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
+			layerNorm = normalize(layerNorm * 2.0 - 1.0);
+			vec3 worldNorm = TangentToWorld(layerNorm, TBN);
+			blendedNorm = mix(blendedNorm, worldNorm, weight);
+		}
+	}
+
+	outColor = baseColor;
+	gBlendedNormal = normalize(blendedNorm);
+	gUseBlendedNormal = true;
+}
+
 void main()								         
-{									
+{
+	// 1. Compute surface color (and blended normal if layers active)
+	vec3 baseColor;
+
+	if (textureLayerCount > 0) {
+		// Layer system: computes color + blended normal BEFORE lighting
+		CalcLayeredSurface(baseColor);
+	} else {
+		// Legacy single-texture path (for models, old objects)
+		vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
+		baseColor = mix(material.baseColor, texColor.rgb, texColor.a);
+	}
+
+	// 2. Compute lighting (uses gBlendedNormal if layers set it)
 	vec3 finalLight = CalcDirectionalLight();
 	finalLight += CalcPointLights();
 	finalLight += CalcSpotLights();
-	
-	vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
-	
-	// DEBUG: Output TexCoords as color
-	// colour = vec4(TexCoord.x, TexCoord.y, 0.0, 1.0); return;
 
-	// Normal result
-	vec3 finalRGB = mix(material.baseColor, texColor.rgb, texColor.a) * finalLight;
-	colour = vec4(finalRGB, 1.0);          
+	// 3. Final output
+	colour = vec4(baseColor * finalLight, 1.0);
 }

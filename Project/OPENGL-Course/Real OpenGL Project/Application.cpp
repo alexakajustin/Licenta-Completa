@@ -118,8 +118,6 @@ void Application::SetupScene()
 	// Set position to 0, -500, 0
 	plane->GetTransform().SetPosition(glm::vec3(0.0f, -500.0f, 0.0f));
 	plane->SetMesh(PrimitiveGenerator::CreatePlane());
-	plane->SetTexture(&plainTexture);
-	plane->SetMaterial(&plainMaterial);
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
 

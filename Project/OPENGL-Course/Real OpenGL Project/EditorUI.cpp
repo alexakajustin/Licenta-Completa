@@ -406,7 +406,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 
 				// Boost parameters for cinematic rocky mountains
 				noise->SetRidged(true);
-				noise->SetAmplitude(500.0f);
+				noise->SetAmplitude(400.0f);
 				noise->SetFrequency(0.035f);
 				noise->SetOctaves(8);
 				
@@ -785,68 +785,116 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
 			}
 
-			// --- Textures (collapsible, with preview squares + drag-drop) ---
-			if (ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
+				// --- Texture Layers (collapsible) ---
+			if (ImGui::CollapsingHeader("Texture Layers", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				float squareSize = 64.0f;
+				auto& layers = selected->GetTextureLayers();
+				float slotSize = 48.0f;
+				int removeIdx = -1;
 
-				// Diffuse Map
-				ImGui::Text("Diffuse Map");
-				ImGui::SameLine(ImGui::GetContentRegionAvail().x - squareSize);
-				Texture* diffuse = selected->GetTexture();
-				if (diffuse && diffuse->GetTextureID() != 0) {
-					ImGui::Image((ImTextureID)(intptr_t)diffuse->GetTextureID(), ImVec2(squareSize, squareSize), ImVec2(0, 1), ImVec2(1, 0));
-				} else {
-					ImGui::Button("None##Diffuse", ImVec2(squareSize, squareSize));
-				}
-				// Drop texture onto diffuse slot
-				if (ImGui::BeginDragDropTarget()) {
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-						const char* pathStr = (const char*)payload->Data;
-						std::filesystem::path path(pathStr);
-						std::string ext = path.extension().string();
-						for (auto& c : ext) c = tolower(c);
-						if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
-							Texture* newTex = new Texture(pathStr);
-							if (newTex->LoadTextureA()) {
-								selected->SetTexture(newTex);
-								printf("Applied diffuse: %s\n", pathStr);
-							} else { delete newTex; }
-						}
+				for (int li = 0; li < (int)layers.size(); li++)
+				{
+					ImGui::PushID(li + 5000);
+					TextureLayer& layer = layers[li];
+
+					ImGui::Separator();
+					ImGui::Text("Layer %d", li);
+					ImGui::SameLine();
+					if (ImGui::SmallButton("X##RemoveLayer")) removeIdx = li;
+
+					// --- Diffuse slot ---
+					ImGui::Text("Diffuse");
+					ImGui::SameLine(70.0f);
+					Texture* layerTex = layer.texture;
+					if (layerTex && layerTex->GetTextureID() != 0) {
+						ImGui::Image((ImTextureID)(intptr_t)layerTex->GetTextureID(), ImVec2(slotSize, slotSize), ImVec2(0, 1), ImVec2(1, 0));
+					} else {
+						ImGui::Button("None##D", ImVec2(slotSize, slotSize));
 					}
-					ImGui::EndDragDropTarget();
-				}
-				if (diffuse) { ImGui::SameLine(); if (ImGui::SmallButton("X##ClearDiffuse")) selected->SetTexture(nullptr); }
-
-				ImGui::Spacing();
-
-				// Normal Map
-				ImGui::Text("Normal Map");
-				ImGui::SameLine(ImGui::GetContentRegionAvail().x - squareSize);
-				Texture* normal = selected->GetNormalMap();
-				if (normal && normal->GetTextureID() != 0) {
-					ImGui::Image((ImTextureID)(intptr_t)normal->GetTextureID(), ImVec2(squareSize, squareSize), ImVec2(0, 1), ImVec2(1, 0));
-				} else {
-					ImGui::Button("None##Normal", ImVec2(squareSize, squareSize));
-				}
-				// Drop texture onto normal slot
-				if (ImGui::BeginDragDropTarget()) {
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
-						const char* pathStr = (const char*)payload->Data;
-						std::filesystem::path path(pathStr);
-						std::string ext = path.extension().string();
-						for (auto& c : ext) c = tolower(c);
-						if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
-							Texture* newTex = new Texture(pathStr);
-							if (newTex->LoadTextureA()) {
-								selected->SetNormalMap(newTex);
-								printf("Applied normal map: %s\n", pathStr);
-							} else { delete newTex; }
+					if (ImGui::BeginDragDropTarget()) {
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+							const char* pathStr = (const char*)payload->Data;
+							std::filesystem::path path(pathStr);
+							std::string ext = path.extension().string();
+							for (auto& c : ext) c = tolower(c);
+							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								Texture* newTex = new Texture(pathStr);
+								if (newTex->LoadTextureA()) {
+									layer.texture = newTex;
+									layer.texturePath = pathStr;
+								} else { delete newTex; }
+							}
 						}
+						ImGui::EndDragDropTarget();
 					}
-					ImGui::EndDragDropTarget();
+					if (layerTex) { ImGui::SameLine(); if (ImGui::SmallButton("X##CD")) { layer.texture = nullptr; layer.texturePath = ""; } }
+
+					// --- Normal map slot ---
+					ImGui::Text("Normal");
+					ImGui::SameLine(70.0f);
+					Texture* layerNorm = layer.normalMap;
+					if (layerNorm && layerNorm->GetTextureID() != 0) {
+						ImGui::Image((ImTextureID)(intptr_t)layerNorm->GetTextureID(), ImVec2(slotSize, slotSize), ImVec2(0, 1), ImVec2(1, 0));
+					} else {
+						ImGui::Button("None##N", ImVec2(slotSize, slotSize));
+					}
+					if (ImGui::BeginDragDropTarget()) {
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+							const char* pathStr = (const char*)payload->Data;
+							std::filesystem::path path(pathStr);
+							std::string ext = path.extension().string();
+							for (auto& c : ext) c = tolower(c);
+							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								Texture* newTex = new Texture(pathStr);
+								if (newTex->LoadTextureA()) {
+									layer.normalMap = newTex;
+									layer.normalMapPath = pathStr;
+								} else { delete newTex; }
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+					if (layerNorm) { ImGui::SameLine(); if (ImGui::SmallButton("X##CN")) { layer.normalMap = nullptr; layer.normalMapPath = ""; } }
+
+					// Blend mode dropdown
+					const char* blendModes[] = { "Normal", "Height", "Slope", "Height+Slope" };
+					int currentMode = (int)layer.blendMode;
+					ImGui::PushItemWidth(120.0f);
+					if (ImGui::Combo("Blend", &currentMode, blendModes, IM_ARRAYSIZE(blendModes))) {
+						layer.blendMode = (LayerBlendMode)currentMode;
+					}
+
+					ImGui::DragFloat("Opacity", &layer.opacity, 0.01f, 0.0f, 1.0f);
+					ImGui::DragFloat("Tiling", &layer.tiling, 0.1f, 0.01f, 100.0f);
+
+					if (layer.blendMode == LayerBlendMode::Height || layer.blendMode == LayerBlendMode::HeightSlope) {
+						ImGui::DragFloat("Height Min", &layer.heightMin, 1.0f, -1000.0f, 10000.0f);
+						ImGui::DragFloat("Height Max", &layer.heightMax, 1.0f, -1000.0f, 10000.0f);
+					}
+					if (layer.blendMode == LayerBlendMode::Slope || layer.blendMode == LayerBlendMode::HeightSlope) {
+						ImGui::DragFloat("Slope Min", &layer.slopeMin, 0.01f, 0.0f, 1.0f);
+						ImGui::DragFloat("Slope Max", &layer.slopeMax, 0.01f, 0.0f, 1.0f);
+					}
+
+					ImGui::Checkbox("Invert", &layer.invert);
+					ImGui::PopItemWidth();
+
+					ImGui::PopID();
 				}
-				if (normal) { ImGui::SameLine(); if (ImGui::SmallButton("X##ClearNormal")) selected->SetNormalMap(nullptr); }
+
+				if (removeIdx >= 0) {
+					selected->RemoveTextureLayer(removeIdx);
+				}
+
+				ImGui::Separator();
+				if ((int)layers.size() < MAX_TEXTURE_LAYERS) {
+					if (ImGui::Button("+ Add Layer")) {
+						TextureLayer newLayer;
+						selected->AddTextureLayer(newLayer);
+					}
+				} else {
+					ImGui::TextDisabled("Max %d layers", MAX_TEXTURE_LAYERS);
+				}
 			}
 
 			// --- Material (collapsible, with preview sphere) ---
@@ -881,8 +929,10 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 						mat->SetOffset(offset);
 					}
 					
-					// Live preview sphere
-					RenderMaterialPreview(specular, shininess, matCol, selected->GetTexture(), selected->GetNormalMap(), tiling, offset);
+					// Live preview sphere (use first layer's textures if available)
+					Texture* previewDiff = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture();
+					Texture* previewNorm = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].normalMap : selected->GetNormalMap();
+					RenderMaterialPreview(specular, shininess, matCol, previewDiff, previewNorm, tiling, offset);
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
 					}

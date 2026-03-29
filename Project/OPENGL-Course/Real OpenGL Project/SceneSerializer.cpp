@@ -7,6 +7,7 @@
 #include "SpotLight.h"
 #include "Texture.h"
 #include "Material.h"
+#include "TextureLayer.h"
 #include "PrimitiveGenerator.h"
 #include "AssetManager.h"
 #include "CommonValues.h"
@@ -153,6 +154,28 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 				meshToAssetId[dataPtr] = newId;
 			}
 			objJson["meshAssetId"] = meshToAssetId[dataPtr];
+		}
+
+		// Texture Layers
+		if (!obj->GetTextureLayers().empty())
+		{
+			json layersArray = json::array();
+			for (const auto& layer : obj->GetTextureLayers())
+			{
+				json layerJson;
+				layerJson["texturePath"] = layer.texturePath;
+				layerJson["normalMapPath"] = layer.normalMapPath;
+				layerJson["blendMode"] = (int)layer.blendMode;
+				layerJson["opacity"] = layer.opacity;
+				layerJson["tiling"] = layer.tiling;
+				layerJson["heightMin"] = layer.heightMin;
+				layerJson["heightMax"] = layer.heightMax;
+				layerJson["slopeMin"] = layer.slopeMin;
+				layerJson["slopeMax"] = layer.slopeMax;
+				layerJson["invert"] = layer.invert;
+				layersArray.push_back(layerJson);
+			}
+			objJson["textureLayers"] = layersArray;
 		}
 
 		objectsArray.push_back(objJson);
@@ -413,6 +436,49 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				}
 
 				obj->SetMaterial(mat);
+			}
+
+			// Texture Layers
+			if (objJson.contains("textureLayers"))
+			{
+				for (const auto& layerJson : objJson["textureLayers"])
+				{
+					TextureLayer layer;
+					layer.texturePath = layerJson.value("texturePath", "");
+					layer.normalMapPath = layerJson.value("normalMapPath", "");
+					layer.blendMode = (LayerBlendMode)layerJson.value("blendMode", 0);
+					layer.opacity = layerJson.value("opacity", 1.0f);
+					layer.tiling = layerJson.value("tiling", 1.0f);
+					layer.heightMin = layerJson.value("heightMin", 0.0f);
+					layer.heightMax = layerJson.value("heightMax", 100.0f);
+					layer.slopeMin = layerJson.value("slopeMin", 0.0f);
+					layer.slopeMax = layerJson.value("slopeMax", 0.5f);
+					layer.invert = layerJson.value("invert", false);
+
+					if (!layer.texturePath.empty())
+					{
+						Texture* tex = new Texture(layer.texturePath.c_str());
+						if (tex->LoadTextureA()) {
+							layer.texture = tex;
+						} else {
+							printf("[SceneSerializer] Warning: Failed to load layer texture: %s\n", layer.texturePath.c_str());
+							delete tex;
+						}
+					}
+
+					if (!layer.normalMapPath.empty())
+					{
+						Texture* norm = new Texture(layer.normalMapPath.c_str());
+						if (norm->LoadTextureA()) {
+							layer.normalMap = norm;
+						} else {
+							printf("[SceneSerializer] Warning: Failed to load layer normal map: %s\n", layer.normalMapPath.c_str());
+							delete norm;
+						}
+					}
+
+					obj->AddTextureLayer(layer);
+				}
 			}
 
 			scene.AddObject(obj);

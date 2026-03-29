@@ -147,6 +147,12 @@ void Texture::UseNormalMap()
 	glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
+void Texture::UseTextureOnUnit(GLenum unit)
+{
+	glActiveTexture(unit);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+}
+
 Texture::~Texture()
 {
 	ClearTexture();

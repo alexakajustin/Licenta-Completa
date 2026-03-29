@@ -161,7 +161,8 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 }
 
 void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
-	GLint uniformTiling, GLint uniformOffset, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap)
+	GLint uniformTiling, GLint uniformOffset, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+	GLuint shaderID)
 {
 	if (!mesh && !model) return;
 
@@ -182,6 +183,99 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		glUniform2f(uniformOffset, 0.0f, 0.0f);
 	}
 
+	// ========== Texture Layers Configuration (Must happen BEFORE draw calls) ==========
+	if (shaderID != 0)
+	{
+		if (!textureLayers.empty())
+		{
+			// Cache uniform locations (done once per shader program)
+			static GLuint cachedShaderID = 0;
+			static GLint uLayerCount = -1;
+			static GLint uLayerSamplers[MAX_TEXTURE_LAYERS];
+			static GLint uLayerNormalSamplers[MAX_TEXTURE_LAYERS];
+			static struct {
+				GLint blendMode, opacity, tiling, heightMin, heightMax, slopeMin, slopeMax, invert, hasNormalMap;
+			} uLayer[MAX_TEXTURE_LAYERS];
+
+			if (cachedShaderID != shaderID)
+			{
+				cachedShaderID = shaderID;
+				uLayerCount = glGetUniformLocation(shaderID, "textureLayerCount");
+				for (int i = 0; i < MAX_TEXTURE_LAYERS; i++)
+				{
+					char buf[128];
+					snprintf(buf, sizeof(buf), "textureLayers[%d]", i);
+					uLayerSamplers[i] = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerNormalMaps[%d]", i);
+					uLayerNormalSamplers[i] = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].blendMode", i);
+					uLayer[i].blendMode = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].opacity", i);
+					uLayer[i].opacity = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].tiling", i);
+					uLayer[i].tiling = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].heightMin", i);
+					uLayer[i].heightMin = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].heightMax", i);
+					uLayer[i].heightMax = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].slopeMin", i);
+					uLayer[i].slopeMin = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].slopeMax", i);
+					uLayer[i].slopeMax = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].invert", i);
+					uLayer[i].invert = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].hasNormalMap", i);
+					uLayer[i].hasNormalMap = glGetUniformLocation(shaderID, buf);
+				}
+			}
+
+			int count = (int)textureLayers.size();
+			if (count > MAX_TEXTURE_LAYERS) count = MAX_TEXTURE_LAYERS;
+			glUniform1i(uLayerCount, count);
+
+			// Texture unit scheme: pairs of (diffuse, normal) per layer
+			static const int diffuseUnits[4] = { 10, 12, 14, 0 };
+			static const int normalUnits[4]  = { 11, 13, 15, 1 };
+
+			for (int i = 0; i < count; i++)
+			{
+				const TextureLayer& layer = textureLayers[i];
+				if (layer.texture)
+				{
+					layer.texture->UseTextureOnUnit(GL_TEXTURE0 + diffuseUnits[i]);
+					glUniform1i(uLayerSamplers[i], diffuseUnits[i]);
+				}
+				bool hasNorm = (layer.normalMap != nullptr);
+				if (hasNorm)
+				{
+					layer.normalMap->UseTextureOnUnit(GL_TEXTURE0 + normalUnits[i]);
+					glUniform1i(uLayerNormalSamplers[i], normalUnits[i]);
+				}
+
+				glUniform1i(uLayer[i].blendMode, (int)layer.blendMode);
+				glUniform1f(uLayer[i].opacity, layer.opacity);
+				glUniform1f(uLayer[i].tiling, layer.tiling);
+				glUniform1f(uLayer[i].heightMin, layer.heightMin);
+				glUniform1f(uLayer[i].heightMax, layer.heightMax);
+				glUniform1f(uLayer[i].slopeMin, layer.slopeMin);
+				glUniform1f(uLayer[i].slopeMax, layer.slopeMax);
+				glUniform1i(uLayer[i].invert, layer.invert ? 1 : 0);
+				glUniform1i(uLayer[i].hasNormalMap, hasNorm ? 1 : 0);
+			}
+		}
+		else
+		{
+			// Explicitly set count to 0 if no layers, to prevent leakage
+			static GLint uLayerCountLoc = -1;
+			static GLuint lastShader = 0;
+			if (lastShader != shaderID) {
+				uLayerCountLoc = glGetUniformLocation(shaderID, "textureLayerCount");
+				lastShader = shaderID;
+			}
+			if (uLayerCountLoc != -1) glUniform1i(uLayerCountLoc, 0);
+		}
+	}
+
 	// Render the visual component
 	if (model && !hasCustomMesh)
 	{
@@ -189,10 +283,9 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		bool hasOverrideNorm = (normalMap != nullptr);
 
 		if (hasOverrideTex || hasOverrideNorm) {
-			// Inspector overrides: bind our textures, skip model's own
 			if (hasOverrideTex) {
 				glUniform1i(uniformUseDiffuseTexture, 1);
-				glUniform1i(uniformDiffuseTexture, 0); // Unit 0
+				glUniform1i(uniformDiffuseTexture, 0);
 				texture->UseTexture();
 			} else {
 				glUniform1i(uniformUseDiffuseTexture, 0);
@@ -200,14 +293,13 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 
 			if (hasOverrideNorm) {
 				glUniform1i(uniformUseNormalMap, 1);
-				glUniform1i(uniformNormalMap, 1); // Unit 1
+				glUniform1i(uniformNormalMap, 1);
 				normalMap->UseNormalMap();
 			} else {
 				glUniform1i(uniformUseNormalMap, 0);
 			}
 			model->RenderModelGeometryOnly();
 		} else {
-			// No overrides — model uses its own per-mesh textures
 			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture, uniformNormalMap, uniformDiffuseTexture);
 		}
 	}
@@ -215,16 +307,16 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	{
 		if (texture) {
 			glUniform1i(uniformUseDiffuseTexture, 1);
-			glUniform1i(uniformDiffuseTexture, 0); // Unit 0
-			texture->UseTexture(); // Internal glActiveTexture(GL_TEXTURE0)
+			glUniform1i(uniformDiffuseTexture, 0);
+			texture->UseTexture();
 		} else {
 			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
 		if (normalMap) {
 			glUniform1i(uniformUseNormalMap, 1);
-			glUniform1i(uniformNormalMap, 1); // Unit 1
-			normalMap->UseNormalMap(); // Internal glActiveTexture(GL_TEXTURE1)
+			glUniform1i(uniformNormalMap, 1);
+			normalMap->UseNormalMap();
 		} else {
 			glUniform1i(uniformUseNormalMap, 0);
 		}
@@ -264,6 +356,18 @@ void GameObject::SetCPUMeshData(std::shared_ptr<MeshData> data)
 	cpuMeshData = data;
 	hasCustomMesh = (cpuMeshData != nullptr);
 	SetDirty();
+}
+
+void GameObject::AddTextureLayer(const TextureLayer& layer)
+{
+	if ((int)textureLayers.size() < MAX_TEXTURE_LAYERS)
+		textureLayers.push_back(layer);
+}
+
+void GameObject::RemoveTextureLayer(int index)
+{
+	if (index >= 0 && index < (int)textureLayers.size())
+		textureLayers.erase(textureLayers.begin() + index);
 }
 
 const MeshData& GameObject::GetCPUMeshData() const

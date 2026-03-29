@@ -122,27 +122,76 @@ void HydraulicErosionNode::Execute(SceneManager& scene)
 
 void HydraulicErosionNode::RecomputeNormals(MeshData& data, int resX, int resZ)
 {
-	int stripStride = 14;
-	
-	for (int z = 0; z < resZ - 1; z++)
+	const int stride = 14;
+	int gridW = resX + 1; // Number of vertices per row
+	int gridH = resZ + 1; // Number of vertices per column
+	int totalVerts = gridW * gridH;
+
+	// Zero out all normals
+	for (int i = 0; i < totalVerts; i++)
 	{
-		for (int x = 0; x < resX - 1; x++)
+		int base = i * stride;
+		data.vertices[base + 5] = 0.0f; // nx
+		data.vertices[base + 6] = 0.0f; // ny
+		data.vertices[base + 7] = 0.0f; // nz
+	}
+
+	// Accumulate face normals from the index buffer (triangles)
+	for (size_t i = 0; i + 2 < data.indices.size(); i += 3)
+	{
+		unsigned int i0 = data.indices[i];
+		unsigned int i1 = data.indices[i + 1];
+		unsigned int i2 = data.indices[i + 2];
+
+		int b0 = i0 * stride;
+		int b1 = i1 * stride;
+		int b2 = i2 * stride;
+
+		glm::vec3 v0(data.vertices[b0], data.vertices[b0 + 1], data.vertices[b0 + 2]);
+		glm::vec3 v1(data.vertices[b1], data.vertices[b1 + 1], data.vertices[b1 + 2]);
+		glm::vec3 v2(data.vertices[b2], data.vertices[b2 + 1], data.vertices[b2 + 2]);
+
+		glm::vec3 e1 = v1 - v0;
+		glm::vec3 e2 = v2 - v0;
+		glm::vec3 faceNormal = glm::cross(e1, e2); // Unnormalized — area-weighted
+
+		// Accumulate to all 3 vertices
+		for (int j = 0; j < 3; j++)
 		{
-			unsigned int v0_idx = (z * resX + x) * stripStride;
-			unsigned int v1_idx = (z * resX + (x + 1)) * stripStride;
-			unsigned int v2_idx = ((z + 1) * resX + x) * stripStride;
-
-			glm::vec3 v0(data.vertices[v0_idx], data.vertices[v0_idx + 1], data.vertices[v0_idx + 2]);
-			glm::vec3 v1(data.vertices[v1_idx], data.vertices[v1_idx + 1], data.vertices[v1_idx + 2]);
-			glm::vec3 v2(data.vertices[v2_idx], data.vertices[v2_idx + 1], data.vertices[v2_idx + 2]);
-
-			glm::vec3 e1 = v1 - v0;
-			glm::vec3 e2 = v2 - v0;
-			glm::vec3 normal = glm::normalize(glm::cross(e1, e2));
-			
-			for (int i=0; i<3; ++i) {
-				data.vertices[v0_idx + 5 + i] = normal[i];
-			}
+			data.vertices[b0 + 5 + j] += faceNormal[j];
+			data.vertices[b1 + 5 + j] += faceNormal[j];
+			data.vertices[b2 + 5 + j] += faceNormal[j];
 		}
+	}
+
+	// Normalize all normals and recompute tangent/bitangent
+	for (int i = 0; i < totalVerts; i++)
+	{
+		int base = i * stride;
+		glm::vec3 n(data.vertices[base + 5], data.vertices[base + 6], data.vertices[base + 7]);
+		float len = glm::length(n);
+		if (len > 0.0001f)
+		{
+			n /= len;
+		}
+		else
+		{
+			n = glm::vec3(0.0f, 1.0f, 0.0f);
+		}
+		data.vertices[base + 5] = n.x;
+		data.vertices[base + 6] = n.y;
+		data.vertices[base + 7] = n.z;
+
+		// Recompute tangent from normal (use Gram-Schmidt with a reference direction)
+		glm::vec3 ref = (std::abs(n.y) < 0.999f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+		glm::vec3 tangent = glm::normalize(ref - n * glm::dot(ref, n));
+		glm::vec3 bitangent = glm::cross(n, tangent);
+
+		data.vertices[base + 8] = tangent.x;
+		data.vertices[base + 9] = tangent.y;
+		data.vertices[base + 10] = tangent.z;
+		data.vertices[base + 11] = bitangent.x;
+		data.vertices[base + 12] = bitangent.y;
+		data.vertices[base + 13] = bitangent.z;
 	}
 }

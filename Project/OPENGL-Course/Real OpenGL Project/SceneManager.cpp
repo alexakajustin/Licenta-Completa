@@ -199,7 +199,7 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 					glUniform1i(uniformUseInstancing, 0);
 					obj->RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor,
 						uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture,
-						texLoc, normLoc);
+						texLoc, normLoc, (GLuint)shaderID);
 				}
 			}
 		}

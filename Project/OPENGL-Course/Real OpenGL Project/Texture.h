@@ -19,6 +19,7 @@ public:
 	bool LoadTextureA(); // texture with alpha
 	void UseTexture();
 	void UseNormalMap();
+	void UseTextureOnUnit(GLenum unit);
 	void ClearTexture();
 
 	GLuint GetTextureID() const { return textureID; }

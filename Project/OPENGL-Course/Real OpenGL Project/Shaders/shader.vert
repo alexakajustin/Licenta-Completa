@@ -20,6 +20,9 @@ out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
 
+// Object-space position for height-based layer blending
+out vec3 LocalPos;
+
 uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
@@ -54,6 +57,7 @@ void main()
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;
 	
 	FragPos = (modelMatrix * vec4(pos, 1.0)).xyz; 
+	LocalPos = pos; // Object-space position (before model transform)
 
 	// Transform TBN vectors to world space for normal mapping
 	mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));

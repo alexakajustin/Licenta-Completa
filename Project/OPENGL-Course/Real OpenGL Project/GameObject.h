@@ -11,6 +11,7 @@
 #include "Material.h"
 #include <memory>
 #include "MeshData.h"
+#include "TextureLayer.h"
 
 struct Frustum;
 
@@ -61,7 +62,14 @@ public:
 	// Separate render for a single object (used by SceneManager batching/loop)
 	void RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor,
 		GLint uniformTiling, GLint uniformOffset,
-		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap);
+		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+		GLuint shaderID = 0);
+
+	// Texture layers
+	std::vector<TextureLayer>& GetTextureLayers() { return textureLayers; }
+	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
+	void AddTextureLayer(const TextureLayer& layer);
+	void RemoveTextureLayer(int index);
 
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data);
@@ -95,6 +103,7 @@ private:
 	Texture* texture;
 	Texture* normalMap;
 	Material* material;
+	std::vector<TextureLayer> textureLayers;
 
 	// Persistent mesh data for procedural generation
 	std::shared_ptr<MeshData> cpuMeshData;
