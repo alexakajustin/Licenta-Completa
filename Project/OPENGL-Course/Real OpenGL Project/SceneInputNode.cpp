@@ -149,15 +149,17 @@ void SceneInputNode::Execute(SceneManager& scene)
 		obj = objects[selectedIndex];
 		
 		// 1. Try to retrieve persisted procedural mesh data if available
-		if (obj->HasCustomMesh())
+		// 1. Always prefer the clean source primitive if available. 
+		// (Prevents feedback loops where the node graph reads its own previous output from obj->HasCustomMesh())
+		if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
+		else if (obj->GetPrimitiveType() == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
+		else if (obj->GetPrimitiveType() == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
+		// 2. Try to retrieve persisted procedural mesh data if available (ONLY if no clean primitive/model source exists)
+		else if (obj->HasCustomMesh())
 		{
 			data = obj->GetCPUMeshData();
 			found = true;
 		}
-		// 2. Fallback to primitive data if it matches standard names or primitive type
-		else if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
-		else if (obj->GetPrimitiveType() == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
-		else if (obj->GetPrimitiveType() == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// 3. Extract from Model if available (for loaded assets)
 		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
 		{

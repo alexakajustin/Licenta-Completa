@@ -626,6 +626,35 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 
 	return false;
 }
+
+bool NodeGraph::IsObjectMeshModified(const std::string& name) const
+{
+	if (name == "(none)") return false;
+
+	for (auto* node : nodes)
+	{
+		if (node->title == "Output")
+		{
+			// Safely check if this node targets the specific block for mesh update
+			OutputNode* outNode = static_cast<OutputNode*>(node);
+			if (outNode && outNode->ShouldUpdateMesh())
+			{
+				if (outNode->IsSameAsInput())
+				{
+					// If it targets the same object that was input, check the input pin
+					if (!outNode->inputs.empty() && outNode->inputs[0].data.sourceObjectName == name)
+						return true;
+				}
+				else if (outNode->GetTargetName() == name)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 void NodeGraph::Clear()
 {
 	for (auto* n : nodes)

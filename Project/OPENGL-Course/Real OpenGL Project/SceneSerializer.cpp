@@ -138,7 +138,10 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		}
 
 		// Custom Mesh Data (with deduplication)
-		if (obj->HasCustomMesh())
+		// SMART FILTER: Do not save custom mesh data if the node graph actively modifies it!
+		// Proceeding with saving here creates massive file bloat (saving millions of generated vertices)
+		// and introduces the risk of double-processing on load. The graph recalculates this anyway!
+		if (obj->HasCustomMesh() && !scene.GetNodeGraph().IsObjectMeshModified(obj->GetName()))
 		{
 			const MeshData& data = obj->GetCPUMeshData();
 			// Since MeshData is now shared via shared_ptr, we can check pointers

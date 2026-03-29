@@ -104,6 +104,8 @@ public:
 
 	// Track generated objects for cleanup (objects that won't be saved in objects array)
 	bool IsObjectGenerated(const std::string& name) const;
+	// Track dynamically modified objects (to avoid saving their huge generated meshes)
+	bool IsObjectMeshModified(const std::string& name) const;
 
 	void Clear();
 
