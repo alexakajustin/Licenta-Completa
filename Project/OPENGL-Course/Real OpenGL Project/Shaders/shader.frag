@@ -143,6 +143,45 @@ vec3 GetEffectiveNormal()
 	}
 }
 
+// ========== Triplanar Mapping ==========
+// Returns blending weights based on the normal vector
+vec3 GetTriplanarWeights(vec3 normal)
+{
+    vec3 weights = abs(normal);
+    // Sharpen the blend transitions
+    weights = pow(weights, vec3(4.0)); 
+    weights /= (weights.x + weights.y + weights.z);
+    return weights;
+}
+
+// Samples a diffuse texture using triplanar projection
+vec3 SampleTriplanarDiffuse(sampler2D tex, vec3 pos, vec3 weights, float tiling)
+{
+    vec3 xDiff = texture(tex, pos.zy * tiling).rgb;
+    vec3 yDiff = texture(tex, pos.xz * tiling).rgb;
+    vec3 zDiff = texture(tex, pos.xy * tiling).rgb;
+    return xDiff * weights.x + yDiff * weights.y + zDiff * weights.z;
+}
+
+// Samples a normal map using triplanar projection and transforms to world space
+vec3 SampleTriplanarNormal(sampler2D tex, vec3 pos, vec3 weights, float tiling, vec3 surfaceNorm)
+{
+    // Sample normal maps for each plane
+    vec3 xNorm = texture(tex, pos.zy * tiling).rgb * 2.0 - 1.0;
+    vec3 yNorm = texture(tex, pos.xz * tiling).rgb * 2.0 - 1.0;
+    vec3 zNorm = texture(tex, pos.xy * tiling).rgb * 2.0 - 1.0;
+
+    // Swizzle tangent-space normals to world-space based on the axis they represent
+    // X-plane: Normal points in X, so tangent is Z, bitangent is Y
+    vec3 xWorld = vec3(xNorm.z, xNorm.y, xNorm.x) * sign(surfaceNorm.x);
+    // Y-plane: Normal points in Y (standard X-Z mapping), so tangent is X, bitangent is Z
+    vec3 yWorld = vec3(yNorm.x, yNorm.z, yNorm.y) * sign(surfaceNorm.y);
+    // Z-plane: Normal points in Z, so tangent is X, bitangent is Y
+    vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z) * sign(surfaceNorm.z);
+
+    return normalize(xWorld * weights.x + yWorld * weights.y + zWorld * weights.z);
+}
+
 // ========== Parallax Occlusion Mapping ==========
 // Returns shifted UVs based on view direction and height map
 vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, float heightScale)
@@ -360,29 +399,43 @@ void CalcLayeredSurface(out vec3 outColor)
 	mat3 TBN = GetTBN();
 	vec3 baseColor = material.baseColor;
 	vec3 blendedNorm = geometryNormal;
+    vec3 triWeights = GetTriplanarWeights(geometryNormal);
 	float totalWeight = 0.0;
 
 	for (int i = 0; i < textureLayerCount && i < MAX_TEXTURE_LAYERS; i++)
 	{
-		// Compute UVs
-		vec2 layerUV;
+		vec4 layerSample;
+        vec3 layerWorldNorm = geometryNormal;
+        float tiling = layerData[i].tiling;
+
 		if (layerData[i].blendMode == 0) {
-			// Normal mode: use mesh UVs
-			layerUV = TexCoord * layerData[i].tiling;
-		} else {
-			// Terrain/Structured modes: use object-space XZ for tiling
-			layerUV = LocalPos.xz * layerData[i].tiling;
-		}
-
-		vec4 layerSample = texture(textureLayers[i], layerUV);
-
-		// Apply POM if displacement map is present
-		if (layerData[i].hasDisplacementMap == 1) {
-			vec3 viewDirWorld = normalize(eyePosition - FragPos);
-			vec3 viewDirTangent = normalize(transpose(TBN) * viewDirWorld);
-			layerUV = CalcParallaxUVs(layerUV, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
-			// Resample diffuse with shifted UVs
+			// Normal mode: use mesh UVs (2D)
+			vec2 layerUV = TexCoord * tiling;
+            
+            if (layerData[i].hasDisplacementMap == 1) {
+                vec3 viewDirWorld = normalize(eyePosition - FragPos);
+                vec3 viewDirTangent = normalize(transpose(TBN) * viewDirWorld);
+                layerUV = CalcParallaxUVs(layerUV, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+            }
+            
 			layerSample = texture(textureLayers[i], layerUV);
+            
+            if (layerData[i].hasNormalMap == 1) {
+                vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
+                layerNorm = normalize(layerNorm * 2.0 - 1.0);
+                layerWorldNorm = TangentToWorld(layerNorm, TBN);
+            }
+		} else {
+			// Terrain/Structured modes: use Triplanar Mapping to fix "melting"
+			layerSample.rgb = SampleTriplanarDiffuse(textureLayers[i], LocalPos, triWeights, tiling);
+            layerSample.a = 1.0; // Assume opaque for triplanar layers
+            
+            if (layerData[i].hasNormalMap == 1) {
+                layerWorldNorm = SampleTriplanarNormal(layerNormalMaps[i], LocalPos, triWeights, tiling, geometryNormal);
+            }
+            
+            // Note: POM is omitted for triplanar mapping as it's extremely expensive 
+            // and usually unnecessary when triplanar mapping is present.
 		}
 
 		// Compute blend weight
@@ -411,19 +464,14 @@ void CalcLayeredSurface(out vec3 outColor)
 			weight = 1.0 - weight;
 		}
 
-		weight *= layerData[i].opacity * layerSample.a;
+		weight *= layerData[i].opacity; // Removed layerSample.a dependency for triplanar simplicity
 		weight = clamp(weight, 0.0, 1.0);
 
 		// Blend diffuse color
 		baseColor = mix(baseColor, layerSample.rgb, weight);
 
-		// Blend normal map if this layer has one
-		if (layerData[i].hasNormalMap == 1) {
-			vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
-			layerNorm = normalize(layerNorm * 2.0 - 1.0);
-			vec3 worldNorm = TangentToWorld(layerNorm, TBN);
-			blendedNorm = mix(blendedNorm, worldNorm, weight);
-		}
+		// Blend normal map
+		blendedNorm = mix(blendedNorm, layerWorldNorm, weight);
 	}
 
 	outColor = baseColor;
