@@ -6,12 +6,14 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
   (compiling source file 'Application.cpp')
   
   AssetBrowser.cpp
+  AssetManager.cpp
   CustomNode.cpp
-  DebugOverlay.cpp
-  DirectionalLight.cpp
+  CustomNodeDef.cpp
   EditorUI.cpp
+  GameObject.cpp
   GenerationPipelineUI.cpp
   GenerationStack.cpp
+  HydraulicErosionNode.cpp
   InputHandler.cpp
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'InputHandler.cpp')
@@ -19,12 +21,19 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'InputHandler.cpp')
   
-  LightObject.cpp
-  Mesh.cpp
+  Model.cpp
   NodeBuilderUI.cpp
   NodeEditorUI.cpp
   NodeGraph.cpp
+  Operation.cpp
   OutputNode.cpp
+  PerlinNoiseGenerator.cpp
+  PrimitiveGenerator.cpp
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(126,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(127,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(128,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(134,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(136,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
   Renderer.cpp
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'Renderer.cpp')
@@ -32,14 +41,12 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'Renderer.cpp')
   
+  Generating Code...
+  Compiling...
   ScatterNode.cpp
   SceneInputNode.cpp
   SceneManager.cpp
   SceneSerializer.cpp
-  Generating Code...
-  Compiling...
-  Shader.cpp
-  Skybox.cpp
   main.cpp
 C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'main.cpp')
@@ -48,5 +55,4 @@ C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
   (compiling source file 'main.cpp')
   
   Generating Code...
-LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Real OpenGL Project.vcxproj -> C:\Users\Justin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

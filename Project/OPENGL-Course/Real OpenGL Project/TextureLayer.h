@@ -14,11 +14,13 @@ enum class LayerBlendMode {
 
 // A complete surface layer: diffuse + optional normal map + blend parameters
 struct TextureLayer {
-	Texture* texture = nullptr;       // Diffuse/albedo
-	Texture* normalMap = nullptr;     // Normal map (optional)
+	Texture* texture = nullptr;         // Diffuse/albedo
+	Texture* normalMap = nullptr;       // Normal map (optional)
+	Texture* displacementMap = nullptr; // Height/displacement map (optional)
 	LayerBlendMode blendMode = LayerBlendMode::Normal;
-	float opacity = 1.0f;             // Overall layer influence [0..1]
-	float tiling = 1.0f;              // Texture repeat scale
+	float opacity = 1.0f;               // Overall layer influence [0..1]
+	float tiling = 1.0f;                // Texture repeat scale
+	float displacementScale = 0.05f;     // Physical depth intensity [0..1]
 
 	// Height blending params (used when blendMode == Height or HeightSlope)
 	float heightMin = 0.0f;           // Below this: layer invisible
@@ -33,6 +35,7 @@ struct TextureLayer {
 	// For serialization
 	std::string texturePath;
 	std::string normalMapPath;
+	std::string displacementMapPath;
 };
 
 static const int MAX_TEXTURE_LAYERS = 4;

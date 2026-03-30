@@ -93,12 +93,15 @@ struct TextureLayerData {
 	float slopeMin;
 	float slopeMax;
 	int invert;
-	int hasNormalMap;    // 1 if this layer has a normal map
+	int hasNormalMap;       // 1 if this layer has a normal map
+	int hasDisplacementMap; // 1 if this layer has a displacement/height map
+	float displacementScale; // 0.1 default
 };
 
 uniform int textureLayerCount;
-uniform sampler2D textureLayers[MAX_TEXTURE_LAYERS];     // Diffuse samplers
-uniform sampler2D layerNormalMaps[MAX_TEXTURE_LAYERS];   // Normal map samplers
+uniform sampler2D textureLayers[MAX_TEXTURE_LAYERS];         // Diffuse samplers
+uniform sampler2D layerNormalMaps[MAX_TEXTURE_LAYERS];       // Normal map samplers
+uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS]; // Displacement samplers
 uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
 
 // Global override normal: set by layer blending, used by lighting functions
@@ -138,6 +141,41 @@ vec3 GetEffectiveNormal()
 	{
 		return normalize(Normal);
 	}
+}
+
+// ========== Parallax Occlusion Mapping ==========
+// Returns shifted UVs based on view direction and height map
+vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, float heightScale)
+{
+    // Number of depth layers (dynamic based on angle)
+    const float minLayers = 8.0;
+    const float maxLayers = 32.0;
+    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDirTangent)));
+    
+    float layerDepth = 1.0 / numLayers;
+    float currentLayerDepth = 0.0;
+    
+    // Shift magnitude along the view vector
+    vec2 p = viewDirTangent.xy / viewDirTangent.z * heightScale;
+    vec2 deltaTexCoords = p / numLayers;
+    
+    vec2 currentTexCoords = texCoords;
+    float currentDepthMapValue = texture(heightMap, currentTexCoords).r;
+    
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        currentTexCoords -= deltaTexCoords;
+        currentDepthMapValue = texture(heightMap, currentTexCoords).r;
+        currentLayerDepth += layerDepth;
+    }
+    
+    // Parallax Occlusion Mapping (Interpolation)
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+    float afterDepth  = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = texture(heightMap, prevTexCoords).r - currentLayerDepth + layerDepth;
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    
+    return mix(currentTexCoords, prevTexCoords, weight);
 }
 
 vec3 sampleOffsetDirections[20] = vec3[]
@@ -337,6 +375,15 @@ void CalcLayeredSurface(out vec3 outColor)
 		}
 
 		vec4 layerSample = texture(textureLayers[i], layerUV);
+
+		// Apply POM if displacement map is present
+		if (layerData[i].hasDisplacementMap == 1) {
+			vec3 viewDirWorld = normalize(eyePosition - FragPos);
+			vec3 viewDirTangent = normalize(transpose(TBN) * viewDirWorld);
+			layerUV = CalcParallaxUVs(layerUV, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+			// Resample diffuse with shifted UVs
+			layerSample = texture(textureLayers[i], layerUV);
+		}
 
 		// Compute blend weight
 		float weight = 1.0;

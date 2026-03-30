@@ -193,8 +193,9 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			static GLint uLayerCount = -1;
 			static GLint uLayerSamplers[MAX_TEXTURE_LAYERS];
 			static GLint uLayerNormalSamplers[MAX_TEXTURE_LAYERS];
+			static GLint uLayerDisplacementSamplers[MAX_TEXTURE_LAYERS];
 			static struct {
-				GLint blendMode, opacity, tiling, heightMin, heightMax, slopeMin, slopeMax, invert, hasNormalMap;
+				GLint blendMode, opacity, tiling, heightMin, heightMax, slopeMin, slopeMax, invert, hasNormalMap, hasDisplacementMap, displacementScale;
 			} uLayer[MAX_TEXTURE_LAYERS];
 
 			if (cachedShaderID != shaderID)
@@ -208,6 +209,8 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 					uLayerSamplers[i] = glGetUniformLocation(shaderID, buf);
 					snprintf(buf, sizeof(buf), "layerNormalMaps[%d]", i);
 					uLayerNormalSamplers[i] = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerDisplacementMaps[%d]", i);
+					uLayerDisplacementSamplers[i] = glGetUniformLocation(shaderID, buf);
 					snprintf(buf, sizeof(buf), "layerData[%d].blendMode", i);
 					uLayer[i].blendMode = glGetUniformLocation(shaderID, buf);
 					snprintf(buf, sizeof(buf), "layerData[%d].opacity", i);
@@ -226,6 +229,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 					uLayer[i].invert = glGetUniformLocation(shaderID, buf);
 					snprintf(buf, sizeof(buf), "layerData[%d].hasNormalMap", i);
 					uLayer[i].hasNormalMap = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].hasDisplacementMap", i);
+					uLayer[i].hasDisplacementMap = glGetUniformLocation(shaderID, buf);
+					snprintf(buf, sizeof(buf), "layerData[%d].displacementScale", i);
+					uLayer[i].displacementScale = glGetUniformLocation(shaderID, buf);
 				}
 			}
 
@@ -233,9 +240,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			if (count > MAX_TEXTURE_LAYERS) count = MAX_TEXTURE_LAYERS;
 			glUniform1i(uLayerCount, count);
 
-			// Texture unit scheme: pairs of (diffuse, normal) per layer
-			static const int diffuseUnits[4] = { 10, 12, 14, 0 };
-			static const int normalUnits[4]  = { 11, 13, 15, 1 };
+			// Texture unit scheme: diffuse, normal, displacement per layer
+			static const int diffuseUnits[4]      = { 10, 12, 14, 0 };
+			static const int normalUnits[4]       = { 11, 13, 15, 1 };
+			static const int displacementUnits[4] = { 16, 17, 18, 19 };
 
 			for (int i = 0; i < count; i++)
 			{
@@ -265,6 +273,19 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 					glUniform1i(uLayerNormalSamplers[i], normalUnits[i]);
 				}
 
+				bool hasDisp = (layer.displacementMap != nullptr);
+				if (hasDisp)
+				{
+					layer.displacementMap->UseTextureOnUnit(GL_TEXTURE0 + displacementUnits[i]);
+					glUniform1i(uLayerDisplacementSamplers[i], displacementUnits[i]);
+				}
+				else
+				{
+					glActiveTexture(GL_TEXTURE0 + displacementUnits[i]);
+					glBindTexture(GL_TEXTURE_2D, 0);
+					glUniform1i(uLayerDisplacementSamplers[i], displacementUnits[i]);
+				}
+
 				glUniform1i(uLayer[i].blendMode, (int)layer.blendMode);
 				glUniform1f(uLayer[i].opacity, layer.opacity);
 				glUniform1f(uLayer[i].tiling, layer.tiling);
@@ -274,6 +295,8 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 				glUniform1f(uLayer[i].slopeMax, layer.slopeMax);
 				glUniform1i(uLayer[i].invert, layer.invert ? 1 : 0);
 				glUniform1i(uLayer[i].hasNormalMap, hasNorm ? 1 : 0);
+				glUniform1i(uLayer[i].hasDisplacementMap, hasDisp ? 1 : 0);
+				glUniform1f(uLayer[i].displacementScale, layer.displacementScale);
 			}
 		}
 		else

@@ -856,6 +856,33 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 					}
 					if (layerNorm) { ImGui::SameLine(); if (ImGui::SmallButton("X##CN")) { layer.normalMap = nullptr; layer.normalMapPath = ""; } }
 
+					// --- Displacement map slot ---
+					ImGui::Text("Displace");
+					ImGui::SameLine(70.0f);
+					Texture* layerDisp = layer.displacementMap;
+					if (layerDisp && layerDisp->GetTextureID() != 0) {
+						ImGui::Image((ImTextureID)(intptr_t)layerDisp->GetTextureID(), ImVec2(slotSize, slotSize), ImVec2(0, 1), ImVec2(1, 0));
+					} else {
+						ImGui::Button("None##DP", ImVec2(slotSize, slotSize));
+					}
+					if (ImGui::BeginDragDropTarget()) {
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PATH")) {
+							const char* pathStr = (const char*)payload->Data;
+							std::filesystem::path path(pathStr);
+							std::string ext = path.extension().string();
+							for (auto& c : ext) c = tolower(c);
+							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								Texture* newTex = new Texture(pathStr);
+								if (newTex->LoadTextureA()) {
+									layer.displacementMap = newTex;
+									layer.displacementMapPath = pathStr;
+								} else { delete newTex; }
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+					if (layerDisp) { ImGui::SameLine(); if (ImGui::SmallButton("X##CDP")) { layer.displacementMap = nullptr; layer.displacementMapPath = ""; } }
+
 					// Blend mode dropdown
 					const char* blendModes[] = { "Normal", "Height", "Slope", "Height+Slope" };
 					int currentMode = (int)layer.blendMode;
@@ -866,6 +893,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 					ImGui::DragFloat("Opacity", &layer.opacity, 0.01f, 0.0f, 1.0f);
 					ImGui::DragFloat("Tiling", &layer.tiling, 0.1f, 0.01f, 100.0f);
+					ImGui::DragFloat("Disp Scale", &layer.displacementScale, 0.01f, 0.0f, 1.0f);
 
 					if (layer.blendMode == LayerBlendMode::Height || layer.blendMode == LayerBlendMode::HeightSlope) {
 						ImGui::DragFloat("Height Min", &layer.heightMin, 1.0f, -1000.0f, 10000.0f);

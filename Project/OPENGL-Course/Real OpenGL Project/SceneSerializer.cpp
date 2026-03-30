@@ -155,6 +155,8 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 				layerJson["slopeMin"] = layer.slopeMin;
 				layerJson["slopeMax"] = layer.slopeMax;
 				layerJson["invert"] = layer.invert;
+				layerJson["displacementMapPath"] = layer.displacementMapPath;
+				layerJson["displacementScale"] = layer.displacementScale;
 				layersArray.push_back(layerJson);
 			}
 			objJson["textureLayers"] = layersArray;
@@ -391,6 +393,8 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					layer.slopeMin = layerJson.value("slopeMin", 0.0f);
 					layer.slopeMax = layerJson.value("slopeMax", 0.5f);
 					layer.invert = layerJson.value("invert", false);
+					layer.displacementMapPath = layerJson.value("displacementMapPath", "");
+					layer.displacementScale = layerJson.value("displacementScale", 0.05f);
 
 					if (!layer.texturePath.empty())
 					{
@@ -411,6 +415,17 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 						} else {
 							printf("[SceneSerializer] Warning: Failed to load layer normal map: %s\n", layer.normalMapPath.c_str());
 							delete norm;
+						}
+					}
+
+					if (!layer.displacementMapPath.empty())
+					{
+						Texture* disp = new Texture(layer.displacementMapPath.c_str());
+						if (disp->LoadTextureA()) {
+							layer.displacementMap = disp;
+						} else {
+							printf("[SceneSerializer] Warning: Failed to load layer displacement map: %s\n", layer.displacementMapPath.c_str());
+							delete disp;
 						}
 					}
 
