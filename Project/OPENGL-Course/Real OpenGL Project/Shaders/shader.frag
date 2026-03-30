@@ -148,8 +148,8 @@ vec3 GetEffectiveNormal()
 vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, float heightScale)
 {
     // Number of depth layers (dynamic based on angle)
-    const float minLayers = 8.0;
-    const float maxLayers = 32.0;
+    const float minLayers = 32.0;
+    const float maxLayers = 128.0;
     float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDirTangent)));
     
     float layerDepth = 1.0 / numLayers;

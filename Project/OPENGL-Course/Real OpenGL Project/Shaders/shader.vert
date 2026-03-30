@@ -23,6 +23,10 @@ out vec3 NormalWorld;
 // Object-space position for height-based layer blending
 out vec3 LocalPos;
 
+// Basis for planar UV mapping (world-space axes of the object)
+out vec3 WorldXBasis;
+out vec3 WorldZBasis;
+
 uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
