@@ -159,25 +159,24 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	vec3 normal = GetEffectiveNormal();
 	vec3 lightDir = normalize(directionalLight.direction);
 	
-	// Correct bias: use -lightDir (surface to light) for dot product
-	float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.0005);
-
+	// Lowered bias for focused frustum (30 units area) to fix peter panning
+	// Using -lightDir (Fragment -> Light) as per standard bias calculation
+	float bias = max(0.002 * (1.0 - dot(normal, -lightDir)), 0.0002);
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / vec2(textureSize(directionalShadowMap, 0));
 	
-	// Disk-based PCF sampling (20 samples) for smoother shadows
-	int samples = 20;
-	float diskRadius = 0.5; // Lower = sharper, higher = softer
-	
-	for(int i = 0; i < samples; i++)
+	// 3x3 Grid-based PCF sampling as per reference course
+	for(int x = -1; x <= 1; ++x)
 	{
-		vec2 offset = sampleOffsetDirections[i].xy * texelSize * diskRadius;
-		float pcfDepth = texture(directionalShadowMap, projCoords.xy + offset).r;
-		shadow += current - bias > pcfDepth ? 1.0 : 0.0;
+		for(int y = -1; y <= 1; ++y)
+		{
+			float pcfDepth = texture(directionalShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+			shadow += current - bias > pcfDepth ? 1.0 : 0.0;
+		}
 	}
 
-	shadow /= float(samples);
+	shadow /= 9.0;
 	
 	if(projCoords.z > 1.0)
 	{

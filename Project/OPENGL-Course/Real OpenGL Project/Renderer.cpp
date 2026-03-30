@@ -49,7 +49,7 @@ void Renderer::CacheUniforms()
 	uniformUseInstancing = glGetUniformLocation(mainShader.GetShaderID(), "useInstancing");
 }
 
-void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene)
+void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos)
 {
 	directionalShadowShader.UseShader();
 
@@ -59,12 +59,11 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	GLint shadowModelLoc = directionalShadowShader.GetModelLocation();
-	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform(cameraPos));
 
 	directionalShadowShader.Validate();
 
-	Frustum lightFrustum = Frustum::CreateFrustumFromMatrix(light->CalculateLightTransform());
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, &lightFrustum);
+	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, nullptr);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -125,7 +124,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
 	mainShader.SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
-	mainShader.SetDirectionalLightTransform(mainLight.CalculateLightTransform());
+	mainShader.SetDirectionalLightTransform(mainLight.CalculateLightTransform(cameraPos));
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
 	mainShader.SetTexture(0);

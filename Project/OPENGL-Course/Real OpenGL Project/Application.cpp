@@ -104,7 +104,8 @@ void Application::LoadResources()
 		1.0f, 1.0f, 1.0f,
 		0.4f, 0.6f,
 		-10.0f, -5.0f, 20.0f);
-	mainLight.SetShadowFrustum(1500.0f, 0.1f, 3000.0f);
+	// Focused frustum for better shadow resolution (30 units area)
+	mainLight.SetShadowFrustum(30.0f, 0.1f, 200.0f);
 	spotLightCount = 0;
 }
 
@@ -254,7 +255,7 @@ void Application::Run()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Shadow passes (use main window resolution or fixed size for shadows)
-		renderer.DirectionalShadowMapPass(&mainLight, sceneManager);
+		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition());
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
 		for (unsigned int i = 0; i < spotLightCount; i++)

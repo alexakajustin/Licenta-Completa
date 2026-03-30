@@ -14,7 +14,7 @@ public:
 
 	void SetShadowFrustum(float size, float near, float far);
 
-	glm::mat4 CalculateLightTransform();
+	glm::mat4 CalculateLightTransform(glm::vec3 target);
 
 	// Getter for editing
 	glm::vec3* GetDirectionPtr() { return &direction; }
