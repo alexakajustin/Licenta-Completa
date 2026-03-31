@@ -38,6 +38,10 @@ void Shader::CreateFromString(const char* vertexCode, const char* fragmentCode)
 
 void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLocation)
 {
+	vertexPath = vertexLocation;
+	fragmentPath = fragmentLocation;
+	geometryPath = "";
+
 	std::string vertexString = ReadFile(vertexLocation);
 	std::string fragmentString = ReadFile(fragmentLocation);
 
@@ -49,6 +53,10 @@ void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLoc
 
 void Shader::CreateFromFiles(const char* vertexLocation, const char* geometryLocation, const char* fragmentLocation)
 {
+	vertexPath = vertexLocation;
+	fragmentPath = fragmentLocation;
+	geometryPath = geometryLocation;
+
 	std::string vertexString = ReadFile(vertexLocation);
 	std::string fragmentString = ReadFile(fragmentLocation);
 	std::string geometryString = ReadFile(geometryLocation);
@@ -268,6 +276,60 @@ void Shader::CompileProgram()
 		uniformOmniShadowMap[i].farPlane = glGetUniformLocation(shaderID, locBuff);
 	}
 
+	DiscoverUniforms();
+}
+
+void Shader::DiscoverUniforms()
+{
+	uniformProperties.clear();
+
+	GLint count;
+	glGetProgramiv(shaderID, GL_ACTIVE_UNIFORMS, &count);
+
+	for (GLint i = 0; i < count; i++) {
+		const GLsizei bufSize = 64;
+		GLchar name[bufSize];
+		GLsizei length;
+		GLint size;
+		GLenum type;
+		glGetActiveUniform(shaderID, (GLuint)i, bufSize, &length, &size, &type, name);
+
+		UniformProperty prop;
+		prop.name = name;
+		prop.location = glGetUniformLocation(shaderID, name);
+
+		switch (type) {
+		case GL_FLOAT:      prop.type = UniformType::Float; break;
+		case GL_INT:        prop.type = UniformType::Int; break;
+		case GL_FLOAT_VEC2: prop.type = UniformType::Vec2; break;
+		case GL_FLOAT_VEC3: prop.type = UniformType::Vec3; break;
+		case GL_FLOAT_VEC4: prop.type = UniformType::Vec4; break;
+		case GL_FLOAT_MAT4: prop.type = UniformType::Mat4; break;
+		case GL_SAMPLER_2D: prop.type = UniformType::Sampler2D; break;
+		default:            prop.type = UniformType::Unknown; break;
+		}
+
+		// Filter out internal engine uniforms
+		std::string n = prop.name;
+		std::string n_lower = n;
+		for (auto& c : n_lower) c = (char)tolower(c);
+
+		if (n.find("[") != std::string::npos || // Skip array members
+			n_lower.find("layer") != std::string::npos || 
+			n_lower.find("light") != std::string::npos ||
+			n_lower.find("shadow") != std::string::npos || 
+			n_lower.find("transform") != std::string::npos ||
+			n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
+			n == "theTexture" || n == "normalMap" || n == "farPlane" ||
+			n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
+			n == "textureLayerCount")
+			continue;
+
+		if (prop.type == UniformType::Unknown || prop.type == UniformType::Mat4 || prop.type == UniformType::Sampler2D) 
+			continue;
+
+		uniformProperties[prop.name] = prop;
+	}
 }
 
 void Shader::UseShader()

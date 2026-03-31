@@ -19,7 +19,7 @@ Renderer::~Renderer()
 
 void Renderer::Init()
 {
-	mainShader.CreateFromFiles("Shaders/shader.vert", "Shaders/shader.frag");
+	mainShader.CreateFromFiles("Assets/Shaders/shader.vert", "Assets/Shaders/shader.frag");
 	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
 	omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
 
@@ -63,7 +63,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 
 	directionalShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, nullptr);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -87,7 +87,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(shadowModelLoc, -1, -1, -1, -1, -1, -1, -1, -1, nullptr, light->GetPosition(), light->GetFarPlane());
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -135,9 +135,9 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	
 	// Scene objects with Frustum Culling
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
-	scene.RenderAll(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
-		uniformTiling, uniformOffset,
-		uniformUseNormalMap, uniformUseDiffuseTexture, uniformUseInstancing, &frustum);
+	static float time = 0.0f;
+	time += 0.016f; // Rough approximation or pass from Application
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude
 	glClear(GL_DEPTH_BUFFER_BIT);

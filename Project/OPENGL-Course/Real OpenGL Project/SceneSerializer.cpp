@@ -127,11 +127,15 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		if (obj->GetMaterial())
 		{
 			Material* mat = obj->GetMaterial();
-			objJson["material"]["specular"] = mat->GetSpecularIntensity();
-			objJson["material"]["shininess"] = mat->GetShininess();
-			objJson["material"]["color"] = { mat->GetColor().x, mat->GetColor().y, mat->GetColor().z };
-			objJson["material"]["tiling"] = { mat->GetTiling().x, mat->GetTiling().y };
-			objJson["material"]["offset"] = { mat->GetOffset().x, mat->GetOffset().y };
+			if (mat->GetShader()) {
+				objJson["material"]["shader_vert"] = mat->GetShader()->GetVertexPath();
+				objJson["material"]["shader_frag"] = mat->GetShader()->GetFragmentPath();
+			}
+
+			// Save all dynamic properties
+			for (auto const& [name, val] : mat->GetFloats()) objJson["material"][name] = val;
+			for (auto const& [name, val] : mat->GetVec2s())  objJson["material"][name] = { val.x, val.y };
+			for (auto const& [name, val] : mat->GetVec3s())  objJson["material"][name] = { val.x, val.y, val.z };
 		}
 
 		// SMART FILTER: We no longer save custom vertex/index data to the JSON file.
@@ -351,27 +355,38 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			if (objJson.contains("material"))
 			{
 				auto& matJson = objJson["material"];
-				float spec = matJson.value("specular", 0.5f);
-				float shine = matJson.value("shininess", 32.0f);
+				Material* mat = new Material();
 
-				glm::vec3 color(1.0f);
-				if (matJson.contains("color"))
-				{
-					auto& c = matJson["color"];
-					color = glm::vec3(c[0].get<float>(), c[1].get<float>(), c[2].get<float>());
+				// Load all properties
+				for (auto it = matJson.begin(); it != matJson.end(); ++it) {
+					if (it.value().is_number_float() || it.value().is_number_integer()) {
+						mat->SetFloat(it.key(), it.value().get<float>());
+					}
+					else if (it.value().is_array() && it.value().size() == 2) {
+						mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));
+					}
+					else if (it.value().is_array() && it.value().size() == 3) {
+						mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
+					}
 				}
 
-				Material* mat = new Material(spec, shine, color);
-
-				if (matJson.contains("tiling"))
-				{
-					auto& t = matJson["tiling"];
-					mat->SetTiling(glm::vec2(t[0].get<float>(), t[1].get<float>()));
-				}
-				if (matJson.contains("offset"))
-				{
-					auto& o = matJson["offset"];
-					mat->SetOffset(glm::vec2(o[0].get<float>(), o[1].get<float>()));
+				// Handle shader loading
+				if (matJson.contains("shader_vert") && matJson.contains("shader_frag")) {
+					std::string v = matJson["shader_vert"];
+					std::string f = matJson["shader_frag"];
+					// We need a way to load/cache this shader. 
+					// For now, we'll set it to mainShader if it matches, 
+					// or we'll need a ShaderManager.
+					if (v == "Assets/Shaders/shader.vert" || v == "Shaders/shader.vert") mat->SetShader(scene.GetMainShader());
+					else {
+						// Create a new shader for this material? 
+						// This could lead to duplicate shaders.
+						Shader* s = new Shader();
+						s->CreateFromFiles(v.c_str(), f.c_str());
+						mat->SetShader(s);
+					}
+				} else {
+					mat->SetShader(scene.GetMainShader());
 				}
 
 				obj->SetMaterial(mat);

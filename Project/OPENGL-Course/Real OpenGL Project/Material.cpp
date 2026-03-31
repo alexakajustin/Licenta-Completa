@@ -2,36 +2,83 @@
 #include <fstream>
 #include <sstream>
 #include <glm/gtc/type_ptr.hpp>
+#include "Renderer.h" // To access default shaders if needed
 
 Material::Material()
 {
-	specularIntensity = 0.0f;
-	shininess = 0.0f;
-	color = glm::vec3(1.0f);
-	textureTiling = glm::vec2(1.0f);
-	textureOffset = glm::vec2(0.0f);
+	shader = nullptr;
+	SetDefaults();
 }
 
-Material::Material(GLfloat specularIntensity, GLfloat shininess, glm::vec3 color)
+Material::Material(Shader* shader, glm::vec3 color)
 {
-	this->specularIntensity = specularIntensity;
-	this->shininess = shininess;
-	this->color = color;
-	this->textureTiling = glm::vec2(1.0f);
-	this->textureOffset = glm::vec2(0.0f);
+	this->shader = shader;
+	SetDefaults();
+	SetColor(color);
+}
+
+Material::Material(float specular, float shininess, glm::vec3 color)
+{
+	this->shader = nullptr;
+	SetDefaults();
+	SetSpecularIntensity(specular);
+	SetShininess(shininess);
+	SetColor(color);
 }
 
 Material::~Material()
 {
 }
 
+void Material::SetDefaults()
+{
+	floats["material.specularIntensity"] = 0.5f;
+	floats["material.shininess"] = 32.0f;
+	vec3s["material.baseColor"] = glm::vec3(1.0f);
+	vec2s["material.tiling"] = glm::vec2(1.0f);
+	vec2s["material.offset"] = glm::vec2(0.0f);
+}
+
+void Material::SetShader(Shader* shader)
+{
+	this->shader = shader;
+	uniformLocations.clear();
+}
+
+void Material::Bind()
+{
+	if (!shader) return;
+
+	auto GetLoc = [&](const std::string& name) {
+		if (uniformLocations.count(name)) return uniformLocations[name];
+		GLint loc = glGetUniformLocation(shader->GetShaderID(), name.c_str());
+		uniformLocations[name] = loc;
+		return loc;
+	};
+
+	for (auto const& [name, val] : floats) {
+		GLint loc = GetLoc(name);
+		if (loc != -1) glUniform1f(loc, val);
+	}
+
+	for (auto const& [name, val] : vec2s) {
+		GLint loc = GetLoc(name);
+		if (loc != -1) glUniform2fv(loc, 1, glm::value_ptr(val));
+	}
+
+	for (auto const& [name, val] : vec3s) {
+		GLint loc = GetLoc(name);
+		if (loc != -1) glUniform3fv(loc, 1, glm::value_ptr(val));
+	}
+}
+
 void Material::UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, GLint tilingLocation, GLint offsetLocation)
 {
-	glUniform1f(specularIntensityLocation, specularIntensity);
-	glUniform1f(shininessLocation, shininess);
-	glUniform3fv(colorLocation, 1, glm::value_ptr(color));
-	glUniform2fv(tilingLocation, 1, glm::value_ptr(textureTiling));
-	glUniform2fv(offsetLocation, 1, glm::value_ptr(textureOffset));
+	if (specularIntensityLocation != -1) glUniform1f(specularIntensityLocation, GetSpecularIntensity());
+	if (shininessLocation != -1) glUniform1f(shininessLocation, GetShininess());
+	if (colorLocation != -1) glUniform3fv(colorLocation, 1, glm::value_ptr(GetColor()));
+	if (tilingLocation != -1) glUniform2fv(tilingLocation, 1, glm::value_ptr(GetTiling()));
+	if (offsetLocation != -1) glUniform2fv(offsetLocation, 1, glm::value_ptr(GetOffset()));
 }
 
 Material* Material::LoadFromFile(const std::string& path)
@@ -39,43 +86,37 @@ Material* Material::LoadFromFile(const std::string& path)
 	std::ifstream file(path);
 	if (!file.is_open()) return nullptr;
 
-	float spec = 0.5f, shine = 32.0f;
-	glm::vec3 col = glm::vec3(1.0f);
-	glm::vec2 til = glm::vec2(1.0f);
-	glm::vec2 off = glm::vec2(0.0f);
+	Material* mat = new Material();
 	std::string line;
 	while (std::getline(file, line))
 	{
-		if (line.find("specular=") == 0) spec = std::stof(line.substr(9));
-		else if (line.find("shininess=") == 0) shine = std::stof(line.substr(10));
-		else if (line.find("color=") == 0) {
-			std::string colorStr = line.substr(6);
-			std::stringstream ss(colorStr);
-			std::string r, g, b;
-			if (std::getline(ss, r, ',') && std::getline(ss, g, ',') && std::getline(ss, b, ',')) {
-				col = glm::vec3(std::stof(r), std::stof(g), std::stof(b));
-			}
+		if (line.empty()) continue;
+
+		size_t eq = line.find('=');
+		if (eq == std::string::npos) continue;
+
+		std::string key = line.substr(0, eq);
+		std::string valStr = line.substr(eq + 1);
+
+		if (key == "shader_vert") {
+			// We can't easily load the shader here without a manager, 
+			// but we'll store the path or let the caller handle it.
+			// For now, these will be handled by the SceneSerializer
 		}
-		else if (line.find("tiling=") == 0) {
-			std::string tilStr = line.substr(7);
-			std::stringstream ss(tilStr);
-			std::string x, y;
-			if (std::getline(ss, x, ',') && std::getline(ss, y, ',')) {
-				til = glm::vec2(std::stof(x), std::stof(y));
-			}
+		else if (valStr.find(',') != std::string::npos) {
+			// Probable vec2 or vec3
+			std::stringstream ss(valStr);
+			std::vector<float> values;
+			std::string temp;
+			while (std::getline(ss, temp, ',')) values.push_back(std::stof(temp));
+
+			if (values.size() == 2) mat->SetVec2(key, glm::vec2(values[0], values[1]));
+			else if (values.size() == 3) mat->SetVec3(key, glm::vec3(values[0], values[1], values[2]));
 		}
-		else if (line.find("offset=") == 0) {
-			std::string offStr = line.substr(7);
-			std::stringstream ss(offStr);
-			std::string x, y;
-			if (std::getline(ss, x, ',') && std::getline(ss, y, ',')) {
-				off = glm::vec2(std::stof(x), std::stof(y));
-			}
+		else {
+			mat->SetFloat(key, std::stof(valStr));
 		}
 	}
-	Material* mat = new Material(spec, shine, col);
-	mat->SetTiling(til);
-	mat->SetOffset(off);
 	return mat;
 }
 
@@ -83,10 +124,15 @@ bool Material::SaveToFile(const std::string& path) const
 {
 	std::ofstream file(path);
 	if (!file.is_open()) return false;
-	file << "specular=" << specularIntensity << "\n";
-	file << "shininess=" << shininess << "\n";
-	file << "color=" << color.r << "," << color.g << "," << color.b << "\n";
-	file << "tiling=" << textureTiling.x << "," << textureTiling.y << "\n";
-	file << "offset=" << textureOffset.x << "," << textureOffset.y << "\n";
+
+	if (shader) {
+		file << "shader_vert=" << shader->GetVertexPath() << "\n";
+		file << "shader_frag=" << shader->GetFragmentPath() << "\n";
+	}
+
+	for (auto const& [name, val] : floats) file << name << "=" << val << "\n";
+	for (auto const& [name, val] : vec2s)  file << name << "=" << val.x << "," << val.y << "\n";
+	for (auto const& [name, val] : vec3s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "\n";
+
 	return true;
 }

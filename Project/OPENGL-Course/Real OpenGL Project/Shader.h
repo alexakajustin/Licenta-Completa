@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <map>
 
 #include <GL/glew.h>
 
@@ -19,6 +21,23 @@
 class Shader
 {
 public:
+	enum class UniformType {
+		Float,
+		Int,
+		Vec2,
+		Vec3,
+		Vec4,
+		Mat4,
+		Sampler2D,
+		Unknown
+	};
+
+	struct UniformProperty {
+		std::string name;
+		UniformType type;
+		GLint location;
+	};
+
 	Shader();
 	~Shader();
 
@@ -61,7 +80,18 @@ public:
 	void ClearShader();
 	GLuint GetShaderID() { return shaderID; }
 
+	const std::map<std::string, UniformProperty>& GetUniformProperties() const { return uniformProperties; }
+
+	const std::string& GetVertexPath() const { return vertexPath; }
+	const std::string& GetFragmentPath() const { return fragmentPath; }
+
 private:
+	std::string vertexPath;
+	std::string fragmentPath;
+	std::string geometryPath;
+
+	std::map<std::string, UniformProperty> uniformProperties;
+	void DiscoverUniforms();
 	int pointLightCount;
 	int spotLightCount;
 	GLuint shaderID;

@@ -13,6 +13,8 @@
 #include "OutputNode.h"
 #include "HydraulicErosionNode.h"
 #include "SceneSerializer.h"
+#include <filesystem>
+#include <set>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -931,48 +933,84 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				Material* mat = selected->GetMaterial();
 				
 				if (mat) {
-					// Editable properties
-					float specular = mat->GetSpecularIntensity();
-					float shininess = mat->GetShininess();
+					Shader* currentShader = mat->GetShader() ? mat->GetShader() : scene.GetMainShader();
 					
-					if (ImGui::SliderFloat("Specular", &specular, 0.0f, 4.0f)) {
-						mat->SetSpecularIntensity(specular);
+					// Shader Selection
+					if (ImGui::BeginCombo("Shader", currentShader ? currentShader->GetVertexPath().c_str() : "None")) {
+						// Crawl Assets/Shaders
+						std::string shaderDir = "Assets/Shaders";
+						if (std::filesystem::exists(shaderDir)) {
+							for (const auto& entry : std::filesystem::directory_iterator(shaderDir)) {
+								if (entry.path().extension() == ".vert") {
+									std::string vPath = entry.path().string();
+									// Replace backslashes with forward slashes for consistency
+									std::replace(vPath.begin(), vPath.end(), '\\', '/');
+
+									bool isSelected = (currentShader && currentShader->GetVertexPath() == vPath);
+									if (ImGui::Selectable(entry.path().filename().string().c_str(), isSelected)) {
+										// Match with .frag
+										std::string fPath = vPath;
+										size_t lastDot = fPath.find_last_of(".");
+										if (lastDot != std::string::npos) {
+											fPath = fPath.substr(0, lastDot) + ".frag";
+										}
+
+										if (vPath == "Assets/Shaders/shader.vert") {
+											mat->SetShader(scene.GetMainShader());
+										} else {
+											Shader* s = new Shader();
+											// Assuming .frag exists with same name
+											s->CreateFromFiles(vPath.c_str(), fPath.c_str());
+											mat->SetShader(s);
+										}
+									}
+									if (isSelected) ImGui::SetItemDefaultFocus();
+								}
+							}
+						}
+
+						ImGui::EndCombo();
 					}
-					if (ImGui::SliderFloat("Shininess", &shininess, 1.0f, 256.0f, "%.0f")) {
-						mat->SetShininess(shininess);
+					
+					// If using default shader, show some legacy controls or hide them if we want pure shader-driven
+					// For now, let's always rely on the DiscoverUniforms list below.
+
+					if (currentShader) {
+						ImGui::Separator();
+						ImGui::Text("Properties");
+
+						for (auto const& [name, prop] : currentShader->GetUniformProperties()) {
+							ImGui::PushID(name.c_str());
+							if (prop.type == Shader::UniformType::Float) {
+								float val = mat->GetFloat(name);
+								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) mat->SetFloat(name, val);
+							}
+							else if (prop.type == Shader::UniformType::Vec3) {
+								glm::vec3 val = mat->GetVec3(name);
+								if (name.find("Color") != std::string::npos || name.find("color") != std::string::npos) {
+									if (ImGui::ColorEdit3(name.c_str(), &val.x)) mat->SetVec3(name, val);
+								} else {
+									if (ImGui::DragFloat3(name.c_str(), &val.x, 0.01f)) mat->SetVec3(name, val);
+								}
+							}
+							else if (prop.type == Shader::UniformType::Vec2) {
+								glm::vec2 val = mat->GetVec2(name);
+								if (ImGui::DragFloat2(name.c_str(), &val.x, 0.01f)) mat->SetVec2(name, val);
+							}
+							ImGui::PopID();
+						}
 					}
 
-					glm::vec3 matCol = mat->GetColor();
-					if (ImGui::ColorEdit3("Base Color", &matCol.x)) {
-						mat->SetColor(matCol);
-					}
+					ImGui::Separator();
+					// Live preview sphere
+					glm::vec3 previewColor = mat->GetVec3("baseColor");
+					if (previewColor == glm::vec3(0.0f)) previewColor = mat->GetColor(); // Fallback to material.baseColor
 
-					// Tiling / Offset: only meaningful for the legacy single-texture path.
-					// When Texture Layers are active the vertex shader bypasses material.tiling entirely,
-					// and each layer has its own Tiling field. Hide these to avoid confusion.
-					bool hasLayersForTiling = !selected->GetTextureLayers().empty();
-					if (hasLayersForTiling) {
-						// Silently reset to neutral so the value never leaks into the shader.
-						if (mat->GetTiling() != glm::vec2(1.0f)) mat->SetTiling(glm::vec2(1.0f));
-						if (mat->GetOffset() != glm::vec2(0.0f)) mat->SetOffset(glm::vec2(0.0f));
-						ImGui::TextDisabled("Tiling: handled per Texture Layer");
-					} else {
-						glm::vec2 tiling = mat->GetTiling();
-						if (ImGui::DragFloat2("Tiling", &tiling.x, 0.1f, 0.01f, 100.0f)) {
-							mat->SetTiling(tiling);
-						}
-						glm::vec2 offset = mat->GetOffset();
-						if (ImGui::DragFloat2("Offset", &offset.x, 0.01f)) {
-							mat->SetOffset(offset);
-						}
-					}
-					
-					// Live preview sphere (use first layer's textures if available)
-					// Read tiling/offset directly from mat — the scoped variables above may not be in scope here
-					// (if layers are active, tiling was reset to (1,1) already by the layer path above)
-					Texture* previewDiff = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture();
-					Texture* previewNorm = (!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].normalMap : selected->GetNormalMap();
-					RenderMaterialPreview(specular, shininess, matCol, previewDiff, previewNorm, mat->GetTiling(), mat->GetOffset());
+					RenderMaterialPreview(mat->GetFloat("material.specularIntensity"), mat->GetFloat("material.shininess"), previewColor, 
+						(!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture(), 
+						(!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].normalMap : selected->GetNormalMap(), 
+						mat->GetVec2("material.tiling"), mat->GetVec2("material.offset"));
+						
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
 					}
@@ -980,7 +1018,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				} else {
 					ImGui::TextDisabled("No Material");
 					if (ImGui::Button("Add Material")) {
-						Material* newMat = new Material(0.5f, 32.0f);
+						Material* newMat = new Material(scene.GetMainShader());
 						selected->SetMaterial(newMat);
 					}
 				}

@@ -41,6 +41,7 @@ bool Application::Init()
 
 	// Renderer (shaders + skybox)
 	renderer.Init();
+	sceneManager.SetMainShader(&renderer.GetMainShader());
 
 	std::vector<std::string> skyboxFaces;
 	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_rt.tga");

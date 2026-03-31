@@ -47,10 +47,10 @@ public:
 
 	std::string GetSelectedName() const;
 
-	void RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
-		GLint uniformTiling, GLint uniformOffset,
-		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, 
-		const Frustum* frustum = nullptr, glm::vec3 cullCenter = glm::vec3(0), float cullRadius = 0.0f);
+	void RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
+		class DirectionalLight* mainLight, class PointLight* pointLights, unsigned int pointLightCount,
+		class SpotLight* spotLights, unsigned int spotLightCount,
+		float time = 0.0f, const Frustum* frustum = nullptr);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
@@ -81,6 +81,8 @@ public:
 		globalSpotLightCount = sCount;
 	}
 	void SetDefaultResources(Texture* tex, Material* mat) { defaultTexture = tex; defaultMaterial = mat; }
+	void SetMainShader(Shader* s) { mainShader = s; }
+	Shader* GetMainShader() const { return mainShader; }
 	NodeGraph& GetNodeGraph() { return nodeGraph; }
 
 	// ========== Utilities (public for EditorUI viewport drop) ==========
@@ -102,6 +104,7 @@ private:
 
 	Texture* defaultTexture = nullptr;
 	Material* defaultMaterial = nullptr;
+	Shader* mainShader = nullptr;
 
 	// Global light state pointers
 	PointLight* globalPointLights = nullptr;

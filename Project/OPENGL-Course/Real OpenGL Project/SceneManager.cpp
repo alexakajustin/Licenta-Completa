@@ -130,10 +130,10 @@ GameObject* SceneManager::FindObject(const std::string& name)
 	return nullptr;
 }
 
-void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
-	GLint uniformTiling, GLint uniformOffset,
-	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformUseInstancing, 
-	const Frustum* frustum, glm::vec3 cullCenter, float cullRadius)
+void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
+	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
+	SpotLight* sLights, unsigned int sCount,
+	float time, const Frustum* frustum)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -142,118 +142,131 @@ void SceneManager::RenderAll(GLint uniformModel, GLint uniformSpecularIntensity,
 		Texture* normalMap;
 		std::vector<glm::mat4> matrices;
 	};
-	
-	// Use a vector for batches to maintain order, but we reconstruct it every frame for safety
 	std::vector<Batch> batchList;
 
-	GLint shaderID;
-	glGetIntegerv(GL_CURRENT_PROGRAM, &shaderID);
+	GLuint lastShaderID = 0;
 
-	// 1. Collect and Cull
+	auto PrepareShader = [&](Shader* s) {
+		if (!s) return;
+		if (s->GetShaderID() != lastShaderID) {
+			s->UseShader();
+			lastShaderID = s->GetShaderID();
+
+			// Upload Globals
+			GLint projLoc = s->GetProjectionLocation();
+			GLint viewLoc = s->GetViewLocation();
+			GLint eyeLoc = s->GetEyePositionLocation();
+			GLint timeLoc = glGetUniformLocation(s->GetShaderID(), "time");
+
+			if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+			if (viewLoc != -1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+			if (eyeLoc != -1) glUniform3f(eyeLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+			if (timeLoc != -1) glUniform1f(timeLoc, time);
+
+			if (dLight) s->SetDirectionalLight(dLight);
+			if (pLights) s->SetPointLights(pLights, pCount, 4, 0);
+			if (sLights) s->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
+
+			if (dLight) {
+				dLight->GetShadowMap()->Read(GL_TEXTURE3);
+				s->SetDirectionalShadowMap(3);
+				s->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
+			}
+		}
+	};
+
+	// 1. Collect and Render Single Objects
 	for (auto* obj : objects) {
 		Mesh* msh = obj->GetMesh();
+		Model* mdl = obj->GetModel();
 		Material* mat = obj->GetMaterial();
 		Texture* tex = obj->GetTexture();
 		Texture* norm = obj->GetNormalMap();
 
-		if (msh || obj->GetModel()) {
-			bool visible = true;
+		if (!msh && !mdl) continue;
 
-			// Distance Culling (for point lights)
-			if (cullRadius > 0.0f) {
-				glm::vec3 pos = obj->GetTransform().GetPosition();
-				if (glm::distance(pos, cullCenter) > cullRadius + 5.0f) { // Extra padding
-					visible = false;
+		// Frustum Culling
+		if (frustum) {
+			glm::vec3 min, max;
+			obj->GetWorldBounds(min, max);
+			if (!frustum->IsBoxVisible(min, max)) continue;
+		}
+
+		Shader* targetShader = (mat && mat->GetShader()) ? mat->GetShader() : mainShader;
+		if (!targetShader) continue;
+
+		bool hasLayers = !obj->GetTextureLayers().empty();
+		// If it's a simple instanced primitive without layers, batch it
+		if (msh && !mdl && msh->IsInstanced() && !hasLayers) {
+			bool found = false;
+			for (auto& b : batchList) {
+				if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
+					b.matrices.push_back(obj->GetWorldMatrix());
+					found = true;
+					break;
 				}
 			}
-
-			// Frustum Culling
-			if (visible && frustum) {
-				glm::vec3 min, max;
-				obj->GetWorldBounds(min, max);
-				visible = frustum->IsBoxVisible(min, max);
-			}
-
-			if (visible) {
-				// Objects with texture layers MUST go through RenderSingle so their layers are bound correctly.
-				// The instanced-batch path has no layer binding, so it would render them as blank gray.
-				bool hasLayers = !obj->GetTextureLayers().empty();
-				if (msh && !obj->GetModel() && msh->IsInstanced() && !hasLayers) {
-					bool found = false;
-					// For primitive meshes, we still do simple linear search as there are usually very few unique primitives
-					for (auto& b : batchList) {
-						if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
-							b.matrices.push_back(obj->GetWorldMatrix());
-							found = true;
-							break;
-						}
-					}
-					if (!found) batchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
-				} else {
-					static GLint texLoc = -1;
-					static GLint normLoc = -1;
-					static GLuint lastShader = 0;
-					if (shaderID != lastShader) {
-						texLoc = glGetUniformLocation(shaderID, "theTexture");
-						normLoc = glGetUniformLocation(shaderID, "normalMap");
-						lastShader = shaderID;
-					}
-
-					glUniform1i(uniformUseInstancing, 0);
-					obj->RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor,
-						uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture,
-						texLoc, normLoc, (GLuint)shaderID);
-				}
-			}
+			if (!found) batchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
+		} else {
+			// Render Single
+			PrepareShader(targetShader);
+			
+			obj->RenderSingle(
+				targetShader->GetModelLocation(),
+				-1, (GLint)-1, (GLint)-1, (GLint)-1, (GLint)-1, // Material handled by Bind() called inside RenderSingle
+				glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap"),
+				glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
+				glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
+				glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
+				targetShader->GetShaderID()
+			);
 		}
 	}
 
-	// 2. Render Batches (these have NO texture layers, cleared above)
-	glUniform1i(uniformUseInstancing, 1);
+	// 2. Render Batches
 	for (auto& b : batchList) {
 		if (b.matrices.empty()) continue;
 
-		// Reset texture layer count to 0 for batched objects — they never have layers (layer-objects took the RenderSingle path)
-		static GLint uLayerCountBatch = -1;
-		static GLuint lastShaderBatch = 0;
-		if (lastShaderBatch != (GLuint)shaderID) {
-			uLayerCountBatch = glGetUniformLocation(shaderID, "textureLayerCount");
-			lastShaderBatch = (GLuint)shaderID;
-		}
-		if (uLayerCountBatch != -1) glUniform1i(uLayerCountBatch, 0);
+		Shader* targetShader = (b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader;
+		if (!targetShader) continue;
+
+		PrepareShader(targetShader);
 
 		if (b.material) {
-			b.material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
-		} else {
-			glUniform1f(uniformSpecularIntensity, 0.0f);
-			glUniform1f(uniformShininess, 1.0f);
-			glUniform3f(uniformMaterialColor, 1.0f, 1.0f, 1.0f);
-			glUniform2f(uniformTiling, 1.0f, 1.0f);
-			glUniform2f(uniformOffset, 0.0f, 0.0f);
+			b.material->Bind();
 		}
 
 		// Apply texture overrides
+		GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
+		GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
 		if (b.texture) {
-			glUniform1i(uniformUseDiffuseTexture, 1);
-			glUniform1i(glGetUniformLocation(shaderID, "theTexture"), 0); 
+			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
+			if (texLoc != -1) glUniform1i(texLoc, 0);
 			b.texture->UseTexture();
 		} else {
-			glUniform1i(uniformUseDiffuseTexture, 0);
+			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 0);
 		}
 
 		// Apply normal map overrides
+		GLint useNormalLoc = glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap");
+		GLint normLoc = glGetUniformLocation(targetShader->GetShaderID(), "normalMap");
 		if (b.normalMap) {
-			glUniform1i(uniformUseNormalMap, 1);
-			glUniform1i(glGetUniformLocation(shaderID, "normalMap"), 1);
+			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 1);
+			if (normLoc != -1) glUniform1i(normLoc, 1);
 			b.normalMap->UseNormalMap();
 		} else {
-			glUniform1i(uniformUseNormalMap, 0);
+			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
 		}
 
+		GLint instLoc = glGetUniformLocation(targetShader->GetShaderID(), "useInstancing");
+		if (instLoc != -1) glUniform1i(instLoc, 1);
+		
 		b.mesh->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
+		
+		if (instLoc != -1) glUniform1i(instLoc, 0);
 	}
-	glUniform1i(uniformUseInstancing, 0);
 }
+
 
 void SceneManager::AddLight(LightObject* light)
 {
