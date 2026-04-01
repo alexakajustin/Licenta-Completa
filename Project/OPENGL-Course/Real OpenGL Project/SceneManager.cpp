@@ -133,7 +133,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum)
+	float time, const Frustum* frustum, Shader* overrideShader)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -168,8 +168,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (sLights) s->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
 
 			if (dLight) {
-				dLight->GetShadowMap()->Read(GL_TEXTURE3);
-				s->SetDirectionalShadowMap(3);
+				// Avoid rebinding shadow map if we are currently WRITING it in an override shader
+				if (!overrideShader) {
+					dLight->GetShadowMap()->Read(GL_TEXTURE3);
+					s->SetDirectionalShadowMap(3);
+				}
 				s->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
 			}
 		}
@@ -192,12 +195,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (!frustum->IsBoxVisible(min, max)) continue;
 		}
 
-		Shader* targetShader = (mat && mat->GetShader()) ? mat->GetShader() : mainShader;
+		Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);
 		if (!targetShader) continue;
 
 		bool hasLayers = !obj->GetTextureLayers().empty();
 		// If it's a simple instanced primitive without layers, batch it
-		if (msh && !mdl && msh->IsInstanced() && !hasLayers) {
+		// BUT we skip batching if an override shader is used OR if it's a shadow pass (for simplicity/correctness)
+		if (!overrideShader && msh && !mdl && msh->IsInstanced() && !hasLayers) {
 			bool found = false;
 			for (auto& b : batchList) {
 				if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
@@ -213,7 +217,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			
 			obj->RenderSingle(
 				targetShader->GetModelLocation(),
-				-1, (GLint)-1, (GLint)-1, (GLint)-1, (GLint)-1, // Material handled by Bind() called inside RenderSingle
+				targetShader->GetSpecularIntensityLocation(),
+				targetShader->GetShininessLocation(),
+				glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
+				targetShader->GetTilingLocation(),
+				targetShader->GetOffsetLocation(),
 				glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap"),
 				glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
 				glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
@@ -227,19 +235,19 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	for (auto& b : batchList) {
 		if (b.matrices.empty()) continue;
 
-		Shader* targetShader = (b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader;
+		Shader* targetShader = overrideShader ? overrideShader : ((b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader);
 		if (!targetShader) continue;
 
 		PrepareShader(targetShader);
 
-		if (b.material) {
+		if (!overrideShader && b.material) {
 			b.material->Bind();
 		}
 
 		// Apply texture overrides
 		GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
 		GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
-		if (b.texture) {
+		if (!overrideShader && b.texture) {
 			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
 			if (texLoc != -1) glUniform1i(texLoc, 0);
 			b.texture->UseTexture();
@@ -250,7 +258,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		// Apply normal map overrides
 		GLint useNormalLoc = glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap");
 		GLint normLoc = glGetUniformLocation(targetShader->GetShaderID(), "normalMap");
-		if (b.normalMap) {
+		if (!overrideShader && b.normalMap) {
 			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 1);
 			if (normLoc != -1) glUniform1i(normLoc, 1);
 			b.normalMap->UseNormalMap();

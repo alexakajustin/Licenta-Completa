@@ -63,7 +63,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 
 	directionalShadowShader.Validate();
 
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr, &directionalShadowShader);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -87,7 +87,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
