@@ -123,8 +123,8 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	float menuHeight = 19.0f;
 	
 	// CPU Debug on bottom-right
-	ImVec2 pos(winWidth - uiState.rightWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
-	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio);
+	ImVec2 pos(winWidth - uiState.rightWidth, menuHeight + (winHeight - menuHeight) * uiState.rightHeightRatio);
+	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.rightHeightRatio));
 
 	if (uiState.maximizedWindowID == 5) { // Debug Maximized
 		pos = ImVec2(0, menuHeight);

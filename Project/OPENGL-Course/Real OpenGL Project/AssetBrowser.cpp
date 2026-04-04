@@ -386,8 +386,8 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	float menuHeight = ImGui::GetFrameHeight();
 	
 	// Project on bottom-middle
-	ImVec2 pos(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
-	ImVec2 size(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio);
+	ImVec2 pos(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * uiState.midHeightRatio);
+	ImVec2 size(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.midHeightRatio));
 
 	if (uiState.maximizedWindowID == 3) { // Project Maximized
 		pos = ImVec2(0, menuHeight);

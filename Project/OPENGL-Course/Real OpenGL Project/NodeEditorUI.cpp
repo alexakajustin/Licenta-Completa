@@ -33,7 +33,7 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 
 	// Node Editor on top-right
 	ImVec2 pos(winWidth - uiState.rightWidth, menuHeight);
-	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
+	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * uiState.rightHeightRatio);
 
 	if (uiState.maximizedWindowID == 4) { // Node Editor Maximized
 		pos = ImVec2(0, menuHeight);

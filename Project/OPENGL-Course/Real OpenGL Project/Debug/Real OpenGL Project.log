@@ -6,30 +6,7 @@ C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
   (compiling source file 'Application.cpp')
   
   AssetBrowser.cpp
-  AssetManager.cpp
-  Camera.cpp
-  CustomNode.cpp
-  CustomNodeDef.cpp
   DebugOverlay.cpp
-  DirectionalLight.cpp
-  dummy.cpp
-  glm.cpp
-  imgui.cpp
-  imgui_demo.cpp
-  imgui_draw.cpp
-  imgui_impl_glfw.cpp
-  imgui_impl_opengl3.cpp
-  imgui_tables.cpp
-  imgui_widgets.cpp
-  GameObject.cpp
-  GenerationPipelineUI.cpp
-  GenerationStack.cpp
-  Generating Code...
-  Compiling...
-  Light.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Light.cpp(17,31): warning C4244: 'argument': conversion from 'GLfloat' to 'GLuint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Light.cpp(17,18): warning C4244: 'argument': conversion from 'GLfloat' to 'GLuint', possible loss of data
-  LightObject.cpp
   EditorUI.cpp
   InputHandler.cpp
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
@@ -38,6 +15,10 @@ C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'InputHandler.cpp')
   
+  Mesh.cpp
+  NodeBuilderUI.cpp
+  NodeEditorUI.cpp
+  NodeGraph.cpp
   main.cpp
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'main.cpp')
@@ -45,73 +26,5 @@ C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Proje
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
   (compiling source file 'main.cpp')
   
-  Material.cpp
-  Mesh.cpp
-  Model.cpp
-  NodeBuilderUI.cpp
-  OmniShadowMap.cpp
-  Operation.cpp
-  PerlinNoiseGenerator.cpp
-  PointLight.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PointLight.cpp(31,31): warning C4244: 'argument': conversion from 'GLfloat' to 'GLuint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PointLight.cpp(31,18): warning C4244: 'argument': conversion from 'GLfloat' to 'GLuint', possible loss of data
-  PrimitiveGenerator.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(126,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(127,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(128,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(134,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\PrimitiveGenerator.cpp(136,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-  Renderer.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Renderer.cpp')
-  
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Renderer.cpp')
-  
-  SceneManager.cpp
-  SceneSerializer.cpp
-  Shader.cpp
-  ShadowMap.cpp
-  Skybox.cpp
   Generating Code...
-  Compiling...
-  SpotLight.cpp
-  Texture.cpp
-  Transform.cpp
-  Window.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Window.cpp')
-  
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Window.cpp')
-  
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(21,10): warning C4244: '=': conversion from 'GLfloat' to 'GLint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(22,11): warning C4244: '=': conversion from 'GLfloat' to 'GLint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(169,22): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(170,22): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(174,28): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(176,40): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(178,21): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(179,21): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-  NodeGraph.cpp
-  NodeEditorUI.cpp
-  ScatterNode.cpp
-  OutputNode.cpp
-  SceneInputNode.cpp
-  FluidSimulation.cpp
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(59,30): warning C4244: '+=': conversion from 'double' to 'T', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(59,30): warning C4244:         with
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(59,30): warning C4244:         [
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(59,30): warning C4244:             T=float
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(59,30): warning C4244:         ]
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(127,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(213,34): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(351,36): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\FluidSimulation.cpp(352,36): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-  HydraulicErosionNode.cpp
-  imnodes.cpp
-  Generating Code...
-  LINK : C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe not found or not built by the last incremental link; performing full link
-     Creating library C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.lib and object C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exp
-LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Real OpenGL Project.vcxproj -> C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

@@ -63,8 +63,9 @@ public:
 		// Dynamic layout memory to persist manual user resizing OS window changes
 		float leftWidth = 260.0f;
 		float rightWidth = 450.0f;
-		float bottomHeightRatio = 0.3f;
-		float hierarchyHeightRatio = 0.35f;
+		float leftHeightRatio = 0.35f;
+		float midHeightRatio = 0.3f;
+		float rightHeightRatio = 0.3f;
 
 		bool skipLayoutSave = false;
 		int activeSplitterID = -1; // -1: none, 0: Left, 1: Right, 2: HorizLeft, 3: HorizMid

@@ -253,7 +253,8 @@ void EditorUI::UpdateLayoutLogic()
 		const char* name = hovered->Name;
 		bool isTiled = (strcmp(name, "Scene") == 0 || strcmp(name, "Scene Hierarchy") == 0 || 
 					    strcmp(name, "Inspector") == 0 || strcmp(name, "Project") == 0 || 
-					    strcmp(name, "Node Editor") == 0 || strcmp(name, "CPU Debug") == 0);
+					    strcmp(name, "Node Editor") == 0 || strcmp(name, "CPU Debug") == 0 ||
+						strcmp(name, "Scene Viewport") == 0); // Include internal names if any
 		
 		// If hovering something that isn't a tiled panel, it occludes the splitters
 		if (!isTiled) occluded = true;
@@ -282,19 +283,25 @@ void EditorUI::UpdateLayoutLogic()
 				windowState.rightWidth = winWidth - rightX;
 			}
 			else if (windowState.activeSplitterID == 2) { // SplitY_L
-				windowState.hierarchyHeightRatio = (mousePos.y - menuHeight) / contentHeight;
+				windowState.leftHeightRatio = (mousePos.y - menuHeight) / contentHeight;
 				float minY = windowState.minPanelHeight / contentHeight;
 				float maxY = 1.0f - minY;
-				if (windowState.hierarchyHeightRatio < minY) windowState.hierarchyHeightRatio = minY;
-				if (windowState.hierarchyHeightRatio > maxY) windowState.hierarchyHeightRatio = maxY;
+				if (windowState.leftHeightRatio < minY) windowState.leftHeightRatio = minY;
+				if (windowState.leftHeightRatio > maxY) windowState.leftHeightRatio = maxY;
 			}
 			else if (windowState.activeSplitterID == 3) { // SplitY_M
-				float topRatio = (mousePos.y - menuHeight) / contentHeight;
+				windowState.midHeightRatio = (mousePos.y - menuHeight) / contentHeight;
 				float minY = windowState.minPanelHeight / contentHeight;
 				float maxY = 1.0f - minY;
-				if (topRatio < minY) topRatio = minY;
-				if (topRatio > maxY) topRatio = maxY;
-				windowState.bottomHeightRatio = 1.0f - topRatio;
+				if (windowState.midHeightRatio < minY) windowState.midHeightRatio = minY;
+				if (windowState.midHeightRatio > maxY) windowState.midHeightRatio = maxY;
+			}
+			else if (windowState.activeSplitterID == 4) { // SplitY_R
+				windowState.rightHeightRatio = (mousePos.y - menuHeight) / contentHeight;
+				float minY = windowState.minPanelHeight / contentHeight;
+				float maxY = 1.0f - minY;
+				if (windowState.rightHeightRatio < minY) windowState.rightHeightRatio = minY;
+				if (windowState.rightHeightRatio > maxY) windowState.rightHeightRatio = maxY;
 			}
 		}
 	}
@@ -307,11 +314,14 @@ void EditorUI::UpdateLayoutLogic()
 		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight + hitBuffer) windowState.activeSplitterID = 0;
 		// SplitX2
 		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight + hitBuffer) windowState.activeSplitterID = 1;
-		// SplitY_L
-		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) windowState.activeSplitterID = 2;
-		// SplitY_M
+		// SplitY_L (Left Column)
+		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.leftHeightRatio)) < 5.0f) windowState.activeSplitterID = 2;
+		// SplitY_M (Middle Column)
 		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
-				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) windowState.activeSplitterID = 3;
+				 abs(mousePos.y - (menuHeight + contentHeight * windowState.midHeightRatio)) < 5.0f) windowState.activeSplitterID = 3;
+		// SplitY_R (Right Column)
+		else if (mousePos.x > (winWidth - windowState.rightWidth) && 
+				 abs(mousePos.y - (menuHeight + contentHeight * windowState.rightHeightRatio)) < 5.0f) windowState.activeSplitterID = 4;
 	}
 
 }
@@ -349,24 +359,27 @@ void EditorUI::UpdateLayoutVisual()
 
 		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight + hitBuffer) hoverID = 0;
 		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight + hitBuffer) hoverID = 1;
-		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) hoverID = 2;
+		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.leftHeightRatio)) < 5.0f) hoverID = 2;
 		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
-				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) hoverID = 3;
+				 abs(mousePos.y - (menuHeight + contentHeight * windowState.midHeightRatio)) < 5.0f) hoverID = 3;
+		else if (mousePos.x > (winWidth - windowState.rightWidth) && 
+				 abs(mousePos.y - (menuHeight + contentHeight * windowState.rightHeightRatio)) < 5.0f) hoverID = 4;
 	} else {
 
 		hoverID = windowState.activeSplitterID;
 	}
 
 	if (hoverID == 0 || hoverID == 1) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-	else if (hoverID == 2 || hoverID == 3) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+	else if (hoverID == 2 || hoverID == 3 || hoverID == 4) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
 
 	// Highlight Active/Hovered
 
 	ImU32 highlightColor = ImGui::GetColorU32(windowState.activeSplitterID != -1 ? ImVec4(0.6f, 0.3f, 0.8f, 1.0f) : ImVec4(0.6f, 0.3f, 0.8f, 0.5f));
 	if (hoverID == 0) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth - 2, menuHeight + hitBuffer), ImVec2(windowState.leftWidth + 2, winHeight), highlightColor);
 	if (hoverID == 1) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth - 2, menuHeight + hitBuffer), ImVec2(winWidth - windowState.rightWidth + 2, winHeight), highlightColor);
-	if (hoverID == 2) fgDraw->AddRectFilled(ImVec2(0, menuHeight + contentHeight * windowState.hierarchyHeightRatio - 2), ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.hierarchyHeightRatio + 2), highlightColor);
-	if (hoverID == 3) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) - 2), ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) + 2), highlightColor);
+	if (hoverID == 2) fgDraw->AddRectFilled(ImVec2(0, menuHeight + contentHeight * windowState.leftHeightRatio - 2), ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.leftHeightRatio + 2), highlightColor);
+	if (hoverID == 3) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.midHeightRatio - 2), ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * windowState.midHeightRatio + 2), highlightColor);
+	if (hoverID == 4) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * windowState.rightHeightRatio - 2), ImVec2(winWidth, menuHeight + contentHeight * windowState.rightHeightRatio + 2), highlightColor);
 
 }
 
@@ -394,7 +407,7 @@ void EditorUI::UpdateViewportMetadata()
 
 	// Scene Viewport (to update metadata)
 	ImVec2 pos(windowState.leftWidth, menuHeight);
-	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio));
+	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * windowState.midHeightRatio);
 
 	if (windowState.maximizedWindowID == 1) { // Scene Maximized
 		pos = ImVec2(0, menuHeight);
@@ -493,8 +506,9 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 
 					windowState.leftWidth = 260.0f;
 					windowState.rightWidth = 450.0f;
-					windowState.bottomHeightRatio = 0.3f;
-					windowState.hierarchyHeightRatio = 0.35f;
+					windowState.leftHeightRatio = 0.35f;
+					windowState.midHeightRatio = 0.65f; // Initial ratio (Scene height)
+					windowState.rightHeightRatio = 0.65f; // Initial ratio (Node Editor height)
 
 					windowState.forceLayout = true;
 				}
@@ -636,9 +650,8 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
 	float menuHeight = ImGui::GetFrameHeight();
-
 	ImVec2 pos(windowState.leftWidth, menuHeight);
-	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio));
+	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * windowState.midHeightRatio);
 
 	if (windowState.maximizedWindowID == 1) { // Scene Maximized
 		pos = ImVec2(0, menuHeight);
@@ -725,7 +738,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 
 	// Hierarchy on top-left
 	ImVec2 pos(0, menuHeight);
-	ImVec2 size(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio);
+	ImVec2 size(windowState.leftWidth, (winHeight - menuHeight) * windowState.leftHeightRatio);
 
 	if (windowState.maximizedWindowID == 0) { // Hierarchy Maximized
 		size = ImVec2(displaySize.x, winHeightParam - menuHeight);
@@ -939,8 +952,8 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	float menuHeight = ImGui::GetFrameHeight();
 
 	// Inspector on bottom-left
-	ImVec2 pos(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio);
-	ImVec2 size(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio));
+	ImVec2 pos(0, menuHeight + (winHeight - menuHeight) * windowState.leftHeightRatio);
+	ImVec2 size(windowState.leftWidth, (winHeight - menuHeight) * (1.0f - windowState.leftHeightRatio));
 
 	if (windowState.maximizedWindowID == 2) { // Inspector Maximized
 		pos = ImVec2(0, menuHeight);
