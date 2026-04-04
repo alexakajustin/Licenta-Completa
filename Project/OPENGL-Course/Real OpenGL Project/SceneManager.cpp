@@ -241,6 +241,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		PrepareShader(targetShader);
 
 		if (!overrideShader && b.material) {
+			b.material->UseMaterial(
+				targetShader->GetSpecularIntensityLocation(),
+				targetShader->GetShininessLocation(),
+				glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
+				targetShader->GetTilingLocation(),
+				targetShader->GetOffsetLocation()
+			);
 			b.material->Bind();
 		}
 
@@ -265,6 +272,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		} else {
 			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
 		}
+
+		// Explicitly disable texture layers for batched objects to prevent leakage from single-rendered objects
+		GLint uLayerCountLoc = glGetUniformLocation(targetShader->GetShaderID(), "textureLayerCount");
+		if (uLayerCountLoc != -1) glUniform1i(uLayerCountLoc, 0);
 
 		GLint instLoc = glGetUniformLocation(targetShader->GetShaderID(), "useInstancing");
 		if (instLoc != -1) glUniform1i(instLoc, 1);

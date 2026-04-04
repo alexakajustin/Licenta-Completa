@@ -416,7 +416,7 @@ void CalcLayeredSurface(out vec3 outColor)
 	float slope = 1.0 - max(dot(geometryNormal, vec3(0.0, 1.0, 0.0)), 0.0);
 
 	mat3 TBN = GetTBN();
-	vec3 baseColor = material.baseColor;
+	vec3 baseColor = vec3(1.0); // Start neutral, material color applied as tint at the end
 	vec3 blendedNorm = geometryNormal;
     vec3 triWeights = GetTriplanarWeights(geometryNormal);
 	float totalWeight = 0.0;
@@ -493,7 +493,7 @@ void CalcLayeredSurface(out vec3 outColor)
 		blendedNorm = mix(blendedNorm, layerWorldNorm, weight);
 	}
 
-	outColor = baseColor;
+	outColor = baseColor * material.baseColor; // Unity-style multiplicative tint
 	gBlendedNormal = normalize(blendedNorm);
 	gUseBlendedNormal = true;
 }
