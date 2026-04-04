@@ -140,11 +140,12 @@ void EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 	ImGui::PushID(label.c_str());
 
 	ImGui::Text(label.c_str());
-	
-	float totalWidth = ImGui::GetContentRegionAvail().x;
-	float inputWidth = (totalWidth - 20.0f) / 3.0f;
-	
 	ImGui::SameLine(70.0f);
+	
+	// Calculate width AFTER indenting, so elements fit perfectly without overflowing
+	float totalWidth = ImGui::GetContentRegionAvail().x;
+	float inputWidth = (totalWidth - 10.0f) / 3.0f; // 2 spacing gaps of 5px
+	
 	ImGui::PushItemWidth(inputWidth);
 	
 	// X
@@ -1010,10 +1011,13 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			Transform& transform = selected->GetTransform();
 			char nameBuf[128];
 			strncpy_s(nameBuf, sizeof(nameBuf), selected->GetName().c_str(), _TRUNCATE);
+			
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
 			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
 			{
 				selected->SetName(nameBuf);
 			}
+			ImGui::PopItemWidth();
 			ImGui::Separator();
 
 			// --- Transform (collapsible) ---
@@ -1218,6 +1222,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 						for (auto const& [name, prop] : currentShader->GetUniformProperties()) {
 							ImGui::PushID(name.c_str());
+							ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 							if (prop.type == Shader::UniformType::Float) {
 								float val = mat->GetFloat(name);
 								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) mat->SetFloat(name, val);
@@ -1234,6 +1239,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 								glm::vec2 val = mat->GetVec2(name);
 								if (ImGui::DragFloat2(name.c_str(), &val.x, 0.01f)) mat->SetVec2(name, val);
 							}
+							ImGui::PopItemWidth();
 							ImGui::PopID();
 						}
 					}
