@@ -878,9 +878,19 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 
 	// Double-click to focus
 	if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && camera) {
-		// Use world position for focus
-		glm::vec3 worldPos = glm::vec3(obj->GetWorldMatrix()[3]);
-		camera->SetPositionAndLookAt(worldPos);
+		glm::mat4 worldMat = obj->GetWorldMatrix();
+		glm::vec3 worldPos = glm::vec3(worldMat[3]);
+		
+		// Calculate approx max scale from the matrix columns
+		float scaleX = glm::length(glm::vec3(worldMat[0]));
+		float scaleY = glm::length(glm::vec3(worldMat[1]));
+		float scaleZ = glm::length(glm::vec3(worldMat[2]));
+		float maxScale = glm::max(scaleX, glm::max(scaleY, scaleZ));
+		
+		// Ensure a minimum distance of 5.0, but scale up for large objects (e.g. 1000x terrain)
+		float focusDistance = glm::max(5.0f, maxScale * 1.5f);
+		
+		camera->SetPositionAndLookAt(worldPos, focusDistance);
 	}
 
 	// --- Drag Source ---
