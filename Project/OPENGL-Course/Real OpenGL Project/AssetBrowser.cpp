@@ -385,13 +385,10 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	float winHeight = displaySize.y;
 	float menuHeight = 19.0f;
 	
-	ImGuiCond layoutCond = uiState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	
-	ImGui::SetNextWindowPos(ImVec2(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio), ImGuiCond_Always);
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse;
-	if (uiState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	if (ImGui::Begin("Project", &uiState.isAssetBrowserOpen, windowFlags))
 	{
@@ -413,9 +410,6 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 			}
 		}
 
-		if (!uiState.forceLayout && !uiState.skipLayoutSave) {
-			uiState.bottomHeightRatio = ImGui::GetWindowSize().y / (winHeight - menuHeight);
-		}
 		if (ImGui::Button("Refresh")) {
 			RefreshAssetList();
 		}

@@ -188,8 +188,14 @@ void Application::Run()
 			lastWindowHeight = fbh;
 		}
 
-		// Update viewport metadata (size/pos) AFTER potential resize detection but BEFORE rendering 3D
+		// 1. Process Splitter Logic (Early frame for zero lag)
+		editorUI.UpdateLayoutLogic();
+
+		// 2. Update Viewport Metadata (Using fresh positions)
 		editorUI.UpdateViewportMetadata();
+
+
+
 
 		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
 
@@ -279,7 +285,9 @@ void Application::Run()
 		nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
 
+
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
+
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);
 
 		glUseProgram(0);
@@ -289,7 +297,12 @@ void Application::Run()
 
 		// Debug overlay + ImGui render
 		debugOverlay.Render(uiState);
+
+		// 3. Render Splitter Visuals (On top of EVERYTHING)
+		editorUI.UpdateLayoutVisual();
+
 		ImGui::Render();
+
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Update projection for window resize

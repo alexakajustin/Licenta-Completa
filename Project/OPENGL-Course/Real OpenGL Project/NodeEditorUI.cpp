@@ -31,19 +31,14 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	float winHeight = displaySize.y;
 	float menuHeight = 19.0f;
 
-	ImGuiCond layoutCond = uiState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	
-	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), ImGuiCond_Always);
 
-	ImGuiWindowFlags windowFlags = 0;
-	if (uiState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	if (ImGui::Begin("Node Editor", &uiState.isNodeEditorOpen, windowFlags))
 	{
-		if (!uiState.forceLayout && !uiState.skipLayoutSave) {
-			uiState.rightWidth = ImGui::GetWindowSize().x;
-		}
+
 	}
 	// Menu Bar
 	if (ImGui::BeginMenuBar())

@@ -56,6 +56,10 @@ public:
 		bool isNodeBuilderOpen = false; // Node Builder panel (off by default)
 		bool forceLayout = false;
 
+		// Constraints
+		const float minPanelWidth = 100.0f;
+		const float minPanelHeight = 50.0f;
+
 		// Dynamic layout memory to persist manual user resizing OS window changes
 		float leftWidth = 260.0f;
 		float rightWidth = 450.0f;
@@ -63,9 +67,18 @@ public:
 		float hierarchyHeightRatio = 0.35f;
 
 		bool skipLayoutSave = false;
+		int activeSplitterID = -1; // -1: none, 0: Left, 1: Right, 2: HorizLeft, 3: HorizMid
 	} windowState;
 
+	// Centralized layout logic (Early frame)
+	void UpdateLayoutLogic();
+
+	// Centralized layout visuals (Late frame)
+	void UpdateLayoutVisual();
+
 	WindowState& GetWindowState() { return windowState; }
+
+
 
 	// Viewport Info for InputHandler
 	glm::vec2 GetViewportPos() const { return viewportPos; }

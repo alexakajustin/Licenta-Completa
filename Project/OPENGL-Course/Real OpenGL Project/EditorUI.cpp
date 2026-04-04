@@ -1,4 +1,6 @@
 #include "EditorUI.h"
+#include "External Libs/ImGUI/imgui_internal.h"
+
 #include "SceneManager.h"
 #include "LightObject.h"
 #include "GameObject.h"
@@ -15,8 +17,10 @@
 #include "SceneSerializer.h"
 #include <filesystem>
 #include <set>
+#include <cstring>
 
 #include <GL/glew.h>
+
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -202,33 +206,135 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 	}
 }
 
+void EditorUI::UpdateLayoutLogic()
+{
+	if (ImGui::GetIO().DisplaySize.x <= 0) return;
+
+	ImVec2 mousePos = ImGui::GetIO().MousePos;
+	bool mousePressed = ImGui::IsMouseDown(0);
+	float winWidth = ImGui::GetIO().DisplaySize.x;
+	float winHeight = ImGui::GetIO().DisplaySize.y;
+	float menuHeight = 19.0f;
+	float contentHeight = winHeight - menuHeight;
+
+	// Handle Dragging
+	if (windowState.activeSplitterID != -1) {
+		if (!mousePressed) {
+			windowState.activeSplitterID = -1;
+		} else {
+			if (windowState.activeSplitterID == 0) { // SplitX1
+				windowState.leftWidth = mousePos.x;
+				float minX = windowState.minPanelWidth;
+				float maxX = winWidth - windowState.rightWidth - windowState.minPanelWidth;
+				if (windowState.leftWidth < minX) windowState.leftWidth = minX;
+				if (windowState.leftWidth > maxX) windowState.leftWidth = maxX;
+			}
+			else if (windowState.activeSplitterID == 1) { // SplitX2
+				float rightX = mousePos.x;
+				float minX = windowState.leftWidth + windowState.minPanelWidth;
+				float maxX = winWidth - windowState.minPanelWidth;
+				if (rightX < minX) rightX = minX;
+				if (rightX > maxX) rightX = maxX;
+				windowState.rightWidth = winWidth - rightX;
+			}
+			else if (windowState.activeSplitterID == 2) { // SplitY_L
+				windowState.hierarchyHeightRatio = (mousePos.y - menuHeight) / contentHeight;
+				float minY = windowState.minPanelHeight / contentHeight;
+				float maxY = 1.0f - minY;
+				if (windowState.hierarchyHeightRatio < minY) windowState.hierarchyHeightRatio = minY;
+				if (windowState.hierarchyHeightRatio > maxY) windowState.hierarchyHeightRatio = maxY;
+			}
+			else if (windowState.activeSplitterID == 3) { // SplitY_M
+				float topRatio = (mousePos.y - menuHeight) / contentHeight;
+				float minY = windowState.minPanelHeight / contentHeight;
+				float maxY = 1.0f - minY;
+				if (topRatio < minY) topRatio = minY;
+				if (topRatio > maxY) topRatio = maxY;
+				windowState.bottomHeightRatio = 1.0f - topRatio;
+			}
+		}
+	}
+
+	// Handle Hit-Testing (only if not already dragging)
+	if (windowState.activeSplitterID == -1 && mousePressed) {
+		// SplitX1
+		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight) windowState.activeSplitterID = 0;
+		// SplitX2
+		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight) windowState.activeSplitterID = 1;
+		// SplitY_L
+		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) windowState.activeSplitterID = 2;
+		// SplitY_M
+		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
+				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) windowState.activeSplitterID = 3;
+	}
+}
+
+void EditorUI::UpdateLayoutVisual()
+{
+	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+	float winWidth = displaySize.x;
+	float winHeight = displaySize.y;
+	float menuHeight = 19.0f;
+	float contentHeight = winHeight - menuHeight;
+	ImVec2 mousePos = ImGui::GetIO().MousePos;
+	ImDrawList* fgDraw = ImGui::GetForegroundDrawList();
+
+	// Cursor and Highlights
+	int hoverID = -1;
+	if (windowState.activeSplitterID == -1) {
+		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight) hoverID = 0;
+		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight) hoverID = 1;
+		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) hoverID = 2;
+		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
+				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) hoverID = 3;
+	} else {
+		hoverID = windowState.activeSplitterID;
+	}
+
+	if (hoverID == 0 || hoverID == 1) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+	else if (hoverID == 2 || hoverID == 3) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+
+	// Drawing a base layout border for better visual "Unity" feel
+	ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
+	ImU32 borderColor = ImGui::GetColorU32(ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
+	fgDraw->AddLine(ImVec2(windowState.leftWidth, menuHeight), ImVec2(windowState.leftWidth, winHeight), borderColor, 1.0f);
+	fgDraw->AddLine(ImVec2(winWidth - windowState.rightWidth, menuHeight), ImVec2(winWidth - windowState.rightWidth, winHeight), borderColor, 1.0f);
+	
+	// Highlight Active/Hovered
+	ImU32 highlightColor = ImGui::GetColorU32(windowState.activeSplitterID != -1 ? ImVec4(0.6f, 0.3f, 0.8f, 1.0f) : ImVec4(0.6f, 0.3f, 0.8f, 0.5f));
+	if (hoverID == 0) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth - 2, menuHeight), ImVec2(windowState.leftWidth + 2, winHeight), highlightColor);
+	if (hoverID == 1) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth - 2, menuHeight), ImVec2(winWidth - windowState.rightWidth + 2, winHeight), highlightColor);
+	if (hoverID == 2) fgDraw->AddRectFilled(ImVec2(0, menuHeight + contentHeight * windowState.hierarchyHeightRatio - 2), ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.hierarchyHeightRatio + 2), highlightColor);
+	if (hoverID == 3) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) - 2), ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) + 2), highlightColor);
+}
+
+
+
+
 void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera)
 {
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
-	UpdateViewportMetadata(); // Ensure we have latest info if called before Render
 	RenderHierarchy(scene, bufferHeight, camera);
 	RenderViewport(scene, projection, view, cameraPos, sceneTextureID);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 }
 
+
+
 void EditorUI::UpdateViewportMetadata()
 {
-	// Use ImGui display size to perfectly tile
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
 	float menuHeight = 19.0f;
 
-	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-
-	// Center Fill (Scene Viewport)
-	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), layoutCond);
+	// Scene Viewport (to update metadata)
+	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), ImGuiCond_Always);
 	
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse;
-	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	if (ImGui::Begin("Scene", nullptr, windowFlags))
 	{
@@ -239,6 +345,7 @@ void EditorUI::UpdateViewportMetadata()
 	}
 	ImGui::End();
 }
+
 
 void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 {
@@ -456,12 +563,10 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	float winHeight = displaySize.y;
 	float menuHeight = 19.0f;
 
-	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), ImGuiCond_Always);
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse;
-	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	if (ImGui::Begin("Scene", nullptr, windowFlags))
@@ -534,20 +639,14 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 	float menuHeight = 19.0f;
 
 	// Hierarchy on top-left
-	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio), ImGuiCond_Always);
 	if (!windowState.isHierarchyOpen) return;
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse;
-	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen, windowFlags))
 	{
-		if (!windowState.forceLayout && !windowState.skipLayoutSave) {
-			windowState.leftWidth = ImGui::GetWindowSize().x;
-			windowState.hierarchyHeightRatio = ImGui::GetWindowSize().y / (winHeightParam - menuHeight);
-		}
 
 		auto& objects = scene.GetObjects();
 		auto& lights = scene.GetLights();
@@ -744,13 +843,11 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	float menuHeight = 19.0f;
 
 	// Inspector on bottom-left
-	ImGuiCond layoutCond = windowState.forceLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(ImVec2(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio), layoutCond);
-	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio)), layoutCond);
+	ImGui::SetNextWindowPos(ImVec2(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio)), ImGuiCond_Always);
 	if (!windowState.isInspectorOpen) return;
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse;
-	if (windowState.forceLayout) windowFlags |= (ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	if (!showObjectInspector && !showLightInspector) {
 		// Even if empty, show a blank Inspector window for docking consistency
@@ -763,9 +860,6 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags))
 	{
-		if (!windowState.forceLayout && !windowState.skipLayoutSave) {
-			windowState.leftWidth = ImGui::GetWindowSize().x;
-		}
 
 		if (showObjectInspector)
 		{
