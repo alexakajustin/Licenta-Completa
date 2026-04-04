@@ -69,7 +69,17 @@ bool Application::Init()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
 	// io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Missing in this ImGui branch
 	
-	ImGui::StyleColorsDark();
+	// Load Modern System Font (Segoe UI) at 18px
+	if (GetFileAttributesA("C:\\Windows\\Fonts\\segoeui.ttf") != INVALID_FILE_ATTRIBUTES) {
+		io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+	} else {
+		// Fallback: Just scale the default font
+		io.FontGlobalScale = 1.15f; 
+	}
+
+	SetupModernTheme();
+	ImNodes::StyleColorsDark();
+	SetupModernNodeTheme();
 	ImGui_ImplGlfw_InitForOpenGL(mainWindow.getWindow(), true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
@@ -370,6 +380,79 @@ void Application::ResizeViewportFBO(int width, int height)
 void Application::SetupDockSpace()
 {
     // Not supported without docking branch
+}
+
+void Application::SetupModernTheme()
+{
+	auto& style = ImGui::GetStyle();
+	auto& colors = style.Colors;
+
+	// Modern Rounding 
+	style.WindowRounding = 6.0f;
+	style.ChildRounding = 4.0f;
+	style.FrameRounding = 4.0f;
+	style.PopupRounding = 4.0f;
+	style.ScrollbarRounding = 9.0f;
+	style.GrabRounding = 4.0f;
+	style.TabRounding = 4.0f;
+	style.WindowBorderSize = 0.0f;
+	style.FramePadding = ImVec2(5, 5);
+
+	// Cyber-Purple/Black Palette
+	colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
+	colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+	colors[ImGuiCol_WindowBg] = ImVec4(0.07f, 0.07f, 0.09f, 0.98f); // Very dark purple-black
+	colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.10f, 0.94f);
+	colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+	colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.12f, 0.28f, 0.54f); // Subtle purple
+	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.39f, 0.19f, 0.61f, 0.40f);
+	colors[ImGuiCol_FrameBgActive] = ImVec4(0.39f, 0.19f, 0.61f, 0.67f);
+	colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+	colors[ImGuiCol_TitleBgActive] = ImVec4(0.25f, 0.15f, 0.35f, 1.00f);
+	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+	colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.08f, 0.18f, 1.00f);
+	colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+	colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+	colors[ImGuiCol_CheckMark] = ImVec4(0.61f, 0.31f, 0.91f, 1.00f);
+	colors[ImGuiCol_SliderGrab] = ImVec4(0.61f, 0.31f, 0.91f, 1.00f);
+	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.71f, 0.41f, 1.00f, 1.00f);
+	colors[ImGuiCol_Button] = ImVec4(0.25f, 0.15f, 0.35f, 1.00f);
+	colors[ImGuiCol_ButtonHovered] = ImVec4(0.47f, 0.23f, 0.71f, 1.00f);
+	colors[ImGuiCol_ButtonActive] = ImVec4(0.57f, 0.33f, 0.81f, 1.00f);
+	colors[ImGuiCol_Header] = ImVec4(0.20f, 0.12f, 0.28f, 0.55f);
+	colors[ImGuiCol_HeaderHovered] = ImVec4(0.39f, 0.19f, 0.61f, 0.80f);
+	colors[ImGuiCol_HeaderActive] = ImVec4(0.47f, 0.23f, 0.71f, 1.00f);
+	colors[ImGuiCol_Separator] = ImVec4(1.0f, 1.0f, 1.0f, 0.1f);
+	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.39f, 0.19f, 0.61f, 0.78f);
+	colors[ImGuiCol_SeparatorActive] = ImVec4(0.47f, 0.23f, 0.71f, 1.00f);
+	colors[ImGuiCol_ResizeGrip] = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
+}
+
+void Application::SetupModernNodeTheme()
+{
+	auto& style = ImNodes::GetStyle();
+	auto& colors = style.Colors;
+
+	// Sync with ImGui Purple Theme
+	colors[ImNodesCol_TitleBar] = ImGui::GetColorU32(ImVec4(0.20f, 0.12f, 0.28f, 1.00f));
+	colors[ImNodesCol_TitleBarHovered] = ImGui::GetColorU32(ImVec4(0.39f, 0.19f, 0.61f, 1.00f));
+	colors[ImNodesCol_TitleBarSelected] = ImGui::GetColorU32(ImVec4(0.47f, 0.23f, 0.71f, 1.00f));
+	colors[ImNodesCol_NodeBackground] = ImGui::GetColorU32(ImVec4(0.11f, 0.11f, 0.15f, 0.98f));
+	colors[ImNodesCol_NodeBackgroundHovered] = ImGui::GetColorU32(ImVec4(0.11f, 0.11f, 0.15f, 1.00f));
+	colors[ImNodesCol_NodeBackgroundSelected] = ImGui::GetColorU32(ImVec4(0.15f, 0.15f, 0.20f, 1.00f));
+	colors[ImNodesCol_GridBackground] = ImGui::GetColorU32(ImVec4(0.05f, 0.05f, 0.08f, 1.00f));
+	colors[ImNodesCol_GridLine] = ImGui::GetColorU32(ImVec4(0.20f, 0.20f, 0.25f, 0.15f));
+	colors[ImNodesCol_Link] = ImGui::GetColorU32(ImVec4(0.47f, 0.23f, 0.71f, 1.00f));
+	colors[ImNodesCol_LinkHovered] = ImGui::GetColorU32(ImVec4(0.57f, 0.33f, 0.81f, 1.00f));
+	colors[ImNodesCol_LinkSelected] = ImGui::GetColorU32(ImVec4(0.67f, 0.43f, 0.91f, 1.00f));
+	colors[ImNodesCol_Pin] = ImGui::GetColorU32(ImVec4(0.39f, 0.19f, 0.61f, 1.00f));
+	colors[ImNodesCol_PinHovered] = ImGui::GetColorU32(ImVec4(0.47f, 0.23f, 0.71f, 1.00f));
+	colors[ImNodesCol_BoxSelector] = ImGui::GetColorU32(ImVec4(0.47f, 0.23f, 0.71f, 0.25f));
+	colors[ImNodesCol_BoxSelectorOutline] = ImGui::GetColorU32(ImVec4(0.47f, 0.23f, 0.71f, 0.75f));
 }
 
 void Application::Shutdown()

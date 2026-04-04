@@ -506,9 +506,9 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 
 					windowState.leftWidth = 260.0f;
 					windowState.rightWidth = 450.0f;
-					windowState.leftHeightRatio = 0.35f;
-					windowState.midHeightRatio = 0.65f; // Initial ratio (Scene height)
-					windowState.rightHeightRatio = 0.65f; // Initial ratio (Node Editor height)
+					windowState.leftHeightRatio = 0.4f;
+					windowState.midHeightRatio = 0.75f;
+					windowState.rightHeightRatio = 0.75f;
 
 					windowState.forceLayout = true;
 				}
@@ -666,8 +666,11 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	if (ImGui::Begin("Scene", nullptr, windowFlags))
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	bool sceneOpen = ImGui::Begin("Scene", nullptr, windowFlags);
+	ImGui::PopStyleVar();
+
+	if (sceneOpen)
 	{
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 		
@@ -727,7 +730,6 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 		}
 	}
 	ImGui::End();
-	ImGui::PopStyleVar();
 }
 
 void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camera)
@@ -752,7 +754,11 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen, windowFlags))
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f)); 
+	bool hierarchyOpen = ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen, windowFlags);
+	ImGui::PopStyleVar();
+
+	if (hierarchyOpen)
 	{
 		windowState.CheckMaximize(0);
 
@@ -978,7 +984,11 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 		return;
 	}
 
-	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags))
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+	bool inspectorOpen = ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags);
+	ImGui::PopStyleVar();
+
+	if (inspectorOpen)
 	{
 		windowState.CheckMaximize(2);
 

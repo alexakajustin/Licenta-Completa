@@ -56,6 +56,9 @@ int Window::Initialise()
 	// forward compatible
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
+	// start window maximized
+	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+
 	// Create a window
 	mainWindow = glfwCreateWindow(width, height, "RAMY Procedural Generation Engine", NULL, NULL);
 

@@ -138,9 +138,14 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	ImGui::SetNextWindowBgAlpha(0.95f);
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+	bool debugOpen = ImGui::Begin("CPU Debug", &uiState.isDebugOverlayOpen, windowFlags);
+	ImGui::PopStyleVar();
 
-	ImGui::Begin("CPU Debug", &uiState.isDebugOverlayOpen, windowFlags);
-	uiState.CheckMaximize(5);
+	if (debugOpen)
+	{
+		uiState.CheckMaximize(5);
 
 
 
@@ -238,6 +243,7 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	// Flush stale GL errors from FBO rendering, picking, thumbnails, etc.
 	while (glGetError() != GL_NO_ERROR) {}
 	ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "GL State: OK");
+	}
 
 	ImGui::End();
 }

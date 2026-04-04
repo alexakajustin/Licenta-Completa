@@ -46,8 +46,12 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+	bool nodeEditorOpen = ImGui::Begin("Node Editor", &uiState.isNodeEditorOpen, windowFlags);
+	ImGui::PopStyleVar();
 
-	if (ImGui::Begin("Node Editor", &uiState.isNodeEditorOpen, windowFlags))
+	if (nodeEditorOpen)
 	{
 		uiState.CheckMaximize(4);
 

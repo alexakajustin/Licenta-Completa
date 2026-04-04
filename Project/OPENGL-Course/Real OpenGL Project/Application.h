@@ -60,6 +60,8 @@ private:
 	void InitViewportFBO();
 	void ResizeViewportFBO(int width, int height);
 	void SetupDockSpace();
+	void SetupModernTheme();
+	void SetupModernNodeTheme();
 	GLuint viewportFBO = 0;
 	GLuint viewportTexture = 0;
 	GLuint viewportDepth = 0;

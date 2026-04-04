@@ -63,9 +63,9 @@ public:
 		// Dynamic layout memory to persist manual user resizing OS window changes
 		float leftWidth = 260.0f;
 		float rightWidth = 450.0f;
-		float leftHeightRatio = 0.35f;
-		float midHeightRatio = 0.3f;
-		float rightHeightRatio = 0.3f;
+		float leftHeightRatio = 0.4f; // Hierarchy 40%, Inspector 60%
+		float midHeightRatio = 0.75f; // Scene 75%, Project 25%
+		float rightHeightRatio = 0.75f; // Node Editor 75%, CPU Debug 25%
 
 		bool skipLayoutSave = false;
 		int activeSplitterID = -1; // -1: none, 0: Left, 1: Right, 2: HorizLeft, 3: HorizMid

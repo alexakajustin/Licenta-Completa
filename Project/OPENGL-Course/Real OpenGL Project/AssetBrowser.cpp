@@ -400,8 +400,12 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+	bool projectOpen = ImGui::Begin("Project", &uiState.isAssetBrowserOpen, windowFlags);
+	ImGui::PopStyleVar();
 
-	if (ImGui::Begin("Project", &uiState.isAssetBrowserOpen, windowFlags))
+	if (projectOpen)
 	{
 		uiState.CheckMaximize(3);
 
