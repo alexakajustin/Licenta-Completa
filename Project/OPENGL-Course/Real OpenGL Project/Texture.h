@@ -17,6 +17,7 @@ public:
 
 	bool LoadTexture();
 	bool LoadTextureA(); // texture with alpha
+	bool LoadTextureGrayscale(); // single-channel for displacement/height maps (4x less memory)
 	void UseTexture();
 	void UseNormalMap();
 	void UseTextureOnUnit(GLenum unit);
@@ -25,6 +26,8 @@ public:
 	GLuint GetTextureID() const { return textureID; }
 	void SetTextureID(GLuint id) { textureID = id; }
 	const char* GetFileLocation() const { return fileLocation; }
+	int GetWidth() const { return width; }
+	int GetHeight() const { return height; }
 
 	~Texture();
 private:

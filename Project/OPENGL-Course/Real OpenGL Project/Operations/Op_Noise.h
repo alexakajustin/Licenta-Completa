@@ -4,6 +4,9 @@
 #include "../OperationRegistry.h"
 #include <cmath>
 #include <cstdlib>
+#include <thread>
+#include <vector>
+#include <random>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -75,6 +78,7 @@ namespace OpNoise
 
 // =====================================================================
 //  MeshOp_PerlinDisplace — Displace vertices via Perlin noise
+//  OPTIMIZED: Multithreaded for large meshes
 // =====================================================================
 
 class MeshOp_PerlinDisplace : public Operation
@@ -111,33 +115,88 @@ public:
 		OpNoise::InitPerm(seed);
 
 		int count = ctx.mesh.GetVertexCount();
-		for (int i = 0; i < count; i++)
+
+		// Check if vertex selection is active (any unselected vertex = selection is active)
+		bool hasSelection = false;
+		for (int i = 0; i < count && !hasSelection; i++)
+			if (!ctx.IsVertexSelected(i)) hasSelection = true;
+
+		// Multithread for large meshes without selection masks
+		if (count > 1000 && !hasSelection)
 		{
-			if (!ctx.IsVertexSelected(i)) continue;
+			unsigned int numThreads = std::thread::hardware_concurrency();
+			if (numThreads == 0) numThreads = 4;
+			if (numThreads > (unsigned int)count) numThreads = (unsigned int)count;
 
-			int base = i * 14;
-			float px = ctx.mesh.vertices[base];
-			float py = ctx.mesh.vertices[base + 1];
-			float pz = ctx.mesh.vertices[base + 2];
+			std::vector<std::thread> threads;
+			int perThread = count / numThreads;
 
-			float noise = OpNoise::FractalNoise(
-				(px + offset.x) * freq,
-				(pz + offset.y) * freq,
-				octaves, persist
-			) * amp;
-
-			if (alongNormal)
+			for (unsigned int t = 0; t < numThreads; t++)
 			{
-				float nx = ctx.mesh.vertices[base + 5];
-				float ny = ctx.mesh.vertices[base + 6];
-				float nz = ctx.mesh.vertices[base + 7];
-				ctx.mesh.vertices[base]     += nx * noise;
-				ctx.mesh.vertices[base + 1] += ny * noise;
-				ctx.mesh.vertices[base + 2] += nz * noise;
+				int startV = t * perThread;
+				int endV = (t == numThreads - 1) ? count : (t + 1) * perThread;
+
+				threads.emplace_back([&ctx, freq, amp, octaves, persist, alongNormal, offset, startV, endV]() {
+					for (int i = startV; i < endV; i++)
+					{
+						int base = i * 14;
+						float px = ctx.mesh.vertices[base];
+						float pz = ctx.mesh.vertices[base + 2];
+
+						float noise = OpNoise::FractalNoise(
+							(px + offset.x) * freq,
+							(pz + offset.y) * freq,
+							octaves, persist
+						) * amp;
+
+						if (alongNormal)
+						{
+							float nx = ctx.mesh.vertices[base + 5];
+							float ny = ctx.mesh.vertices[base + 6];
+							float nz = ctx.mesh.vertices[base + 7];
+							ctx.mesh.vertices[base]     += nx * noise;
+							ctx.mesh.vertices[base + 1] += ny * noise;
+							ctx.mesh.vertices[base + 2] += nz * noise;
+						}
+						else
+						{
+							ctx.mesh.vertices[base + 1] += noise;
+						}
+					}
+				});
 			}
-			else
+			for (auto& th : threads) th.join();
+		}
+		else
+		{
+			// Single-threaded path (small mesh or has vertex selection)
+			for (int i = 0; i < count; i++)
 			{
-				ctx.mesh.vertices[base + 1] += noise; // Y-only displacement
+				if (!ctx.IsVertexSelected(i)) continue;
+
+				int base = i * 14;
+				float px = ctx.mesh.vertices[base];
+				float pz = ctx.mesh.vertices[base + 2];
+
+				float noise = OpNoise::FractalNoise(
+					(px + offset.x) * freq,
+					(pz + offset.y) * freq,
+					octaves, persist
+				) * amp;
+
+				if (alongNormal)
+				{
+					float nx = ctx.mesh.vertices[base + 5];
+					float ny = ctx.mesh.vertices[base + 6];
+					float nz = ctx.mesh.vertices[base + 7];
+					ctx.mesh.vertices[base]     += nx * noise;
+					ctx.mesh.vertices[base + 1] += ny * noise;
+					ctx.mesh.vertices[base + 2] += nz * noise;
+				}
+				else
+				{
+					ctx.mesh.vertices[base + 1] += noise;
+				}
 			}
 		}
 	}
@@ -148,6 +207,7 @@ REGISTER_OPERATION(MeshOp_PerlinDisplace, "Perlin Displace", "Noise")
 
 // =====================================================================
 //  MeshOp_WaveDeform — Sine/Cosine wave deformation
+//  OPTIMIZED: Multithreaded for large meshes
 // =====================================================================
 
 class MeshOp_WaveDeform : public Operation
@@ -178,27 +238,63 @@ public:
 		float phase  = GetFloat("Phase");
 
 		int count = ctx.mesh.GetVertexCount();
-		for (int i = 0; i < count; i++)
+
+		// Check for active selection
+		bool hasSelection = false;
+		for (int i = 0; i < count && !hasSelection; i++)
+			if (!ctx.IsVertexSelected(i)) hasSelection = true;
+
+		if (count > 1000 && !hasSelection)
 		{
-			if (!ctx.IsVertexSelected(i)) continue;
+			unsigned int numThreads = std::thread::hardware_concurrency();
+			if (numThreads == 0) numThreads = 4;
+			if (numThreads > (unsigned int)count) numThreads = (unsigned int)count;
 
-			int base = i * 14;
-			float px = ctx.mesh.vertices[base];
-			float py = ctx.mesh.vertices[base + 1];
-			float pz = ctx.mesh.vertices[base + 2];
+			std::vector<std::thread> threads;
+			int perThread = count / numThreads;
 
-			// Sample along the given axis
-			float sampleVal;
-			if (axis == 0) sampleVal = px;
-			else if (axis == 1) sampleVal = py;
-			else sampleVal = pz;
+			for (unsigned int t = 0; t < numThreads; t++)
+			{
+				int startV = t * perThread;
+				int endV = (t == numThreads - 1) ? count : (t + 1) * perThread;
 
-			float displacement;
-			if (waveType == 0) displacement = sin(sampleVal * freq + phase) * amp;
-			else               displacement = cos(sampleVal * freq + phase) * amp;
+				threads.emplace_back([&ctx, waveType, axis, freq, amp, phase, startV, endV]() {
+					for (int i = startV; i < endV; i++)
+					{
+						int base = i * 14;
+						float sampleVal;
+						if (axis == 0) sampleVal = ctx.mesh.vertices[base];
+						else if (axis == 1) sampleVal = ctx.mesh.vertices[base + 1];
+						else sampleVal = ctx.mesh.vertices[base + 2];
 
-			// Displace along Y (up)
-			ctx.mesh.vertices[base + 1] += displacement;
+						float displacement;
+						if (waveType == 0) displacement = sinf(sampleVal * freq + phase) * amp;
+						else               displacement = cosf(sampleVal * freq + phase) * amp;
+
+						ctx.mesh.vertices[base + 1] += displacement;
+					}
+				});
+			}
+			for (auto& th : threads) th.join();
+		}
+		else
+		{
+			for (int i = 0; i < count; i++)
+			{
+				if (!ctx.IsVertexSelected(i)) continue;
+
+				int base = i * 14;
+				float sampleVal;
+				if (axis == 0) sampleVal = ctx.mesh.vertices[base];
+				else if (axis == 1) sampleVal = ctx.mesh.vertices[base + 1];
+				else sampleVal = ctx.mesh.vertices[base + 2];
+
+				float displacement;
+				if (waveType == 0) displacement = sinf(sampleVal * freq + phase) * amp;
+				else               displacement = cosf(sampleVal * freq + phase) * amp;
+
+				ctx.mesh.vertices[base + 1] += displacement;
+			}
 		}
 	}
 };
@@ -208,6 +304,7 @@ REGISTER_OPERATION(MeshOp_WaveDeform, "Wave Deform", "Noise")
 
 // =====================================================================
 //  MeshOp_Jitter — Random position offset per vertex
+//  OPTIMIZED: Uses mt19937 per-thread for deterministic parallel jitter
 // =====================================================================
 
 class MeshOp_Jitter : public Operation
@@ -233,34 +330,85 @@ public:
 		int seed = GetInt("Seed");
 		bool uniform = GetBool("Uniform");
 
-		srand(seed);
-
 		int count = ctx.mesh.GetVertexCount();
-		for (int i = 0; i < count; i++)
+
+		// Check for active selection
+		bool hasSelection = false;
+		for (int i = 0; i < count && !hasSelection; i++)
+			if (!ctx.IsVertexSelected(i)) hasSelection = true;
+
+		if (count > 1000 && !hasSelection)
 		{
-			if (!ctx.IsVertexSelected(i)) continue;
+			unsigned int numThreads = std::thread::hardware_concurrency();
+			if (numThreads == 0) numThreads = 4;
+			if (numThreads > (unsigned int)count) numThreads = (unsigned int)count;
 
-			int base = i * 14;
+			std::vector<std::thread> threads;
+			int perThread = count / numThreads;
 
-			float rx = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
-			float ry = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
-			float rz = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
-
-			if (uniform)
+			for (unsigned int t = 0; t < numThreads; t++)
 			{
-				// Normalize to consistent distance
-				float len = sqrt(rx * rx + ry * ry + rz * rz);
-				if (len > 0.0001f)
-				{
-					rx = rx / len * strength;
-					ry = ry / len * strength;
-					rz = rz / len * strength;
-				}
-			}
+				int startV = t * perThread;
+				int endV = (t == numThreads - 1) ? count : (t + 1) * perThread;
 
-			ctx.mesh.vertices[base]     += rx;
-			ctx.mesh.vertices[base + 1] += ry;
-			ctx.mesh.vertices[base + 2] += rz;
+				// Each thread gets its own RNG seeded deterministically
+				threads.emplace_back([&ctx, strength, seed, uniform, startV, endV]() {
+					std::mt19937 rng(seed + startV);
+					std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+					for (int i = startV; i < endV; i++)
+					{
+						int base = i * 14;
+						float rx = dist(rng) * strength;
+						float ry = dist(rng) * strength;
+						float rz = dist(rng) * strength;
+
+						if (uniform)
+						{
+							float len = sqrtf(rx * rx + ry * ry + rz * rz);
+							if (len > 0.0001f)
+							{
+								rx = rx / len * strength;
+								ry = ry / len * strength;
+								rz = rz / len * strength;
+							}
+						}
+
+						ctx.mesh.vertices[base]     += rx;
+						ctx.mesh.vertices[base + 1] += ry;
+						ctx.mesh.vertices[base + 2] += rz;
+					}
+				});
+			}
+			for (auto& th : threads) th.join();
+		}
+		else
+		{
+			srand(seed);
+			for (int i = 0; i < count; i++)
+			{
+				if (!ctx.IsVertexSelected(i)) continue;
+
+				int base = i * 14;
+				float rx = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
+				float ry = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
+				float rz = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * strength;
+
+				if (uniform)
+				{
+					float len = sqrtf(rx * rx + ry * ry + rz * rz);
+					if (len > 0.0001f)
+					{
+						rx = rx / len * strength;
+						ry = ry / len * strength;
+						rz = rz / len * strength;
+					}
+				}
+
+				ctx.mesh.vertices[base]     += rx;
+				ctx.mesh.vertices[base + 1] += ry;
+				ctx.mesh.vertices[base + 2] += rz;
+			}
 		}
 	}
 };

@@ -4,6 +4,8 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <string>
+#include <thread>
+#include <algorithm>
 #include "Mesh.h"
 
 class Material;
@@ -106,32 +108,75 @@ struct MeshData
 	{
 		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(matrix)));
 		int count = GetVertexCount();
-		for (int i = 0; i < count; i++)
+
+		// Multithread for large meshes (>1000 vertices)
+		if (count > 1000)
 		{
-			int base = i * 14;
-			// Position
-			glm::vec4 p = matrix * glm::vec4(vertices[base], vertices[base + 1], vertices[base + 2], 1.0f);
-			vertices[base] = p.x;
-			vertices[base + 1] = p.y;
-			vertices[base + 2] = p.z;
+			unsigned int numThreads = std::thread::hardware_concurrency();
+			if (numThreads == 0) numThreads = 4;
+			if (numThreads > (unsigned int)count) numThreads = (unsigned int)count;
 
-			// Normal
-			glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(vertices[base + 5], vertices[base + 6], vertices[base + 7]));
-			vertices[base + 5] = n.x;
-			vertices[base + 6] = n.y;
-			vertices[base + 7] = n.z;
+			std::vector<std::thread> threads;
+			int perThread = count / numThreads;
 
-			// Tangent
-			glm::vec3 t = glm::normalize(normalMatrix * glm::vec3(vertices[base + 8], vertices[base + 9], vertices[base + 10]));
-			vertices[base + 8] = t.x;
-			vertices[base + 9] = t.y;
-			vertices[base + 10] = t.z;
+			for (unsigned int t = 0; t < numThreads; t++)
+			{
+				int start = t * perThread;
+				int end = (t == numThreads - 1) ? count : (t + 1) * perThread;
 
-			// Bitangent
-			glm::vec3 b = glm::normalize(normalMatrix * glm::vec3(vertices[base + 11], vertices[base + 12], vertices[base + 13]));
-			vertices[base + 11] = b.x;
-			vertices[base + 12] = b.y;
-			vertices[base + 13] = b.z;
+				threads.emplace_back([this, &matrix, &normalMatrix, start, end]() {
+					for (int i = start; i < end; i++)
+					{
+						int base = i * 14;
+						glm::vec4 p = matrix * glm::vec4(vertices[base], vertices[base + 1], vertices[base + 2], 1.0f);
+						vertices[base] = p.x;
+						vertices[base + 1] = p.y;
+						vertices[base + 2] = p.z;
+
+						glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(vertices[base + 5], vertices[base + 6], vertices[base + 7]));
+						vertices[base + 5] = n.x;
+						vertices[base + 6] = n.y;
+						vertices[base + 7] = n.z;
+
+						glm::vec3 t = glm::normalize(normalMatrix * glm::vec3(vertices[base + 8], vertices[base + 9], vertices[base + 10]));
+						vertices[base + 8] = t.x;
+						vertices[base + 9] = t.y;
+						vertices[base + 10] = t.z;
+
+						glm::vec3 b = glm::normalize(normalMatrix * glm::vec3(vertices[base + 11], vertices[base + 12], vertices[base + 13]));
+						vertices[base + 11] = b.x;
+						vertices[base + 12] = b.y;
+						vertices[base + 13] = b.z;
+					}
+				});
+			}
+			for (auto& th : threads) th.join();
+		}
+		else
+		{
+			for (int i = 0; i < count; i++)
+			{
+				int base = i * 14;
+				glm::vec4 p = matrix * glm::vec4(vertices[base], vertices[base + 1], vertices[base + 2], 1.0f);
+				vertices[base] = p.x;
+				vertices[base + 1] = p.y;
+				vertices[base + 2] = p.z;
+
+				glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(vertices[base + 5], vertices[base + 6], vertices[base + 7]));
+				vertices[base + 5] = n.x;
+				vertices[base + 6] = n.y;
+				vertices[base + 7] = n.z;
+
+				glm::vec3 t = glm::normalize(normalMatrix * glm::vec3(vertices[base + 8], vertices[base + 9], vertices[base + 10]));
+				vertices[base + 8] = t.x;
+				vertices[base + 9] = t.y;
+				vertices[base + 10] = t.z;
+
+				glm::vec3 b = glm::normalize(normalMatrix * glm::vec3(vertices[base + 11], vertices[base + 12], vertices[base + 13]));
+				vertices[base + 11] = b.x;
+				vertices[base + 12] = b.y;
+				vertices[base + 13] = b.z;
+			}
 		}
 	}
 
@@ -184,13 +229,54 @@ struct MeshData
 			max = glm::vec3(0.0f);
 			return;
 		}
-		min = glm::vec3(1e10f);
-		max = glm::vec3(-1e10f);
 		int count = GetVertexCount();
-		for (int i = 0; i < count; i++) {
-			glm::vec3 p = GetPosition(i);
-			min = glm::min(min, p);
-			max = glm::max(max, p);
+
+		// Multithread for large meshes (>2000 vertices)
+		if (count > 2000)
+		{
+			unsigned int numThreads = std::thread::hardware_concurrency();
+			if (numThreads == 0) numThreads = 4;
+			if (numThreads > (unsigned int)count) numThreads = (unsigned int)count;
+
+			std::vector<glm::vec3> threadMins(numThreads, glm::vec3(1e10f));
+			std::vector<glm::vec3> threadMaxs(numThreads, glm::vec3(-1e10f));
+			std::vector<std::thread> threads;
+			int perThread = count / numThreads;
+
+			for (unsigned int t = 0; t < numThreads; t++)
+			{
+				int start = t * perThread;
+				int end = (t == numThreads - 1) ? count : (t + 1) * perThread;
+
+				threads.emplace_back([this, &threadMins, &threadMaxs, t, start, end]() {
+					glm::vec3 localMin(1e10f), localMax(-1e10f);
+					for (int i = start; i < end; i++) {
+						glm::vec3 p = GetPosition(i);
+						localMin = glm::min(localMin, p);
+						localMax = glm::max(localMax, p);
+					}
+					threadMins[t] = localMin;
+					threadMaxs[t] = localMax;
+				});
+			}
+			for (auto& th : threads) th.join();
+
+			min = glm::vec3(1e10f);
+			max = glm::vec3(-1e10f);
+			for (unsigned int t = 0; t < numThreads; t++) {
+				min = glm::min(min, threadMins[t]);
+				max = glm::max(max, threadMaxs[t]);
+			}
+		}
+		else
+		{
+			min = glm::vec3(1e10f);
+			max = glm::vec3(-1e10f);
+			for (int i = 0; i < count; i++) {
+				glm::vec3 p = GetPosition(i);
+				min = glm::min(min, p);
+				max = glm::max(max, p);
+			}
 		}
 	}
 

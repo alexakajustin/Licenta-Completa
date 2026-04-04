@@ -436,7 +436,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					if (!layer.displacementMapPath.empty())
 					{
 						Texture* disp = new Texture(layer.displacementMapPath.c_str());
-						if (disp->LoadTextureA()) {
+						if (disp->LoadTextureGrayscale()) {
 							layer.displacementMap = disp;
 						} else {
 							printf("[SceneSerializer] Warning: Failed to load layer displacement map: %s\n", layer.displacementMapPath.c_str());

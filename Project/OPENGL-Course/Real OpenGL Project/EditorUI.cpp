@@ -875,7 +875,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 							for (auto& c : ext) c = tolower(c);
 							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
 								Texture* newTex = new Texture(pathStr);
-								if (newTex->LoadTextureA()) {
+								if (newTex->LoadTextureGrayscale()) {
 									layer.displacementMap = newTex;
 									layer.displacementMapPath = pathStr;
 								} else { delete newTex; }

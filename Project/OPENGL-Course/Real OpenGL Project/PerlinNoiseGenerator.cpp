@@ -2,6 +2,8 @@
 #include "imgui.h"
 #include <cstdlib>
 #include <algorithm>
+#include <thread>
+#include <vector>
 
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 	: gridSize(128), scale(1.0f), amplitude(15.0f),
@@ -145,7 +147,6 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 	if (!input || input->vertices.empty())
 	{
 		// Fallback: Generate a simple subdivided plane if no input
-		// (Reuse old logic but simplified)
 		int verticesPerSide = 51; // 50x50 grid
 		float fallbackScale = 0.2f;
 		float halfSize = (50 * fallbackScale) / 2.0f;
@@ -154,7 +155,6 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 			for (int x = 0; x < verticesPerSide; x++) {
 				float worldX = (float)x * fallbackScale - halfSize;
 				float worldZ = (float)z * fallbackScale - halfSize;
-				// Add small shifts (0.123) to avoid exact-integer-sampling zero pits
 				float noise = FractalNoise((worldX + offsetX + 0.123f) * frequency, (worldZ + offsetZ + 0.123f) * frequency) * amplitude;
 				data.AddVertex(worldX, noise, worldZ, (float)x/50.0f, (float)z/50.0f, 0,1,0, 1,0,0, 0,0,1);
 			}
@@ -175,41 +175,85 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 		// Displace existing input mesh
 		data = *input;
 		int vertCount = data.GetVertexCount();
-		for (int i = 0; i < vertCount; i++)
+
+		// === MULTITHREADED DISPLACEMENT ===
+		unsigned int numThreads = std::thread::hardware_concurrency();
+		if (numThreads == 0) numThreads = 4;
+		if (vertCount < 1000 || numThreads == 1)
 		{
-			int base = i * 14;
-			float vx = data.vertices[base];
-			float vy = data.vertices[base + 1];
-			float vz = data.vertices[base + 2];
-
-			// Sampling coordinates (add large offset to avoid zero-sampling seams at origin)
-			float sx = (vx + offsetX + 10000.1234f);
-			float sz = (vz + offsetZ + 10000.1234f);
-
-			float noise = FractalNoise(sx * frequency, sz * frequency);
-
-			if (useNormalDisplacement)
+			// Small mesh: single-threaded fast path
+			for (int i = 0; i < vertCount; i++)
 			{
-				float nx = data.vertices[base + 5];
-				float ny = data.vertices[base + 6];
-				float nz = data.vertices[base + 7];
+				int base = i * 14;
+				float vx = data.vertices[base];
+				float vz = data.vertices[base + 2];
+				float sx = (vx + offsetX + 10000.1234f);
+				float sz = (vz + offsetZ + 10000.1234f);
+				float noise = FractalNoise(sx * frequency, sz * frequency);
 
-				data.vertices[base] += nx * noise * amplitude;
-				data.vertices[base + 1] += ny * noise * amplitude;
-				data.vertices[base + 2] += nz * noise * amplitude;
+				if (useNormalDisplacement)
+				{
+					float fnx = data.vertices[base + 5];
+					float fny = data.vertices[base + 6];
+					float fnz = data.vertices[base + 7];
+					data.vertices[base] += fnx * noise * amplitude;
+					data.vertices[base + 1] += fny * noise * amplitude;
+					data.vertices[base + 2] += fnz * noise * amplitude;
+				}
+				else
+				{
+					data.vertices[base + 1] += noise * amplitude;
+				}
 			}
-			else
+		}
+		else
+		{
+			// Large mesh: parallel displacement
+			if (numThreads > (unsigned int)vertCount) numThreads = (unsigned int)vertCount;
+			std::vector<std::thread> threads;
+			int perThread = vertCount / numThreads;
+
+			for (unsigned int t = 0; t < numThreads; t++)
 			{
-				data.vertices[base + 1] += noise * amplitude;
+				int startV = t * perThread;
+				int endV = (t == numThreads - 1) ? vertCount : (t + 1) * perThread;
+
+				threads.emplace_back([this, &data, startV, endV]() {
+					for (int i = startV; i < endV; i++)
+					{
+						int base = i * 14;
+						float vx = data.vertices[base];
+						float vz = data.vertices[base + 2];
+						float sx = (vx + offsetX + 10000.1234f);
+						float sz = (vz + offsetZ + 10000.1234f);
+						float noise = FractalNoise(sx * frequency, sz * frequency);
+
+						if (useNormalDisplacement)
+						{
+							float fnx = data.vertices[base + 5];
+							float fny = data.vertices[base + 6];
+							float fnz = data.vertices[base + 7];
+							data.vertices[base] += fnx * noise * amplitude;
+							data.vertices[base + 1] += fny * noise * amplitude;
+							data.vertices[base + 2] += fnz * noise * amplitude;
+						}
+						else
+						{
+							data.vertices[base + 1] += noise * amplitude;
+						}
+					}
+				});
 			}
+			for (auto& th : threads) th.join();
 		}
 	}
 
-	// Recalculate normals etc.
+	// Recalculate normals
 	int vertCount = data.GetVertexCount();
 	if (vertCount == 0) return data;
 
-	std::vector<float> nx(vertCount, 0.0f), ny(vertCount, 0.0f), nz(vertCount, 0.0f);
+	// Phase 1: Accumulate face normals (single-threaded due to shared writes per vertex)
+	std::vector<float> fnx(vertCount, 0.0f), fny(vertCount, 0.0f), fnz(vertCount, 0.0f);
 	for (int i = 0; i < (int)data.indices.size(); i += 3)
 	{
 		unsigned int i0 = data.indices[i];
@@ -221,18 +265,48 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 		float e1x = v1[0] - v0[0], e1y = v1[1] - v0[1], e1z = v1[2] - v0[2];
 		float e2x = v2[0] - v0[0], e2y = v2[1] - v0[1], e2z = v2[2] - v0[2];
 		float cx = e1y * e2z - e1z * e2y, cy = e1z * e2x - e1x * e2z, cz = e1x * e2y - e1y * e2x;
-		nx[i0] += cx; ny[i0] += cy; nz[i0] += cz;
-		nx[i1] += cx; ny[i1] += cy; nz[i1] += cz;
-		nx[i2] += cx; ny[i2] += cy; nz[i2] += cz;
+		fnx[i0] += cx; fny[i0] += cy; fnz[i0] += cz;
+		fnx[i1] += cx; fny[i1] += cy; fnz[i1] += cz;
+		fnx[i2] += cx; fny[i2] += cy; fnz[i2] += cz;
 	}
 
-	for (int i = 0; i < vertCount; i++)
+	// Phase 2: Normalize and write back (multithreaded — each vertex is independent)
+	unsigned int numThreads2 = std::thread::hardware_concurrency();
+	if (numThreads2 == 0) numThreads2 = 4;
+	if (vertCount > 1000 && numThreads2 > 1)
 	{
-		float len = sqrtf(nx[i] * nx[i] + ny[i] * ny[i] + nz[i] * nz[i]);
-		if (len > 0.0f) { nx[i] /= len; ny[i] /= len; nz[i] /= len; }
-		data.vertices[i * 14 + 5] = nx[i];
-		data.vertices[i * 14 + 6] = ny[i];
-		data.vertices[i * 14 + 7] = nz[i];
+		if (numThreads2 > (unsigned int)vertCount) numThreads2 = (unsigned int)vertCount;
+		std::vector<std::thread> threads;
+		int perThread = vertCount / numThreads2;
+
+		for (unsigned int t = 0; t < numThreads2; t++)
+		{
+			int startV = t * perThread;
+			int endV = (t == numThreads2 - 1) ? vertCount : (t + 1) * perThread;
+
+			threads.emplace_back([&data, &fnx, &fny, &fnz, startV, endV]() {
+				for (int i = startV; i < endV; i++)
+				{
+					float len = sqrtf(fnx[i] * fnx[i] + fny[i] * fny[i] + fnz[i] * fnz[i]);
+					if (len > 0.0f) { fnx[i] /= len; fny[i] /= len; fnz[i] /= len; }
+					data.vertices[i * 14 + 5] = fnx[i];
+					data.vertices[i * 14 + 6] = fny[i];
+					data.vertices[i * 14 + 7] = fnz[i];
+				}
+			});
+		}
+		for (auto& th : threads) th.join();
+	}
+	else
+	{
+		for (int i = 0; i < vertCount; i++)
+		{
+			float len = sqrtf(fnx[i] * fnx[i] + fny[i] * fny[i] + fnz[i] * fnz[i]);
+			if (len > 0.0f) { fnx[i] /= len; fny[i] /= len; fnz[i] /= len; }
+			data.vertices[i * 14 + 5] = fnx[i];
+			data.vertices[i * 14 + 6] = fny[i];
+			data.vertices[i * 14 + 7] = fnz[i];
+		}
 	}
 
 	return data;

@@ -2,6 +2,8 @@
 #include "FluidSimulation.h"
 #include "imgui.h"
 #include <cmath>
+#include <thread>
+#include <vector>
 
 HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
 {
@@ -164,34 +166,72 @@ void HydraulicErosionNode::RecomputeNormals(MeshData& data, int resX, int resZ)
 		}
 	}
 
-	// Normalize all normals and recompute tangent/bitangent
-	for (int i = 0; i < totalVerts; i++)
+	// Normalize all normals and recompute tangent/bitangent — MULTITHREADED
+	unsigned int numThreads = std::thread::hardware_concurrency();
+	if (numThreads == 0) numThreads = 4;
+	if (totalVerts > 1000 && numThreads > 1)
 	{
-		int base = i * stride;
-		glm::vec3 n(data.vertices[base + 5], data.vertices[base + 6], data.vertices[base + 7]);
-		float len = glm::length(n);
-		if (len > 0.0001f)
-		{
-			n /= len;
-		}
-		else
-		{
-			n = glm::vec3(0.0f, 1.0f, 0.0f);
-		}
-		data.vertices[base + 5] = n.x;
-		data.vertices[base + 6] = n.y;
-		data.vertices[base + 7] = n.z;
+		if (numThreads > (unsigned int)totalVerts) numThreads = (unsigned int)totalVerts;
+		std::vector<std::thread> threads;
+		int perThread = totalVerts / numThreads;
 
-		// Recompute tangent from normal (use Gram-Schmidt with a reference direction)
-		glm::vec3 ref = (std::abs(n.y) < 0.999f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
-		glm::vec3 tangent = glm::normalize(ref - n * glm::dot(ref, n));
-		glm::vec3 bitangent = glm::cross(n, tangent);
+		for (unsigned int t = 0; t < numThreads; t++)
+		{
+			int startV = t * perThread;
+			int endV = (t == numThreads - 1) ? totalVerts : (t + 1) * perThread;
 
-		data.vertices[base + 8] = tangent.x;
-		data.vertices[base + 9] = tangent.y;
-		data.vertices[base + 10] = tangent.z;
-		data.vertices[base + 11] = bitangent.x;
-		data.vertices[base + 12] = bitangent.y;
-		data.vertices[base + 13] = bitangent.z;
+			threads.emplace_back([&data, stride, startV, endV]() {
+				for (int i = startV; i < endV; i++)
+				{
+					int base = i * stride;
+					glm::vec3 n(data.vertices[base + 5], data.vertices[base + 6], data.vertices[base + 7]);
+					float len = glm::length(n);
+					if (len > 0.0001f) n /= len;
+					else n = glm::vec3(0.0f, 1.0f, 0.0f);
+
+					data.vertices[base + 5] = n.x;
+					data.vertices[base + 6] = n.y;
+					data.vertices[base + 7] = n.z;
+
+					glm::vec3 ref = (std::abs(n.y) < 0.999f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+					glm::vec3 tangent = glm::normalize(ref - n * glm::dot(ref, n));
+					glm::vec3 bitangent = glm::cross(n, tangent);
+
+					data.vertices[base + 8] = tangent.x;
+					data.vertices[base + 9] = tangent.y;
+					data.vertices[base + 10] = tangent.z;
+					data.vertices[base + 11] = bitangent.x;
+					data.vertices[base + 12] = bitangent.y;
+					data.vertices[base + 13] = bitangent.z;
+				}
+			});
+		}
+		for (auto& th : threads) th.join();
+	}
+	else
+	{
+		for (int i = 0; i < totalVerts; i++)
+		{
+			int base = i * stride;
+			glm::vec3 n(data.vertices[base + 5], data.vertices[base + 6], data.vertices[base + 7]);
+			float len = glm::length(n);
+			if (len > 0.0001f) n /= len;
+			else n = glm::vec3(0.0f, 1.0f, 0.0f);
+
+			data.vertices[base + 5] = n.x;
+			data.vertices[base + 6] = n.y;
+			data.vertices[base + 7] = n.z;
+
+			glm::vec3 ref = (std::abs(n.y) < 0.999f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+			glm::vec3 tangent = glm::normalize(ref - n * glm::dot(ref, n));
+			glm::vec3 bitangent = glm::cross(n, tangent);
+
+			data.vertices[base + 8] = tangent.x;
+			data.vertices[base + 9] = tangent.y;
+			data.vertices[base + 10] = tangent.z;
+			data.vertices[base + 11] = bitangent.x;
+			data.vertices[base + 12] = bitangent.y;
+			data.vertices[base + 13] = bitangent.z;
+		}
 	}
 }

@@ -184,28 +184,47 @@ vec3 SampleTriplanarNormal(sampler2D tex, vec3 pos, vec3 weights, float tiling, 
 
 // ========== Parallax Occlusion Mapping ==========
 // Returns shifted UVs based on view direction and height map
+// OPTIMIZED: Reduced sample count + distance LOD + early exit for steep angles
 vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, float heightScale)
 {
-    // Number of depth layers (dynamic based on angle)
-    const float minLayers = 32.0;
-    const float maxLayers = 128.0;
-    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDirTangent)));
+    // Early exit for near-perpendicular views (POM invisible at grazing angles)
+    float dotNV = abs(dot(vec3(0.0, 0.0, 1.0), viewDirTangent));
+    if (dotNV < 0.05) return texCoords;
+
+    // Distance-based LOD: fade out POM beyond a threshold to prevent GPU overload
+    float fragDist = length(eyePosition - FragPos);
+    float pomFade = 1.0 - smoothstep(15.0, 30.0, fragDist);
+    if (pomFade < 0.01) return texCoords;
+
+    // Reduced layer counts: 8-32 instead of 32-128 (4x faster, still looks great)
+    const float minLayers = 8.0;
+    const float maxLayers = 32.0;
+    float numLayers = mix(maxLayers, minLayers, dotNV);
+    // Further reduce layers with distance
+    numLayers = max(numLayers * pomFade, 4.0);
     
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
     
+    // Scale displacement with distance fade
+    float effectiveScale = heightScale * pomFade;
+    
     // Shift magnitude along the view vector
-    vec2 p = viewDirTangent.xy / viewDirTangent.z * heightScale;
+    vec2 p = viewDirTangent.xy / viewDirTangent.z * effectiveScale;
     vec2 deltaTexCoords = p / numLayers;
     
     vec2 currentTexCoords = texCoords;
     float currentDepthMapValue = texture(heightMap, currentTexCoords).r;
     
-    while(currentLayerDepth < currentDepthMapValue)
+    // Hard cap on iterations to prevent GPU hang
+    int maxSteps = int(numLayers) + 1;
+    int step = 0;
+    while(currentLayerDepth < currentDepthMapValue && step < maxSteps)
     {
         currentTexCoords -= deltaTexCoords;
         currentDepthMapValue = texture(heightMap, currentTexCoords).r;
         currentLayerDepth += layerDepth;
+        step++;
     }
     
     // Parallax Occlusion Mapping (Interpolation)

@@ -102,7 +102,7 @@ bool Texture::LoadTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	// linear -> when u zoom in its gonna blend em together
 	// nearest -> pixelated look
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	// magnify -> going close to the object
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // or GL_NEAREST
 	// mipmap -> set of textures dependent on distance
@@ -131,8 +131,67 @@ void Texture::ClearTexture()
 	width = 0;
 	height = 0;
 	bitDepth = 0;
-	fileLocation = new char[1];
-	strcpy_s(fileLocation, 1, "");
+	if (fileLocation) {
+		delete[] fileLocation;
+		fileLocation = nullptr;
+	}
+}
+
+bool Texture::LoadTextureGrayscale()
+{
+	// Load as single channel for displacement/height maps (4x less memory than RGBA)
+	unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 1);
+
+	if (!texData)
+	{
+		printf("FAILED TO FIND %s!\n", fileLocation);
+		return false;
+	}
+
+	printf("Displacement map %s loaded - %dx%d (grayscale, original channels: %d)\n", fileLocation, width, height, bitDepth);
+
+	// Auto-downscale oversized textures to prevent GPU memory exhaustion
+	bool wasDownscaled = false;
+	while (width > 4096 || height > 4096)
+	{
+		int newW = width / 2;
+		int newH = height / 2;
+		if (newW < 1) newW = 1;
+		if (newH < 1) newH = 1;
+		unsigned char* downscaled = (unsigned char*)malloc(newW * newH);
+		if (!downscaled) {
+			if (wasDownscaled) free(texData); else stbi_image_free(texData);
+			return false;
+		}
+		for (int y = 0; y < newH; y++)
+			for (int x = 0; x < newW; x++)
+				downscaled[y * newW + x] = texData[(y * 2) * width + (x * 2)];
+		if (wasDownscaled) free(texData); else stbi_image_free(texData);
+		texData = downscaled;
+		wasDownscaled = true;
+		width = newW;
+		height = newH;
+		printf("  -> Downscaled to %dx%d\n", width, height);
+	}
+
+	bitDepth = 1;
+
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, texData);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	if (wasDownscaled) free(texData); else stbi_image_free(texData);
+
+	return true;
 }
 
 void Texture::UseTexture()
