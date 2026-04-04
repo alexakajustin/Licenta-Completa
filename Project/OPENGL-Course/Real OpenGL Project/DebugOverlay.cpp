@@ -122,14 +122,26 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	float winHeight = displaySize.y;
 	float menuHeight = 19.0f;
 	
-	// GPU Debug on bottom-right
-	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio), ImGuiCond_Always);
+	// CPU Debug on bottom-right
+	ImVec2 pos(winWidth - uiState.rightWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
+	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio);
+
+	if (uiState.maximizedWindowID == 5) { // Debug Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(winWidth, winHeight - menuHeight);
+	} else if (uiState.maximizedWindowID != -1) { // Something ELSE maximized
+		return;
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	ImGui::SetNextWindowBgAlpha(0.95f);
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	ImGui::Begin("CPU Debug", &uiState.isDebugOverlayOpen, windowFlags);
+	uiState.CheckMaximize(5);
+
 
 
 	// --- GPU Info ---

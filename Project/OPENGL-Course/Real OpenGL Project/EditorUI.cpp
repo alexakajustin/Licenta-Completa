@@ -206,16 +206,60 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 	}
 }
 
+void EditorUI::WindowState::CheckMaximize(int windowID)
+{
+	// Detect double click on title bar
+	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		ImVec2 mousePos = ImGui::GetIO().MousePos;
+		ImVec2 windowPos = ImGui::GetWindowPos();
+		float titleBarHeight = ImGui::GetTextLineHeightWithSpacing();
+
+		// Check if click was in the title bar area
+		if (mousePos.y >= windowPos.y && mousePos.y <= windowPos.y + titleBarHeight)
+		{
+			if (maximizedWindowID == windowID)
+				maximizedWindowID = -1; // Minimize
+			else
+				maximizedWindowID = windowID; // Maximize
+		}
+	}
+}
+
+
 void EditorUI::UpdateLayoutLogic()
 {
 	if (ImGui::GetIO().DisplaySize.x <= 0) return;
+	if (windowState.maximizedWindowID != -1) return; // Disable splitters while maximized
+	if (ImGui::IsDragDropActive()) { // Disable splitters while dragging items
+		windowState.activeSplitterID = -1;
+		return;
+	}
+
+	// Universal Fix: If any ImGui widget is active (slider, scrollbar, etc.), ignore splitters
+	if (ImGui::IsAnyItemActive() && windowState.activeSplitterID == -1) return;
 
 	ImVec2 mousePos = ImGui::GetIO().MousePos;
 	bool mousePressed = ImGui::IsMouseDown(0);
 	float winWidth = ImGui::GetIO().DisplaySize.x;
 	float winHeight = ImGui::GetIO().DisplaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight(); // Use accurate frame height
 	float contentHeight = winHeight - menuHeight;
+
+	// Occlusion check: Are we hovering over a floating window (not tiled)?
+	ImGuiWindow* hovered = GImGui->HoveredWindow;
+	bool occluded = false;
+	if (hovered != nullptr) {
+		const char* name = hovered->Name;
+		bool isTiled = (strcmp(name, "Scene") == 0 || strcmp(name, "Scene Hierarchy") == 0 || 
+					    strcmp(name, "Inspector") == 0 || strcmp(name, "Project") == 0 || 
+					    strcmp(name, "Node Editor") == 0 || strcmp(name, "CPU Debug") == 0);
+		
+		// If hovering something that isn't a tiled panel, it occludes the splitters
+		if (!isTiled) occluded = true;
+	}
+
+
 
 	// Handle Dragging
 	if (windowState.activeSplitterID != -1) {
@@ -255,57 +299,75 @@ void EditorUI::UpdateLayoutLogic()
 		}
 	}
 
-	// Handle Hit-Testing (only if not already dragging)
-	if (windowState.activeSplitterID == -1 && mousePressed) {
+	// Handle Hit-Testing (only if not already dragging and NOT occluded)
+	if (windowState.activeSplitterID == -1 && mousePressed && !occluded) {
+		float hitBuffer = 2.0f; // Don't allow hits right at the menu border
+
 		// SplitX1
-		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight) windowState.activeSplitterID = 0;
+		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight + hitBuffer) windowState.activeSplitterID = 0;
 		// SplitX2
-		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight) windowState.activeSplitterID = 1;
+		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight + hitBuffer) windowState.activeSplitterID = 1;
 		// SplitY_L
 		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) windowState.activeSplitterID = 2;
 		// SplitY_M
 		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
 				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) windowState.activeSplitterID = 3;
 	}
+
 }
 
 void EditorUI::UpdateLayoutVisual()
 {
+	if (windowState.maximizedWindowID != -1) return; // Hide splitters while maximized
+	if (ImGui::IsDragDropActive()) return; // Hide splitters while dragging items
+	if (ImGui::IsAnyItemActive() && windowState.activeSplitterID == -1) return; // Hide while interacting with widgets
+
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 	float contentHeight = winHeight - menuHeight;
 	ImVec2 mousePos = ImGui::GetIO().MousePos;
 	ImDrawList* fgDraw = ImGui::GetForegroundDrawList();
 
+	float hitBuffer = 2.0f; // Visual safe zone
+
+	// Occlusion check for visuals
+	ImGuiWindow* hoveredWindow = GImGui->HoveredWindow;
+	bool occluded = false;
+	if (hoveredWindow != nullptr) {
+		const char* name = hoveredWindow->Name;
+		bool isTiled = (strcmp(name, "Scene") == 0 || strcmp(name, "Scene Hierarchy") == 0 || 
+					    strcmp(name, "Inspector") == 0 || strcmp(name, "Project") == 0 || 
+					    strcmp(name, "Node Editor") == 0 || strcmp(name, "CPU Debug") == 0);
+		if (!isTiled) occluded = true;
+	}
+
 	// Cursor and Highlights
 	int hoverID = -1;
-	if (windowState.activeSplitterID == -1) {
-		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight) hoverID = 0;
-		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight) hoverID = 1;
+	if (windowState.activeSplitterID == -1 && !occluded) {
+
+		if (abs(mousePos.x - windowState.leftWidth) < 5.0f && mousePos.y > menuHeight + hitBuffer) hoverID = 0;
+		else if (abs(mousePos.x - (winWidth - windowState.rightWidth)) < 5.0f && mousePos.y > menuHeight + hitBuffer) hoverID = 1;
 		else if (mousePos.x < windowState.leftWidth && abs(mousePos.y - (menuHeight + contentHeight * windowState.hierarchyHeightRatio)) < 5.0f) hoverID = 2;
 		else if (mousePos.x > windowState.leftWidth && mousePos.x < (winWidth - windowState.rightWidth) && 
 				 abs(mousePos.y - (menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio))) < 5.0f) hoverID = 3;
 	} else {
+
 		hoverID = windowState.activeSplitterID;
 	}
 
 	if (hoverID == 0 || hoverID == 1) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
 	else if (hoverID == 2 || hoverID == 3) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
 
-	// Drawing a base layout border for better visual "Unity" feel
-	ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
-	ImU32 borderColor = ImGui::GetColorU32(ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
-	fgDraw->AddLine(ImVec2(windowState.leftWidth, menuHeight), ImVec2(windowState.leftWidth, winHeight), borderColor, 1.0f);
-	fgDraw->AddLine(ImVec2(winWidth - windowState.rightWidth, menuHeight), ImVec2(winWidth - windowState.rightWidth, winHeight), borderColor, 1.0f);
-	
 	// Highlight Active/Hovered
+
 	ImU32 highlightColor = ImGui::GetColorU32(windowState.activeSplitterID != -1 ? ImVec4(0.6f, 0.3f, 0.8f, 1.0f) : ImVec4(0.6f, 0.3f, 0.8f, 0.5f));
-	if (hoverID == 0) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth - 2, menuHeight), ImVec2(windowState.leftWidth + 2, winHeight), highlightColor);
-	if (hoverID == 1) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth - 2, menuHeight), ImVec2(winWidth - windowState.rightWidth + 2, winHeight), highlightColor);
+	if (hoverID == 0) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth - 2, menuHeight + hitBuffer), ImVec2(windowState.leftWidth + 2, winHeight), highlightColor);
+	if (hoverID == 1) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth - 2, menuHeight + hitBuffer), ImVec2(winWidth - windowState.rightWidth + 2, winHeight), highlightColor);
 	if (hoverID == 2) fgDraw->AddRectFilled(ImVec2(0, menuHeight + contentHeight * windowState.hierarchyHeightRatio - 2), ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.hierarchyHeightRatio + 2), highlightColor);
 	if (hoverID == 3) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) - 2), ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * (1.0f - windowState.bottomHeightRatio) + 2), highlightColor);
+
 }
 
 
@@ -328,16 +390,28 @@ void EditorUI::UpdateViewportMetadata()
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 
 	// Scene Viewport (to update metadata)
-	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), ImGuiCond_Always);
+	ImVec2 pos(windowState.leftWidth, menuHeight);
+	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio));
+
+	if (windowState.maximizedWindowID == 1) { // Scene Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(winWidth, winHeight - menuHeight);
+	} else if (windowState.maximizedWindowID != -1) { // Something ELSE is maximized
+		return; // Completely skip the Scene window
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	if (ImGui::Begin("Scene", nullptr, windowFlags))
 	{
+		windowState.CheckMaximize(1); // Scene ID = 1
+
 		ImVec2 panelSize = ImGui::GetContentRegionAvail();
 		viewportSize = glm::vec2(panelSize.x, panelSize.y);
 		viewportPos = glm::vec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
@@ -561,12 +635,23 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 
-	ImGui::SetNextWindowPos(ImVec2(windowState.leftWidth, menuHeight), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio)), ImGuiCond_Always);
+	ImVec2 pos(windowState.leftWidth, menuHeight);
+	ImVec2 size(winWidth - windowState.leftWidth - windowState.rightWidth, (winHeight - menuHeight) * (1.0f - windowState.bottomHeightRatio));
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	if (windowState.maximizedWindowID == 1) { // Scene Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(winWidth, winHeight - menuHeight);
+	} else if (windowState.maximizedWindowID != -1) { // Something ELSE is maximized
+		return; // Completely skip rendering
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+
+
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	if (ImGui::Begin("Scene", nullptr, windowFlags))
@@ -636,17 +721,28 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 {
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winHeightParam = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 
 	// Hierarchy on top-left
-	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio), ImGuiCond_Always);
+	ImVec2 pos(0, menuHeight);
+	ImVec2 size(windowState.leftWidth, (winHeightParam - menuHeight) * windowState.hierarchyHeightRatio);
+
+	if (windowState.maximizedWindowID == 0) { // Hierarchy Maximized
+		size = ImVec2(displaySize.x, winHeightParam - menuHeight);
+	} else if (windowState.maximizedWindowID != -1) { // Something ELSE maximized
+		return;
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	if (!windowState.isHierarchyOpen) return;
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	if (ImGui::Begin("Scene Hierarchy", &windowState.isHierarchyOpen, windowFlags))
 	{
+		windowState.CheckMaximize(0);
+
 
 		auto& objects = scene.GetObjects();
 		auto& lights = scene.GetLights();
@@ -840,18 +936,29 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winH = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 
 	// Inspector on bottom-left
-	ImGui::SetNextWindowPos(ImVec2(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio)), ImGuiCond_Always);
+	ImVec2 pos(0, menuHeight + (winH - menuHeight) * windowState.hierarchyHeightRatio);
+	ImVec2 size(windowState.leftWidth, (winH - menuHeight) * (1.0f - windowState.hierarchyHeightRatio));
+
+	if (windowState.maximizedWindowID == 2) { // Inspector Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(displaySize.x, winH - menuHeight);
+	} else if (windowState.maximizedWindowID != -1) { // Something ELSE maximized
+		return;
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	if (!windowState.isInspectorOpen) return;
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	if (!showObjectInspector && !showLightInspector) {
 		// Even if empty, show a blank Inspector window for docking consistency
 		if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags)) {
+			windowState.CheckMaximize(2);
 			ImGui::TextDisabled("Select an object to inspect");
 		}
 		ImGui::End();
@@ -860,6 +967,8 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 	if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags))
 	{
+		windowState.CheckMaximize(2);
+
 
 		if (showObjectInspector)
 		{

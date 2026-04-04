@@ -29,91 +29,98 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 
-	ImGui::SetNextWindowPos(ImVec2(winWidth - uiState.rightWidth, menuHeight), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), ImGuiCond_Always);
+	// Node Editor on top-right
+	ImVec2 pos(winWidth - uiState.rightWidth, menuHeight);
+	ImVec2 size(uiState.rightWidth, (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	if (uiState.maximizedWindowID == 4) { // Node Editor Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(winWidth, winHeight - menuHeight);
+	} else if (uiState.maximizedWindowID != -1) { // Something ELSE maximized
+		return;
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	if (ImGui::Begin("Node Editor", &uiState.isNodeEditorOpen, windowFlags))
 	{
+		uiState.CheckMaximize(4);
 
-	}
-	// Menu Bar
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu("File"))
+		// Menu Bar
+		if (ImGui::BeginMenuBar())
 		{
-			if (ImGui::MenuItem("Clear Graph")) { graph.Clear(); }
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Execute"))
-		{
-			if (ImGui::MenuItem("Execute Graph")) { graph.Execute(scene, defaultTex, defaultMat); }
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
-
-	// Toolbar
-	if (ImGui::Button("Execute Graph"))
-	{
-		graph.Execute(scene, defaultTex, defaultMat);
-	}
-	ImGui::SameLine();
-	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
-
-	ImGui::Separator();
-
-	editorOrigin = ImGui::GetCursorScreenPos();
-
-	// Node Editor
-
-	// Node Editor
-	ImNodes::BeginNodeEditor();
-
-	RenderNodes(graph, &scene);
-	RenderLinks(graph);
-
-	// Add a dummy item at the very end of the canvas to satisfy ImGui 1.89+ boundary checks.
-	// This is the safest way to ensure that any SetCursorPos movement by imnodes is "finalized".
-	ImGui::Dummy(ImVec2(0.3f, 0.3f));
-
-	ImNodes::EndNodeEditor();
-
-	HandleEditorInteractions(graph);
-
-	// Handle Drag and Drop into the editor canvas
-	if (ImGui::BeginDragDropTarget())
-	{
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_OBJECT_INDEX"))
-		{
-			int objIndex = *(int*)payload->Data;
-			auto& objects = scene.GetObjects();
-			if (objIndex >= 0 && objIndex < (int)objects.size())
+			if (ImGui::BeginMenu("File"))
 			{
-				SceneInputNode* newNode = new SceneInputNode(graph);
-				newNode->SetSelection(objIndex, objects[objIndex]->GetName());
-				
-				// Place node at mouse position (convert to grid space)
-				ImVec2 mousePos = ImGui::GetMousePos();
-				ImVec2 panning = ImNodes::EditorContextGetPanning();
-				ImVec2 gridPos = ImVec2(
-					(mousePos.x - editorOrigin.x - panning.x),
-					(mousePos.y - editorOrigin.y - panning.y)
-				);
-				newNode->editorPos = glm::vec2(gridPos.x, gridPos.y);
-				newNode->positionSet = false;
-				
-				graph.AddNode(newNode);
+				if (ImGui::MenuItem("Clear Graph")) { graph.Clear(); }
+				ImGui::EndMenu();
 			}
+			if (ImGui::BeginMenu("Execute"))
+			{
+				if (ImGui::MenuItem("Execute Graph")) { graph.Execute(scene, defaultTex, defaultMat); }
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenuBar();
 		}
-		ImGui::EndDragDropTarget();
-	}
 
+		// Toolbar
+		if (ImGui::Button("Execute Graph"))
+		{
+			graph.Execute(scene, defaultTex, defaultMat);
+		}
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
+
+		ImGui::Separator();
+
+		editorOrigin = ImGui::GetCursorScreenPos();
+
+		// Node Editor rendering
+		ImNodes::BeginNodeEditor();
+
+		RenderNodes(graph, &scene);
+		RenderLinks(graph);
+
+		ImGui::Dummy(ImVec2(0.3f, 0.3f));
+
+		ImNodes::EndNodeEditor();
+
+		HandleEditorInteractions(graph);
+
+		// Handle Drag and Drop into the editor canvas
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_OBJECT_INDEX"))
+			{
+				int objIndex = *(int*)payload->Data;
+				auto& objects = scene.GetObjects();
+				if (objIndex >= 0 && objIndex < (int)objects.size())
+				{
+					SceneInputNode* newNode = new SceneInputNode(graph);
+					newNode->SetSelection(objIndex, objects[objIndex]->GetName());
+					
+					ImVec2 mousePos = ImGui::GetMousePos();
+					ImVec2 panning = ImNodes::EditorContextGetPanning();
+					ImVec2 gridPos = ImVec2(
+						(mousePos.x - editorOrigin.x - panning.x),
+						(mousePos.y - editorOrigin.y - panning.y)
+					);
+					newNode->editorPos = glm::vec2(gridPos.x, gridPos.y);
+					newNode->positionSet = false;
+					
+					graph.AddNode(newNode);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
 	ImGui::End();
 }
+
 
 void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 {

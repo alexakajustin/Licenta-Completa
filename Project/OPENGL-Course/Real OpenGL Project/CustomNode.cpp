@@ -115,6 +115,7 @@ void CustomNode::Deserialize(const json& j)
 
 void CustomNode::RenderContent(SceneManager* scene)
 {
+	ImGui::Dummy(ImVec2(220.0f, 0.0f)); // Minimum node width
 	ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "[%s]", definition.category.c_str());
 
 	if (operationInstances.empty())
@@ -124,19 +125,22 @@ void CustomNode::RenderContent(SceneManager* scene)
 	}
 
 	// Show a compact summary of operations
+	// We use a Child window to perfectly CLIP the hover highlights so they don't leak out
+	ImGui::BeginChild("OpsClip", ImVec2(220.0f, 0.0f), ImGuiChildFlags_AutoResizeY);
+	
 	for (int i = 0; i < (int)operationInstances.size(); i++)
 	{
 		Operation* op = operationInstances[i];
 
 		ImGui::PushID(i);
 
-		// Collapsible header for each operation
+		// Now we can use the nice Framed look again because the Child window will clip it!
 		bool open = ImGui::TreeNodeEx(op->GetName().c_str(),
 			ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
 
 		if (open)
 		{
-			ImGui::PushItemWidth(100.0f);
+			ImGui::PushItemWidth(120.0f);
 			op->RenderUI();
 			ImGui::PopItemWidth();
 			ImGui::TreePop();
@@ -144,6 +148,8 @@ void CustomNode::RenderContent(SceneManager* scene)
 
 		ImGui::PopID();
 	}
+
+	ImGui::EndChild();
 }
 
 // =====================================================================

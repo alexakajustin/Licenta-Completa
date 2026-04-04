@@ -68,9 +68,15 @@ public:
 
 		bool skipLayoutSave = false;
 		int activeSplitterID = -1; // -1: none, 0: Left, 1: Right, 2: HorizLeft, 3: HorizMid
+		int maximizedWindowID = -1; // -1: none, 0: Hierarchy, 1: Scene, 2: Inspector, 3: Project, 4: Node Editor, 5: Debug
+
+		// Check if title bar was double clicked to maximize/minimize
+		void CheckMaximize(int windowID);
 	} windowState;
 
 	// Centralized layout logic (Early frame)
+
+
 	void UpdateLayoutLogic();
 
 	// Centralized layout visuals (Late frame)

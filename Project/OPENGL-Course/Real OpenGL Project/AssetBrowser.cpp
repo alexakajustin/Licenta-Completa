@@ -383,15 +383,28 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
 	float winHeight = displaySize.y;
-	float menuHeight = 19.0f;
+	float menuHeight = ImGui::GetFrameHeight();
 	
-	ImGui::SetNextWindowPos(ImVec2(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio)), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio), ImGuiCond_Always);
+	// Project on bottom-middle
+	ImVec2 pos(uiState.leftWidth, menuHeight + (winHeight - menuHeight) * (1.0f - uiState.bottomHeightRatio));
+	ImVec2 size(winWidth - uiState.leftWidth - uiState.rightWidth, (winHeight - menuHeight) * uiState.bottomHeightRatio);
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	if (uiState.maximizedWindowID == 3) { // Project Maximized
+		pos = ImVec2(0, menuHeight);
+		size = ImVec2(winWidth, winHeight - menuHeight);
+	} else if (uiState.maximizedWindowID != -1) { // Something ELSE maximized
+		return;
+	}
+
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 	if (ImGui::Begin("Project", &uiState.isAssetBrowserOpen, windowFlags))
 	{
+		uiState.CheckMaximize(3);
+
 		// Update deferred thumbnails
 		for (auto& asset : currentAssets) {
 			if (asset.type == AssetType::Model) {
