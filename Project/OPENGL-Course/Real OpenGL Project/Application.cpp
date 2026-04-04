@@ -44,12 +44,12 @@ bool Application::Init()
 	sceneManager.SetMainShader(&renderer.GetMainShader());
 
 	std::vector<std::string> skyboxFaces;
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_rt.tga");
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_lf.tga");
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_up.tga");
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_dn.tga");
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_bk.tga");
-	skyboxFaces.push_back("Assets/Textures/Skybox/cupertin-lake_ft.tga");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/px.png");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/nx.png");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/py.png");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/ny.png");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/pz.png");
+	skyboxFaces.push_back("Assets/Textures/Skybox_Cute/nz.png");
 	renderer.LoadSkybox(skyboxFaces);
 
 	// Resources
@@ -114,7 +114,7 @@ void Application::LoadResources()
 	mainLight = DirectionalLight(4096, 4096,
 		1.0f, 1.0f, 1.0f,
 		0.4f, 0.6f,
-		-10.0f, -5.0f, 20.0f);
+		-20.0f, -5.0f, 7.0f);
 	// Focused frustum for better shadow resolution (30 units area)
 	mainLight.SetShadowFrustum(30.0f, 0.1f, 200.0f);
 	spotLightCount = 0;

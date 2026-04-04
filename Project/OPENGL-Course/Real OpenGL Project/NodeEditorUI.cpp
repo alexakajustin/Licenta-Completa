@@ -83,6 +83,26 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 
 		editorOrigin = ImGui::GetCursorScreenPos();
 
+		// --- Guard against input bleed from overlapping windows (e.g. Node Builder) ---
+		// If another ImGui window is capturing the mouse, freeze ImNodes' view of
+		// mouse buttons so it doesn't drag selected nodes while the user drags another panel.
+		bool editorHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+		ImGuiIO& io = ImGui::GetIO();
+		
+		// Save original mouse button state
+		bool savedMouseDown[5];
+		bool savedMouseClicked[5];
+		if (!editorHovered)
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				savedMouseDown[i] = io.MouseDown[i];
+				savedMouseClicked[i] = io.MouseClicked[i];
+				io.MouseDown[i] = false;
+				io.MouseClicked[i] = false;
+			}
+		}
+
 		// Node Editor rendering
 		ImNodes::BeginNodeEditor();
 
@@ -92,6 +112,16 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		ImGui::Dummy(ImVec2(0.3f, 0.3f));
 
 		ImNodes::EndNodeEditor();
+		
+		// Restore original mouse state
+		if (!editorHovered)
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				io.MouseDown[i] = savedMouseDown[i];
+				io.MouseClicked[i] = savedMouseClicked[i];
+			}
+		}
 
 		HandleEditorInteractions(graph);
 

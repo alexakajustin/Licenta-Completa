@@ -21,9 +21,7 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 
 	for (size_t i = 0; i < 6; i++)
 	{
-		unsigned char* texData = stbi_load(faceLocations[i].c_str(), &width, &height, &bitDepth, 0);
-
-		printf("Image %s loaded - channels: %d\n", faceLocations[i].c_str(), bitDepth);
+		unsigned char* texData = stbi_load(faceLocations[i].c_str(), &width, &height, &bitDepth, 4);
 
 		if (!texData)
 		{
@@ -31,7 +29,7 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 			return;
 		}
 
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + (GLenum)i, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
 		stbi_image_free(texData);
 	}
 
