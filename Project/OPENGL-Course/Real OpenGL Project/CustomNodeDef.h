@@ -46,6 +46,7 @@ struct CustomNodeDef
 {
 	std::string name = "Custom Node";
 	std::string category = "Custom";
+	std::string filePath = ""; // Tracks the exact JSON file path on disk
 
 	std::vector<PinDefinition> inputDefs;
 	std::vector<PinDefinition> outputDefs;

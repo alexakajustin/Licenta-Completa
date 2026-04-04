@@ -249,6 +249,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				targetShader->GetOffsetLocation()
 			);
 			b.material->Bind();
+		} else if (!overrideShader && !b.material) {
+			glUniform1f(targetShader->GetSpecularIntensityLocation(), 0.0f);
+			glUniform1f(targetShader->GetShininessLocation(), 1.0f);
+			glUniform3f(glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), 1.0f, 1.0f, 1.0f);
+			glUniform2f(targetShader->GetTilingLocation(), 1.0f, 1.0f);
+			glUniform2f(targetShader->GetOffsetLocation(), 0.0f, 0.0f);
 		}
 
 		// Apply texture overrides

@@ -87,6 +87,11 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		// If another ImGui window is capturing the mouse, freeze ImNodes' view of
 		// mouse buttons so it doesn't drag selected nodes while the user drags another panel.
 		bool editorHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+		
+		// If the user is actively dragging a parameter slider, we MUST NOT freeze the mouse 
+		// even if they drag outside the window bounds, otherwise the slider will drop immediately.
+		if (ImGui::IsAnyItemActive()) editorHovered = true;
+		
 		ImGuiIO& io = ImGui::GetIO();
 		
 		// Save original mouse button state

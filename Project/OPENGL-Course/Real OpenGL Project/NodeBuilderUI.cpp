@@ -396,14 +396,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 		if (deleteIdx >= 0)
 		{
 			const CustomNodeDef& def = savedDefinitions[deleteIdx];
-			// Build the filename the same way SaveCurrentDefinition does
-			std::string filename = def.name;
-			for (char& c : filename)
-			{
-				if (c == ' ') c = '_';
-				else if (!isalnum(c) && c != '_' && c != '-') c = '_';
-			}
-			std::string path = std::string(CUSTOM_NODES_DIR) + "/" + filename + ".json";
+			std::string path = def.filePath;
 
 			std::error_code ec;
 			if (std::filesystem::remove(path, ec))
@@ -510,6 +503,7 @@ void NodeBuilderUI::LoadSavedDefinitions()
 			CustomNodeDef def;
 			if (CustomNodeDef::LoadFromFile(entry.path().string(), def))
 			{
+				def.filePath = entry.path().string();
 				savedDefinitions.push_back(def);
 			}
 		}
