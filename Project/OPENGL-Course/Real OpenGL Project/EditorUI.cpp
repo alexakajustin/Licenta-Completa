@@ -995,6 +995,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 		if (showObjectInspector)
 		{
+			if (selectedObj >= (int)objects.size()) { ImGui::End(); return; }
 			GameObject* selected = objects[selectedObj];
 			Transform& transform = selected->GetTransform();
 			char nameBuf[128];
@@ -1229,8 +1230,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 					ImGui::Separator();
 					// Live preview sphere
-					glm::vec3 previewColor = mat->GetVec3("baseColor");
-					if (previewColor == glm::vec3(0.0f)) previewColor = mat->GetColor(); // Fallback to material.baseColor
+					glm::vec3 previewColor = mat->GetColor();
 
 					RenderMaterialPreview(mat->GetFloat("material.specularIntensity"), mat->GetFloat("material.shininess"), previewColor, 
 						(!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture(), 
@@ -1265,6 +1265,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 		}
 		else if (showLightInspector)
 		{
+			if (selectedLight >= (int)lights.size()) { ImGui::End(); return; }
 			LightObject* light = lights[selectedLight];
 			char nameBuf[128];
 			strncpy_s(nameBuf, sizeof(nameBuf), light->GetName().c_str(), _TRUNCATE);

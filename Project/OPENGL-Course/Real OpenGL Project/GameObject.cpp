@@ -169,6 +169,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
+	// Reset texture flags to prevent stale state from previous object
+	if (uniformUseDiffuseTexture != -1) glUniform1i(uniformUseDiffuseTexture, 0);
+	if (uniformUseNormalMap != -1) glUniform1i(uniformUseNormalMap, 0);
+
 	// Apply material if available, otherwise reset to defaults
 	if (material)
 	{

@@ -508,8 +508,10 @@ void main()
 		CalcLayeredSurface(baseColor);
 	} else {
 		// Legacy single-texture path (for models, old objects)
+		// Multiply blend: baseColor tints the texture (Unity-style)
+		// White (1,1,1) = no tint, Red (1,0,0) = red tint, etc.
 		vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
-		baseColor = mix(material.baseColor, texColor.rgb, texColor.a);
+		baseColor = material.baseColor * texColor.rgb;
 	}
 
 	// 2. Compute lighting (uses gBlendedNormal if layers set it)

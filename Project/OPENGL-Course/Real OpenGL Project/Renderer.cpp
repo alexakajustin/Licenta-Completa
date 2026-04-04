@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Window.h"
 #include "Frustum.h"
+#include <GLFW/glfw3.h>
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
@@ -135,8 +136,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	
 	// Scene objects with Frustum Culling
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
-	static float time = 0.0f;
-	time += 0.016f; // Rough approximation or pass from Application
+	float time = (float)glfwGetTime();
 	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude

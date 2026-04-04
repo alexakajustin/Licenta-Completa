@@ -395,7 +395,8 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						obj->SetCPUMeshData(sharedInputMesh);
 
 						// --- Material Handling ---
-						// Priority: sourceMaterial from object input > a fresh default material (if textures exist) > scene defaultMat.
+						// Only apply material/texture if the source object actually had them.
+						// If the source had no material (e.g. bare model), instances should also have none.
 						Material* finalMat = instancesPin.data.sourceMaterial;
 						if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap))
 						{
@@ -405,10 +406,10 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						}
 
 						if (finalMat) obj->SetMaterial(finalMat);
-						else if (defaultMat) obj->SetMaterial(defaultMat);
+						// NOTE: No else-default. Bare models stay materialless (rendered white).
 
 						if (instancesPin.data.sourceTexture) obj->SetTexture(instancesPin.data.sourceTexture);
-						else if (defaultTex) obj->SetTexture(defaultTex);
+						// NOTE: No else-default. Untextured objects stay untextured.
 
 						if (instancesPin.data.sourceNormalMap) obj->SetNormalMap(instancesPin.data.sourceNormalMap);
 
