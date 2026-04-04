@@ -1088,7 +1088,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
 		
 		float movement = glm::dot(delta, axis);
-		movement = glm::clamp(movement, -50.0f, 50.0f);
+		// Removed movement clamp to allow uninhibited dragging across large scenes
 
 		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
 		
