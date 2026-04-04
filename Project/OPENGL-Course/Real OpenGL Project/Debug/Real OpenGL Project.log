@@ -1,16 +1,10 @@
-﻿  Window.cpp
+﻿  Application.cpp
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(17,36): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Window.cpp')
+  (compiling source file 'Application.cpp')
   
 C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.h(18,37): warning C4244: 'return': conversion from 'GLint' to 'GLfloat', possible loss of data
-  (compiling source file 'Window.cpp')
+  (compiling source file 'Application.cpp')
   
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(21,10): warning C4244: '=': conversion from 'GLfloat' to 'GLint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(22,11): warning C4244: '=': conversion from 'GLfloat' to 'GLint', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(172,22): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(173,22): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(177,28): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(179,40): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(181,21): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
-C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Real OpenGL Project\Window.cpp(182,21): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
+     Creating library C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.lib and object C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exp
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Real OpenGL Project.vcxproj -> C:\Users\jastin\Desktop\Licenta-Completa\Project\OPENGL-Course\Debug\Real OpenGL Project.exe

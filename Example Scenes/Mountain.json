@@ -1,0 +1,299 @@
+{
+    "lights": [
+        {
+            "ambientIntensity": 0.6010000109672546,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 1.2419999837875366,
+            "direction": [
+                -10.0,
+                -5.0,
+                20.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 31,
+                "id": 38,
+                "start": 29
+            },
+            {
+                "end": 34,
+                "id": 39,
+                "start": 32
+            },
+            {
+                "end": 37,
+                "id": 40,
+                "start": 35
+            }
+        ],
+        "nextId": 41,
+        "nodes": [
+            {
+                "cachedMatColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    -500.0,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 0,
+                        "heightMax": 100.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                        "tiling": 500.0
+                    }
+                ],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    150.0
+                ],
+                "hasCachedMaterial": true,
+                "id": 28,
+                "inputPins": [],
+                "outputPins": [
+                    29
+                ],
+                "selectedName": "Plane",
+                "title": "Scene Input"
+            },
+            {
+                "amplitude": 400.0,
+                "editorPos": [
+                    250.0,
+                    150.0
+                ],
+                "frequency": 0.03500000014901161,
+                "id": 30,
+                "inputPins": [
+                    31
+                ],
+                "octaves": 8,
+                "outputPins": [
+                    32
+                ],
+                "persistence": 1.0,
+                "ridged": true,
+                "seed": 42,
+                "title": "Perlin Noise"
+            },
+            {
+                "depositionConstant": 0.11999999731779099,
+                "dissolvingConstant": 0.11999999731779099,
+                "editorPos": [
+                    450.0,
+                    150.0
+                ],
+                "evaporationConstant": 5.500000042957254e-05,
+                "id": 33,
+                "inputPins": [
+                    34
+                ],
+                "maxDelta": 8.0,
+                "outputPins": [
+                    35
+                ],
+                "rainRate": 0.10000000149011612,
+                "sedimentCapacity": 25.0,
+                "simulationSteps": 10,
+                "title": "Hydraulic Erosion"
+            },
+            {
+                "editorPos": [
+                    650.0,
+                    150.0
+                ],
+                "id": 36,
+                "inputPins": [
+                    37
+                ],
+                "outputPins": [],
+                "sameAsInput": true,
+                "targetName": "(none)",
+                "title": "Output",
+                "updateMesh": true
+            }
+        ]
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 250.0,
+                    "heightMin": -100.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                    "tiling": 500.0
+                },
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 382.0,
+                    "heightMin": 329.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                    "tiling": 250.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    -853.9000244140625,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 100.0,
+                "material.specularIntensity": 256.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Sphere 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Sphere",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Textures\\tile_displacement.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\tile_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\tile_diffuse.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}
