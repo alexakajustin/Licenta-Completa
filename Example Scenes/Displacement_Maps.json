@@ -35,8 +35,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 256.0,
-                "material.specularIntensity": 4.0,
+                "material.shininess": 8.0,
+                "material.specularIntensity": 16.0,
                 "material.tiling": [
                     1.0,
                     1.0

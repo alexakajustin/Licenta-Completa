@@ -169,6 +169,17 @@ void Application::Run()
 		// ImGui new frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
+		
+		// If cursor is captured for camera movement, tell ImGui to ignore mouse input
+		// This prevents "hovering" over UI elements while flying around the scene
+		ImGuiIO& io = ImGui::GetIO();
+		if (!mainWindow.isCursorEnabled()) {
+			io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+			io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX); // Teleport mouse far away so nothing is hovered
+		} else {
+			io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+		}
+
 		ImGui::NewFrame();
 		
 		// Get physical framebuffer size (pixels) for 3D

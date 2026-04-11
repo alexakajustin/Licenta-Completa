@@ -1,0 +1,134 @@
+{
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [],
+        "nextId": 1,
+        "nodes": []
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 1024.0,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Plane 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_nor_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_diff_1k.jpg",
+                    "tiling": 15.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    2.1033239364624023,
+                    -2.4840407371520996,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    1.5722761154174805,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    0.0,
+                    0.8316836357116699
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 1024.0,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "Assets\\Models\\statue.obj",
+            "name": "statue 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -19.464494705200195,
+                    -2.8412771224975586,
+                    -2.3196194171905518
+                ],
+                "rotation": [
+                    0.0,
+                    98.123779296875,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

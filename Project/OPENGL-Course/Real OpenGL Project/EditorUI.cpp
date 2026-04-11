@@ -231,6 +231,7 @@ void EditorUI::WindowState::CheckMaximize(int windowID)
 void EditorUI::UpdateLayoutLogic()
 {
 	if (ImGui::GetIO().DisplaySize.x <= 0) return;
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) return; // Disable layout changes while scene is focused
 	if (windowState.maximizedWindowID != -1) return; // Disable splitters while maximized
 	if (ImGui::IsDragDropActive()) { // Disable splitters while dragging items
 		windowState.activeSplitterID = -1;
@@ -330,6 +331,7 @@ void EditorUI::UpdateLayoutLogic()
 void EditorUI::UpdateLayoutVisual()
 {
 	if (windowState.maximizedWindowID != -1) return; // Hide splitters while maximized
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) return; // Hide everything while scene is focused
 	if (ImGui::IsDragDropActive()) return; // Hide splitters while dragging items
 	if (ImGui::IsAnyItemActive() && windowState.activeSplitterID == -1) return; // Hide while interacting with widgets
 
