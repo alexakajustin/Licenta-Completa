@@ -731,6 +731,17 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			}
 			ImGui::EndDragDropTarget();
 		}
+
+		// Global Shortcut: Delete key handling for the Viewport
+		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
+		{
+			if (!scene.GetSelectedObjectIndices().empty()) {
+				scene.DeleteSelectedObjects();
+			}
+			else if (!scene.GetSelectedLightIndices().empty()) {
+				scene.DeleteSelectedLights();
+			}
+		}
 	}
 	ImGui::End();
 }
