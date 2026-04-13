@@ -320,7 +320,7 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 	
 	return shadow;
 }
-vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float sssThickness) 
+vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float sssThickness, vec3 baseColor) 
 {
 	vec3 effectiveNormal = GetEffectiveNormal();
 
@@ -361,13 +361,17 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float
 		vec3 H = normalize(L + effectiveNormal * material.sssDistortion);
 		float phase = pow(clamp(dot(V, -H), 0.0, 1.0), 4.0) * 0.5;
 		
-		sssColor = light.colour * light.diffuseIntensity * scatPower * phase * material.baseColor.rgb;
+		sssColor = light.colour * light.diffuseIntensity * scatPower * phase * baseColor;
 	}
 
-	return (ambientColour + (1.0 - shadowFactor) * (diffuseColor + specularColour) + sssColor);
+	// Specular light is purely ADDED on top (dielectric), diffuse/ambient is MULTIPLIED by baseColor
+	vec3 diffuseAmbient = baseColor * (ambientColour + (1.0 - shadowFactor) * diffuseColor);
+	vec3 finalSpecular = (1.0 - shadowFactor) * specularColour;
+
+	return diffuseAmbient + finalSpecular + sssColor;
 }
 
-vec3 CalcDirectionalLight() 
+vec3 CalcDirectionalLight(vec3 baseColor) 
 {
 	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
 	
@@ -381,10 +385,10 @@ vec3 CalcDirectionalLight()
 		sssThickness = max(currentDepth - closestDepth, 0.0);
 	}
 
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, sssThickness);
+	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, sssThickness, baseColor);
 }
 
-vec3 CalcPointLight(PointLight pLight, int shadowIndex) 
+vec3 CalcPointLight(PointLight pLight, int shadowIndex, vec3 baseColor) 
 {
 	vec3 direction = FragPos - pLight.position; // get the vector from point light to fragment = direction
 	float distance = length(direction);
@@ -400,32 +404,32 @@ vec3 CalcPointLight(PointLight pLight, int shadowIndex)
 		sssThickness = max(currentDepth - closestDepth, 0.0) / omniShadowMaps[shadowIndex].farPlane;
 	}
 
-	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, sssThickness);
+	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, sssThickness, baseColor);
 	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
 
 	return (lightFinal / attenuation);
 }
 
-vec3 CalcPointLights() 
+vec3 CalcPointLights(vec3 baseColor) 
 {
 	vec3 totalColour = vec3(0, 0, 0);
 
 	for(int i = 0; i < pointLightCount; i++) 
 	{
-		totalColour += CalcPointLight(pointLights[i], i);
+		totalColour += CalcPointLight(pointLights[i], i, baseColor);
 	}
 
 	return totalColour;
 }
 
-vec3 CalcSpotLight(SpotLight sLight, int shadowIndex) 
+vec3 CalcSpotLight(SpotLight sLight, int shadowIndex, vec3 baseColor) 
 {
 	vec3 rayDirection = normalize(FragPos - sLight.base.position);
 	float slFactor = dot(rayDirection, sLight.direction);
 
 	if(slFactor > sLight.edge) 
 	{
-		vec3 lightFinal = CalcPointLight(sLight.base, shadowIndex);
+		vec3 lightFinal = CalcPointLight(sLight.base, shadowIndex, baseColor);
 
 		return lightFinal * (1.0f - (1.0f - slFactor) * (1.0f / (1.0f - sLight.edge)));
 	} 
@@ -436,14 +440,13 @@ vec3 CalcSpotLight(SpotLight sLight, int shadowIndex)
 
 }
 
-vec3 CalcSpotLights() 
+vec3 CalcSpotLights(vec3 baseColor) 
 {
 	vec3 totalColour = vec3(0, 0, 0);
 
 	for(int i = 0; i < spotLightCount; i++) 
 	{
-	
-		totalColour += CalcSpotLight(spotLights[i], i + pointLightCount);
+		totalColour += CalcSpotLight(spotLights[i], i + pointLightCount, baseColor);
 	}
 
 	return totalColour;
@@ -560,10 +563,10 @@ void main()
 	}
 
 	// 2. Compute lighting (uses gBlendedNormal if layers set it)
-	vec3 finalLight = CalcDirectionalLight();
-	finalLight += CalcPointLights();
-	finalLight += CalcSpotLights();
+	vec3 finalLight = CalcDirectionalLight(baseColor);
+	finalLight += CalcPointLights(baseColor);
+	finalLight += CalcSpotLights(baseColor);
 
 	// 3. Final output
-	colour = vec4(baseColor * finalLight, material.baseColor.a);
+	colour = vec4(finalLight, material.baseColor.a);
 }
