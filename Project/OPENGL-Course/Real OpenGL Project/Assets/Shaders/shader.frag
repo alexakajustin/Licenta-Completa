@@ -50,7 +50,7 @@ struct SpotLight
 struct Material {
 	 float specularIntensity;
 	 float shininess;
-	 vec3 baseColor;
+	 vec4 baseColor;
 	 vec2 tiling;
 	 vec2 offset;
 };
@@ -493,7 +493,7 @@ void CalcLayeredSurface(out vec3 outColor)
 		blendedNorm = mix(blendedNorm, layerWorldNorm, weight);
 	}
 
-	outColor = baseColor * material.baseColor; // Unity-style multiplicative tint
+	outColor = baseColor * material.baseColor.rgb; // Unity-style multiplicative tint
 	gBlendedNormal = normalize(blendedNorm);
 	gUseBlendedNormal = true;
 }
@@ -511,7 +511,7 @@ void main()
 		// Multiply blend: baseColor tints the texture (Unity-style)
 		// White (1,1,1) = no tint, Red (1,0,0) = red tint, etc.
 		vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
-		baseColor = material.baseColor * texColor.rgb;
+		baseColor = material.baseColor.rgb * texColor.rgb;
 	}
 
 	// 2. Compute lighting (uses gBlendedNormal if layers set it)
@@ -520,5 +520,5 @@ void main()
 	finalLight += CalcSpotLights();
 
 	// 3. Final output
-	colour = vec4(baseColor * finalLight, 1.0);
+	colour = vec4(baseColor * finalLight, material.baseColor.a);
 }

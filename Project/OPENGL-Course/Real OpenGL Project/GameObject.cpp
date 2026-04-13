@@ -183,7 +183,7 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	{
 		glUniform1f(uniformSpecularIntensity, 0.0f);
 		glUniform1f(uniformShininess, 1.0f);
-		glUniform3f(uniformMaterialColor, 1.0f, 1.0f, 1.0f);
+		glUniform4f(uniformMaterialColor, 1.0f, 1.0f, 1.0f, 1.0f);
 		glUniform2f(uniformTiling, 1.0f, 1.0f);
 		glUniform2f(uniformOffset, 0.0f, 0.0f);
 	}

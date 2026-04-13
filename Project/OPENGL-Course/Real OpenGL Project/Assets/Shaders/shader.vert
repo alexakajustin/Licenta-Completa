@@ -35,7 +35,7 @@ uniform int useInstancing;
 struct Material {
 	 float specularIntensity;
 	 float shininess;
-	 vec3 baseColor;
+	 vec4 baseColor;
 	 vec2 tiling;
 	 vec2 offset;
 };

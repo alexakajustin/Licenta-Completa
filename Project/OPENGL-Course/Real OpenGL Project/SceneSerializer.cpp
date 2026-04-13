@@ -136,6 +136,7 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			for (auto const& [name, val] : mat->GetFloats()) objJson["material"][name] = val;
 			for (auto const& [name, val] : mat->GetVec2s())  objJson["material"][name] = { val.x, val.y };
 			for (auto const& [name, val] : mat->GetVec3s())  objJson["material"][name] = { val.x, val.y, val.z };
+			for (auto const& [name, val] : mat->GetVec4s())  objJson["material"][name] = { val.x, val.y, val.z, val.w };
 		}
 
 		// SMART FILTER: We no longer save custom vertex/index data to the JSON file.
@@ -367,6 +368,9 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					}
 					else if (it.value().is_array() && it.value().size() == 3) {
 						mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
+					}
+					else if (it.value().is_array() && it.value().size() == 4) {
+						mat->SetVec4(it.key(), glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
 					}
 				}
 

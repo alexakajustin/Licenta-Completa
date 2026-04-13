@@ -102,13 +102,17 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glDisable(GL_BLEND); // Ensure blending is off for main scene
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Skybox
+	glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
 	skybox.DrawSkybox(view, projection);
 	glEnable(GL_CULL_FACE);
+
+	// Enable alpha blending for transparent materials (Unity-style Fade)
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Main shader
 	mainShader.UseShader();
@@ -138,6 +142,9 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
 	float time = (float)glfwGetTime();
 	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum);
+
+	// Disable blending for icons/gizmos overlay
+	glDisable(GL_BLEND);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude
 	glClear(GL_DEPTH_BUFFER_BIT);

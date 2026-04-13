@@ -34,7 +34,7 @@ void Material::SetDefaults()
 {
 	floats["material.specularIntensity"] = 0.5f;
 	floats["material.shininess"] = 32.0f;
-	vec3s["material.baseColor"] = glm::vec3(1.0f);
+	vec4s["material.baseColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	vec2s["material.tiling"] = glm::vec2(1.0f);
 	vec2s["material.offset"] = glm::vec2(0.0f);
 }
@@ -70,13 +70,18 @@ void Material::Bind()
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform3fv(loc, 1, glm::value_ptr(val));
 	}
+
+	for (auto const& [name, val] : vec4s) {
+		GLint loc = GetLoc(name);
+		if (loc != -1) glUniform4fv(loc, 1, glm::value_ptr(val));
+	}
 }
 
 void Material::UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, GLint tilingLocation, GLint offsetLocation)
 {
 	if (specularIntensityLocation != -1) glUniform1f(specularIntensityLocation, GetSpecularIntensity());
 	if (shininessLocation != -1) glUniform1f(shininessLocation, GetShininess());
-	if (colorLocation != -1) glUniform3fv(colorLocation, 1, glm::value_ptr(GetColor()));
+	if (colorLocation != -1) glUniform4fv(colorLocation, 1, glm::value_ptr(GetColor()));
 	if (tilingLocation != -1) glUniform2fv(tilingLocation, 1, glm::value_ptr(GetTiling()));
 	if (offsetLocation != -1) glUniform2fv(offsetLocation, 1, glm::value_ptr(GetOffset()));
 }
@@ -104,7 +109,7 @@ Material* Material::LoadFromFile(const std::string& path)
 			// For now, these will be handled by the SceneSerializer
 		}
 		else if (valStr.find(',') != std::string::npos) {
-			// Probable vec2 or vec3
+			// Probable vec2, vec3, or vec4
 			std::stringstream ss(valStr);
 			std::vector<float> values;
 			std::string temp;
@@ -112,6 +117,7 @@ Material* Material::LoadFromFile(const std::string& path)
 
 			if (values.size() == 2) mat->SetVec2(key, glm::vec2(values[0], values[1]));
 			else if (values.size() == 3) mat->SetVec3(key, glm::vec3(values[0], values[1], values[2]));
+			else if (values.size() == 4) mat->SetVec4(key, glm::vec4(values[0], values[1], values[2], values[3]));
 		}
 		else {
 			mat->SetFloat(key, std::stof(valStr));
@@ -133,6 +139,7 @@ bool Material::SaveToFile(const std::string& path) const
 	for (auto const& [name, val] : floats) file << name << "=" << val << "\n";
 	for (auto const& [name, val] : vec2s)  file << name << "=" << val.x << "," << val.y << "\n";
 	for (auto const& [name, val] : vec3s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "\n";
+	for (auto const& [name, val] : vec4s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "," << val.w << "\n";
 
 	return true;
 }

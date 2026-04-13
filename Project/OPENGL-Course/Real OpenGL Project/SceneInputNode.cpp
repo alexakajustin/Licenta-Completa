@@ -249,7 +249,7 @@ void SceneInputNode::Execute(SceneManager& scene)
 				hasCachedMaterial = true;
 				cachedMatSpecular = mat->GetSpecularIntensity();
 				cachedMatShininess = mat->GetShininess();
-				cachedMatColor = mat->GetColor();
+				cachedMatColor = mat->GetColorRGB();
 				cachedMatTiling = mat->GetTiling();
 				cachedMatOffset = mat->GetOffset();
 			} else {

@@ -7,12 +7,12 @@ in vec3 FragPos;
 out vec4 colour;
 
 struct Material {
-	vec3 baseColor;
+	vec4 baseColor;
 };
 uniform Material material;
 uniform sampler2D theTexture;
 
 void main()
 {
-	colour = texture(theTexture, TexCoord) * vec4(material.baseColor, 1.0);
+	colour = texture(theTexture, TexCoord) * material.baseColor;
 }

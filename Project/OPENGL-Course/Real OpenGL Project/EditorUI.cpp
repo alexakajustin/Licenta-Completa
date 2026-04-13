@@ -1252,6 +1252,14 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 								glm::vec2 val = mat->GetVec2(name);
 								if (ImGui::DragFloat2(name.c_str(), &val.x, 0.01f)) mat->SetVec2(name, val);
 							}
+							else if (prop.type == Shader::UniformType::Vec4) {
+								glm::vec4 val = mat->GetVec4(name);
+								if (name.find("Color") != std::string::npos || name.find("color") != std::string::npos) {
+									if (ImGui::ColorEdit4(name.c_str(), &val.x)) mat->SetVec4(name, val);
+								} else {
+									if (ImGui::DragFloat4(name.c_str(), &val.x, 0.01f)) mat->SetVec4(name, val);
+								}
+							}
 							ImGui::PopItemWidth();
 							ImGui::PopID();
 						}
@@ -1259,7 +1267,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 					ImGui::Separator();
 					// Live preview sphere
-					glm::vec3 previewColor = mat->GetColor();
+					glm::vec3 previewColor = mat->GetColorRGB();
 
 					RenderMaterialPreview(mat->GetFloat("material.specularIntensity"), mat->GetFloat("material.shininess"), previewColor, 
 						(!selected->GetTextureLayers().empty()) ? selected->GetTextureLayers()[0].texture : selected->GetTexture(), 
