@@ -50,6 +50,8 @@ struct SpotLight
 struct Material {
 	 float specularIntensity;
 	 float shininess;
+	 float sssScale;
+	 float sssDistortion;
 	 vec4 baseColor;
 	 vec2 tiling;
 	 vec2 offset;
@@ -318,7 +320,7 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 	
 	return shadow;
 }
-vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor) 
+vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float sssThickness) 
 {
 	vec3 effectiveNormal = GetEffectiveNormal();
 
@@ -346,13 +348,40 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 		}
 	}
 
-	return (ambientColour + (1.0 - shadowFactor) * (diffuseColor + specularColour));
+	// Subsurface Scattering
+	vec3 sssColor = vec3(0.0);
+	if (material.baseColor.a < 1.0)
+	{
+		// thickness dictates how much light permeates through
+		float scatPower = exp(-sssThickness * material.sssScale);
+		
+		// warp phase: shines through when backlit
+		vec3 L = normalize(-direction);
+		vec3 V = normalize(eyePosition - FragPos);
+		vec3 H = normalize(L + effectiveNormal * material.sssDistortion);
+		float phase = pow(clamp(dot(V, -H), 0.0, 1.0), 4.0) * 0.5;
+		
+		sssColor = light.colour * light.diffuseIntensity * scatPower * phase * material.baseColor.rgb;
+	}
+
+	return (ambientColour + (1.0 - shadowFactor) * (diffuseColor + specularColour) + sssColor);
 }
 
 vec3 CalcDirectionalLight() 
 {
 	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor);
+	
+	float sssThickness = 0.0;
+	if (material.baseColor.a < 1.0) 
+	{
+		vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
+		projCoords = (projCoords * 0.5) + 0.5;
+		float currentDepth = projCoords.z;
+		float closestDepth = texture(directionalShadowMap, projCoords.xy).r;
+		sssThickness = max(currentDepth - closestDepth, 0.0);
+	}
+
+	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, sssThickness);
 }
 
 vec3 CalcPointLight(PointLight pLight, int shadowIndex) 
@@ -363,7 +392,15 @@ vec3 CalcPointLight(PointLight pLight, int shadowIndex)
 
 	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
 
-	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor);
+	float sssThickness = 0.0;
+	if (material.baseColor.a < 1.0)
+	{
+		float currentDepth = length(FragPos - pLight.position);
+		float closestDepth = texture(omniShadowMaps[shadowIndex].shadowMap, direction).r * omniShadowMaps[shadowIndex].farPlane;
+		sssThickness = max(currentDepth - closestDepth, 0.0) / omniShadowMaps[shadowIndex].farPlane;
+	}
+
+	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, sssThickness);
 	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
 
 	return (lightFinal / attenuation);

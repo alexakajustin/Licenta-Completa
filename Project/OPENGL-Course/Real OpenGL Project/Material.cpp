@@ -34,6 +34,8 @@ void Material::SetDefaults()
 {
 	floats["material.specularIntensity"] = 0.5f;
 	floats["material.shininess"] = 32.0f;
+	floats["material.sssScale"] = 100.0f; // Scale to convert light space depth diff to world/local space
+	floats["material.sssDistortion"] = 0.2f; // SSS normal distortion
 	vec4s["material.baseColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	vec2s["material.tiling"] = glm::vec2(1.0f);
 	vec2s["material.offset"] = glm::vec2(0.0f);
