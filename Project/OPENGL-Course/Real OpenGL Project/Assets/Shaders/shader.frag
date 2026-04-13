@@ -358,7 +358,7 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float
 		// warp phase: shines through when backlit
 		vec3 L = normalize(-direction);
 		vec3 V = normalize(eyePosition - FragPos);
-		vec3 H = normalize(L + effectiveNormal * material.sssDistortion);
+		vec3 H = normalize(L - effectiveNormal * material.sssDistortion);
 		float phase = pow(clamp(dot(V, -H), 0.0, 1.0), 4.0) * 0.5;
 		
 		sssColor = light.colour * light.diffuseIntensity * scatPower * phase * baseColor;

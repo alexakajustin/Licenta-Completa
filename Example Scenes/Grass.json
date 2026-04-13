@@ -1,0 +1,289 @@
+{
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 28,
+                "id": 36,
+                "start": 22
+            },
+            {
+                "end": 27,
+                "id": 39,
+                "start": 38
+            }
+        ],
+        "nextId": 40,
+        "nodes": [
+            {
+                "cachedMatColor": [
+                    0.28232523798942566,
+                    0.594059407711029,
+                    0.0
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\grass.obj",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    -0.9563727974891663,
+                    0.0
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    250.0
+                ],
+                "hasCachedMaterial": true,
+                "id": 21,
+                "inputPins": [],
+                "outputPins": [
+                    22
+                ],
+                "selectedName": "grass 1",
+                "title": "Scene Input"
+            },
+            {
+                "alignToNormal": true,
+                "count": 1000,
+                "editorPos": [
+                    450.0,
+                    250.0
+                ],
+                "id": 26,
+                "inputPins": [
+                    27,
+                    28
+                ],
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
+                "outputPins": [
+                    29,
+                    30
+                ],
+                "randomRotation": true,
+                "seed": 42,
+                "spawnAsObjects": true,
+                "targetParentName": "Plane",
+                "title": "Scatter"
+            },
+            {
+                "cachedMatColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    -0.9318869113922119,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 0,
+                        "heightMax": 100.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                        "tiling": 1000.0
+                    }
+                ],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    281.0,
+                    218.0
+                ],
+                "hasCachedMaterial": true,
+                "id": 37,
+                "inputPins": [],
+                "outputPins": [
+                    38
+                ],
+                "selectedName": "Plane",
+                "title": "Scene Input"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                    "tiling": 1000.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    -0.9318869113922119,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    0.28232523798942566,
+                    0.594059407711029,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/grass.frag",
+                "shader_vert": "Assets/Shaders/grass.vert",
+                "windSpeed": 0.5,
+                "windStrength": 0.004999999888241291
+            },
+            "modelPath": "Assets\\Models\\grass.obj",
+            "name": "grass 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    -0.9563727974891663,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

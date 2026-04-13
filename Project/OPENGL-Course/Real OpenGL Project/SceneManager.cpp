@@ -178,8 +178,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 	};
 
-	// 1. Collect and Render Single Objects
-	for (auto* obj : objects) {
+	auto RenderQueue = [&](const std::vector<GameObject*>& queue) {
+		std::vector<Batch> localBatchList;
+
+		// 1. Collect and Render Single Objects
+		for (auto* obj : queue) {
 		Mesh* msh = obj->GetMesh();
 		Model* mdl = obj->GetModel();
 		Material* mat = obj->GetMaterial();
@@ -201,17 +204,17 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		bool hasLayers = !obj->GetTextureLayers().empty();
 		// If it's a simple instanced primitive without layers, batch it
 		// BUT we skip batching if an override shader is used OR if it's a shadow pass (for simplicity/correctness)
-		if (!overrideShader && msh && !mdl && msh->IsInstanced() && !hasLayers) {
-			bool found = false;
-			for (auto& b : batchList) {
-				if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
-					b.matrices.push_back(obj->GetWorldMatrix());
-					found = true;
-					break;
+			if (!overrideShader && msh && !mdl && msh->IsInstanced() && !hasLayers) {
+				bool found = false;
+				for (auto& b : localBatchList) {
+					if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
+						b.matrices.push_back(obj->GetWorldMatrix());
+						found = true;
+						break;
+					}
 				}
-			}
-			if (!found) batchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
-		} else {
+				if (!found) localBatchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
+			} else {
 			// Render Single
 			PrepareShader(targetShader);
 
@@ -239,7 +242,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	}
 
 	// 2. Render Batches
-	for (auto& b : batchList) {
+	for (auto& b : localBatchList) {
 		if (b.matrices.empty()) continue;
 
 		Shader* targetShader = overrideShader ? overrideShader : ((b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader);
@@ -296,6 +299,40 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		b.mesh->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
 		
 		if (instLoc != -1) glUniform1i(instLoc, 0);
+	}
+	}; // end RenderQueue
+
+	std::vector<GameObject*> opaqueObjects;
+	std::vector<GameObject*> transparentObjects;
+
+	for (auto* obj : objects) {
+		if (!obj->GetMesh() && !obj->GetModel()) continue;
+		Material* mat = obj->GetMaterial();
+		
+		// If it's an override shader pass (like shadows), we don't care about sorting or depth masks; render all in opaque bucket
+		if (overrideShader || (mat && mat->GetAlpha() >= 0.99f) || !mat) {
+			opaqueObjects.push_back(obj);
+		} else {
+			transparentObjects.push_back(obj);
+		}
+	}
+
+	// 1. Render all opaque objects normally (writes depth)
+	RenderQueue(opaqueObjects);
+
+	// 2. Sort and Render transparent objects
+	if (!transparentObjects.empty() && !overrideShader) {
+		// Painter's algorithm: Back-to-front sorting relative to camera location
+		std::sort(transparentObjects.begin(), transparentObjects.end(), [&](GameObject* a, GameObject* b) {
+			float distA = glm::length(glm::vec3(a->GetWorldMatrix()[3]) - cameraPos);
+			float distB = glm::length(glm::vec3(b->GetWorldMatrix()[3]) - cameraPos);
+			return distA > distB;
+		});
+
+		// Render with Z-Write OFF so overlapping transparent objects don't clip each other
+		glDepthMask(GL_FALSE);
+		RenderQueue(transparentObjects);
+		glDepthMask(GL_TRUE); // Restore depth mask
 	}
 }
 
