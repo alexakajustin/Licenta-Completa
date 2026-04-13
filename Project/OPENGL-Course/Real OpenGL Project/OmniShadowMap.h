@@ -13,6 +13,7 @@ public:
 
 	//second pass, use it as texture cube
 	void Read(GLenum textureUnit);
+	void ReadColor(GLenum textureUnit);
 
     ~OmniShadowMap();
 private:

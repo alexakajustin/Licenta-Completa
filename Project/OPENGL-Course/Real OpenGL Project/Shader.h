@@ -72,6 +72,7 @@ public:
 	void SetNormalMap(GLuint textureUnit);
 	void SetUseNormalMap(bool useNormalMap);
 	void SetDirectionalShadowMap(GLuint textureUnit);
+	void SetDirectionalShadowColorMap(GLuint textureUnit);
 	void SetDirectionalLightTransform(glm::mat4 lTransform);
 	void SetLightMatrices(std::vector<glm::mat4> lightMatrices);
 
@@ -98,7 +99,7 @@ private:
 	GLint uniformProjection, uniformModel, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess,
 		uniformTexture, uniformNormalMap, uniformUseNormalMap,
-		uniformDirectionalLightTransform, uniformDirectionalShadowMap,
+		uniformDirectionalLightTransform, uniformDirectionalShadowMap, uniformDirectionalShadowColorMap,
 		uniformOmniLightPos, uniformFarPlane,
 		uniformTiling, uniformOffset;
 
@@ -143,6 +144,7 @@ private:
 
 	struct {
 		GLint shadowMap;
+		GLint shadowColorMap;
 		GLint farPlane;
 	} uniformOmniShadowMap[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 	

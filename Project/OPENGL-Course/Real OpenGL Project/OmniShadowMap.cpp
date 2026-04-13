@@ -28,12 +28,23 @@ bool OmniShadowMap::Init(GLuint width, GLuint height)
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+	glGenTextures(1, &shadowColorMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, shadowColorMap);
+	for (size_t i = 0; i < 6; i++) {
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_R8, shadowWidth, shadowHeight, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowMap, 0);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, shadowColorMap, 0);
 
-
-	// empty for this render pass
-	glDrawBuffer(GL_NONE);
+	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, drawBuffers);
 	glReadBuffer(GL_NONE);
 
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -59,6 +70,12 @@ void OmniShadowMap::Read(GLenum textureUnit)
 {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, shadowMap);
+}
+
+void OmniShadowMap::ReadColor(GLenum textureUnit)
+{
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, shadowColorMap);
 }
 
 OmniShadowMap::~OmniShadowMap()

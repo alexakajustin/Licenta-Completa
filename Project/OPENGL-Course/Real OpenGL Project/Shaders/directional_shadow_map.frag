@@ -1,10 +1,9 @@
 #version 330
 
 uniform float materialAlpha;
+layout(location = 0) out float outAlpha;
 
-void main()
-{
-	// Transparent objects don't cast shadows
-	if (materialAlpha < 0.5)
-		discard;
+void main() { 
+	// Output alpha to the shadow color map
+	outAlpha = materialAlpha;
 }

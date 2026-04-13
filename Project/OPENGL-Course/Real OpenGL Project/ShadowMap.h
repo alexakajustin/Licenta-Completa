@@ -15,6 +15,7 @@ public:
 
 	//second pass, use it as texture
 	virtual void Read(GLenum textureUnit);
+	virtual void ReadColor(GLenum textureUnit);
 
 	GLuint GetShadowWidth() { return shadowWidth; }
 	GLuint GetShadowHeight() { return shadowHeight; }
@@ -22,7 +23,7 @@ public:
 	~ShadowMap();
 protected:
 	//these are ids
-	GLuint FBO, shadowMap;
+	GLuint FBO, shadowMap, shadowColorMap;
 	GLuint shadowWidth, shadowHeight;
 };
 

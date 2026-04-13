@@ -57,7 +57,8 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
 
 	light->GetShadowMap()->Write();
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // default alpha 1.0
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	GLint shadowModelLoc = directionalShadowShader.GetModelLocation();
 	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform(cameraPos));
@@ -76,7 +77,8 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
 
 	light->GetShadowMap()->Write();
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // default alpha 1.0
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	GLint shadowModelLoc = omniShadowShader.GetModelLocation();
 	GLint omniLightPosLoc = omniShadowShader.getOmniLightPosLocation();
@@ -132,9 +134,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalLightTransform(mainLight.CalculateLightTransform(cameraPos));
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
+	mainLight.GetShadowMap()->ReadColor(GL_TEXTURE20);
 	mainShader.SetTexture(0);
 	mainShader.SetNormalMap(1);
 	mainShader.SetDirectionalShadowMap(3);
+	mainShader.SetDirectionalShadowColorMap(20);
 
 	// mainShader.Validate(); 
 	

@@ -58,6 +58,7 @@ struct Material {
 struct OmniShadowMap
 {
 	samplerCube shadowMap;
+	samplerCube shadowColorMap;
 	float farPlane;
 };
 
@@ -74,6 +75,7 @@ uniform int useDiffuseTexture;
 uniform sampler2D normalMap;
 uniform int useNormalMap;
 uniform sampler2D directionalShadowMap;
+uniform sampler2D directionalShadowColorMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
 uniform Material material;
@@ -267,8 +269,12 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	{
 		for(int y = -1; y <= 1; ++y)
 		{
-			float pcfDepth = texture(directionalShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += current - bias > pcfDepth ? 1.0 : 0.0;
+			vec2 samplePos = projCoords.xy + vec2(x, y) * texelSize;
+			float pcfDepth = texture(directionalShadowMap, samplePos).r;
+			float occluderAlpha = texture(directionalShadowColorMap, samplePos).r;
+			
+			float isShadow = current - bias > pcfDepth ? 1.0 : 0.0;
+			shadow += isShadow * occluderAlpha;
 		}
 	}
 
@@ -298,16 +304,18 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 
 	for(int i = 0; i < samples; i++)
 	{
-		float closestDepth = texture(omniShadowMaps[shadowIndex].shadowMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
+		vec3 samplePos = fragToLight + sampleOffsetDirections[i] * diskRadius;
+		float closestDepth = texture(omniShadowMaps[shadowIndex].shadowMap, samplePos).r;
 		closestDepth *= omniShadowMaps[shadowIndex].farPlane;
 
 		if(currentDepth - bias > closestDepth) 
 		{
-			shadow += 1.0;
+			float occluderAlpha = texture(omniShadowMaps[shadowIndex].shadowColorMap, samplePos).r;
+			shadow += 1.0 * occluderAlpha;
 		}
 	}
 	shadow /= float(samples);
-
+	
 	return shadow;
 }
 vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor) 

@@ -6,14 +6,15 @@ uniform vec3 lightPos;
 uniform float farPlane;
 uniform float materialAlpha;
 
+layout(location = 0) out float outAlpha;
+
 void main()
 {
-	// Transparent objects don't cast shadows
-	if (materialAlpha < 0.5)
-		discard;
-
 	// distance between fragment and light
 	float distance = length(FragPos.xyz - lightPos);
 	distance = distance / farPlane; // 0 - 1
 	gl_FragDepth = distance; // the depth attachment
+	
+	// Output alpha to the shadow color map
+	outAlpha = materialAlpha;
 }

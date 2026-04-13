@@ -253,6 +253,7 @@ void Shader::CompileProgram()
 	uniformUseNormalMap = glGetUniformLocation(shaderID, "useNormalMap");
 	uniformDirectionalLightTransform = glGetUniformLocation(shaderID, "directionalLightTransform");
 	uniformDirectionalShadowMap = glGetUniformLocation(shaderID, "directionalShadowMap");
+	uniformDirectionalShadowColorMap = glGetUniformLocation(shaderID, "directionalShadowColorMap");
 
 	uniformOmniLightPos = glGetUniformLocation(shaderID, "lightPos");
 	uniformFarPlane = glGetUniformLocation(shaderID, "farPlane");
@@ -269,10 +270,13 @@ void Shader::CompileProgram()
 	{
 		char locBuff[100] = { '\0' };
 
-		snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%d].shadowMap", i);
+		snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%zd].shadowMap", i);
 		uniformOmniShadowMap[i].shadowMap = glGetUniformLocation(shaderID, locBuff);
 
-		snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%d].farPlane", i);
+		snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%zd].shadowColorMap", i);
+		uniformOmniShadowMap[i].shadowColorMap = glGetUniformLocation(shaderID, locBuff);
+
+		snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%zd].farPlane", i);
 		uniformOmniShadowMap[i].farPlane = glGetUniformLocation(shaderID, locBuff);
 	}
 
@@ -356,6 +360,7 @@ void Shader::ClearShader()
 	uniformUseNormalMap = -1;
 	uniformDirectionalLightTransform = -1;
 	uniformDirectionalShadowMap = -1;
+	uniformDirectionalShadowColorMap = -1;
 	uniformOmniLightPos = -1;
 	uniformFarPlane = -1;
 	uniformTiling = -1;
@@ -466,7 +471,9 @@ void Shader::SetPointLights(PointLight* pointLight, unsigned int lightCount, uns
 			uniformPointLight[i].uniformConstant, uniformPointLight[i].uniformLinear, uniformPointLight[i].uniformExponent);
 
 		pointLight[i].GetShadowMap()->Read(GL_TEXTURE0 + textureUnit + i);
+		pointLight[i].GetShadowMap()->ReadColor(GL_TEXTURE0 + 21 + i); // Color Map on 21+
 		glUniform1i(uniformOmniShadowMap[i + offset].shadowMap, textureUnit + i);
+		glUniform1i(uniformOmniShadowMap[i + offset].shadowColorMap, 21 + i);
 		glUniform1f(uniformOmniShadowMap[i + offset].farPlane, pointLight[i].GetFarPlane());
 
 	}
@@ -486,7 +493,9 @@ void Shader::SetSpotLights(SpotLight* spotLight, unsigned int lightCount, unsign
 			uniformSpotLight[i].uniformEdge);
 
 		spotLight[i].GetShadowMap()->Read(GL_TEXTURE0 + textureUnit + i);
+		spotLight[i].GetShadowMap()->ReadColor(GL_TEXTURE0 + 25 + i); // Spot Color Map on 25+
 		glUniform1i(uniformOmniShadowMap[i + offset].shadowMap, textureUnit + i);
+		glUniform1i(uniformOmniShadowMap[i + offset].shadowColorMap, 25 + i);
 		glUniform1f(uniformOmniShadowMap[i + offset].farPlane, spotLight[i].GetFarPlane());
 	}
 }
@@ -509,7 +518,11 @@ void Shader::SetUseNormalMap(bool useNormalMap)
 void Shader::SetDirectionalShadowMap(GLuint textureUnit)
 {
 	glUniform1i(uniformDirectionalShadowMap, textureUnit);
+}
 
+void Shader::SetDirectionalShadowColorMap(GLuint textureUnit)
+{
+	glUniform1i(uniformDirectionalShadowColorMap, textureUnit);
 }
 
 void Shader::SetDirectionalLightTransform(glm::mat4 lTransform)
