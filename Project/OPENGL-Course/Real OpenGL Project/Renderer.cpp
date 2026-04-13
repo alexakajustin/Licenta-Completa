@@ -61,11 +61,13 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	GLint shadowModelLoc = directionalShadowShader.GetModelLocation();
-	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform(cameraPos));
+	glm::mat4 lightProjView = light->CalculateLightTransform(cameraPos);
+	directionalShadowShader.SetDirectionalLightTransform(lightProjView);
 
 	directionalShadowShader.Validate();
 
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr, &directionalShadowShader);
+	Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

@@ -202,9 +202,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		if (!targetShader) continue;
 
 		bool hasLayers = !obj->GetTextureLayers().empty();
-		// If it's a simple instanced primitive without layers, batch it
-		// BUT we skip batching if an override shader is used OR if it's a shadow pass (for simplicity/correctness)
-			if (!overrideShader && msh && !mdl && msh->IsInstanced() && !hasLayers) {
+		bool isPickingPass = (overrideShader && pickingInitialized && overrideShader->GetShaderID() == pickingShader.GetShaderID());
+		
+		// If it's a simple instanced primitive without layers, batch it (unless it's picking pass which requires unique IDs)
+			if (msh && !mdl && msh->IsInstanced() && !hasLayers && !isPickingPass) {
 				bool found = false;
 				for (auto& b : localBatchList) {
 					if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {

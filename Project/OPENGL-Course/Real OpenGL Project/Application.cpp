@@ -129,7 +129,7 @@ void Application::SetupScene()
 	plane->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f));
 	// Set position to 0, -500, 0
 	plane->GetTransform().SetPosition(glm::vec3(0.0f, -500.0f, 0.0f));
-	plane->SetMesh(PrimitiveGenerator::CreatePlane());
+	plane->SetMesh(PrimitiveGenerator::CreatePlane(1, 1));
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
 
