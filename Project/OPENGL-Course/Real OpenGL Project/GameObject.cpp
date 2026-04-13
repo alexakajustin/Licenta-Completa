@@ -1,5 +1,4 @@
 #include "GameObject.h"
-#include "Frustum.h"
 
 GameObject::GameObject()
 	: name("GameObject"), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
@@ -140,13 +139,8 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
 	const glm::mat4& parentMatrix, const Frustum* frustum)
 {
-	// FRUSTUM CULLING CHECK
-	if (frustum && (model || mesh))
-	{
-		glm::vec3 min, max;
-		GetWorldBounds(min, max);
-		if (!frustum->IsBoxVisible(min, max)) return;
-	}
+	// NOTE: Frustum culling is handled by SceneManager's multi-layer pipeline.
+	// Removed redundant per-object check to avoid double-testing.
 
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap);
@@ -484,5 +478,20 @@ void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)
 
 	cachedWorldMin = min;
 	cachedWorldMax = max;
+
+	// Compute bounding sphere from AABB (center + half-diagonal radius)
+	cachedSphereCenter = (min + max) * 0.5f;
+	cachedSphereRadius = glm::length(max - cachedSphereCenter);
+
 	boundsDirty = false;
+}
+
+void GameObject::GetWorldBoundingSphere(glm::vec3& center, float& radius)
+{
+	if (boundsDirty) {
+		glm::vec3 dummyMin, dummyMax;
+		GetWorldBounds(dummyMin, dummyMax); // This will recompute and cache everything
+	}
+	center = cachedSphereCenter;
+	radius = cachedSphereRadius;
 }

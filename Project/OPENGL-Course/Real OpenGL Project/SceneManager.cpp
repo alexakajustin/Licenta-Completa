@@ -133,7 +133,8 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader)
+	float time, const Frustum* frustum, Shader* overrideShader,
+	float screenHeight)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -191,11 +192,22 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		if (!msh && !mdl) continue;
 
-		// Frustum Culling
+		// ===== MULTI-LAYER CULLING PIPELINE =====
 		if (frustum) {
-			glm::vec3 min, max;
-			obj->GetWorldBounds(min, max);
-			if (!frustum->IsBoxVisible(min, max)) continue;
+			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
+			glm::vec3 sphereCenter; float sphereRadius;
+			obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
+			if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
+
+			// LAYER 2: Contribution culling — skip sub-pixel objects (camera pass only)
+			if (!overrideShader && screenHeight > 0.0f) {
+				if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 2.0f, projection, screenHeight, cameraPos)) continue;
+			}
+
+			// LAYER 3: AABB vs Frustum (precise p-vertex test)
+			glm::vec3 bmin, bmax;
+			obj->GetWorldBounds(bmin, bmax);
+			if (!frustum->IsBoxVisible(bmin, bmax)) continue;
 		}
 
 		Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);

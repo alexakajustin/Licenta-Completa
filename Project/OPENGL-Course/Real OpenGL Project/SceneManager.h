@@ -50,7 +50,8 @@ public:
 	void RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 		class DirectionalLight* mainLight, class PointLight* pointLights, unsigned int pointLightCount,
 		class SpotLight* spotLights, unsigned int spotLightCount,
-		float time = 0.0f, const Frustum* frustum = nullptr, Shader* overrideShader = nullptr);
+		float time = 0.0f, const Frustum* frustum = nullptr, Shader* overrideShader = nullptr,
+		float screenHeight = 0.0f);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 

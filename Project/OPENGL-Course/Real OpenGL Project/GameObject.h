@@ -85,6 +85,7 @@ public:
 	const std::string& GetModelSourcePath() const { return modelSourcePath; }
 
 	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
+	void GetWorldBoundingSphere(glm::vec3& center, float& radius);
 	
 	void SetDirty(); // Dirties this and all children recursively
 
@@ -123,5 +124,7 @@ private:
 
 	glm::vec3 cachedWorldMin = glm::vec3(0.0f);
 	glm::vec3 cachedWorldMax = glm::vec3(0.0f);
+	glm::vec3 cachedSphereCenter = glm::vec3(0.0f);
+	float cachedSphereRadius = 0.0f;
 	bool boundsDirty = true;
 };

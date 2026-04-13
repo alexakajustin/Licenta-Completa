@@ -147,7 +147,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	// Scene objects with Frustum Culling
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
 	float time = (float)glfwGetTime();
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh);
 
 	// Disable blending for icons/gizmos overlay
 	glDisable(GL_BLEND);
