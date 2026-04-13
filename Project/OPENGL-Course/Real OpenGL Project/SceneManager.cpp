@@ -214,6 +214,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		} else {
 			// Render Single
 			PrepareShader(targetShader);
+
+			// Upload material alpha for shadow pass dithering
+			if (overrideShader) {
+				float alpha = (mat) ? mat->GetAlpha() : 1.0f;
+				GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+				if (alphaLoc != -1) glUniform1f(alphaLoc, alpha);
+			}
 			
 			obj->RenderSingle(
 				targetShader->GetModelLocation(),

@@ -4,9 +4,14 @@ in vec4 FragPos;
 
 uniform vec3 lightPos;
 uniform float farPlane;
+uniform float materialAlpha;
 
 void main()
 {
+	// Transparent objects don't cast shadows
+	if (materialAlpha < 0.5)
+		discard;
+
 	// distance between fragment and light
 	float distance = length(FragPos.xyz - lightPos);
 	distance = distance / farPlane; // 0 - 1
