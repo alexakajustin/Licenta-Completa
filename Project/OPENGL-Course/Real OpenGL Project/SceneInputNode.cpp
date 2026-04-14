@@ -201,7 +201,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		// 1. Try to retrieve persisted procedural mesh data if available
 		// 1. Always prefer the clean source primitive if available. 
 		// (Prevents feedback loops where the node graph reads its own previous output from obj->HasCustomMesh())
-		if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
+		if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
 		else if (obj->GetPrimitiveType() == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (obj->GetPrimitiveType() == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// 2. Try to retrieve persisted procedural mesh data if available (ONLY if no clean primitive/model source exists)
@@ -262,7 +262,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	if (!found && selectedName != "(none)")
 	{
 		// Try resolving using cached info
-		if (cachedPrimitiveType == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(); found = true; }
+		if (cachedPrimitiveType == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
 		else if (cachedPrimitiveType == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (cachedPrimitiveType == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// Fallback to loaded asset
