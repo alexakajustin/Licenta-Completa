@@ -18,6 +18,8 @@
 #include <queue>
 #include <set>
 #include <cstdio>
+#include <thread>
+#include <future>
 
 // ========== GraphNode ==========
 
@@ -99,11 +101,13 @@ void NodeGraph::AddNode(GraphNode* node)
 	nodes.push_back(node);
 }
 
-void NodeGraph::RemoveNode(int nodeId)
+void NodeGraph::RemoveNode(int nodeId, SceneManager* scene)
 {
 	// Remove all links connected to this node's pins
 	GraphNode* node = FindNode(nodeId);
 	if (!node) return;
+
+	if (scene) node->OnRemove(*scene);
 
 	// Collect pin IDs
 	std::set<int> pinIds;
@@ -319,32 +323,51 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 					if ((int)transforms.size() >= INSTANCED_GROUP_THRESHOLD && !defaultObjectMesh.vertices.empty())
 					{
-						// Build packed instance data
-						std::vector<InstancedGroup::PackedInstance> packedInstances;
-						packedInstances.reserve(transforms.size());
+						// Build packed instance data MULTI-THREADED
+						std::vector<InstancedGroup::PackedInstance> packedInstances(transforms.size());
 
-						for (const auto& t : transforms) {
-							InstancedGroup::PackedInstance packed;
-							// Use average scale as uniform scale
-							float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
-							packed.positionAndScale = glm::vec4(t.position, avgScale);
+						int packCount = (int)transforms.size();
+						unsigned int packThreads = std::thread::hardware_concurrency();
+						if (packThreads == 0) packThreads = 4;
+						if (packThreads > (unsigned int)packCount) packThreads = (unsigned int)packCount;
 
-							// Compute euler rotation including normal alignment
-							glm::vec3 euler = t.rotation;
-							if (scatterNode->IsAlignToNormal() && glm::length(t.normal) > 0.001f) {
-								// For GPU rendering, we encode the normal alignment into euler angles
-								glm::vec3 up(0, 1, 0);
-								if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
-									glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
-									float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
-									// Convert axis-angle to euler (approximate for small tilts)
-									euler.x += glm::degrees(angle * axis.x);
-									euler.z += glm::degrees(angle * axis.z);
+						std::vector<std::future<void>> packFutures;
+						int packPerThread = packCount / packThreads;
+						bool alignToNorm = scatterNode->IsAlignToNormal();
+
+						for (unsigned int tIdx = 0; tIdx < packThreads; tIdx++)
+						{
+							int startIdx = tIdx * packPerThread;
+							int endIdx = (tIdx == packThreads - 1) ? packCount : (tIdx + 1) * packPerThread;
+
+							packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm]() {
+								for (int i = startIdx; i < endIdx; i++) {
+									const auto& t = transforms[i];
+									InstancedGroup::PackedInstance packed;
+									// Use average scale as uniform scale
+									float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
+									packed.positionAndScale = glm::vec4(t.position, avgScale);
+
+									// Compute euler rotation including normal alignment
+									glm::vec3 euler = t.rotation;
+									if (alignToNorm && glm::length(t.normal) > 0.001f) {
+										// For GPU rendering, we encode the normal alignment into euler angles
+										glm::vec3 up(0, 1, 0);
+										if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
+											glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
+											float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
+											// Convert axis-angle to euler (approximate for small tilts)
+											euler.x += glm::degrees(angle * axis.x);
+											euler.z += glm::degrees(angle * axis.z);
+										}
+									}
+									packed.rotationAndFlags = glm::vec4(euler, 0.0f);
+									packedInstances[i] = packed;
 								}
-							}
-							packed.rotationAndFlags = glm::vec4(euler, 0.0f);
-							packedInstances.push_back(packed);
+							}));
 						}
+						
+						for (auto& f : packFutures) f.get();
 
 						// Create or reuse GPU mesh
 						size_t dataKey = (size_t)defaultObjectMesh.vertices.data() ^ (size_t)defaultObjectMesh.vertices.size();

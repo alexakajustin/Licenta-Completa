@@ -198,7 +198,6 @@ void ScatterNode::MergeTransformed(const MeshData& objectMesh, const glm::vec3& 
 void ScatterNode::Execute(SceneManager& scene)
 {
   try {
-	lastTransforms.clear();
 	outputs[0].data.Clear(); // Combined
 	outputs[0].data.type = PinDataType::Mesh;
 	outputs[1].data.Clear(); // Instances Only
@@ -219,13 +218,6 @@ void ScatterNode::Execute(SceneManager& scene)
 		return;
 	}
 
-	// Use a modern random engine to avoid biased std::rand()
-	std::mt19937 gen(seed);
-	std::uniform_int_distribution<> triDist(0, (int)surfaceMesh.indices.size() / 3 - 1);
-	std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
-	std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
-	std::uniform_real_distribution<float> scaleDist(minScale, maxScale);
-
 	// Memory optimization: Build instancesOnly first.
 	// We only build combinedResult at the very end by appending to the surfaceMesh.
 	// This avoids having two giant result meshes in memory at the same time.
@@ -238,16 +230,20 @@ void ScatterNode::Execute(SceneManager& scene)
 
 	// 2. Determine how many meshes can fit in the "Combined" output
 	int meshCount = workingCount;
-	int meshVerts = meshCount * objectMesh.GetVertexCount();
-	int meshIndices = (int)(meshCount * objectMesh.indices.size());
+	long long objectVertsLL = objectMesh.GetVertexCount();
+	long long objectIndicesLL = objectMesh.indices.size();
+
+	// FIX: Use long long to avoid integer overflow when multiplying by 10 million
+	long long meshVertsLL = (long long)meshCount * objectVertsLL;
+	long long meshIndicesLL = (long long)meshCount * objectIndicesLL;
 	
-	long long projectedMeshBytes = ((long long)meshVerts * 14 * 4) + ((long long)meshIndices * 4);
+	long long projectedMeshBytes = (meshVertsLL * 14 * 4) + (meshIndicesLL * 4);
 	// REDUCED FOR FRAGMENTATION: 600MB is the safest "contiguous" block we can expect in 32-bit.
 	const long long MAX_SAFE_32BIT_ALLOC = 600LL * 1024 * 1024; 
 	
 	// HARD BYPASS: If a single instance of the mesh already exceeds our safe allocation limit,
 	// we skip combined mesh generation entirely to avoid a guaranteed std::bad_alloc.
-	long long singleInstanceBytes = ((long long)objectMesh.GetVertexCount() * 14 * 4) + ((long long)objectMesh.indices.size() * 4);
+	long long singleInstanceBytes = (objectVertsLL * 14 * 4) + (objectIndicesLL * 4);
 	if (singleInstanceBytes > MAX_SAFE_32BIT_ALLOC) {
 		printf("[ScatterNode] Hard Bypass: Input mesh is too large for combined output (%lld MB). Skipping combined mesh.\n", singleInstanceBytes / (1024 * 1024));
 		meshCount = 0;
@@ -261,18 +257,18 @@ void ScatterNode::Execute(SceneManager& scene)
 		printf("[ScatterNode] Capping Combined mesh to %d instances, but keeping all %d transforms for spawning.\n", meshCount, workingCount);
 	}
 	
-	meshVerts = meshCount * objectMesh.GetVertexCount();
-	meshIndices = (int)(meshCount * objectMesh.indices.size());
+	meshVertsLL = (long long)meshCount * objectVertsLL;
+	meshIndicesLL = (long long)meshCount * objectIndicesLL;
 	
 	int objectVerts = objectMesh.GetVertexCount();
 	int objectIndices = (int)objectMesh.indices.size();
 
-	// Pre-allocate Combined/InstancesOnly mesh to meshCount
-	instancesOnly.vertices.resize(meshVerts * 14);
-	instancesOnly.indices.resize(meshIndices);
+	// Pre-allocate Combined/InstancesOnly mesh to meshCount safely
+	instancesOnly.vertices.resize((size_t)(meshVertsLL * 14));
+	instancesOnly.indices.resize((size_t)meshIndicesLL);
 
 	// Setup modular output lists (Full workingCount!)
-	outputs[1].data.transforms.reserve(workingCount);
+	outputs[1].data.transforms.resize(workingCount); // Pre-allocate for parallel writing
 	outputs[1].data.instanceMeshes.clear(); // We don't usually generate unique meshes here unless noise is integrated
 
 	// Calculate surface world matrix (INCLUDING scale, so spawned objects spread properly over scaled surfaces)
@@ -290,64 +286,83 @@ void ScatterNode::Execute(SceneManager& scene)
 		surfaceNormalMatrix = glm::transpose(glm::inverse(glm::mat3(surfaceWorld)));
 	}
 
-	for (int i = 0; i < workingCount; i++)
+	// === HIGH PERFORMANCE PARALLEL TRANSFORM GENERATION ===
+	unsigned int transThreads = std::thread::hardware_concurrency();
+	if (transThreads == 0) transThreads = 4;
+	if (transThreads > (unsigned int)workingCount) transThreads = (unsigned int)workingCount;
+
+	std::vector<std::future<void>> transFutures;
+	int transPerThread = workingCount / transThreads;
+
+	for (unsigned int tIdx = 0; tIdx < transThreads; tIdx++)
 	{
-		// Pick a random triangle properly
-		int triIdx = triDist(gen);
-		unsigned int i0 = surfaceMesh.indices[triIdx * 3];
-		unsigned int i1 = surfaceMesh.indices[triIdx * 3 + 1];
-		unsigned int i2 = surfaceMesh.indices[triIdx * 3 + 2];
+		int startIdx = tIdx * transPerThread;
+		int endIdx = (tIdx == transThreads - 1) ? workingCount : (tIdx + 1) * transPerThread;
 
-		glm::vec3 v0 = surfaceMesh.GetPosition(i0);
-		glm::vec3 v1 = surfaceMesh.GetPosition(i1);
-		glm::vec3 v2 = surfaceMesh.GetPosition(i2);
+		transFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, tIdx]() {
+			// Thread-local random engine and distributions prevent racing and bias
+			std::mt19937 localGen(seed + tIdx);
+			std::uniform_int_distribution<> triDist(0, (int)surfaceMesh.indices.size() / 3 - 1);
+			std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
+			std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
+			std::uniform_real_distribution<float> scaleDist(minScale, maxScale);
 
-		// Random barycentric coordinates
-		float r1 = floatDist(gen);
-		float r2 = floatDist(gen);
-		if (r1 + r2 > 1.0f)
-		{
-			r1 = 1.0f - r1;
-			r2 = 1.0f - r2;
-		}
-		float r0 = 1.0f - r1 - r2;
+			glm::vec3 baseScale(1.0f);
+			if (!inputs[1].data.transforms.empty())
+				baseScale = inputs[1].data.transforms[0].scale;
 
-		glm::vec3 localPos = v0 * r0 + v1 * r1 + v2 * r2;
+			for (int i = startIdx; i < endIdx; i++)
+			{
+				int triIdx = triDist(localGen);
+				unsigned int i0 = surfaceMesh.indices[triIdx * 3];
+				unsigned int i1 = surfaceMesh.indices[triIdx * 3 + 1];
+				unsigned int i2 = surfaceMesh.indices[triIdx * 3 + 2];
 
-		// Interpolate normal
-		glm::vec3 n0 = surfaceMesh.GetNormal(i0);
-		glm::vec3 n1 = surfaceMesh.GetNormal(i1);
-		glm::vec3 n2 = surfaceMesh.GetNormal(i2);
-		glm::vec3 localNormal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
+				glm::vec3 v0 = surfaceMesh.GetPosition(i0);
+				glm::vec3 v1 = surfaceMesh.GetPosition(i1);
+				glm::vec3 v2 = surfaceMesh.GetPosition(i2);
 
-		// Transform to World Space
-		glm::vec3 worldPos = glm::vec3(surfaceWorld * glm::vec4(localPos, 1.0f));
-		glm::vec3 worldNormal = glm::normalize(surfaceNormalMatrix * localNormal);
+				float r1 = floatDist(localGen);
+				float r2 = floatDist(localGen);
+				if (r1 + r2 > 1.0f)
+				{
+					r1 = 1.0f - r1;
+					r2 = 1.0f - r2;
+				}
+				float r0 = 1.0f - r1 - r2;
 
-		// Random scale, preserving the original object's scale
-		float s = scaleDist(gen);
-		glm::vec3 baseScale(1.0f);
-		if (!inputs[1].data.transforms.empty())
-			baseScale = inputs[1].data.transforms[0].scale;
-		glm::vec3 scaleVec = baseScale * s;
+				glm::vec3 localPos = v0 * r0 + v1 * r1 + v2 * r2;
 
-		// Random rotation
-		glm::vec3 rot(0.0f);
-		if (randomRotation)
-		{
-			rot.y = rotDist(gen);
-		}
+				glm::vec3 n0 = surfaceMesh.GetNormal(i0);
+				glm::vec3 n1 = surfaceMesh.GetNormal(i1);
+				glm::vec3 n2 = surfaceMesh.GetNormal(i2);
+				glm::vec3 localNormal = glm::normalize(n0 * r0 + n1 * r1 + n2 * r2);
 
-		// Store transform for modular downstream use (World Space!)
-		TransformData t;
-		t.position = worldPos;
-		t.rotation = rot; // Note: rotation might need to be added to surface rotation if total-world-rot desired
-		t.scale = scaleVec;
-		t.normal = worldNormal;
-		
-		lastTransforms.push_back(t); // Compatibility
-		outputs[1].data.transforms.push_back(t);
+				glm::vec3 worldPos = glm::vec3(surfaceWorld * glm::vec4(localPos, 1.0f));
+				glm::vec3 worldNormal = glm::normalize(surfaceNormalMatrix * localNormal);
+
+				float s = scaleDist(localGen);
+				glm::vec3 scaleVec = baseScale * s;
+
+				glm::vec3 rot(0.0f);
+				if (randomRotation)
+				{
+					rot.y = rotDist(localGen);
+				}
+
+				TransformData t;
+				t.position = worldPos;
+				t.rotation = rot;
+				t.scale = scaleVec;
+				t.normal = worldNormal;
+
+				outputs[1].data.transforms[i] = t;
+			}
+		}));
 	}
+
+	// Wait for transform generation threads to finish
+	for (auto& f : transFutures) f.get();
 
 	// === HIGH PERFORMANCE PARALLEL MESH GENERATION ===
 	// Note: We only generate mesh data for meshCount instances to stay within 32-bit limits.
@@ -456,4 +471,16 @@ void ScatterNode::Execute(SceneManager& scene)
 	// Fallback: Just pass through surface
 	outputs[0].data.meshData = inputs[0].data.meshData;
   }
+}
+
+void ScatterNode::OnRemove(SceneManager& scene)
+{
+	// 1. Clean up "Spawn as Objects" instantiated meshes
+	for (const auto& name : spawnedNames)
+		scene.RemoveObject(name);
+	spawnedNames.clear();
+
+	// 2. Clean up "Combined / Instances Only" Instanced Group
+	std::string groupName = "Scatter_Instanced_" + std::to_string(id);
+	scene.RemoveInstancedGroup(groupName);
 }

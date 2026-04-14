@@ -58,6 +58,9 @@ public:
 	// Process: read input pin data, compute, write output pin data
 	virtual void Execute(SceneManager& scene) = 0;
 
+	// Called right before node is deleted from the graph
+	virtual void OnRemove(SceneManager& scene) {}
+
 	// Find a pin by ID
 	Pin* FindPin(int pinId);
 	Pin* FindInputPin(int pinId);
@@ -77,7 +80,7 @@ public:
 
 	// Node management
 	void AddNode(GraphNode* node);
-	void RemoveNode(int nodeId);
+	void RemoveNode(int nodeId, SceneManager* scene = nullptr);
 	GraphNode* FindNode(int nodeId);
 	GraphNode* FindNodeByPinId(int pinId);
 

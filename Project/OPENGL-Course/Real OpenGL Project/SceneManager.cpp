@@ -93,6 +93,13 @@ void SceneManager::DeleteGameObject(int index)
 
 	GameObject* obj = objects[index];
 
+	std::string name = obj->GetName();
+	if (name.find("Scatter_Group_") == 0) {
+		std::string idStr = name.substr(14);
+		RemoveInstancedGroup("Scatter_Instanced_" + idStr);
+	}
+
+
 	// Recursive deletion: delete all children first
 	// We make a copy of the children vector because deleting a child 
 	// will modify the original vector via the destructor/parent detachment

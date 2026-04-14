@@ -39,6 +39,7 @@ public:
 
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene) override;
+	void OnRemove(SceneManager& scene) override;
 
 private:
 	int count = 50;
@@ -54,8 +55,6 @@ private:
 	int targetParentIndex = -1;
 	std::vector<std::string> spawnedNames;
 	
-	TransformList lastTransforms; 
-
 	// Random float in [min, max]
 	float RandRange(float min, float max);
 
