@@ -303,7 +303,7 @@ void Application::Run()
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera);
 		
 		assetBrowser.Render(sceneManager, uiState);
-		nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
+		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
 
 
@@ -333,6 +333,46 @@ void Application::Run()
 
 		// Reset forceLayout after ALL ImGui panels have rendered for this frame
 		editorUI.GetWindowState().forceLayout = false;
+
+		if (executeGraph) {
+			auto callback = [&](float overallPct, float nodePct, const std::string& msg) {
+				glfwPollEvents();
+				ImGui_ImplOpenGL3_NewFrame();
+				ImGui_ImplGlfw_NewFrame();
+				ImGui::NewFrame();
+				
+				ImGui::SetNextWindowPos(ImVec2(mainWindow.getBufferWidth() * 0.5f, mainWindow.getBufferHeight() * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+				ImGui::SetNextWindowSize(ImVec2(450, 150));
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+				ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.98f));
+				ImGui::Begin("Executing Graph", nullptr, ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoTitleBar);
+				
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
+				ImGui::Text("Executing Node Map...");
+				ImGui::TextColored(ImVec4(0.61f, 0.31f, 0.91f, 1.0f), "%s", msg.c_str());
+				
+				ImGui::Spacing();
+				char buf[32];
+				snprintf(buf, sizeof(buf), "Overall: %d%%", (int)overallPct);
+				ImGui::ProgressBar(overallPct / 100.0f, ImVec2(-1, 20), buf);
+				
+				ImGui::Spacing();
+				snprintf(buf, sizeof(buf), "Node: %d%%", (int)nodePct);
+				ImGui::ProgressBar(nodePct / 100.0f, ImVec2(-1, 20), buf);
+				
+				ImGui::End();
+				ImGui::PopStyleColor();
+				ImGui::PopStyleVar();
+				
+				ImGui::Render();
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				// Purposefully DO NOT glClear so the app remains visible in the background
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+				mainWindow.swapBuffers();
+			};
+			
+			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, callback);
+		}
 	}
 }
 

@@ -55,7 +55,7 @@ void HydraulicErosionNode::Deserialize(const json& j)
 	maxDelta = j.value("maxDelta", 2.0f);
 }
 
-void HydraulicErosionNode::Execute(SceneManager& scene)
+void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 {
 	outputs[0].data.Clear();
 
@@ -102,6 +102,12 @@ void HydraulicErosionNode::Execute(SceneManager& scene)
 		for (int i = 0; i < simulationSteps; i++)
 		{
 			sim.update(dt, true, false);
+
+			// Progress report every 10 steps to not throttle too hard
+			if (progress && (i % 10 == 0 || i == simulationSteps - 1)) {
+				float pct = ((float)(i + 1) / simulationSteps) * 100.0f;
+				progress(pct, "Simulating Erosion... Step " + std::to_string(i + 1) + "/" + std::to_string(simulationSteps));
+			}
 		}
 
 		// Push back Y coordinates

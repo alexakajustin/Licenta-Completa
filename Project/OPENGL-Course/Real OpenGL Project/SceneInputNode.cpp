@@ -167,7 +167,7 @@ void SceneInputNode::Deserialize(const json& j)
 	}
 }
 
-void SceneInputNode::Execute(SceneManager& scene)
+void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 {
 	outputs[0].data.Clear();
 	outputs[0].data.type = PinDataType::Mesh;

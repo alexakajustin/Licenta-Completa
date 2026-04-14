@@ -195,7 +195,7 @@ void ScatterNode::MergeTransformed(const MeshData& objectMesh, const glm::vec3& 
 	}
 }
 
-void ScatterNode::Execute(SceneManager& scene)
+void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 {
   try {
 	outputs[0].data.Clear(); // Combined
@@ -362,7 +362,20 @@ void ScatterNode::Execute(SceneManager& scene)
 	}
 
 	// Wait for transform generation threads to finish
-	for (auto& f : transFutures) f.get();
+	if (progress) progress(10.0f, "Computing Transforms...");
+	int transCompleted = 0;
+	std::vector<bool> transDone(transFutures.size(), false);
+	while (transCompleted < (int)transFutures.size()) {
+		for (size_t i = 0; i < transFutures.size(); i++) {
+			if (!transDone[i]) {
+				if (transFutures[i].wait_for(std::chrono::milliseconds(5)) == std::future_status::ready) {
+					transDone[i] = true;
+					transCompleted++;
+				}
+			}
+		}
+		if (progress) progress(10.0f + (transCompleted * 15.0f / transFutures.size()), "Computing Transforms... (" + std::to_string(transCompleted) + "/" + std::to_string(transFutures.size()) + ") Threads");
+	}
 
 	// === HIGH PERFORMANCE PARALLEL MESH GENERATION ===
 	// Note: We only generate mesh data for meshCount instances to stay within 32-bit limits.
@@ -440,7 +453,20 @@ void ScatterNode::Execute(SceneManager& scene)
 	}
 
 	// Wait for all threads to finish
-	for (auto& f : futures) f.get();
+	if (progress) progress(25.0f, "Packing Mesh Buffer...");
+	int meshCompleted = 0;
+	std::vector<bool> meshDone(futures.size(), false);
+	while (meshCompleted < (int)futures.size()) {
+		for (size_t i = 0; i < futures.size(); i++) {
+			if (!meshDone[i]) {
+				if (futures[i].wait_for(std::chrono::milliseconds(5)) == std::future_status::ready) {
+					meshDone[i] = true;
+					meshCompleted++;
+				}
+			}
+		}
+		if (progress) progress(25.0f + (meshCompleted * 75.0f / futures.size()), "Packing GPU Buffers... (" + std::to_string(meshCompleted) + "/" + std::to_string(futures.size()) + ") Threads");
+	}
 
 	// Now build combined result sequentially: surface + instances
 	// We copy surfaceMesh first, then append instancesOnly

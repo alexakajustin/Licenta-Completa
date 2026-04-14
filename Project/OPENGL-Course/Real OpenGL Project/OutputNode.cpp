@@ -91,7 +91,7 @@ void OutputNode::Deserialize(const json& j)
 	updateMesh = j.value("updateMesh", true);
 }
 
-void OutputNode::Execute(SceneManager& scene)
+void OutputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 {
 	// Logic is handled in NodeGraph::Execute because it needs access to SceneManager
 }

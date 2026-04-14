@@ -38,7 +38,7 @@ public:
 	void Deserialize(const json& j) override;
 
 	void RenderContent(SceneManager* scene) override;
-	void Execute(SceneManager& scene) override;
+	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
 	void OnRemove(SceneManager& scene) override;
 
 private:

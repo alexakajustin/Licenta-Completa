@@ -22,9 +22,11 @@ NodeEditorUI::~NodeEditorUI()
 {
 }
 
-void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState)
+bool NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState)
 {
-	if (!uiState.isNodeEditorOpen) return;
+	if (!uiState.isNodeEditorOpen) return false;
+
+	bool executeRequested = false;
 
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
@@ -39,7 +41,7 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		pos = ImVec2(0, menuHeight);
 		size = ImVec2(winWidth, winHeight - menuHeight);
 	} else if (uiState.maximizedWindowID != -1) { // Something ELSE maximized
-		return;
+		return false;
 	}
 
 	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
@@ -65,7 +67,7 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 			}
 			if (ImGui::BeginMenu("Execute"))
 			{
-				if (ImGui::MenuItem("Execute Graph")) { graph.Execute(scene, defaultTex, defaultMat); }
+				if (ImGui::MenuItem("Execute Graph")) { executeRequested = true; }
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenuBar();
@@ -74,7 +76,7 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		// Toolbar
 		if (ImGui::Button("Execute Graph"))
 		{
-			graph.Execute(scene, defaultTex, defaultMat);
+			executeRequested = true;
 		}
 		ImGui::SameLine();
 		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
@@ -158,6 +160,8 @@ void NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		}
 	}
 	ImGui::End();
+
+	return executeRequested;
 }
 
 

@@ -55,8 +55,9 @@ public:
 	// Render ImGui controls inside the node body
 	virtual void RenderContent(SceneManager* scene) = 0;
 
+	using NodeProgressCallback = std::function<void(float, const std::string&)>;
 	// Process: read input pin data, compute, write output pin data
-	virtual void Execute(SceneManager& scene) = 0;
+	virtual void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) = 0;
 
 	// Called right before node is deleted from the graph
 	virtual void OnRemove(SceneManager& scene) {}
@@ -91,7 +92,7 @@ public:
 	bool CanLink(int outputPinId, int inputPinId);
 
 	// Execution
-	void Execute(SceneManager& scene, Texture* defaultTex, Material* defaultMat);
+	void Execute(SceneManager& scene, Texture* defaultTex, Material* defaultMat, std::function<void(float, float, const std::string&)> progressCallback = nullptr);
 
 	// Accessors
 	std::vector<GraphNode*>& GetNodes() { return nodes; }

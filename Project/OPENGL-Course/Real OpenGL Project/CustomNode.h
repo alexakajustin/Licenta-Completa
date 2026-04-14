@@ -31,7 +31,7 @@ public:
 
 	// GraphNode interface
 	void RenderContent(SceneManager* scene) override;
-	void Execute(SceneManager& scene) override;
+	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
 
 	json Serialize() const override;
 	void Deserialize(const json& j) override;

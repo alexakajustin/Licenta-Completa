@@ -245,7 +245,7 @@ std::vector<GraphNode*> NodeGraph::TopologicalSort()
 	return sorted;
 }
 
-void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defaultMat)
+void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defaultMat, std::function<void(float, float, const std::string&)> progressCallback)
 {
 	if (nodes.empty()) return;
 
@@ -259,10 +259,24 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 	// Execute in topological order
 	auto sorted = TopologicalSort();
 
-	for (auto* node : sorted)
+	for (size_t i = 0; i < sorted.size(); i++)
 	{
+		auto* node = sorted[i];
+
+		auto nodeCb = [&](float nodePct, const std::string& msg) {
+			if (progressCallback) {
+				float overallPct = ((float)i / (float)(sorted.size() * 2)) * 100.0f + (nodePct / (float)(sorted.size() * 2));
+				progressCallback(overallPct, nodePct, msg);
+			}
+		};
+
+		if (progressCallback) {
+			float pct = ((float)i / (float)(sorted.size() * 2)) * 100.0f; // First half of progress
+			progressCallback(pct, 0.0f, "Computing Node: " + node->title);
+		}
+
 		// Execute the node
-		node->Execute(scene);
+		node->Execute(scene, nodeCb);
 
 		// Propagate data from this node's outputs to connected inputs
 		for (auto& link : links)
@@ -290,8 +304,15 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 	std::map<size_t, Mesh*> meshCache; 
 	auto& objects = scene.GetObjects();
 
-	for (auto* node : sorted)
+	for (size_t i = 0; i < sorted.size(); i++)
 	{
+		auto* node = sorted[i];
+
+		if (progressCallback) {
+			float pct = 50.0f + ((float)i / (float)(sorted.size() * 2)) * 100.0f; // Second half
+			progressCallback(pct, 100.0f, "Applying Data: " + node->title);
+		}
+
 		// 1. Handle ScatterNode (Modular Spawning)
 		if (node->title == "Scatter")
 		{
@@ -643,6 +664,10 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 	{
 		for (auto& p : n->inputs) p.data.DeepClear();
 		for (auto& p : n->outputs) p.data.DeepClear();
+	}
+
+	if (progressCallback) {
+		progressCallback(100.0f, 100.0f, "Done!");
 	}
 }
 

@@ -297,7 +297,7 @@ void CustomNode::MapContextToOutputs(OperationContext& ctx)
 //  Execute — the interpreter loop
 // =====================================================================
 
-void CustomNode::Execute(SceneManager& scene)
+void CustomNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 {
 	if (operationInstances.empty()) return;
 

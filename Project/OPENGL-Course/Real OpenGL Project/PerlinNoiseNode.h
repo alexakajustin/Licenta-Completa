@@ -50,7 +50,7 @@ public:
 		generator.RenderUI();
 	}
 
-	void Execute(SceneManager& scene) override
+	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
 	{
 		outputs[0].data.Clear();
 		outputs[0].data.type = PinDataType::Mesh;
