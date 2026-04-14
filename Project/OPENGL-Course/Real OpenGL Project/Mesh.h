@@ -13,6 +13,7 @@ public:
 	void CreateInstancedMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices, unsigned int maxInstances);
 	void RenderMesh();
 	void RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices);
+	void RenderIndirect(GLuint indirectBuffer); // GPU-driven indirect draw
 	void ClearMesh();
 
 	bool IsInstanced() const { return instanceVBO != 0; }
@@ -24,6 +25,11 @@ public:
 	void Release() { if (--refCount <= 0) delete this; }
 
 	~Mesh();
+
+	// Accessors for GPU-driven rendering (InstancedGroup needs these)
+	GLuint GetVAO() const { return VAO; }
+	GLuint GetIBO() const { return IBO; }
+	GLsizei GetIndexCount() const { return indexCount; }
 
 private:
 	GLuint VAO, VBO, IBO, instanceVBO;

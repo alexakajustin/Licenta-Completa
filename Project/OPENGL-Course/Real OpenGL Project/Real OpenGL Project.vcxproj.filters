@@ -171,6 +171,9 @@
     <ClCompile Include="SceneSerializer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="InstancedGroup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="External Libs\GLEW\doc\advanced.html" />
@@ -2202,6 +2205,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TextureLayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="InstancedGroup.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -167,6 +167,7 @@
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="GenerationPipelineUI.cpp" />
     <ClCompile Include="GenerationStack.cpp" />
+    <ClCompile Include="InstancedGroup.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightObject.cpp" />
     <ClCompile Include="EditorUI.cpp" />
@@ -906,6 +907,7 @@
     <ClInclude Include="GenerationStack.h" />
     <ClInclude Include="IGenerator.h" />
     <ClInclude Include="InputHandler.h" />
+    <ClInclude Include="InstancedGroup.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="LightObject.h" />
     <ClInclude Include="Material.h" />

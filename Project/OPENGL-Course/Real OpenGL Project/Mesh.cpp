@@ -138,6 +138,24 @@ void Mesh::RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* inst
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+void Mesh::RenderIndirect(GLuint indirectBufferID)
+{
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectBufferID);
+
+	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
+
+	// Track stats
+	if (DebugOverlay::GetInstance()) {
+		DebugOverlay::GetInstance()->CountDrawCall();
+	}
+
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
 void Mesh::ClearMesh()
 {
 	if (IBO != 0)

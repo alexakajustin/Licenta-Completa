@@ -15,6 +15,7 @@
 #include "Texture.h"
 #include "Frustum.h"
 #include "NodeGraph.h"
+#include "InstancedGroup.h"
 
 class SceneManager
 {
@@ -54,6 +55,14 @@ public:
 		float screenHeight = 0.0f);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
+
+	// ========== GPU-Driven Instanced Groups ==========
+	void AddInstancedGroup(InstancedGroup* group);
+	void RemoveInstancedGroup(const std::string& name);
+	void ClearInstancedGroups();
+	std::vector<InstancedGroup*>& GetInstancedGroups() { return instancedGroups; }
+	void SetCullShader(Shader* s) { cullShader = s; }
+	void SetInstancedRenderShader(Shader* s) { instancedRenderShader = s; }
 
 	// ========== Picking & Gizmo ==========
 	void InitPicking(int width, int height);
@@ -106,6 +115,11 @@ private:
 	Texture* defaultTexture = nullptr;
 	Material* defaultMaterial = nullptr;
 	Shader* mainShader = nullptr;
+
+	// GPU-Driven instanced groups
+	std::vector<InstancedGroup*> instancedGroups;
+	Shader* cullShader = nullptr;
+	Shader* instancedRenderShader = nullptr;
 
 	// Global light state pointers
 	PointLight* globalPointLights = nullptr;

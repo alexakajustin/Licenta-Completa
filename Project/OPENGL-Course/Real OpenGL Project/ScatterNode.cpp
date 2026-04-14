@@ -234,7 +234,7 @@ void ScatterNode::Execute(SceneManager& scene)
 	// 1. Determine how many transforms we want (Spawning/Instancing)
 	// We cap this at a high but safe number (e.g. 500,000) for transform storage.
 	int workingCount = count;
-	if (workingCount > 500000) workingCount = 500000;
+	if (workingCount > 10000000) workingCount = 10000000;
 
 	// 2. Determine how many meshes can fit in the "Combined" output
 	int meshCount = workingCount;

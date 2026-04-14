@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Window.h"
 #include "Frustum.h"
+#include "InstancedGroup.h"
 #include <GLFW/glfw3.h>
 
 Renderer::Renderer()
@@ -23,6 +24,11 @@ void Renderer::Init()
 	mainShader.CreateFromFiles("Assets/Shaders/shader.vert", "Assets/Shaders/shader.frag");
 	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
 	omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
+
+	// GPU-Driven Instanced Rendering shaders (OpenGL 4.3+)
+	instancedCullShader.CreateComputeShader("Assets/Shaders/compute_cull.glsl");
+	instancedRenderShader.CreateFromFiles("Assets/Shaders/instanced_object.vert", "Assets/Shaders/shader.frag");
+	instancedShadowShader.CreateFromFiles("Shaders/instanced_shadow.vert", "Shaders/instanced_shadow.frag");
 
 	CacheUniforms();
 }
@@ -67,7 +73,30 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	directionalShadowShader.Validate();
 
 	Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
+
+	// Render regular objects into shadow map
 	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader);
+
+	// ================================================================
+	// GPU-Driven Instanced Groups: Shadow Pass
+	// Cull against light frustum with tight distance limit,
+	// then render using instanced shadow vertex shader.
+	// ================================================================
+	float time = (float)glfwGetTime();
+	auto& groups = scene.GetInstancedGroups();
+	if (!groups.empty() && instancedCullShader.GetShaderID()) {
+		for (auto* group : groups) {
+			if (!group) continue;
+			group->CullAndDrawShadow(
+				instancedCullShader.GetShaderID(),
+				instancedShadowShader,
+				lightProjView,
+				cameraPos,
+				group->GetShadowDistance(),
+				time
+			);
+		}
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -147,6 +176,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	// Scene objects with Frustum Culling
 	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
 	float time = (float)glfwGetTime();
+
+	// Pass instanced shaders to scene manager for GPU-driven rendering
+	scene.SetCullShader(&instancedCullShader);
+	scene.SetInstancedRenderShader(&instancedRenderShader);
+
 	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh);
 
 	// Disable blending for icons/gizmos overlay

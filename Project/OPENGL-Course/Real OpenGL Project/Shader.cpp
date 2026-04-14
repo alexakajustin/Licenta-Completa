@@ -68,6 +68,45 @@ void Shader::CreateFromFiles(const char* vertexLocation, const char* geometryLoc
 	CompileShader(vertexCode, geometryCode, fragmentCode);
 }
 
+void Shader::CreateComputeShader(const char* computePath)
+{
+	isComputeShader = true;
+	vertexPath = computePath;
+	fragmentPath = "";
+	geometryPath = "";
+
+	std::string computeString = ReadFile(computePath);
+	if (computeString.empty()) {
+		printf("[Shader] Failed to read compute shader: %s\n", computePath);
+		return;
+	}
+
+	shaderID = glCreateProgram();
+	if (!shaderID) {
+		printf("[Shader] Error creating compute shader program!\n");
+		return;
+	}
+
+	if (!AddShader(shaderID, computeString.c_str(), GL_COMPUTE_SHADER)) {
+		ClearShader();
+		return;
+	}
+
+	GLint result = 0;
+	GLchar errorLog[1024] = { 0 };
+
+	glLinkProgram(shaderID);
+	glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
+	if (!result) {
+		glGetProgramInfoLog(shaderID, sizeof(errorLog), NULL, errorLog);
+		printf("[Shader] Compute shader link error: %s\n", errorLog);
+		ClearShader();
+		return;
+	}
+
+	printf("[Shader] Compute shader compiled successfully: %s (ID: %u)\n", computePath, shaderID);
+}
+
 
 void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 {

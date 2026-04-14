@@ -44,6 +44,7 @@ public:
 	void CreateFromString(const char* vertexCode, const char* fragmentCode);
 	void CreateFromFiles(const char* vertexLocation, const char* fragmentLocation);
 	void CreateFromFiles(const char* vertexLocation, const char* geometryLocation, const char* fragmentLocation);
+	void CreateComputeShader(const char* computePath);
 
 	void Validate();
 
@@ -85,6 +86,8 @@ public:
 
 	const std::string& GetVertexPath() const { return vertexPath; }
 	const std::string& GetFragmentPath() const { return fragmentPath; }
+
+	bool isComputeShader = false;
 
 private:
 	std::string vertexPath;

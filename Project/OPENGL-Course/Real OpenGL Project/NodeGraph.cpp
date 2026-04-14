@@ -11,6 +11,7 @@
 #include "PrimitiveGenerator.h"
 #include "Texture.h"
 #include "Material.h"
+#include "InstancedGroup.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -298,6 +299,10 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					scene.RemoveObject(name);
 				scatterNode->SetSpawnedNames({});
 
+				// Also remove any previous instanced group for this scatter node
+				std::string groupName = "Scatter_Instanced_" + std::to_string(node->id);
+				scene.RemoveInstancedGroup(groupName);
+
 				Pin& instancesPin = node->outputs[1];
 				auto& transforms = instancesPin.data.transforms;
 				auto& instanceMeshes = instancesPin.data.instanceMeshes;
@@ -305,6 +310,94 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 				if (!transforms.empty())
 				{
+					// ================================================================
+					// GPU-DRIVEN PATH: For large instance counts (>= 1000),
+					// create an InstancedGroup instead of individual GameObjects.
+					// This eliminates CPU-side per-object overhead entirely.
+					// ================================================================
+					const int INSTANCED_GROUP_THRESHOLD = 1000;
+
+					if ((int)transforms.size() >= INSTANCED_GROUP_THRESHOLD && !defaultObjectMesh.vertices.empty())
+					{
+						// Build packed instance data
+						std::vector<InstancedGroup::PackedInstance> packedInstances;
+						packedInstances.reserve(transforms.size());
+
+						for (const auto& t : transforms) {
+							InstancedGroup::PackedInstance packed;
+							// Use average scale as uniform scale
+							float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
+							packed.positionAndScale = glm::vec4(t.position, avgScale);
+
+							// Compute euler rotation including normal alignment
+							glm::vec3 euler = t.rotation;
+							if (scatterNode->IsAlignToNormal() && glm::length(t.normal) > 0.001f) {
+								// For GPU rendering, we encode the normal alignment into euler angles
+								glm::vec3 up(0, 1, 0);
+								if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
+									glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
+									float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
+									// Convert axis-angle to euler (approximate for small tilts)
+									euler.x += glm::degrees(angle * axis.x);
+									euler.z += glm::degrees(angle * axis.z);
+								}
+							}
+							packed.rotationAndFlags = glm::vec4(euler, 0.0f);
+							packedInstances.push_back(packed);
+						}
+
+						// Create or reuse GPU mesh
+						size_t dataKey = (size_t)defaultObjectMesh.vertices.data() ^ (size_t)defaultObjectMesh.vertices.size();
+						if (meshCache.find(dataKey) == meshCache.end()) {
+							meshCache[dataKey] = defaultObjectMesh.ToMesh(0); // Non-instanced mesh for indirect draw
+						}
+
+						// Create the InstancedGroup
+						InstancedGroup* group = new InstancedGroup(groupName);
+						group->Setup(
+							meshCache[dataKey],
+							packedInstances,
+							instancesPin.data.sourceMaterial,
+							instancesPin.data.sourceTexture,
+							instancesPin.data.sourceNormalMap
+						);
+						group->SetWindEnabled(true);
+
+					// Smart defaults based on instance count
+					int instanceCount = (int)packedInstances.size();
+					if (instanceCount >= 5000000) {
+						group->SetMaxDrawDistance(150.0f);  // 5M+: tight distance
+						group->SetShadowDistance(20.0f);
+					} else if (instanceCount >= 1000000) {
+						group->SetMaxDrawDistance(200.0f);  // 1M-5M
+						group->SetShadowDistance(25.0f);
+					} else {
+						group->SetMaxDrawDistance(250.0f);  // < 1M
+						group->SetShadowDistance(30.0f);
+					}
+
+						scene.AddInstancedGroup(group);
+
+						// Create a placeholder parent object so it shows in hierarchy
+						std::string parentName = "Scatter_Group_" + std::to_string(node->id);
+						GameObject* placeholder = scene.FindObject(parentName);
+						if (!placeholder) {
+							placeholder = new GameObject(parentName);
+							scene.AddObject(placeholder);
+						}
+
+						printf("[NodeGraph] GPU-Driven: Created InstancedGroup '%s' with %d instances (zero CPU overhead)\n",
+							groupName.c_str(), (int)packedInstances.size());
+
+						scatterNode->SetSpawnedNames({ parentName });
+					}
+					else
+					{
+						// ================================================================
+						// LEGACY PATH: Small counts — create individual GameObjects
+						// (for pickability and individual control)
+						// ================================================================
+
 					// Resolve parent by name if needed (essential for load from file)
 					int parentIdx = scatterNode->GetParentIndex();
 					std::string parentName = scatterNode->GetParentName();
@@ -332,9 +425,9 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 					if (!targetParent)
 					{
-						std::string groupName = "Scatter_Group_" + std::to_string(node->id);
-						targetParent = scene.FindObject(groupName);
-						if (!targetParent) { targetParent = new GameObject(groupName); scene.AddObject(targetParent); }
+						std::string groupName2 = "Scatter_Group_" + std::to_string(node->id);
+						targetParent = scene.FindObject(groupName2);
+						if (!targetParent) { targetParent = new GameObject(groupName2); scene.AddObject(targetParent); }
 					}
 
 					// Per-batch temporaries for mesh/material sharing (NOT static — reset each Execute).
@@ -373,21 +466,18 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						obj->SetParent(targetParent);
 
 						// OPTIMIZATION: Share GPU Mesh
-						// If unique instance meshes exist (e.g. from noise), use them, otherwise use the shared input mesh
 						MeshData* targetData = &defaultObjectMesh;
 						if (i < (int)instanceMeshes.size() && !instanceMeshes[i].vertices.empty())
 							targetData = &instanceMeshes[i];
 
-						// Simple caching based on vector addresses (fine within one execution pass)
-						size_t dataKey = (size_t)targetData->vertices.data() ^ (size_t)targetData->vertices.size();
-						if (meshCache.find(dataKey) == meshCache.end())
+						size_t dataKey2 = (size_t)targetData->vertices.data() ^ (size_t)targetData->vertices.size();
+						if (meshCache.find(dataKey2) == meshCache.end())
 						{
-							meshCache[dataKey] = targetData->ToMesh((int)transforms.size());
+							meshCache[dataKey2] = targetData->ToMesh((int)transforms.size());
 						}
-						obj->SetMesh(meshCache[dataKey]);
+						obj->SetMesh(meshCache[dataKey2]);
 						
-						// Optimized: Share CPU Mesh Memory across instances of the same source mesh.
-						// NOTE: NOT static — must be reset each Execute() call to avoid stale pointers.
+						// Optimized: Share CPU Mesh Memory
 						if (lastSource != targetData) {
 							sharedInputMesh = std::make_shared<MeshData>(*targetData);
 							lastSource = targetData;
@@ -395,26 +485,17 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						obj->SetCPUMeshData(sharedInputMesh);
 
 						// --- Material Handling ---
-						// Only apply material/texture if the source object actually had them.
-						// If the source had no material (e.g. bare model), instances should also have none.
 						Material* finalMat = instancesPin.data.sourceMaterial;
 						if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap))
 						{
-							// Create a fresh unique material per scatter group (NOT static — avoids stale/leaked materials).
-							if (i == 0) groupMat = new Material(0.1f, 32.0f); // Only allocate once per scatter batch
+							if (i == 0) groupMat = new Material(0.1f, 32.0f);
 							finalMat = groupMat;
 						}
 
 						if (finalMat) obj->SetMaterial(finalMat);
-						// NOTE: No else-default. Bare models stay materialless (rendered white).
-
 						if (instancesPin.data.sourceTexture) obj->SetTexture(instancesPin.data.sourceTexture);
-						// NOTE: No else-default. Untextured objects stay untextured.
-
 						if (instancesPin.data.sourceNormalMap) obj->SetNormalMap(instancesPin.data.sourceNormalMap);
 
-						// Apply texture layers from the scatter OBJECT (inputs[1]), not the surface.
-						// These were already filtered to inputs[1] in ScatterNode::Execute().
 						for (const auto& layer : instancesPin.data.textureLayers)
 						{
 							obj->AddTextureLayer(layer);
@@ -425,6 +506,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					}
 					scatterNode->SetSpawnedNames(newSpawned);
 					printf("Scatter spawned %d modular objects (Sharing %d GPU meshes).\n", (int)newSpawned.size(), (int)meshCache.size());
+					}
 				}
 			}
 		}

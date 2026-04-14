@@ -4,6 +4,7 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include "InstancedGroup.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -347,6 +348,46 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		RenderQueue(transparentObjects);
 		glDepthMask(GL_TRUE); // Restore depth mask
 	}
+
+	// ================================================================
+	// GPU-Driven Instanced Groups (grass, foliage, rocks, etc.)
+	// These bypass the entire GameObject pipeline for maximum performance.
+	// NOTE: Shadow pass for instanced groups is handled separately by
+	// Renderer::DirectionalShadowMapPass() via CullAndDrawShadow(),
+	// which uses a dedicated instanced shadow vertex shader.
+	// We skip instanced groups here when overrideShader is set (shadow/picking pass).
+	// ================================================================
+	if (!overrideShader && !instancedGroups.empty() && cullShader && instancedRenderShader) {
+		for (auto* group : instancedGroups) {
+			if (!group) continue;
+
+			// Set up lighting uniforms on the render shader
+			instancedRenderShader->UseShader();
+			GLuint sid = instancedRenderShader->GetShaderID();
+
+			// Upload lighting
+			if (dLight) {
+				instancedRenderShader->SetDirectionalLight(dLight);
+				instancedRenderShader->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
+				dLight->GetShadowMap()->Read(GL_TEXTURE3);
+				instancedRenderShader->SetDirectionalShadowMap(3);
+			}
+			if (pLights) instancedRenderShader->SetPointLights(pLights, pCount, 4, 0);
+			if (sLights) instancedRenderShader->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
+
+			// Time uniform
+			GLint timeLoc = glGetUniformLocation(sid, "time");
+			if (timeLoc != -1) glUniform1f(timeLoc, time);
+
+			group->CullAndDraw(
+				cullShader->GetShaderID(),
+				*instancedRenderShader,
+				projection, view, cameraPos,
+				group->GetMaxDrawDistance(),
+				false
+			);
+		}
+	}
 }
 
 
@@ -362,10 +403,44 @@ void SceneManager::Clear()
 	
 	for (auto* light : lights) delete light;
 	lights.clear();
+
+	ClearInstancedGroups();
 	
 	selectedObjectIndices.clear();
 	selectedLightIndices.clear();
 	nodeGraph.Clear();
+}
+
+// =====================================================================
+// GPU-Driven Instanced Groups Management
+// =====================================================================
+
+void SceneManager::AddInstancedGroup(InstancedGroup* group)
+{
+	if (group) {
+		// Remove any existing group with the same name
+		RemoveInstancedGroup(group->GetName());
+		instancedGroups.push_back(group);
+		printf("[SceneManager] Added instanced group '%s' (%u instances)\n",
+			group->GetName().c_str(), group->GetTotalCount());
+	}
+}
+
+void SceneManager::RemoveInstancedGroup(const std::string& name)
+{
+	for (auto it = instancedGroups.begin(); it != instancedGroups.end(); ++it) {
+		if ((*it)->GetName() == name) {
+			delete *it;
+			instancedGroups.erase(it);
+			return;
+		}
+	}
+}
+
+void SceneManager::ClearInstancedGroups()
+{
+	for (auto* group : instancedGroups) delete group;
+	instancedGroups.clear();
 }
 
 // =====================================================================
