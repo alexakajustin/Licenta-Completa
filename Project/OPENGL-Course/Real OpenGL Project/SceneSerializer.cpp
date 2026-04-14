@@ -240,14 +240,19 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	DirectionalLight& mainLight,
 	PointLight* pointLights, unsigned int& pointLightCount,
 	SpotLight* spotLights, unsigned int& spotLightCount,
-	Texture* defaultTexture, Material* defaultMaterial)
+	Texture* defaultTexture, Material* defaultMaterial,
+	SceneProgressCallback progressCallback)
 {
+	if (progressCallback) progressCallback(5.0f, 0.0f, "Opening Scene File...");
+
 	std::ifstream file(filePath);
 	if (!file.is_open())
 	{
 		printf("[SceneSerializer] ERROR: Could not open file for reading: %s\n", filePath.c_str());
 		return false;
 	}
+
+	if (progressCallback) progressCallback(10.0f, 0.0f, "Parsing JSON Data...");
 
 	json j;
 	try
@@ -261,6 +266,8 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	}
 	file.close();
 
+	if (progressCallback) progressCallback(15.0f, 0.0f, "Clearing Current Scene...");
+
 	// ========== Clear existing scene ==========
 	scene.Clear();
 	scene.GetNodeGraph().Clear();
@@ -270,8 +277,17 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	// ========== Load Objects ==========
 	if (j.contains("objects"))
 	{
+		int objCount = (int)j["objects"].size();
+		int objIndex = 0;
+
 		for (auto& objJson : j["objects"])
 		{
+			objIndex++;
+			if (progressCallback) {
+				float pct = 15.0f + ((float)objIndex / (float)objCount) * 15.0f; // 15% -> 30%
+				progressCallback(pct, 0.0f, "Loading Object: " + objJson.value("name", "Object"));
+			}
+
 			std::string name = objJson.value("name", "Object");
 			std::string primType = objJson.value("primitiveType", "");
 			std::string modelPath = objJson.value("modelPath", "");
@@ -471,6 +487,8 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		}
 	}
 
+	if (progressCallback) progressCallback(35.0f, 0.0f, "Loading Scene Lights...");
+
 	// ========== Load Lights ==========
 	if (j.contains("lights"))
 	{
@@ -578,14 +596,20 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	// ========== Load Node Graph (The "Recipe") ==========
 	if (j.contains("nodeGraph"))
 	{
+		if (progressCallback) progressCallback(40.0f, 0.0f, "Restoring Node Graph...");
+
 		scene.GetNodeGraph().Deserialize(j["nodeGraph"], scene);
 		
+		if (progressCallback) progressCallback(45.0f, 0.0f, "Waiting for Assets...");
+
 		// Wait for all assets to finish loading before auto-execution.
 		// Otherwise, models used by the scatter nodes will be empty, and instances will not spawn.
 		AssetManager::Get().WaitForAll();
 
+		if (progressCallback) progressCallback(50.0f, 0.0f, "Executing Generation Pipeline...");
+
 		// AUTO-EXECUTE: Recreate the millions of objects
-		scene.GetNodeGraph().Execute(scene, defaultTexture, defaultMaterial);
+		scene.GetNodeGraph().Execute(scene, defaultTexture, defaultMaterial, progressCallback);
 		printf("[SceneSerializer] Node Graph restored and auto-executed.\n");
 	}
 

@@ -232,31 +232,46 @@ void Application::Run()
 		// 1. Render Top Bar first
 		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph());
 
-		// Handle pending scene file actions
-		auto sceneAction = editorUI.GetPendingSceneAction();
-		if (sceneAction != EditorUI::SceneAction::None)
-		{
-			if (sceneAction == EditorUI::SceneAction::Save)
-			{
-				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager);
-			}
-			else if (sceneAction == EditorUI::SceneAction::Load)
-			{
-				sceneManager.GetNodeGraph().Clear();
-				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
-					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
-					&plainTexture, &plainMaterial);
-			}
-			else if (sceneAction == EditorUI::SceneAction::New)
-			{
-				sceneManager.GetNodeGraph().Clear();
-				sceneManager.Clear();
-				pointLightCount = 0;
-				spotLightCount = 0;
-				SetupScene();
-			}
-			editorUI.ClearPendingSceneAction();
-		}
+		// Define the progress callback for both loading projects and executing graphs
+		std::string progressTitle = "Loading...";
+		auto progressCallback = [&](float overallPct, float nodePct, const std::string& msg) {
+			glfwPollEvents();
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
+			ImGui::SetNextWindowPos(ImVec2(mainWindow.getBufferWidth() * 0.5f, mainWindow.getBufferHeight() * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowSize(ImVec2(450, 150));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.98f));
+			ImGui::Begin("ProgressWindow", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
+			ImGui::Text(progressTitle.c_str());
+			ImGui::TextColored(ImVec4(0.61f, 0.31f, 0.91f, 1.0f), "%s", msg.c_str());
+
+			ImGui::Spacing();
+			char buf[32];
+			snprintf(buf, sizeof(buf), "Overall: %d%%", (int)overallPct);
+			ImGui::ProgressBar(overallPct / 100.0f, ImVec2(-1, 20), buf);
+
+			ImGui::Spacing();
+			snprintf(buf, sizeof(buf), "Detail: %d%%", (int)nodePct);
+			ImGui::ProgressBar(nodePct / 100.0f, ImVec2(-1, 20), buf);
+
+			ImGui::End();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+
+			ImGui::Render();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			// Purposefully DO NOT glClear so the app remains visible in the background
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			mainWindow.swapBuffers();
+		};
+
+		// forceLayout reset and sceneAction handling previously here were moved to the end of the loop.
+
 
 		EditorUI::WindowState& uiState = editorUI.GetWindowState();
 
@@ -334,44 +349,37 @@ void Application::Run()
 		// Reset forceLayout after ALL ImGui panels have rendered for this frame
 		editorUI.GetWindowState().forceLayout = false;
 
+		// Handle pending scene file actions
+		auto sceneAction = editorUI.GetPendingSceneAction();
+		if (sceneAction != EditorUI::SceneAction::None)
+		{
+			if (sceneAction == EditorUI::SceneAction::Save)
+			{
+				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager);
+			}
+			else if (sceneAction == EditorUI::SceneAction::Load)
+			{
+				progressTitle = "Loading Project...";
+				sceneManager.GetNodeGraph().Clear();
+				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
+					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
+					&plainTexture, &plainMaterial, progressCallback);
+			}
+			else if (sceneAction == EditorUI::SceneAction::New)
+			{
+				sceneManager.GetNodeGraph().Clear();
+				sceneManager.Clear();
+				pointLightCount = 0;
+				spotLightCount = 0;
+				SetupScene();
+			}
+			editorUI.ClearPendingSceneAction();
+		}
+
+
 		if (executeGraph) {
-			auto callback = [&](float overallPct, float nodePct, const std::string& msg) {
-				glfwPollEvents();
-				ImGui_ImplOpenGL3_NewFrame();
-				ImGui_ImplGlfw_NewFrame();
-				ImGui::NewFrame();
-				
-				ImGui::SetNextWindowPos(ImVec2(mainWindow.getBufferWidth() * 0.5f, mainWindow.getBufferHeight() * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-				ImGui::SetNextWindowSize(ImVec2(450, 150));
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-				ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.98f));
-				ImGui::Begin("Executing Graph", nullptr, ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoTitleBar);
-				
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-				ImGui::Text("Executing Node Map...");
-				ImGui::TextColored(ImVec4(0.61f, 0.31f, 0.91f, 1.0f), "%s", msg.c_str());
-				
-				ImGui::Spacing();
-				char buf[32];
-				snprintf(buf, sizeof(buf), "Overall: %d%%", (int)overallPct);
-				ImGui::ProgressBar(overallPct / 100.0f, ImVec2(-1, 20), buf);
-				
-				ImGui::Spacing();
-				snprintf(buf, sizeof(buf), "Node: %d%%", (int)nodePct);
-				ImGui::ProgressBar(nodePct / 100.0f, ImVec2(-1, 20), buf);
-				
-				ImGui::End();
-				ImGui::PopStyleColor();
-				ImGui::PopStyleVar();
-				
-				ImGui::Render();
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				// Purposefully DO NOT glClear so the app remains visible in the background
-				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-				mainWindow.swapBuffers();
-			};
-			
-			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, callback);
+			progressTitle = "Executing Node Graph...";
+			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, progressCallback);
 		}
 	}
 }

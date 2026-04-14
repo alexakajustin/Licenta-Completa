@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 
 class SceneManager;
 class DirectionalLight;
@@ -8,6 +9,8 @@ class PointLight;
 class SpotLight;
 class Texture;
 class Material;
+
+using SceneProgressCallback = std::function<void(float, float, const std::string&)>;
 
 class SceneSerializer
 {
@@ -18,7 +21,8 @@ public:
 		DirectionalLight& mainLight,
 		PointLight* pointLights, unsigned int& pointLightCount,
 		SpotLight* spotLights, unsigned int& spotLightCount,
-		Texture* defaultTexture, Material* defaultMaterial);
+		Texture* defaultTexture, Material* defaultMaterial,
+		SceneProgressCallback progressCallback = nullptr);
 
 	// Native Win32 file dialogs
 	static std::string OpenFileDialog(
