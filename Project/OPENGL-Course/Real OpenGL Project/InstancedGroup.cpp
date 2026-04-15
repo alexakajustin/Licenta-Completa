@@ -5,6 +5,8 @@
 #include "Shader.h"
 #include "DebugOverlay.h"
 #include "Frustum.h"
+#include "GameObject.h"
+#include "SceneManager.h"
 #include <cstdio>
 #include <cmath>
 #include <map>
@@ -37,6 +39,7 @@ void InstancedGroup::Setup(Mesh* mesh,
 	texture = tex;
 	normalMap = norm;
 	textureLayers = layers;
+	cpuInstances = instances; // Store on CPU for Raycast/Extraction
 	totalCount = (uint32_t)instances.size();
 
 	if (totalCount == 0 || !sharedMesh) return;
@@ -610,4 +613,92 @@ void InstancedGroup::ReleaseChunks()
 		if (chunk.ssbo) { glDeleteBuffers(1, &chunk.ssbo); chunk.ssbo = 0; }
 	}
 	chunks.clear();
+}
+
+// =====================================================================
+// CPU Raycast: Finds the closest instance hit within this group
+// =====================================================================
+bool InstancedGroup::Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outIndex, float& outDist)
+{
+	if (cpuInstances.empty()) return false;
+
+	int bestIndex = -1;
+	float bestDist = FLT_MAX;
+
+	// Simple CPU intersection over instances 
+	// For 1M instances this takes ~1ms, completely fine for mouse clicks
+	for (size_t i = 0; i < cpuInstances.size(); i++) {
+		const auto& inst = cpuInstances[i];
+		glm::vec3 center(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+		
+		// Tighten the radius to 35% because grass meshes are thin/tall.
+		// A full sphere would capture clicks meant for the terrain far off to the side.
+		float radius = meshBoundRadius * inst.positionAndScale.w * 0.35f;
+
+		// Ray-sphere intersection
+		glm::vec3 m = rayOrigin - center;
+		float b = glm::dot(m, rayDir);
+		float c = glm::dot(m, m) - radius * radius;
+
+		// Stop if origin is outside sphere and ray points away
+		if (c > 0.0f && b > 0.0f) continue;
+		float discr = b * b - c;
+		
+		if (discr >= 0.0f) {
+			float dist = -b - sqrt(discr);
+			if (dist < 0.0f) dist = 0.0f; // ray originated inside sphere
+			
+			if (dist < bestDist) {
+				bestDist = dist;
+				bestIndex = (int)i;
+			}
+		}
+	}
+
+	if (bestIndex != -1) {
+		outIndex = bestIndex;
+		outDist = bestDist;
+		return true;
+	}
+	return false;
+}
+
+// =====================================================================
+// Instantiates a specific piece of scattered grass into a real 
+// editable GameObject, and removes it from the GPU group.
+// =====================================================================
+void InstancedGroup::ExtractInstance(int index, SceneManager* scene)
+{
+	if (index < 0 || index >= cpuInstances.size() || !scene) return;
+
+	// 1. Get the instance data
+	PackedInstance inst = cpuInstances[index];
+	
+	// 2. Remove it from the CPU array (O(1) removal via swap-pop)
+	cpuInstances[index] = cpuInstances.back();
+	cpuInstances.pop_back();
+
+	// 3. Spawn a real GameObject
+	glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+	float scale = inst.positionAndScale.w;
+	glm::vec3 euler(inst.rotationAndFlags.x, inst.rotationAndFlags.y, inst.rotationAndFlags.z);
+
+	GameObject* obj = new GameObject("Extracted " + name);
+	obj->GetTransform().SetPosition(pos);
+	obj->GetTransform().SetRotation(euler);
+	obj->GetTransform().SetScale(glm::vec3(scale));
+	
+	// Assign components
+	obj->SetMesh(sharedMesh);
+	obj->SetMaterial(material);
+	obj->SetTexture(texture);
+	obj->SetNormalMap(normalMap);
+	
+	scene->AddObject(obj);
+
+	// 4. Force a fast re-upload to GPU so the instance disappears from the scatter instantly
+	Setup(sharedMesh, cpuInstances, material, texture, normalMap, textureLayers);
+
+	// 5. Select the newly spawned GameObject in Editor
+	scene->SetSelectedIndex((int)scene->GetObjects().size() - 1);
 }

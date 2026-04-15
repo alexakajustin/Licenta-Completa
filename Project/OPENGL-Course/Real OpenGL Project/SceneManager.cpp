@@ -902,10 +902,12 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	unsigned char pixel[3];
+	float fboDepth;
 	int readX = (int)(mouseX * scaleX);
 	int readY = pickHeight - (int)(mouseY * scaleY);
 	
 	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
+	glReadPixels(readX, readY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &fboDepth);
 	int pickedID = DecodeID(pixel);
 
 	// printf("[SceneManager] PickDebug: Mouse(%.1f,%.1f) Scale(%.2f,%.2f) Read(%d,%d) ID(%d) | FBO:%u Size:%dx%d\n", 
@@ -929,14 +931,50 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glCullFace(oldCullMode);
 	glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
 
-	if (pickedID > 0 && pickedID <= (int)objects.size()) {
-		SetSelectedIndex(pickedID - 1);
+	// Smart Instance Extraction (Raycast)
+	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
+	float bestDist = FLT_MAX;
+	InstancedGroup* bestGroup = nullptr;
+	int bestIndex = -1;
+
+	for (auto* group : instancedGroups) {
+		int hitIndex;
+		float hitDist;
+		if (group->Raycast(cameraPos, rayDir, hitIndex, hitDist)) {
+			if (hitDist < bestDist) {
+				bestDist = hitDist;
+				bestGroup = group;
+				bestIndex = hitIndex;
+			}
+		}
 	}
-	else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size()) {
-		SetSelectedLightIndex(pickedID - 10000);
+
+	bool instanceWon = false;
+	if (bestGroup && bestIndex != -1) {
+		// Project hit point into window space to compare against FBO depth
+		glm::vec3 hitPoint = cameraPos + rayDir * bestDist;
+		glm::vec4 clipSpace = projection * view * glm::vec4(hitPoint, 1.0f);
+		float ndcDepth = clipSpace.z / clipSpace.w;
+		float winDepth = ndcDepth * 0.5f + 0.5f;
+
+		// If hit point is closer than the FBO object (or FBO hit sky/1.0)
+		if (winDepth <= fboDepth + 0.001f) {
+			instanceWon = true;
+			bestGroup->ExtractInstance(bestIndex, this);
+			return (int)objects.size(); // newly spawned obj ID
+		}
 	}
-	else if (pickedID < 20000) {
-		ClearSelection();
+
+	if (!instanceWon) {
+		if (pickedID > 0 && pickedID <= (int)objects.size()) {
+			SetSelectedIndex(pickedID - 1);
+		}
+		else if (pickedID >= 10000 && pickedID < 10000 + (int)lights.size()) {
+			SetSelectedLightIndex(pickedID - 10000);
+		}
+		else if (pickedID < 20000) {
+			ClearSelection();
+		}
 	}
 
 	return pickedID;

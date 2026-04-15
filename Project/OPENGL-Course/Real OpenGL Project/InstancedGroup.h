@@ -87,6 +87,12 @@ public:
 	Texture* GetTexture() const { return texture; }
 	Texture* GetNormalMap() const { return normalMap; }
 	Mesh* GetMesh() const { return sharedMesh; }
+	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
+
+	// Smart Instance Extraction
+	std::vector<PackedInstance> cpuInstances;
+	bool Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outIndex, float& outDist);
+	void ExtractInstance(int index, class SceneManager* scene);
 
 	// Cleanup
 	void Release();
