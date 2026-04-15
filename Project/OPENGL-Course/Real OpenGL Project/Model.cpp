@@ -154,8 +154,8 @@ void Model::LoadMaterials(const aiScene* scene)
 			aiString path;
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS)
 			{
-				int idx = std::string(path.data).rfind("\\");
-				std::string filename = std::string(path.data).substr(idx + 1);
+				size_t idx = std::string(path.data).rfind("\\");
+				std::string filename = std::string(path.data).substr(idx == std::string::npos ? 0 : idx + 1);
 				std::string texPath = std::string("Assets/Textures/") + filename;
 
 				textureList[i] = new Texture(texPath.c_str());

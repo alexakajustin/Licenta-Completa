@@ -1,4 +1,4 @@
-#version 330
+#version 460 core
 
 // whats expected to come in, from the vertex shader
 layout (triangles) in;

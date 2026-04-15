@@ -1,4 +1,4 @@
-#version 330
+#version 460 core
 
 uniform float materialAlpha;
 layout(location = 0) out float outAlpha;

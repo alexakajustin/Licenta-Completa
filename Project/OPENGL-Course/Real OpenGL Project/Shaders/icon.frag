@@ -1,4 +1,4 @@
-#version 330
+#version 460 core
 
 in vec2 TexCoord;
 
