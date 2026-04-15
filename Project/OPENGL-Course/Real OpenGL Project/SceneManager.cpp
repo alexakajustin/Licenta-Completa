@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include "InstancedGroup.h"
+#include "Renderer.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -141,8 +142,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader,
-	float screenHeight)
+	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -365,30 +365,41 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// We skip instanced groups here when overrideShader is set (shadow/picking pass).
 	// ================================================================
 	if (!overrideShader && !instancedGroups.empty() && cullShader && instancedRenderShader) {
+		Shader* lastShader = nullptr;
+
 		for (auto* group : instancedGroups) {
 			if (!group) continue;
 
-			// Set up lighting uniforms on the render shader
-			instancedRenderShader->UseShader();
-			GLuint sid = instancedRenderShader->GetShaderID();
-
-			// Upload lighting
-			if (dLight) {
-				instancedRenderShader->SetDirectionalLight(dLight);
-				instancedRenderShader->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
-				dLight->GetShadowMap()->Read(GL_TEXTURE3);
-				instancedRenderShader->SetDirectionalShadowMap(3);
+			// Resolve the correct shader for this group's material
+			// We try to inherit the original fragment shader while using our instanced vertex logic
+			Shader* targetRenderShader = instancedRenderShader;
+			if (renderer && group->GetMaterial() && group->GetMaterial()->GetShader()) {
+				targetRenderShader = renderer->GetInstancedShader(group->GetMaterial()->GetShader());
 			}
-			if (pLights) instancedRenderShader->SetPointLights(pLights, pCount, 4, 0);
-			if (sLights) instancedRenderShader->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
 
-			// Time uniform
-			GLint timeLoc = glGetUniformLocation(sid, "time");
-			if (timeLoc != -1) glUniform1f(timeLoc, time);
+			// Only bind lighting if the shader has changed (optimization)
+			if (targetRenderShader != lastShader) {
+				targetRenderShader->UseShader();
+				GLuint sid = targetRenderShader->GetShaderID();
+
+				if (dLight) {
+					targetRenderShader->SetDirectionalLight(dLight);
+					targetRenderShader->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
+					dLight->GetShadowMap()->Read(GL_TEXTURE3);
+					targetRenderShader->SetDirectionalShadowMap(3);
+				}
+				if (pLights) targetRenderShader->SetPointLights(pLights, pCount, 4, 0);
+				if (sLights) targetRenderShader->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
+
+				GLint timeLoc = glGetUniformLocation(sid, "time");
+				if (timeLoc != -1) glUniform1f(timeLoc, time);
+				
+				lastShader = targetRenderShader;
+			}
 
 			group->CullAndDraw(
 				cullShader->GetShaderID(),
-				*instancedRenderShader,
+				*targetRenderShader,
 				projection, view, cameraPos,
 				group->GetMaxDrawDistance(),
 				false

@@ -36,6 +36,7 @@ public:
 					int fbw, int fbh);
 
 	Shader& GetMainShader() { return mainShader; }
+	Shader* GetInstancedShader(Shader* original);
 
 private:
 	Shader mainShader;
@@ -54,4 +55,6 @@ private:
 		uniformUseNormalMap, uniformUseDiffuseTexture, uniformUseInstancing;
 
 	void CacheUniforms();
+	
+	std::map<std::string, Shader*> instancedShaderCache;
 };

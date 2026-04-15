@@ -17,7 +17,7 @@ public:
 	void SetShader(Shader* shader);
 	Shader* GetShader() const { return shader; }
 
-	void Bind();
+	void Bind(GLuint overrideProgram = 0);
 	void UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, GLint tilingLocation, GLint offsetLocation); 
 	void SetDefaults();
 
@@ -73,5 +73,6 @@ private:
 	std::map<std::string, glm::vec4> vec4s;
 
 	mutable std::map<std::string, GLint> uniformLocations;
+	mutable std::map<GLuint, std::map<std::string, GLint>> overrideUniformLocations;
 };
 

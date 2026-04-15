@@ -47,15 +47,29 @@ void Material::SetShader(Shader* shader)
 	uniformLocations.clear();
 }
 
-void Material::Bind()
+void Material::Bind(GLuint overrideProgram)
 {
-	if (!shader) return;
+	GLuint programID = overrideProgram;
+	if (programID == 0) {
+		if (!shader) return;
+		programID = shader->GetShaderID();
+	}
+
+	if (programID == 0) return;
 
 	auto GetLoc = [&](const std::string& name) {
-		if (uniformLocations.count(name)) return uniformLocations[name];
-		GLint loc = glGetUniformLocation(shader->GetShaderID(), name.c_str());
-		uniformLocations[name] = loc;
-		return loc;
+		if (overrideProgram == 0) {
+			if (uniformLocations.count(name)) return uniformLocations[name];
+			GLint loc = glGetUniformLocation(programID, name.c_str());
+			uniformLocations[name] = loc;
+			return loc;
+		} else {
+			auto& cache = overrideUniformLocations[programID];
+			if (cache.count(name)) return cache[name];
+			GLint loc = glGetUniformLocation(programID, name.c_str());
+			cache[name] = loc;
+			return loc;
+		}
 	};
 
 	for (auto const& [name, val] : floats) {

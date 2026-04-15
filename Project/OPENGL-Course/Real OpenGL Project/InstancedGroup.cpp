@@ -381,21 +381,9 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 	GLint windLoc = glGetUniformLocation(shaderID, "windEnabled");
 	if (windLoc != -1) glUniform1i(windLoc, windEnabled ? 1 : 0);
 
-	// Bind material
+	// Bind all material properties (Standard + Custom Uniforms)
 	if (!isShadowPass && material) {
-		// IMPORTANT: We use explicit locations because material->Bind() might use 
-		// locations from a different shader (e.g. the parent's custom vert shader).
-		material->UseMaterial(
-			renderShader.GetSpecularIntensityLocation(),
-			renderShader.GetShininessLocation(),
-			glGetUniformLocation(shaderID, "material.baseColor"),
-			renderShader.GetTilingLocation(),
-			renderShader.GetOffsetLocation()
-		);
-		
-		// Also manually set other material properties if they exist in the instanced shader
-		glUniform1f(glGetUniformLocation(shaderID, "material.sssScale"), material->GetFloat("material.sssScale"));
-		glUniform1f(glGetUniformLocation(shaderID, "material.sssDistortion"), material->GetFloat("material.sssDistortion"));
+		material->Bind(renderShader.GetShaderID());
 	}
 
 	// Bind textures

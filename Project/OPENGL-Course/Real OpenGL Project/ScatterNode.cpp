@@ -238,20 +238,21 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	long long meshIndicesLL = (long long)meshCount * objectIndicesLL;
 	
 	long long projectedMeshBytes = (meshVertsLL * 14 * 4) + (meshIndicesLL * 4);
-	// REDUCED FOR FRAGMENTATION: 600MB is the safest "contiguous" block we can expect in 32-bit.
-	const long long MAX_SAFE_32BIT_ALLOC = 600LL * 1024 * 1024; 
+	// 64-bit SAFETY CAP: 2.5GB is a safe peak limit for "Combined Mesh" generation.
+	// Since the process requires temporary copies, a 2.5GB mesh can peak at ~5-6GB RAM usage.
+	// If you need more than 1M instances, use "Spawn as Objects" (GPU-Driven) instead.
+	const long long MAX_SAFE_64BIT_ALLOC = 2560LL * 1024 * 1024; 
 	
-	// HARD BYPASS: If a single instance of the mesh already exceeds our safe allocation limit,
-	// we skip combined mesh generation entirely to avoid a guaranteed std::bad_alloc.
+	// HARD BYPASS: If a single instance of the mesh already exceeds our safe allocation limit
 	long long singleInstanceBytes = (objectVertsLL * 14 * 4) + (objectIndicesLL * 4);
-	if (singleInstanceBytes > MAX_SAFE_32BIT_ALLOC) {
+	if (singleInstanceBytes > MAX_SAFE_64BIT_ALLOC) {
 		printf("[ScatterNode] Hard Bypass: Input mesh is too large for combined output (%lld MB). Skipping combined mesh.\n", singleInstanceBytes / (1024 * 1024));
 		meshCount = 0;
 	}
-	else if (projectedMeshBytes > MAX_SAFE_32BIT_ALLOC) {
-		printf("[ScatterNode] Safety: Combined mesh would exceed 32-bit limits (~%.2f MB).\n", (float)projectedMeshBytes / (1024.0f * 1024.0f));
+	else if (projectedMeshBytes > MAX_SAFE_64BIT_ALLOC) {
+		printf("[ScatterNode] Safety: Combined mesh would exceed 64-bit workspace limits (~%.2f MB).\n", (float)projectedMeshBytes / (1024.0f * 1024.0f));
 		// Calculate how many meshes we can ACTUALLY afford to merge
-		meshCount = (int)((double)MAX_SAFE_32BIT_ALLOC / (double)projectedMeshBytes * (double)meshCount);
+		meshCount = (int)((double)MAX_SAFE_64BIT_ALLOC / (double)projectedMeshBytes * (double)meshCount);
 		if (meshCount < 1) meshCount = 1;
 
 		printf("[ScatterNode] Capping Combined mesh to %d instances, but keeping all %d transforms for spawning.\n", meshCount, workingCount);
@@ -468,11 +469,11 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		if (progress) progress(25.0f + (meshCompleted * 75.0f / futures.size()), "Packing GPU Buffers... (" + std::to_string(meshCompleted) + "/" + std::to_string(futures.size()) + ") Threads");
 	}
 
-	// Now build combined result sequentially: surface + instances
-	// We copy surfaceMesh first, then append instancesOnly
-	MeshData combinedResult = surfaceMesh; 
-	combinedResult.Append(instancesOnly);
-	outputs[0].data.meshData = std::move(combinedResult);
+	// Optimization: Build unified mesh by only copying the surface once
+	if (progress) progress(25.0f, "Finalizing Combined Mesh...");
+	outputs[0].data.meshData = surfaceMesh; // One intentional copy
+	outputs[0].data.meshData.Append(instancesOnly); // Appends instances to the copy
+	
 	outputs[0].data.sourceObjectName = std::move(inputs[0].data.sourceObjectName);
 	outputs[0].data.transforms = std::move(inputs[0].data.transforms); 
 

@@ -17,6 +17,10 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
+	for (auto const& [path, shader] : instancedShaderCache) {
+		delete shader;
+	}
+	instancedShaderCache.clear();
 }
 
 void Renderer::Init()
@@ -75,7 +79,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
 
 	// Render regular objects into shadow map
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this);
 
 	// ================================================================
 	// GPU-Driven Instanced Groups: Shadow Pass
@@ -121,7 +125,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, 0.0f, this);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -181,7 +185,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this);
 
 	// Disable blending for icons/gizmos overlay
 	glDisable(GL_BLEND);
@@ -192,4 +196,25 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	// Light icons + gizmos
 	scene.RenderIcons(projection, view);
 	scene.RenderGizmo(projection, view, cameraPos);
+}
+
+Shader* Renderer::GetInstancedShader(Shader* original)
+{
+	if (!original) return &instancedRenderShader;
+
+	std::string fragPath = original->GetFragmentPath();
+	if (fragPath.empty()) return &instancedRenderShader;
+
+	if (instancedShaderCache.count(fragPath)) {
+		return instancedShaderCache[fragPath];
+	}
+
+	// Create a new hybrid shader: instanced vertex logic + material's fragment look
+	Shader* hybrid = new Shader();
+	hybrid->CreateFromFiles("Assets/Shaders/instanced_object.vert", fragPath.c_str());
+	
+	printf("[Renderer] Created hybrid instanced shader for fragment: %s\n", fragPath.c_str());
+	
+	instancedShaderCache[fragPath] = hybrid;
+	return hybrid;
 }

@@ -7,7 +7,13 @@ in vec3 FragPos;
 out vec4 colour;
 
 struct Material {
-	vec4 baseColor;
+    float specularIntensity;
+    float shininess;
+    float sssScale;
+    float sssDistortion;
+    vec4 baseColor;
+    vec2 tiling;
+    vec2 offset;
 };
 uniform Material material;
 uniform sampler2D theTexture;
