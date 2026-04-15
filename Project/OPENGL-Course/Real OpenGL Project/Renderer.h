@@ -56,5 +56,5 @@ private:
 
 	void CacheUniforms();
 	
-	std::map<std::string, Shader*> instancedShaderCache;
+	std::map<std::string, Shader*> instancedShaderCache; // Key: vertexPath + fragmentPath
 };

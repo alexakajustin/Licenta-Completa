@@ -5,6 +5,8 @@
 #include "Frustum.h"
 #include "InstancedGroup.h"
 #include <GLFW/glfw3.h>
+#include <fstream>
+#include <sstream>
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
@@ -202,19 +204,85 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 {
 	if (!original) return &instancedRenderShader;
 
+	std::string vertPath = original->GetVertexPath();
 	std::string fragPath = original->GetFragmentPath();
-	if (fragPath.empty()) return &instancedRenderShader;
+	if (vertPath.empty() || fragPath.empty()) return &instancedRenderShader;
 
-	if (instancedShaderCache.count(fragPath)) {
-		return instancedShaderCache[fragPath];
+	// Use combined path as key
+	std::string cacheKey = vertPath + "||" + fragPath;
+	if (instancedShaderCache.count(cacheKey)) {
+		return instancedShaderCache[cacheKey];
 	}
 
-	// Create a new hybrid shader: instanced vertex logic + material's fragment look
+	// 1. Read the header template
+	std::ifstream hFile("Assets/Shaders/instanced_header.glsl");
+	std::string hSource = "";
+	if (hFile.is_open()) {
+		std::stringstream hStream;
+		hStream << hFile.rdbuf();
+		hFile.close();
+		hSource = hStream.str();
+	}
+
+	// 2. Read the original vertex shader
+	std::ifstream vFile(vertPath);
+	if (!vFile.is_open()) return &instancedRenderShader;
+	std::stringstream vStream;
+	vStream << vFile.rdbuf();
+	vFile.close();
+	std::string vSource = vStream.str();
+
+	// 3. Patch the version and prepend header
+	size_t vPos = vSource.find("#version");
+	if (vPos != std::string::npos) {
+		size_t eol = vSource.find("\n", vPos);
+		vSource.replace(vPos, eol - vPos, "#version 430 core");
+		
+		// Recalculate eol because replace() changed string length!
+		eol = vSource.find("\n", vPos);
+		vSource.insert(eol + 1, "\n" + hSource + "\n");
+	}
+
+	// 4. Robust Neutralization of conflicting globals
+	auto neutralize = [&](const std::string& target, const std::string& replacement) {
+		size_t pos = 0;
+		while ((pos = vSource.find(target, pos)) != std::string::npos) {
+			vSource.replace(pos, target.length(), replacement);
+			pos += replacement.length();
+		}
+	};
+	neutralize("uniform mat4 model", "uniform mat4 _unused_model");
+	neutralize("in mat4 instanceMatrix", "in mat4 _unused_inst");
+	neutralize("attribute mat4 instanceMatrix", "attribute mat4 _unused_inst2");
+
+	// 5. Inject the shadow variables at the start of main()
+	size_t mainPos = vSource.find("void main()");
+	if (mainPos != std::string::npos) {
+		mainPos = vSource.find("{", mainPos);
+		if (mainPos != std::string::npos) {
+			std::string shadowInjection = 
+				"\n    mat4 model; model = ResolveInstancedModelMatrix();"
+				"\n    mat4 instanceMatrix; instanceMatrix = model;\n";
+			vSource.insert(mainPos + 1, shadowInjection);
+		}
+	}
+
+	// 6. Create the hybrid shader
 	Shader* hybrid = new Shader();
-	hybrid->CreateFromFiles("Assets/Shaders/instanced_object.vert", fragPath.c_str());
+	std::ifstream fFile(fragPath);
+	if (!fFile.is_open()) { delete hybrid; return &instancedRenderShader; }
+	std::stringstream fStream;
+	fStream << fFile.rdbuf();
+	fFile.close();
 	
-	printf("[Renderer] Created hybrid instanced shader for fragment: %s\n", fragPath.c_str());
+	hybrid->CreateFromString(vSource.c_str(), fStream.str().c_str());
+	printf("[Renderer] Created 'Instancified' hybrid: %s\n", cacheKey.c_str());
 	
-	instancedShaderCache[fragPath] = hybrid;
+	// DEBUG DUMP
+	std::ofstream dbg("debug_patched_shader.vert");
+	dbg << vSource;
+	dbg.close();
+	
+	instancedShaderCache[cacheKey] = hybrid;
 	return hybrid;
 }
