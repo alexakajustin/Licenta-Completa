@@ -35,6 +35,8 @@ void InstancedGroup::Setup(Mesh* mesh,
 	if (instances.empty()) return;
 
 	sharedMesh = mesh;
+	if (sharedMesh) sharedMesh->AddRef();
+
 	material = mat;
 	texture = tex;
 	normalMap = norm;
@@ -587,6 +589,12 @@ void InstancedGroup::Release()
 	ReleaseLODBuffers();
 	ReleaseShadowBuffers();
 	ReleaseChunks();
+
+	if (sharedMesh) {
+		sharedMesh->Release();
+		sharedMesh = nullptr;
+	}
+
 	totalCount = 0;
 	lastVisibleCount = 0;
 	lodCount = 1;

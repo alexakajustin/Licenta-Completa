@@ -523,6 +523,7 @@
     <None Include="External Libs\glm\gtx\vector_query.inl" />
     <None Include="External Libs\glm\gtx\wrap.inl" />
     <None Include="glew32.dll" />
+    <None Include="glfw3.dll" />
     <None Include="imgui.ini" />
   </ItemGroup>
   <ItemGroup>
