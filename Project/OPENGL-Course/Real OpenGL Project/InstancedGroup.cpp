@@ -26,14 +26,17 @@ InstancedGroup::~InstancedGroup()
 // =====================================================================
 void InstancedGroup::Setup(Mesh* mesh,
 	const std::vector<PackedInstance>& instances,
-	Material* mat, Texture* tex, Texture* norm)
+	Material* mat, Texture* tex, Texture* norm,
+	const std::vector<TextureLayer>& layers)
 {
-	Release(); // Clean up any previous data
+	Release(); // Clean up any previous buffers
+	if (instances.empty()) return;
 
 	sharedMesh = mesh;
 	material = mat;
 	texture = tex;
 	normalMap = norm;
+	textureLayers = layers;
 	totalCount = (uint32_t)instances.size();
 
 	if (totalCount == 0 || !sharedMesh) return;
@@ -380,6 +383,8 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 
 	// Bind material
 	if (!isShadowPass && material) {
+		// IMPORTANT: We use explicit locations because material->Bind() might use 
+		// locations from a different shader (e.g. the parent's custom vert shader).
 		material->UseMaterial(
 			renderShader.GetSpecularIntensityLocation(),
 			renderShader.GetShininessLocation(),
@@ -387,7 +392,10 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 			renderShader.GetTilingLocation(),
 			renderShader.GetOffsetLocation()
 		);
-		material->Bind();
+		
+		// Also manually set other material properties if they exist in the instanced shader
+		glUniform1f(glGetUniformLocation(shaderID, "material.sssScale"), material->GetFloat("material.sssScale"));
+		glUniform1f(glGetUniformLocation(shaderID, "material.sssDistortion"), material->GetFloat("material.sssDistortion"));
 	}
 
 	// Bind textures
@@ -412,9 +420,59 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
 	}
 
-	// Disable texture layers for instanced groups
+	// Texture layers (inherit parent's appearance)
+	int layerCount = (int)textureLayers.size();
 	GLint layerCountLoc = glGetUniformLocation(shaderID, "textureLayerCount");
-	if (layerCountLoc != -1) glUniform1i(layerCountLoc, 0);
+	if (layerCountLoc != -1) glUniform1i(layerCountLoc, layerCount);
+
+	if (!isShadowPass && layerCount > 0)
+	{
+		for (int i = 0; i < layerCount && i < 4; i++)
+		{
+			// Units 10+ for layers to avoid conflicts
+			int diffUnit = 10 + i;
+			int normUnit = 14 + i;
+			int dispUnit = 18 + i;
+
+			// Bind textures
+			char buf[64];
+			sprintf_s(buf, "textureLayers[%d]", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), diffUnit);
+			if (textureLayers[i].texture) textureLayers[i].texture->UseTextureOnUnit(GL_TEXTURE0 + diffUnit);
+
+			sprintf_s(buf, "layerNormalMaps[%d]", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), normUnit);
+			if (textureLayers[i].normalMap) textureLayers[i].normalMap->UseTextureOnUnit(GL_TEXTURE0 + normUnit);
+
+			sprintf_s(buf, "layerDisplacementMaps[%d]", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), dispUnit);
+			if (textureLayers[i].displacementMap) textureLayers[i].displacementMap->UseTextureOnUnit(GL_TEXTURE0 + dispUnit);
+
+			// Bind layer data
+			sprintf_s(buf, "layerData[%d].blendMode", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), (int)textureLayers[i].blendMode);
+			sprintf_s(buf, "layerData[%d].opacity", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].opacity);
+			sprintf_s(buf, "layerData[%d].tiling", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].tiling);
+			sprintf_s(buf, "layerData[%d].heightMin", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].heightMin);
+			sprintf_s(buf, "layerData[%d].heightMax", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].heightMax);
+			sprintf_s(buf, "layerData[%d].slopeMin", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].slopeMin);
+			sprintf_s(buf, "layerData[%d].slopeMax", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].slopeMax);
+			sprintf_s(buf, "layerData[%d].invert", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), textureLayers[i].invert ? 1 : 0);
+			sprintf_s(buf, "layerData[%d].hasNormalMap", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), textureLayers[i].normalMap ? 1 : 0);
+			sprintf_s(buf, "layerData[%d].hasDisplacementMap", i);
+			glUniform1i(glGetUniformLocation(shaderID, buf), textureLayers[i].displacementMap ? 1 : 0);
+			sprintf_s(buf, "layerData[%d].displacementScale", i);
+			glUniform1f(glGetUniformLocation(shaderID, buf), textureLayers[i].displacementScale);
+		}
+	}
 
 	// Draw each LOD level
 	for (int lod = 0; lod < lodCount; lod++) {

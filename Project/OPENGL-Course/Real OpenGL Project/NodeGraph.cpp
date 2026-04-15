@@ -396,16 +396,27 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							meshCache[dataKey] = defaultObjectMesh.ToMesh(0); // Non-instanced mesh for indirect draw
 						}
 
+						// Resolve materials: for high counts, inherit from parent (Surface)
+						// High-count instancing logic (count >= 1000)
+						// Pull everything from the instances pin (which inherited from Scatter Input 1: Object)
+						Material* finalMat = instancesPin.data.sourceMaterial;
+						Texture* finalTex = instancesPin.data.sourceTexture;
+						Texture* finalNorm = instancesPin.data.sourceNormalMap;
+						std::vector<TextureLayer> finalLayers = instancesPin.data.textureLayers;
+
 						// Create the InstancedGroup
 						InstancedGroup* group = new InstancedGroup(groupName);
 						group->Setup(
 							meshCache[dataKey],
 							packedInstances,
-							instancesPin.data.sourceMaterial,
-							instancesPin.data.sourceTexture,
-							instancesPin.data.sourceNormalMap
+							finalMat,
+							finalTex,
+							finalNorm,
+							finalLayers
 						);
-						group->SetWindEnabled(true);
+						
+						// For high counts, disable the wavy wind effect as requested
+						group->SetWindEnabled(packCount < INSTANCED_GROUP_THRESHOLD);
 
 					// Smart defaults based on instance count
 					int instanceCount = (int)packedInstances.size();

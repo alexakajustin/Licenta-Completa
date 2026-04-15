@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<coreProperties xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">
-  <dc:creator>NerdTronik</dc:creator>
-  <dc:description>This is a build of assimp to vs2019 with Debug, Release and MinSizeRelease binaries.</dc:description>
-  <dc:identifier>AssimpCpp</dc:identifier>
-  <version>5.0.1.6</version>
-  <keywords>native Native assimp cpp Assimp</keywords>
-  <lastModifiedBy>NuGet, Version=5.8.1.7021, Culture=neutral, PublicKeyToken=31bf3856ad364e35;Microsoft Windows NT 10.0.19042.0;.NET Framework 4.7.2</lastModifiedBy>
-</coreProperties>

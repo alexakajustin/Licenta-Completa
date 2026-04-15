@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <string>
+#include "Frustum.h"
+#include "TextureLayer.h"
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -50,7 +52,8 @@ public:
 		const std::vector<PackedInstance>& instances,
 		Material* material = nullptr,
 		Texture* texture = nullptr,
-		Texture* normalMap = nullptr);
+		Texture* normalMap = nullptr,
+		const std::vector<TextureLayer>& textureLayers = {});
 
 	// Per-frame: cull on GPU and draw visible instances (camera pass)
 	void CullAndDraw(GLuint cullShaderID, Shader& renderShader,
@@ -113,6 +116,7 @@ private:
 	Material* material = nullptr;
 	Texture* texture = nullptr;
 	Texture* normalMap = nullptr;
+	std::vector<TextureLayer> textureLayers;
 
 	uint32_t totalCount = 0;
 	uint32_t lastVisibleCount = 0;
