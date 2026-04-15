@@ -35,7 +35,7 @@ void ScatterNode::Deserialize(const json& j)
 	randomRotation = j.value("randomRotation", true);
 	alignToNormal = j.value("alignToNormal", true);
 	seed = j.value("seed", 42);
-	spawnAsObjects = j.value("spawnAsObjects", false);
+	spawnAsObjects = true; // Forced
 	targetParentName = j.value("targetParentName", "(none)");
 	targetParentIndex = -1; // Force re-resolution on first Execute
 }
@@ -55,8 +55,8 @@ void ScatterNode::RenderContent(SceneManager* scene)
 		seed = std::rand();
 
 	ImGui::Separator();
-	ImGui::Checkbox("Spawn as Objects", &spawnAsObjects);
-	if (spawnAsObjects && scene)
+	ImGui::TextDisabled("Spawning Mode: Forced Instancing");
+	if (scene)
 	{
 		auto& objects = scene->GetObjects();
 
@@ -218,55 +218,13 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		return;
 	}
 
-	// Memory optimization: Build instancesOnly first.
-	// We only build combinedResult at the very end by appending to the surfaceMesh.
-	// This avoids having two giant result meshes in memory at the same time.
-	MeshData instancesOnly;
-
 	// 1. Determine how many transforms we want (Spawning/Instancing)
-	// We cap this at a high but safe number (e.g. 500,000) for transform storage.
 	int workingCount = count;
 	if (workingCount > 10000000) workingCount = 10000000;
 
-	// 2. Determine how many meshes can fit in the "Combined" output
-	int meshCount = workingCount;
-	long long objectVertsLL = objectMesh.GetVertexCount();
-	long long objectIndicesLL = objectMesh.indices.size();
-
-	// FIX: Use long long to avoid integer overflow when multiplying by 10 million
-	long long meshVertsLL = (long long)meshCount * objectVertsLL;
-	long long meshIndicesLL = (long long)meshCount * objectIndicesLL;
-	
-	long long projectedMeshBytes = (meshVertsLL * 14 * 4) + (meshIndicesLL * 4);
-	// 64-bit SAFETY CAP: 2.5GB is a safe peak limit for "Combined Mesh" generation.
-	// Since the process requires temporary copies, a 2.5GB mesh can peak at ~5-6GB RAM usage.
-	// If you need more than 1M instances, use "Spawn as Objects" (GPU-Driven) instead.
-	const long long MAX_SAFE_64BIT_ALLOC = 2560LL * 1024 * 1024; 
-	
-	// HARD BYPASS: If a single instance of the mesh already exceeds our safe allocation limit
-	long long singleInstanceBytes = (objectVertsLL * 14 * 4) + (objectIndicesLL * 4);
-	if (singleInstanceBytes > MAX_SAFE_64BIT_ALLOC) {
-		printf("[ScatterNode] Hard Bypass: Input mesh is too large for combined output (%lld MB). Skipping combined mesh.\n", singleInstanceBytes / (1024 * 1024));
-		meshCount = 0;
-	}
-	else if (projectedMeshBytes > MAX_SAFE_64BIT_ALLOC) {
-		printf("[ScatterNode] Safety: Combined mesh would exceed 64-bit workspace limits (~%.2f MB).\n", (float)projectedMeshBytes / (1024.0f * 1024.0f));
-		// Calculate how many meshes we can ACTUALLY afford to merge
-		meshCount = (int)((double)MAX_SAFE_64BIT_ALLOC / (double)projectedMeshBytes * (double)meshCount);
-		if (meshCount < 1) meshCount = 1;
-
-		printf("[ScatterNode] Capping Combined mesh to %d instances, but keeping all %d transforms for spawning.\n", meshCount, workingCount);
-	}
-	
-	meshVertsLL = (long long)meshCount * objectVertsLL;
-	meshIndicesLL = (long long)meshCount * objectIndicesLL;
-	
-	int objectVerts = objectMesh.GetVertexCount();
-	int objectIndices = (int)objectMesh.indices.size();
-
-	// Pre-allocate Combined/InstancesOnly mesh to meshCount safely
-	instancesOnly.vertices.resize((size_t)(meshVertsLL * 14));
-	instancesOnly.indices.resize((size_t)meshIndicesLL);
+	// Setup modular output lists (Full workingCount!)
+	outputs[1].data.transforms.resize(workingCount); // Pre-allocate for parallel writing
+	outputs[1].data.instanceMeshes.clear();
 
 	// Setup modular output lists (Full workingCount!)
 	outputs[1].data.transforms.resize(workingCount); // Pre-allocate for parallel writing
@@ -378,120 +336,21 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		if (progress) progress(10.0f + (transCompleted * 15.0f / transFutures.size()), "Computing Transforms... (" + std::to_string(transCompleted) + "/" + std::to_string(transFutures.size()) + ") Threads");
 	}
 
-	// === HIGH PERFORMANCE PARALLEL MESH GENERATION ===
-	// Note: We only generate mesh data for meshCount instances to stay within 32-bit limits.
-	unsigned int numThreads = std::thread::hardware_concurrency();
-	if (numThreads == 0) numThreads = 4;
-	if (numThreads > (unsigned int)meshCount) numThreads = (unsigned int)meshCount;
-
-
-	std::vector<std::future<void>> futures;
-	int instancesPerThread = meshCount / numThreads;
-
-	for (unsigned int tIdx = 0; tIdx < numThreads; tIdx++)
-	{
-		int startInstance = tIdx * instancesPerThread;
-		int endInstance = (tIdx == numThreads - 1) ? meshCount : (tIdx + 1) * instancesPerThread;
-
-		futures.push_back(std::async(std::launch::async, [&, startInstance, endInstance]() {
-			for (int i = startInstance; i < endInstance; i++)
-			{
-				const TransformData& tData = outputs[1].data.transforms[i];
-				
-				// Build transform matrix
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, tData.position);
-				
-				// Align Y-up to surface normal if requested
-				if (alignToNormal && glm::length(tData.normal) > 0.001f)
-				{
-					glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-					if (glm::abs(glm::dot(up, tData.normal)) < 0.999f)
-					{
-						glm::vec3 rotAxis = glm::normalize(glm::cross(up, tData.normal));
-						float angle = acos(glm::clamp(glm::dot(up, tData.normal), -1.0f, 1.0f));
-						model = glm::rotate(model, angle, rotAxis);
-					}
-				}
-
-				model = glm::rotate(model, glm::radians(tData.rotation.x), glm::vec3(1, 0, 0));
-				model = glm::rotate(model, glm::radians(tData.rotation.y), glm::vec3(0, 1, 0));
-				model = glm::rotate(model, glm::radians(tData.rotation.z), glm::vec3(0, 0, 1));
-				model = glm::scale(model, tData.scale);
-
-				glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-
-				// Write directly to pre-allocated buffers
-				float* destVerts = &instancesOnly.vertices[i * objectVerts * 14];
-				const float* srcVerts = objectMesh.vertices.data();
-
-				for (int v = 0; v < objectVerts; v++)
-				{
-					int base = v * 14;
-					glm::vec4 p = model * glm::vec4(srcVerts[base], srcVerts[base + 1], srcVerts[base + 2], 1.0f);
-					glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(srcVerts[base + 5], srcVerts[base + 6], srcVerts[base + 7]));
-					glm::vec3 tan = glm::normalize(normalMatrix * glm::vec3(srcVerts[base + 8], srcVerts[base + 9], srcVerts[base + 10]));
-					glm::vec3 bit = glm::normalize(normalMatrix * glm::vec3(srcVerts[base + 11], srcVerts[base + 12], srcVerts[base + 13]));
-
-					destVerts[base] = p.x; destVerts[base + 1] = p.y; destVerts[base + 2] = p.z;
-					destVerts[base + 3] = srcVerts[base + 3]; destVerts[base + 4] = srcVerts[base + 4]; // UVs
-					destVerts[base + 5] = n.x; destVerts[base + 6] = n.y; destVerts[base + 7] = n.z;
-					destVerts[base + 8] = tan.x; destVerts[base + 9] = tan.y; destVerts[base + 10] = tan.z;
-					destVerts[base + 11] = bit.x; destVerts[base + 12] = bit.y; destVerts[base + 13] = bit.z;
-				}
-
-				// Write indices with offset
-				unsigned int* destIndices = &instancesOnly.indices[i * objectIndices];
-				const unsigned int* srcIndices = objectMesh.indices.data();
-				unsigned int vertexOffset = i * objectVerts;
-
-				for (int idx = 0; idx < objectIndices; idx++)
-				{
-					destIndices[idx] = srcIndices[idx] + vertexOffset;
-				}
-			}
-		}));
-	}
-
-	// Wait for all threads to finish
-	if (progress) progress(25.0f, "Packing Mesh Buffer...");
-	int meshCompleted = 0;
-	std::vector<bool> meshDone(futures.size(), false);
-	while (meshCompleted < (int)futures.size()) {
-		for (size_t i = 0; i < futures.size(); i++) {
-			if (!meshDone[i]) {
-				if (futures[i].wait_for(std::chrono::milliseconds(5)) == std::future_status::ready) {
-					meshDone[i] = true;
-					meshCompleted++;
-				}
-			}
-		}
-		if (progress) progress(25.0f + (meshCompleted * 75.0f / futures.size()), "Packing GPU Buffers... (" + std::to_string(meshCompleted) + "/" + std::to_string(futures.size()) + ") Threads");
-	}
-
-	// Optimization: Build unified mesh by only copying the surface once
-	if (progress) progress(25.0f, "Finalizing Combined Mesh...");
-	outputs[0].data.meshData = surfaceMesh; // One intentional copy
-	outputs[0].data.meshData.Append(instancesOnly); // Appends instances to the copy
-	
+	// We only output transforms and surface now. 
+	// The "Spawn as Objects" path is handled by NodeGraph observing this node.
+	outputs[0].data.meshData = surfaceMesh; // Pass through surface
 	outputs[0].data.sourceObjectName = std::move(inputs[0].data.sourceObjectName);
 	outputs[0].data.transforms = std::move(inputs[0].data.transforms); 
+	outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
+	outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
+	outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
+	outputs[0].data.textureLayers = inputs[0].data.textureLayers;
 
-	outputs[1].data.meshData = std::move(instancesOnly);
 	outputs[1].data.sourceObjectName = "(none)"; 
 	outputs[1].data.sourceMaterial = inputs[1].data.sourceMaterial;
 	outputs[1].data.sourceTexture = inputs[1].data.sourceTexture;
 	outputs[1].data.sourceNormalMap = inputs[1].data.sourceNormalMap;
 	outputs[1].data.textureLayers = inputs[1].data.textureLayers;
-
-	// Combined output represents the full terrain surface visually:
-	// - Material/texture/normal come from the SURFACE (inputs[0]) so the terrain renders correctly.
-	// - Texture layers come from the SURFACE (inputs[0]) for the same reason.
-	// The Instances-Only output already has the object's layers (set above).
-	outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
-	outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
-	outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
-	outputs[0].data.textureLayers = inputs[0].data.textureLayers;
   }
   catch (const std::exception& e) {
 	printf("[ScatterNode] Execution failed (Memory exhausted): %s\n", e.what());
