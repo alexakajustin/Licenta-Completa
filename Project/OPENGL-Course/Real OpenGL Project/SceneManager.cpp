@@ -816,7 +816,13 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glDepthMask(GL_TRUE); 
 	glEnable(GL_CULL_FACE);
 
-	// Objects
+	// Scale mouse coordinates from viewport window space to picking FBO space
+	float scaleX = (float)pickWidth / viewportWidth;
+	float scaleY = (float)pickHeight / viewportHeight;
+	int readX = (int)(mouseX * scaleX);
+	int readY = pickHeight - (int)(mouseY * scaleY);
+
+	// 1. OBJECTS PASS (Base Geometry)
 	for (int i = 0; i < (int)objects.size(); i++)
 	{
 		glm::vec3 color = EncodeID(i + 1);
@@ -827,6 +833,12 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		else if (objects[i]->GetMesh()) objects[i]->GetMesh()->RenderMesh();
 	}
 
+	// Capture depth of regular objects BEFORE we clear it for icons/gizmos
+	glFlush(); 
+	float sceneDepth;
+	glReadPixels(readX, readY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &sceneDepth);
+
+	// 2. OVERLAY PASS (Icons, Gizmos) - Clear depth so they draw on top
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Light icons
@@ -892,26 +904,13 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	}
 
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
 	glFlush();
-	glFinish(); // Ensure AMD driver completes FBO rendering before read
+	glFinish(); // Ensure AMD driver completes FBO rendering before final read
 
-	// Scale mouse coordinates from viewport window space to picking FBO space
-	float scaleX = (float)pickWidth / viewportWidth;
-	float scaleY = (float)pickHeight / viewportHeight;
-
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	unsigned char pixel[3];
-	float fboDepth;
-	int readX = (int)(mouseX * scaleX);
-	int readY = pickHeight - (int)(mouseY * scaleY);
-	
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	glReadPixels(readX, readY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
-	glReadPixels(readX, readY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &fboDepth);
 	int pickedID = DecodeID(pixel);
-
-	// printf("[SceneManager] PickDebug: Mouse(%.1f,%.1f) Scale(%.2f,%.2f) Read(%d,%d) ID(%d) | FBO:%u Size:%dx%d\n", 
-	// 	mouseX, mouseY, scaleX, scaleY, readX, readY, pickedID, pickingFBO, pickWidth, pickHeight);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glDrawBuffer(GL_BACK);
@@ -922,7 +921,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	if (oldBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
 	if (oldScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
 #ifdef GL_MULTISAMPLE
-	glEnable(GL_MULTISAMPLE); // Re-enable for main anti-aliased render
+	glEnable(GL_MULTISAMPLE);
 #endif
 	if (!oldDepthTest) glDisable(GL_DEPTH_TEST); else glEnable(GL_DEPTH_TEST);
 	if (!oldCullFace) glDisable(GL_CULL_FACE); else glEnable(GL_CULL_FACE);
@@ -931,40 +930,51 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glCullFace(oldCullMode);
 	glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
 
-	// Smart Instance Extraction (Raycast)
-	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
-	float bestDist = FLT_MAX;
-	InstancedGroup* bestGroup = nullptr;
-	int bestIndex = -1;
+	// UI PRIORITY: If we clicked a transformation handle, return immediately.
+	// Gizmos are UI and should never be occluded by world objects or scatter blades.
+	if (pickedID >= 20001 && pickedID <= 20006) {
+		return pickedID;
+	}
 
-	for (auto* group : instancedGroups) {
-		int hitIndex;
-		float hitDist;
-		if (group->Raycast(cameraPos, rayDir, hitIndex, hitDist)) {
-			if (hitDist < bestDist) {
-				bestDist = hitDist;
-				bestGroup = group;
-				bestIndex = hitIndex;
+	// Smart Instance Extraction (Raycast)
+	bool instanceWon = false;
+	
+	// Only try to select scatter if we didn't hit a Light Icon (10000-19999)
+	if (pickedID < 10000) {
+		glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
+		float bestDist = FLT_MAX;
+		InstancedGroup* bestGroup = nullptr;
+		int bestIndex = -1;
+
+		for (auto* group : instancedGroups) {
+			int hitIndex;
+			float hitDist;
+			if (group->Raycast(cameraPos, rayDir, hitIndex, hitDist)) {
+				if (hitDist < bestDist) {
+					bestDist = hitDist;
+					bestGroup = group;
+					bestIndex = hitIndex;
+				}
+			}
+		}
+
+		if (bestGroup && bestIndex != -1) {
+			// Project hit point into window space to compare against original scene depth
+			glm::vec3 hitPoint = cameraPos + rayDir * bestDist;
+			glm::vec4 clipSpace = projection * view * glm::vec4(hitPoint, 1.0f);
+			float ndcDepth = clipSpace.z / clipSpace.w;
+			float winDepth = ndcDepth * 0.5f + 0.5f;
+
+			// If hit point is closer than the original world objects (monitor, floor, etc.)
+			if (winDepth <= sceneDepth + 0.001f) {
+				instanceWon = true;
+				bestGroup->ExtractInstance(bestIndex, this);
+				return (int)objects.size(); // newly spawned obj ID
 			}
 		}
 	}
 
-	bool instanceWon = false;
-	if (bestGroup && bestIndex != -1) {
-		// Project hit point into window space to compare against FBO depth
-		glm::vec3 hitPoint = cameraPos + rayDir * bestDist;
-		glm::vec4 clipSpace = projection * view * glm::vec4(hitPoint, 1.0f);
-		float ndcDepth = clipSpace.z / clipSpace.w;
-		float winDepth = ndcDepth * 0.5f + 0.5f;
-
-		// If hit point is closer than the FBO object (or FBO hit sky/1.0)
-		if (winDepth <= fboDepth + 0.001f) {
-			instanceWon = true;
-			bestGroup->ExtractInstance(bestIndex, this);
-			return (int)objects.size(); // newly spawned obj ID
-		}
-	}
-
+	// Final Selection Logic
 	if (!instanceWon) {
 		if (pickedID > 0 && pickedID <= (int)objects.size()) {
 			SetSelectedIndex(pickedID - 1);
@@ -973,6 +983,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			SetSelectedLightIndex(pickedID - 10000);
 		}
 		else if (pickedID < 20000) {
+			// If we hit background (0) or something else below gizmos, clear selection
 			ClearSelection();
 		}
 	}

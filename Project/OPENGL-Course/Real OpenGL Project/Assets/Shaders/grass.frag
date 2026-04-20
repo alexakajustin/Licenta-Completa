@@ -6,6 +6,10 @@ in vec3 FragPos;
 
 out vec4 colour;
 
+// Constants
+const int MAX_POINT_LIGHTS = 3;
+const int MAX_SPOT_LIGHTS = 3;
+
 // Standard Light Structs
 struct Light {
 	vec3 colour;
@@ -16,6 +20,20 @@ struct Light {
 struct DirectionalLight {
 	Light base;
 	vec3 direction;
+};
+
+struct PointLight {
+	Light base;
+	vec3 position;
+	float constant;
+	float linear;
+	float exponent;
+};
+
+struct SpotLight {
+	PointLight base;
+	vec3 direction;
+	float edge;
 };
 
 struct Material {
@@ -33,62 +51,97 @@ uniform sampler2D theTexture;
 
 // Lighting Uniforms automatically passed by Renderer
 uniform DirectionalLight directionalLight;
+uniform PointLight pointLights[MAX_POINT_LIGHTS];
+uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
+uniform int pointLightCount;
+uniform int spotLightCount;
+
 uniform vec3 eyePosition;
 
-// --- Specialized Grass Lighting ---
-vec3 CalcGrassLighting(vec3 normal, vec3 viewDir)
+// --- Specialized Grass Lighting Model ---
+// Applies wrapped diffuse and subsurface scattering for any light source.
+vec3 CalcGrassLightByDirection(Light base, vec3 direction, vec3 normal, vec3 viewDir)
 {
-    // 1. Ambient Lighting
-    vec3 ambient = directionalLight.base.colour * directionalLight.base.ambientIntensity;
+    // 1. Ambient Lighting (usually only from directional light, but included for completeness)
+    vec3 ambient = base.colour * base.ambientIntensity;
     
     // 2. Wrapped Diffuse
     // Standard dot(N,L) creates harsh shadows on flat grassy planes.
     // Wrapped lighting softens it, mimicking light scattered through the blades.
-    vec3 lightDir = normalize(-directionalLight.direction);
+    vec3 lightDir = normalize(-direction);
     float diffuseFactor = dot(normal, lightDir);
     float wrappedDiffuse = max(0.0, (diffuseFactor + 0.5) / 1.5);
-    vec3 diffuse = directionalLight.base.colour * directionalLight.base.diffuseIntensity * wrappedDiffuse;
+    vec3 diffuse = base.colour * base.diffuseIntensity * wrappedDiffuse;
     
     // 3. Fake Subsurface Scattering (Translucency/Backlighting)
-    // Makes grass glow when the sun is behind it
+    // Makes grass glow when the light is behind it
     float sssDistortion = max(material.sssDistortion, 0.2); // safe default
     float sssScale = max(material.sssScale, 2.0);
     vec3 backLightDir = normalize(lightDir + normal * sssDistortion);
     float sssPower = pow(clamp(dot(viewDir, -backLightDir), 0.0, 1.0), 4.0) * sssScale;
-    vec3 sss = directionalLight.base.colour * sssPower * 0.5; // Soft glow
+    vec3 sss = base.colour * base.diffuseIntensity * sssPower * 0.5; // Soft glow
     
-    // 4. Procedural Root-to-Tip Color Gradient
-    // Assuming TexCoord.y goes 0.0 (bottom/root) to 1.0 (top/tip)
-    float heightWgt = clamp(TexCoord.y, 0.0, 1.0); 
-    
-    // Roots are darker and more desaturated
-    vec3 rootColor = material.baseColor.rgb * 0.25; 
-    vec3 tipColor = material.baseColor.rgb;
-    vec3 gradientColor = mix(rootColor, tipColor, heightWgt);
-    
-    // 5. Procedural Patch Variation (Breaks up tiling)
-    // Uses FragPos.xz to create subtle color changes in large fields
-    float noise = fract(sin(dot(floor(FragPos.xz * 0.2), vec2(12.9898, 78.233))) * 43758.5453);
-    gradientColor *= mix(0.85, 1.15, noise); // Random brightness per patch
+    return ambient + diffuse + sss;
+}
 
-    // Combine Lighting & Albedo
-    return (ambient + diffuse + sss) * gradientColor;
+vec3 CalcDirectionalLight(vec3 normal, vec3 viewDir)
+{
+    return CalcGrassLightByDirection(directionalLight.base, directionalLight.direction, normal, viewDir);
+}
+
+vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 viewDir)
+{
+    vec3 direction = FragPos - pLight.position;
+    float distance = length(direction);
+    
+    vec3 lightFinal = CalcGrassLightByDirection(pLight.base, direction, normal, viewDir);
+    float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
+    
+    return (lightFinal / attenuation);
+}
+
+vec3 CalcSpotLight(SpotLight sLight, vec3 normal, vec3 viewDir)
+{
+    vec3 rayDirection = normalize(FragPos - sLight.base.position);
+    float slFactor = dot(rayDirection, sLight.direction);
+    
+    if (slFactor > sLight.edge) {
+        vec3 lightFinal = CalcPointLight(sLight.base, normal, viewDir);
+        return lightFinal * (1.0 - (1.0 - slFactor) * (1.0 / (1.0 - sLight.edge)));
+    } else {
+        return vec3(0.0);
+    }
 }
 
 void main()
 {
-    // Sample Base Texture
+    // 1. Sample Base Texture
     vec4 texColor = texture(theTexture, TexCoord);
-    
-    // Alpha discard for grass cards (billboards)
     if(texColor.a < 0.1) discard;
 
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(eyePosition - FragPos);
     
-    // Apply Grass Illumination Model
-    vec3 finalLight = CalcGrassLighting(norm, viewDir);
+    // 2. Accumulate Lighting from all sources
+    vec3 totalLight = CalcDirectionalLight(norm, viewDir);
     
-    // Output
-	colour = vec4(texColor.rgb * finalLight, texColor.a);
+    for(int i = 0; i < pointLightCount; i++) {
+        totalLight += CalcPointLight(pointLights[i], norm, viewDir);
+    }
+    
+    for(int i = 0; i < spotLightCount; i++) {
+        totalLight += CalcSpotLight(spotLights[i], norm, viewDir);
+    }
+    
+    // 3. Compute Surface properties (Root-to-Tip Gradient + Patch variation)
+    float heightWgt = clamp(TexCoord.y, 0.0, 1.0); 
+    vec3 rootColor = material.baseColor.rgb * 0.25; 
+    vec3 tipColor = material.baseColor.rgb;
+    vec3 gradientColor = mix(rootColor, tipColor, heightWgt);
+    
+    float noise = fract(sin(dot(floor(FragPos.xz * 0.2), vec2(12.9898, 78.233))) * 43758.5453);
+    gradientColor *= mix(0.85, 1.15, noise);
+
+    // 4. Final Output
+	colour = vec4(texColor.rgb * totalLight * gradientColor, texColor.a);
 }
