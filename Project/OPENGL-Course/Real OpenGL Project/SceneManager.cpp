@@ -589,6 +589,108 @@ bool SceneManager::IsLightSelected(int index) const
 	return std::find(selectedLightIndices.begin(), selectedLightIndices.end(), index) != selectedLightIndices.end();
 }
 
+void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool additive)
+{
+	if (!additive) {
+		selectedObjectIndices.clear();
+		selectedLightIndices.clear();
+	}
+
+	glm::mat4 vp = projection * view;
+
+	// Helper: project world position to viewport pixel coordinates
+	// Returns false if behind camera
+	auto ProjectToScreen = [&](glm::vec3 worldPos, glm::vec2& screenPos) -> bool {
+		glm::vec4 clip = vp * glm::vec4(worldPos, 1.0f);
+		if (clip.w <= 0.0f) return false; // Behind camera
+
+		glm::vec3 ndc = glm::vec3(clip) / clip.w;
+		// NDC to viewport pixel coords
+		screenPos.x = (ndc.x * 0.5f + 0.5f) * viewportWidth;
+		screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * viewportHeight; // Y flipped
+		return true;
+	};
+
+	// Select regular objects
+	for (int i = 0; i < (int)objects.size(); i++) {
+		glm::vec3 worldPos = glm::vec3(objects[i]->GetWorldMatrix()[3]);
+		glm::vec2 screenPos;
+		if (!ProjectToScreen(worldPos, screenPos)) continue;
+
+		if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
+			screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
+			if (!IsObjectSelected(i)) {
+				selectedObjectIndices.push_back(i);
+			}
+		}
+	}
+
+	// Select lights  
+	if (selectedObjectIndices.empty()) {
+		for (int i = 0; i < (int)lights.size(); i++) {
+			glm::vec3* lightPos = lights[i]->GetPositionPtr();
+			if (!lightPos) continue;
+
+			glm::vec2 screenPos;
+			if (!ProjectToScreen(*lightPos, screenPos)) continue;
+
+			if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
+				screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
+				if (!IsLightSelected(i)) {
+					selectedLightIndices.push_back(i);
+				}
+			}
+		}
+	}
+
+	// Extract instanced scatter objects that fall within the box
+	// Collect all matching indices per group first, then extract in reverse order
+	// (reverse order preserves indices during swap-pop extraction)
+	for (auto* group : instancedGroups) {
+		if (!group || group->cpuInstances.empty()) continue;
+
+		std::vector<int> matchingIndices;
+		for (int i = 0; i < (int)group->cpuInstances.size(); i++) {
+			const auto& inst = group->cpuInstances[i];
+			glm::vec3 worldPos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+
+			glm::vec2 screenPos;
+			if (!ProjectToScreen(worldPos, screenPos)) continue;
+
+			if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
+				screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
+				matchingIndices.push_back(i);
+			}
+		}
+
+		// Extract in reverse order to preserve indices (swap-pop is index-sensitive)
+		// Use batch mode: skip GPU re-upload and selection per-instance
+		for (int j = (int)matchingIndices.size() - 1; j >= 0; j--) {
+			group->ExtractInstance(matchingIndices[j], this, true);
+			// After extraction, the newly created object is at the back of the objects list
+			int newIdx = (int)objects.size() - 1;
+			if (!IsObjectSelected(newIdx)) {
+				selectedObjectIndices.push_back(newIdx);
+			}
+		}
+
+		// Single GPU re-upload after all extractions from this group
+		if (!matchingIndices.empty()) {
+			group->ReuploadGPU();
+		}
+	}
+
+	// If we selected both objects and lights, keep only objects
+	if (!selectedObjectIndices.empty() && !selectedLightIndices.empty()) {
+		selectedLightIndices.clear();
+	}
+
+	activeDragAxis = 0;
+	
+	printf("[SceneManager] Box selected %d objects, %d lights\n", 
+		(int)selectedObjectIndices.size(), (int)selectedLightIndices.size());
+}
+
 // =====================================================================
 // Creation / Deletion
 // =====================================================================
@@ -1107,6 +1209,7 @@ void SceneManager::InitGizmo()
 
 void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos)
 {
+	if (isBoxSelecting) return; // Hide gizmo during box selection drag
 	glm::vec3 gizmoPos;
 	if (!GetGizmoPosition(gizmoPos)) return;
 	if (!gizmoArrowModel || gizmoShader.GetShaderID() == 0) return;
@@ -1181,6 +1284,12 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glUseProgram(0);
+}
+
+void SceneManager::RenderSelectionHighlight(const glm::mat4& projection, const glm::mat4& view)
+{
+	// Lightweight selection highlighting is done via ImGui screen-space overlay in EditorUI
+	// to avoid re-rendering thousands of meshes. This method is intentionally empty.
 }
 
 // =====================================================================

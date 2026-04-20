@@ -315,7 +315,7 @@ void Application::Run()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// Now render ImGui windows using centralized states over the scene
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera);
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera, &inputHandler);
 		
 		assetBrowser.Render(sceneManager, uiState);
 		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);

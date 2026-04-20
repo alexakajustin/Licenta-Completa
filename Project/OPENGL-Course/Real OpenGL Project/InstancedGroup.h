@@ -90,7 +90,8 @@ public:
 	// Smart Instance Extraction
 	std::vector<PackedInstance> cpuInstances;
 	bool Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outIndex, float& outDist);
-	void ExtractInstance(int index, class SceneManager* scene);
+	void ExtractInstance(int index, class SceneManager* scene, bool skipReuploadAndSelect = false);
+	void ReuploadGPU(); // Re-upload after batch extraction
 
 	// Cleanup
 	void Release();

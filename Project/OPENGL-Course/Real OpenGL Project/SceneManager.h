@@ -55,6 +55,7 @@ public:
 		float screenHeight = 0.0f, class Renderer* renderer = nullptr);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
+	void RenderSelectionHighlight(const glm::mat4& projection, const glm::mat4& view);
 
 	// ========== GPU-Driven Instanced Groups ==========
 	void AddInstancedGroup(InstancedGroup* group);
@@ -72,6 +73,9 @@ public:
 	int GetActiveDragAxis() const { return activeDragAxis; }
 	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
 	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
+	void BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool additive = false);
+	void SetBoxSelecting(bool val) { isBoxSelecting = val; }
+	bool GetBoxSelecting() const { return isBoxSelecting; }
 	
 	void DeleteSelectedObjects();
 	void DeleteSelectedLights();
@@ -148,6 +152,7 @@ private:
 
 	// Gizmo dragging state
 	int activeDragAxis = 0;
+	bool isBoxSelecting = false;
 	glm::vec3 dragInitialObjectPos;
 	glm::vec3 dragInitialObjectRot;
 	glm::vec2 dragInitialMousePos;

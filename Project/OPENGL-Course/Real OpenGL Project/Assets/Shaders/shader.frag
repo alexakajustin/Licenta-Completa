@@ -85,6 +85,9 @@ uniform Material material;
 // camera position
 uniform vec3 eyePosition;
 
+// Selection highlight (0.0 = not selected, > 0 = selected)
+uniform float selectionTint;
+
 // ========== Texture Layers ==========
 const int MAX_TEXTURE_LAYERS = 4;
 
@@ -568,5 +571,12 @@ void main()
 	finalLight += CalcSpotLights(baseColor);
 
 	// 3. Final output
-	colour = vec4(finalLight, material.baseColor.a);
+	vec3 finalColor = finalLight;
+
+	// Selection highlight: additive yellow tint (zero cost when 0)
+	if (selectionTint > 0.0) {
+		finalColor += vec3(0.35, 0.25, 0.0) * selectionTint;
+	}
+
+	colour = vec4(finalColor, material.baseColor.a);
 }

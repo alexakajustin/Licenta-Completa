@@ -189,13 +189,16 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 
 	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this);
 
-	// Disable blending for icons/gizmos overlay
+	// Disable blending for overlays
 	glDisable(GL_BLEND);
+
+	// Selection highlight — render BEFORE depth clear so it depth-tests against scene
+	scene.RenderSelectionHighlight(projection, view);
 
 	// Clear depth only so icons/gizmos draw over scene but inter-occlude
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	// Light icons + gizmos
+	// Light icons + gizmos (always on top)
 	scene.RenderIcons(projection, view);
 	scene.RenderGizmo(projection, view, cameraPos);
 }

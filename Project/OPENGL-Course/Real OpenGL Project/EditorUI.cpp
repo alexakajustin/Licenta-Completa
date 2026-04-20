@@ -1,4 +1,5 @@
 #include "EditorUI.h"
+#include "InputHandler.h"
 #include "External Libs/ImGUI/imgui_internal.h"
 
 #include "SceneManager.h"
@@ -389,13 +390,13 @@ void EditorUI::UpdateLayoutVisual()
 
 
 
-void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera)
+void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera, const InputHandler* inputHandler)
 {
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
 	RenderHierarchy(scene, bufferHeight, camera);
-	RenderViewport(scene, projection, view, cameraPos, sceneTextureID);
+	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, inputHandler);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 }
 
@@ -647,7 +648,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 	}
 }
 
-void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID)
+void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, const InputHandler* inputHandler)
 {
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
@@ -742,6 +743,25 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				scene.DeleteSelectedLights();
 			}
 		}
+
+		// Box Selection Overlay
+		if (inputHandler && inputHandler->IsBoxSelecting())
+		{
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+			// Convert viewport-relative coords to absolute screen coords
+			glm::vec2 start = inputHandler->GetBoxSelectStart();
+			glm::vec2 end = inputHandler->GetBoxSelectEnd();
+
+			ImVec2 p1(viewportPos.x + start.x, viewportPos.y + start.y);
+			ImVec2 p2(viewportPos.x + end.x, viewportPos.y + end.y);
+
+			// Semi-transparent purple fill (matches engine theme)
+			drawList->AddRectFilled(p1, p2, IM_COL32(120, 60, 180, 40));
+			// Solid purple border
+			drawList->AddRect(p1, p2, IM_COL32(120, 60, 180, 200), 0.0f, 0, 1.5f);
+		}
+
 	}
 	ImGui::End();
 }

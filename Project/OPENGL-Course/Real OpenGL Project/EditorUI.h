@@ -13,6 +13,7 @@ class SceneManager;
 class Camera;
 class GameObject;
 class NodeGraph;
+class InputHandler;
 
 class EditorUI
 {
@@ -21,7 +22,7 @@ public:
 	~EditorUI();
 
 	// Draw all editor panels (hierarchy + inspector)
-	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr);
+	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr);
 
 	// Viewport metadata update (to eliminate 1-frame lag)
 	void UpdateViewportMetadata();
@@ -38,7 +39,7 @@ private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
 	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera);
 	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
-	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID);
+	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, const InputHandler* inputHandler = nullptr);
 
 	// Helper: Unity-style Vector3 input 
 	static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f);

@@ -671,7 +671,7 @@ bool InstancedGroup::Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outInde
 // Instantiates a specific piece of scattered grass into a real 
 // editable GameObject, and removes it from the GPU group.
 // =====================================================================
-void InstancedGroup::ExtractInstance(int index, SceneManager* scene)
+void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipReuploadAndSelect)
 {
 	if (index < 0 || index >= cpuInstances.size() || !scene) return;
 
@@ -700,9 +700,44 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene)
 	
 	scene->AddObject(obj);
 
-	// 4. Force a fast re-upload to GPU so the instance disappears from the scatter instantly
-	Setup(sharedMesh, cpuInstances, material, texture, normalMap, textureLayers);
+	if (!skipReuploadAndSelect) {
+		// 4. Force a fast re-upload to GPU so the instance disappears from the scatter instantly
+		Setup(sharedMesh, cpuInstances, material, texture, normalMap, textureLayers);
 
-	// 5. Select the newly spawned GameObject in Editor
-	scene->SetSelectedIndex((int)scene->GetObjects().size() - 1);
+		// 5. Select the newly spawned GameObject in Editor
+		scene->SetSelectedIndex((int)scene->GetObjects().size() - 1);
+	}
 }
+
+void InstancedGroup::ReuploadGPU()
+{
+	if (cpuInstances.empty()) {
+		// All instances were extracted — disable rendering by zeroing count
+		// so CullAndDraw returns early. Don't call Release() to avoid freeing
+		// the sharedMesh that extracted GameObjects still reference.
+		totalCount = 0;
+		lastVisibleCount = 0;
+		
+		// Release ONLY GPU buffers (SSBOs, indirect buffers) — NOT the mesh
+		if (instanceSSBO) { glDeleteBuffers(1, &instanceSSBO); instanceSSBO = 0; }
+		ReleaseLODBuffers();
+		ReleaseShadowBuffers();
+		ReleaseChunks();
+		
+		printf("[InstancedGroup] '%s': All instances extracted, group disabled\n", name.c_str());
+		return;
+	}
+
+	if (sharedMesh) {
+		// Cache pointers before Setup (which calls Release internally)
+		Mesh* meshCopy = sharedMesh;
+		Material* matCopy = material;
+		Texture* texCopy = texture;
+		Texture* normCopy = normalMap;
+		std::vector<TextureLayer> layersCopy = textureLayers;
+		
+		Setup(meshCopy, cpuInstances, matCopy, texCopy, normCopy, layersCopy);
+	}
+}
+
+
