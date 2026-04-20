@@ -240,7 +240,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		bool isPickingPass = (overrideShader && pickingInitialized && overrideShader->GetShaderID() == pickingShader.GetShaderID());
 		
 		bool isSelected = false;
-		if (!overrideShader) {
+		// Only highlight if there are multiple objects selected
+		if (!overrideShader && selectedObjs.size() > 1) {
 			isSelected = selectedObjs.find(obj) != selectedObjs.end();
 		}
 
