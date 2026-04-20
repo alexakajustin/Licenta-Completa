@@ -198,18 +198,19 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	{
 		obj = objects[selectedIndex];
 		
-		// 1. Try to retrieve persisted procedural mesh data if available
-		// 1. Always prefer the clean source primitive if available. 
-		// (Prevents feedback loops where the node graph reads its own previous output from obj->HasCustomMesh())
-		if (obj->GetPrimitiveType() == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
-		else if (obj->GetPrimitiveType() == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
-		else if (obj->GetPrimitiveType() == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
-		// 2. Try to retrieve persisted procedural mesh data if available (ONLY if no clean primitive/model source exists)
-		else if (obj->HasCustomMesh())
+		// 1. Always prefer existing procedural/modified mesh data from the scene object.
+		//    This ensures that if a Perlin noise or erosion pass already modified the mesh,
+		//    subsequent pipeline executions (like Scatter) pick up the modified mesh,
+		//    NOT a fresh flat primitive.
+		if (obj->HasCustomMesh())
 		{
 			data = obj->GetCPUMeshData();
 			found = true;
 		}
+		// 2. If no custom mesh, check if it's a known primitive type and generate fresh data
+		else if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
+		else if (obj->GetPrimitiveType() == "Sphere") { data = PrimitiveGenerator::GetSphereData(); found = true; }
+		else if (obj->GetPrimitiveType() == "Cube") { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// 3. Extract from Model if available (for loaded assets)
 		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
 		{
