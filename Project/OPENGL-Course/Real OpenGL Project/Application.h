@@ -17,6 +17,8 @@
 #include "PointLight.h"
 #include "SpotLight.h"
 #include "CommonValues.h"
+#include "Shader.h"
+#include <vector>
 
 class Application
 {
@@ -67,6 +69,22 @@ private:
 	GLuint viewportDepth = 0;
 	int currentViewportWidth = 0;
 	int currentViewportHeight = 0;
+
+	// SSAO
+	void InitSSAO();
+	void RenderQuad();
+	
+	GLuint ssaoFBO = 0, ssaoBlurFBO = 0;
+	GLuint ssaoColorBuffer = 0, ssaoColorBufferBlur = 0;
+	GLuint noiseTexture = 0;
+	std::vector<glm::vec3> ssaoKernel;
+
+	Shader ssaoShader;
+	Shader ssaoBlurShader;
+	Shader ssaoApplyShader;
+
+	GLuint quadVAO = 0;
+	GLuint quadVBO = 0;
 
 	// Models
 	// (None currently hardcoded in Application)

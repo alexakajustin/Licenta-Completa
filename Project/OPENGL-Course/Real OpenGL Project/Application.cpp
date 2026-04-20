@@ -8,9 +8,13 @@
 #include "imgui_impl_opengl3.h"
 
 #include <cmath>
+#include <random>
 
 #include "Model.h"
 #include "Mesh.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "LightObject.h"
 #include "DebugOverlay.h"
 #include "External Libs/imnodes/imnodes.h"
@@ -85,6 +89,9 @@ bool Application::Init()
 
 	// Viewport FBO initialization
 	InitViewportFBO();
+
+	// SSAO initialization
+	InitSSAO();
 
 	// Enable VSync — caps FPS to monitor refresh rate, prevents GPU from running at 100%
 	glfwSwapInterval(1);
@@ -314,6 +321,54 @@ void Application::Run()
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		// SSAO PASS
+		// 1. Generate SSAO texture
+		glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ssaoShader.UseShader();
+		glUniformMatrix4fv(ssaoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+		glm::mat4 invProj = glm::inverse(projection);
+		glUniformMatrix4fv(glGetUniformLocation(ssaoShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+		glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "depthMap"), 0);
+		glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "texNoise"), 1);
+		glUniform2f(glGetUniformLocation(ssaoShader.GetShaderID(), "noiseScale"), currentViewportWidth / 4.0f, currentViewportHeight / 4.0f);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, viewportDepth);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, noiseTexture);
+		RenderQuad();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// 2. Blur SSAO texture
+		glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ssaoBlurShader.UseShader();
+		glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "ssaoInput"), 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+		RenderQuad();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// 3. Apply SSAO to viewportTexture using Multiplicative Blend
+		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ZERO, GL_SRC_COLOR); 
+		ssaoApplyShader.UseShader();
+		glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "ssaoText"), 0);
+		glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "depthMap"), 1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, viewportDepth);
+		RenderQuad();
+		glDisable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		// Now render ImGui windows using centralized states over the scene
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera, &inputHandler);
 		
@@ -404,10 +459,15 @@ void Application::InitViewportFBO()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, viewportTexture, 0);
 
-	glGenRenderbuffers(1, &viewportDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, viewportDepth);
+	glGenTextures(1, &viewportDepth);
+	glBindTexture(GL_TEXTURE_2D, viewportDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// No wrap values needed for simple clamping usually, but good practice:
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, viewportDepth, 0);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("Viewport Framebuffer not complete!\n");
@@ -429,9 +489,15 @@ void Application::ResizeViewportFBO(int width, int height)
 	glBindTexture(GL_TEXTURE_2D, viewportTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-	// Update Depth & Stencil Buffer
-	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+	// Update Depth Buffer Texture
+	glBindTexture(GL_TEXTURE_2D, viewportDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	// Update SSAO FBOs
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, height, 0, GL_RED, GL_FLOAT, NULL);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, height, 0, GL_RED, GL_FLOAT, NULL);
 
 	printf("Viewport FBO resized to %dx%d\n", width, height);
 }
@@ -439,6 +505,102 @@ void Application::ResizeViewportFBO(int width, int height)
 void Application::SetupDockSpace()
 {
     // Not supported without docking branch
+}
+
+void Application::InitSSAO()
+{
+	ssaoShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao.frag");
+	ssaoBlurShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_blur.frag");
+	ssaoApplyShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
+
+	// Gen FBOs
+	glGenFramebuffers(1, &ssaoFBO);
+	glGenFramebuffers(1, &ssaoBlurFBO);
+
+	int w = currentViewportWidth;
+	int h = currentViewportHeight;
+
+	// SSAO color buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+	glGenTextures(1, &ssaoColorBuffer);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, w, h, 0, GL_RED, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBuffer, 0);
+
+	// SSAO blur buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+	glGenTextures(1, &ssaoColorBufferBlur);
+	glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, w, h, 0, GL_RED, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBufferBlur, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Generate Sample Kernel
+	std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0);
+	std::default_random_engine generator;
+	for (unsigned int i = 0; i < 64; ++i)
+	{
+		glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
+		sample = glm::normalize(sample);
+		sample *= randomFloats(generator);
+		float scale = float(i) / 64.0f;
+		scale = glm::mix(0.1f, 1.0f, scale * scale);
+		sample *= scale;
+		ssaoKernel.push_back(sample);
+	}
+
+	// Generate Noise Texture
+	std::vector<glm::vec3> ssaoNoise;
+	for (unsigned int i = 0; i < 16; i++)
+	{
+		glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f);
+		ssaoNoise.push_back(noise);
+	}
+	glGenTextures(1, &noiseTexture);
+	glBindTexture(GL_TEXTURE_2D, noiseTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	// Send kernel
+	ssaoShader.UseShader();
+	for (unsigned int i = 0; i < 64; ++i)
+	{
+		std::string name = "samples[" + std::to_string(i) + "]";
+		glUniform3fv(glGetUniformLocation(ssaoShader.GetShaderID(), name.c_str()), 1, &ssaoKernel[i][0]);
+	}
+}
+
+void Application::RenderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
 }
 
 void Application::SetupModernTheme()
@@ -518,7 +680,15 @@ void Application::Shutdown()
 {
 	if (viewportFBO) glDeleteFramebuffers(1, &viewportFBO);
 	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
-	if (viewportDepth) glDeleteRenderbuffers(1, &viewportDepth);
+	if (viewportDepth) glDeleteTextures(1, &viewportDepth);
+
+	if (ssaoFBO) glDeleteFramebuffers(1, &ssaoFBO);
+	if (ssaoBlurFBO) glDeleteFramebuffers(1, &ssaoBlurFBO);
+	if (ssaoColorBuffer) glDeleteTextures(1, &ssaoColorBuffer);
+	if (ssaoColorBufferBlur) glDeleteTextures(1, &ssaoColorBufferBlur);
+	if (noiseTexture) glDeleteTextures(1, &noiseTexture);
+	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
+	if (quadVBO) glDeleteBuffers(1, &quadVBO);
 
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
