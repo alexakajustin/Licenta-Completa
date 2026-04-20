@@ -55,7 +55,6 @@ public:
 		float screenHeight = 0.0f, class Renderer* renderer = nullptr);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
-	void RenderSelectionHighlight(const glm::mat4& projection, const glm::mat4& view);
 
 	// ========== GPU-Driven Instanced Groups ==========
 	void AddInstancedGroup(InstancedGroup* group);

@@ -58,6 +58,9 @@ uniform int spotLightCount;
 
 uniform vec3 eyePosition;
 
+// Selection highlight (0.0 = not selected, > 0 = selected)
+uniform float selectionTint;
+
 // --- Specialized Grass Lighting Model ---
 // Applies wrapped diffuse and subsurface scattering for any light source.
 vec3 CalcGrassLightByDirection(Light base, vec3 direction, vec3 normal, vec3 viewDir)
@@ -143,5 +146,12 @@ void main()
     gradientColor *= mix(0.85, 1.15, noise);
 
     // 4. Final Output
-	colour = vec4(texColor.rgb * totalLight * gradientColor, texColor.a);
+	vec3 finalColor = texColor.rgb * totalLight * gradientColor;
+
+	// Selection highlight: additive yellow tint
+	if (selectionTint > 0.0) {
+		finalColor += vec3(0.35, 0.25, 0.0) * selectionTint;
+	}
+
+	colour = vec4(finalColor, texColor.a);
 }

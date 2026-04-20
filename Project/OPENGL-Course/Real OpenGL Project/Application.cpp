@@ -406,8 +406,8 @@ void Application::InitViewportFBO()
 
 	glGenRenderbuffers(1, &viewportDepth);
 	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, viewportDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, viewportDepth);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		printf("Viewport Framebuffer not complete!\n");
@@ -429,9 +429,9 @@ void Application::ResizeViewportFBO(int width, int height)
 	glBindTexture(GL_TEXTURE_2D, viewportTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-	// Update Depth Buffer
+	// Update Depth & Stencil Buffer
 	glBindRenderbuffer(GL_RENDERBUFFER, viewportDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 
 	printf("Viewport FBO resized to %dx%d\n", width, height);
 }

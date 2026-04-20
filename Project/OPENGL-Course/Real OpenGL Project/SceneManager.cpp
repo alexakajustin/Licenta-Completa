@@ -4,6 +4,7 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <unordered_set>
 #include "InstancedGroup.h"
 #include "Renderer.h"
 
@@ -149,6 +150,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		Material* material;
 		Texture* texture;
 		Texture* normalMap;
+		bool isSelected;
 		std::vector<glm::mat4> matrices;
 	};
 	std::vector<Batch> batchList;
@@ -187,6 +189,15 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 	};
 
+	std::unordered_set<GameObject*> selectedObjs;
+	if (!overrideShader) {
+		for (int idx : selectedObjectIndices) {
+			if (idx >= 0 && idx < (int)objects.size()) {
+				selectedObjs.insert(objects[idx]);
+			}
+		}
+	}
+
 	auto RenderQueue = [&](const std::vector<GameObject*>& queue) {
 		std::vector<Batch> localBatchList;
 
@@ -224,20 +235,30 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		bool hasLayers = !obj->GetTextureLayers().empty();
 		bool isPickingPass = (overrideShader && pickingInitialized && overrideShader->GetShaderID() == pickingShader.GetShaderID());
 		
+		bool isSelected = false;
+		if (!overrideShader) {
+			isSelected = selectedObjs.find(obj) != selectedObjs.end();
+		}
+
 		// If it's a simple instanced primitive without layers, batch it (unless it's picking pass which requires unique IDs)
 			if (msh && !mdl && msh->IsInstanced() && !hasLayers && !isPickingPass) {
 				bool found = false;
 				for (auto& b : localBatchList) {
-					if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm) {
+					if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm && b.isSelected == isSelected) {
 						b.matrices.push_back(obj->GetWorldMatrix());
 						found = true;
 						break;
 					}
 				}
-				if (!found) localBatchList.push_back({ msh, mat, tex, norm, {obj->GetWorldMatrix()} });
+				if (!found) localBatchList.push_back({ msh, mat, tex, norm, isSelected, {obj->GetWorldMatrix()} });
 			} else {
 			// Render Single
 			PrepareShader(targetShader);
+
+			if (!overrideShader) {
+				GLint selLoc = glGetUniformLocation(targetShader->GetShaderID(), "selectionTint");
+				if (selLoc != -1) glUniform1f(selLoc, isSelected ? 1.0f : 0.0f);
+			}
 
 			// Upload material alpha for shadow pass dithering
 			if (overrideShader) {
@@ -270,6 +291,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		if (!targetShader) continue;
 
 		PrepareShader(targetShader);
+
+		if (!overrideShader) {
+			GLint selLoc = glGetUniformLocation(targetShader->GetShaderID(), "selectionTint");
+			if (selLoc != -1) glUniform1f(selLoc, b.isSelected ? 1.0f : 0.0f);
+		}
 
 		if (!overrideShader && b.material) {
 			b.material->UseMaterial(
@@ -1286,11 +1312,7 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	glUseProgram(0);
 }
 
-void SceneManager::RenderSelectionHighlight(const glm::mat4& projection, const glm::mat4& view)
-{
-	// Lightweight selection highlighting is done via ImGui screen-space overlay in EditorUI
-	// to avoid re-rendering thousands of meshes. This method is intentionally empty.
-}
+
 
 // =====================================================================
 // Mouse/Gizmo Interaction

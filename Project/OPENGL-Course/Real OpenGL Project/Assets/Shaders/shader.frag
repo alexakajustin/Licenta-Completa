@@ -573,7 +573,7 @@ void main()
 	// 3. Final output
 	vec3 finalColor = finalLight;
 
-	// Selection highlight: additive yellow tint (zero cost when 0)
+	// Selection highlight: additive yellow tint
 	if (selectionTint > 0.0) {
 		finalColor += vec3(0.35, 0.25, 0.0) * selectionTint;
 	}
