@@ -382,13 +382,17 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 	glUniformMatrix4fv(renderShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
 	glUniform3fv(renderShader.GetEyePositionLocation(), 1, glm::value_ptr(cameraPos));
 
-	// Wind toggle
-	GLint windLoc = glGetUniformLocation(shaderID, "windEnabled");
-	if (windLoc != -1) glUniform1i(windLoc, windEnabled ? 1 : 0);
-
 	// Bind all material properties (Standard + Custom Uniforms)
 	if (!isShadowPass && material) {
 		material->Bind(renderShader.GetShaderID());
+	}
+	else if (!isShadowPass) {
+		// DEFAULT MATERIAL: Bind white color and identity tiling so objects are visible & not weirdly textured
+		glUniform1f(renderShader.GetSpecularIntensityLocation(), 0.1f);
+		glUniform1f(renderShader.GetShininessLocation(), 32.0f);
+		glUniform4f(glGetUniformLocation(shaderID, "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+		glUniform2f(renderShader.GetTilingLocation(), 1.0f, 1.0f);
+		glUniform2f(renderShader.GetOffsetLocation(), 0.0f, 0.0f);
 	}
 
 	// Bind textures
@@ -557,14 +561,6 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 
 	// Set light transform
 	shadowShader.SetDirectionalLightTransform(lightViewProj);
-
-	// Set time for wind animation (shadows must match camera pass wind!)
-	GLint timeLoc = glGetUniformLocation(sid, "time");
-	if (timeLoc != -1) glUniform1f(timeLoc, time);
-
-	// Set wind enabled
-	GLint windLoc = glGetUniformLocation(sid, "windEnabled");
-	if (windLoc != -1) glUniform1i(windLoc, windEnabled ? 1 : 0);
 
 	// Set material alpha (for shadow color map)
 	GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");

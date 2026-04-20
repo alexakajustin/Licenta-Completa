@@ -4,7 +4,7 @@
 // GPU-Driven Instanced Vertex Shader
 //
 // Reads per-instance data from an SSBO (PackedInstance: 32 bytes)
-// and builds the model matrix on-GPU. Includes procedural wind animation.
+// and builds the model matrix on-GPU. Clean generic version.
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
@@ -25,8 +25,6 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 directionalLightTransform;
-uniform float time;
-uniform int windEnabled;
 
 // Material struct (same as main shader for compatibility)
 struct Material {
@@ -67,24 +65,6 @@ mat3 eulerToMat3(vec3 euler) {
     return rz * ry * rx;
 }
 
-// Procedural wind displacement
-vec3 calcWind(vec3 worldPos, float vertexHeight, float t) {
-    if (windEnabled == 0) return vec3(0.0);
-    
-    // Only displace the tips (top of grass) — vertexHeight is normalized 0..1
-    float tipFactor = vertexHeight * vertexHeight; // Quadratic falloff
-    
-    // Multi-frequency wind for natural motion
-    float wind1 = sin(worldPos.x * 0.5 + t * 1.2) * 0.3;
-    float wind2 = sin(worldPos.z * 0.7 + t * 0.8) * 0.2;
-    float wind3 = sin((worldPos.x + worldPos.z) * 0.3 + t * 2.5) * 0.1; // Gust
-    
-    float windX = (wind1 + wind3) * tipFactor;
-    float windZ = (wind2 + wind3 * 0.5) * tipFactor;
-    
-    return vec3(windX, 0.0, windZ);
-}
-
 void main()
 {
     PackedInstance inst = instances[gl_InstanceID];
@@ -100,13 +80,8 @@ void main()
     vec3 scaledPos = pos * instanceScale;
     vec3 rotatedPos = rotMat * scaledPos;
     
-    // Wind animation (before final translation)
-    // Use pos.y as vertex height (assumes grass blade Y is up, 0=base, max=tip)
-    // Normalize by getting approximate mesh height
-    float vertexHeight = clamp(pos.y, 0.0, 1.0);
-    vec3 wind = calcWind(instancePos, vertexHeight, time);
-    
-    vec3 worldPos = rotatedPos + instancePos + wind;
+    // Generic placement
+    vec3 worldPos = rotatedPos + instancePos;
     
     // Build full 4x4 model matrix for normal/light calculations
     mat4 modelMatrix = mat4(1.0);
@@ -119,11 +94,11 @@ void main()
     DirectionalLightSpacePos = directionalLightTransform * vec4(worldPos, 1.0);
     
     vertex_color = vec4(clamp(pos, 0.0, 1.0), 1.0);
-    TexCoord = tex * material.tiling + material.offset;
+
+	// Safe UVs
+	vec2 tiling = (material.tiling.x == 0.0 && material.tiling.y == 0.0) ? vec2(1.0) : material.tiling;
+    TexCoord = tex * tiling + material.offset;
     
-    // OPTIMIZATION: For uniform scale (w component), the normal matrix
-    // is just the rotation matrix. Avoids expensive per-vertex inverse().
-    // This saves ~30% vertex shader cost at 10M+ instances.
     mat3 normalMatrix = rotMat;  // Correct for uniform scale
     Normal = normalMatrix * norm;
     FragPos = worldPos;

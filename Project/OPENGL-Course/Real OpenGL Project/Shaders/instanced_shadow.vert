@@ -9,6 +9,7 @@
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
+layout (location = 1) in vec2 tex;
 
 struct PackedInstance {
     vec4 posAndScale;     // xyz = position, w = scale
@@ -22,6 +23,19 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
 uniform mat4 directionalLightTransform;
 uniform float time;
 uniform int windEnabled;
+
+struct Material {
+    float specularIntensity;
+    float shininess;
+    float sssScale;
+    float sssDistortion;
+    vec4 baseColor;
+    vec2 tiling;
+    vec2 offset;
+};
+uniform Material material;
+
+out vec2 TexCoord;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -73,6 +87,8 @@ void main()
     vec3 wind = calcWind(instancePos, vertexHeight, time);
     
     vec3 worldPos = rotatedPos + instancePos + wind;
+    
+    TexCoord = tex * material.tiling + material.offset;
     
     gl_Position = directionalLightTransform * vec4(worldPos, 1.0);
 }

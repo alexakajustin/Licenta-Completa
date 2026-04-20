@@ -77,8 +77,6 @@ public:
 	float GetMeshBoundRadius() const { return meshBoundRadius; }
 	void SetMaxDrawDistance(float dist) { defaultMaxDrawDistance = dist; }
 	float GetMaxDrawDistance() const { return defaultMaxDrawDistance; }
-	void SetWindEnabled(bool enabled) { windEnabled = enabled; }
-	bool IsWindEnabled() const { return windEnabled; }
 	void SetShadowDistance(float dist) { shadowDrawDistance = dist; }
 	float GetShadowDistance() const { return shadowDrawDistance; }
 
@@ -130,7 +128,6 @@ private:
 	glm::vec3 meshBoundsCenter = glm::vec3(0.0f); // Center of mesh AABB relative to origin
 	float defaultMaxDrawDistance = 200.0f;
 	float shadowDrawDistance = 30.0f;  // Only cast shadows within this range
-	bool windEnabled = true;
 
 	// Spatial chunking for 10M+ scale
 	struct Chunk {

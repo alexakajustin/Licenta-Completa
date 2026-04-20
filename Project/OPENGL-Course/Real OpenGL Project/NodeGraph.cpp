@@ -414,10 +414,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							finalNorm,
 							finalLayers
 						);
-						
-						// Enabled wind globally; custom shaders will use their own inherited logic,
-						// while the default instanced shader will respect this flag.
-						group->SetWindEnabled(true);
 
 					// Smart defaults based on instance count
 					int instanceCount = (int)packedInstances.size();
