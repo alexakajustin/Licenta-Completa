@@ -85,10 +85,10 @@ public:
 	void DeleteSelectedLights();
 
 	// ========== Creation / Deletion ==========
-	void CreateGameObject(const std::string& type);
+	void CreateGameObject(const std::string& type, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void DeleteGameObject(int index);
-	void CreateLight(LightType type);
+	void CreateLight(LightType type, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void DeleteLight(int index);
 
 	// ========== Configuration ==========

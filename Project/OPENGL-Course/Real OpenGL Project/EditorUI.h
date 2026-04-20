@@ -35,7 +35,7 @@ public:
 	const std::string& GetPendingScenePath() const { return pendingScenePath; }
 	void ClearPendingSceneAction() { pendingSceneAction = SceneAction::None; pendingScenePath.clear(); }
 
-	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph);
+	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera = nullptr);
 
 private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);

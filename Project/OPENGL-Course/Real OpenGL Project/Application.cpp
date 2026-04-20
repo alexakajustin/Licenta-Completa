@@ -238,7 +238,7 @@ void Application::Run()
 		// Since docking is not available, we use fixed window layout to emulate Unity
 		
 		// 1. Render Top Bar first
-		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph());
+		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph(), &camera);
 
 		// Define the progress callback for both loading projects and executing graphs
 		std::string progressTitle = "Loading...";

@@ -37,11 +37,17 @@ void main() {
     // Reconstruct normal from depth derivatives (screen-space)
     vec3 fragPosDx = dFdx(fragPos);
     vec3 fragPosDy = dFdy(fragPos);
-    vec3 normal = normalize(cross(fragPosDy, fragPosDx));
+    // In OpenGL, cross(dx, dy) generally points towards +Z (camera)
+    vec3 normal = normalize(cross(fragPosDx, fragPosDy));
 
-    // Ensure normal faces the camera (view-space: camera at origin, looking -Z)
-    // Normal should point towards the camera (positive Z component)
-    if (normal.z < 0.0) normal = -normal;
+    // Ensure normal faces the camera correctly, even at screen edges
+    vec3 viewDir = normalize(-fragPos); 
+    if (dot(normal, viewDir) < 0.0) normal = -normal;
+
+    // Detect steep slopes/grazing angles where normal reconstruction is poor
+    // and increase the bias dynamically to prevent self-shadowing (black artifacts)
+    float NdV = max(dot(normal, viewDir), 0.001);
+    float dynamicBias = bias + (1.0 - NdV) * bias * 8.0;
 
     vec3 randomVec = normalize(texture(texNoise, TexCoords * noiseScale).xyz);
 
@@ -74,7 +80,7 @@ void main() {
         
         // Occlusion test: is the geometry closer to camera than our sample?
         // In view space, Z is negative: closer = less negative = larger value
-        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;           
+        occlusion += (sampleDepth >= samplePos.z + dynamicBias ? 1.0 : 0.0) * rangeCheck;           
     }
     
     occlusion = 1.0 - (occlusion / float(actualSamples)) * intensity;

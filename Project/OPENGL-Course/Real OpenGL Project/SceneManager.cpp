@@ -726,7 +726,7 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 // Creation / Deletion
 // =====================================================================
 
-void SceneManager::CreateGameObject(const std::string& type)
+void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 {
 	GameObject* newObj = new GameObject(type + " " + std::to_string(objects.size()));
 	
@@ -735,6 +735,7 @@ void SceneManager::CreateGameObject(const std::string& type)
 	else if (type == "Sphere") newObj->SetMesh(PrimitiveGenerator::CreateSphere());
 
 	newObj->SetPrimitiveType(type == "Empty Object" ? "Empty" : type);
+	newObj->GetTransform().SetPosition(spawnPos);
 
 	objects.push_back(newObj);
 	SetSelectedIndex((int)objects.size() - 1);
@@ -758,12 +759,13 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	printf("Instantiated model: %s (via AssetManager)\n", path.string().c_str());
 }
 
-void SceneManager::CreateLight(LightType type)
+void SceneManager::CreateLight(LightType type, glm::vec3 spawnPos)
 {
 	if (type == LightType::Point) {
 		if (globalPointLights && globalPointLightCount && *globalPointLightCount < MAX_POINT_LIGHTS) {
 			unsigned int idx = *globalPointLightCount;
 			globalPointLights[idx] = PointLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 0.8f, 0.0f, 5.0f, 0.0f, 1.0f, 0.02f, 0.01f);
+			*globalPointLights[idx].GetPositionPtr() = spawnPos;
 			
 			LightObject* newLightObj = new LightObject("Point Light " + std::to_string(lights.size()), &globalPointLights[idx]);
 			lights.push_back(newLightObj);
@@ -774,6 +776,7 @@ void SceneManager::CreateLight(LightType type)
 		if (globalSpotLights && globalSpotLightCount && *globalSpotLightCount < MAX_SPOT_LIGHTS) {
 			unsigned int idx = *globalSpotLightCount;
 			globalSpotLights[idx] = SpotLight(1024, 1024, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 0.1f, 1.0f, 0.0f, 5.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.02f, 0.01f, 20.0f);
+			*globalSpotLights[idx].GetPositionPtr() = spawnPos;
 			
 			LightObject* newLightObj = new LightObject("Spot Light " + std::to_string(lights.size()), &globalSpotLights[idx]);
 			lights.push_back(newLightObj);

@@ -439,8 +439,9 @@ void EditorUI::UpdateViewportMetadata()
 }
 
 
-void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
+void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera)
 {
+	glm::vec3 spawnPos = camera ? camera->getCameraPosition() + camera->getCameraDirection() * 10.0f : glm::vec3(0.0f);
 	if (ImGui::BeginMainMenuBar())
 	{
 		if (ImGui::BeginMenu("File"))
@@ -474,16 +475,16 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 
 		if (ImGui::BeginMenu("GameObject"))
 		{
-			if (ImGui::MenuItem("Create Empty")) { scene.CreateGameObject("Empty Object"); }
+			if (ImGui::MenuItem("Create Empty")) { scene.CreateGameObject("Empty Object", spawnPos); }
 			ImGui::Separator();
-			if (ImGui::MenuItem("3D Object -> Plane")) { scene.CreateGameObject("Plane"); }
-			if (ImGui::MenuItem("3D Object -> Cube")) { scene.CreateGameObject("Cube"); }
-			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere"); }
+			if (ImGui::MenuItem("3D Object -> Plane")) { scene.CreateGameObject("Plane", spawnPos); }
+			if (ImGui::MenuItem("3D Object -> Cube")) { scene.CreateGameObject("Cube", spawnPos); }
+			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere", spawnPos); }
 			ImGui::Separator();
 			if (ImGui::BeginMenu("Light"))
 			{
-				if (ImGui::MenuItem("Point Light")) { scene.CreateLight(LightType::Point); }
-				if (ImGui::MenuItem("Spot Light")) { scene.CreateLight(LightType::Spot); }
+				if (ImGui::MenuItem("Point Light")) { scene.CreateLight(LightType::Point, spawnPos); }
+				if (ImGui::MenuItem("Spot Light")) { scene.CreateLight(LightType::Spot, spawnPos); }
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenu();
@@ -712,10 +713,8 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 					ImVec2 winPos = ImGui::GetWindowPos();
 					ImVec2 winSize = ImGui::GetWindowSize();
 					glm::vec3 rayDir = scene.GetMouseRay(mousePos.x - winPos.x, mousePos.y - winPos.y, projection, view, winSize.x, winSize.y);
-					glm::vec3 spawnPos(0.0f);
-					if (!scene.RayPlaneIntersect(cameraPos, rayDir, glm::vec3(0,0,0), glm::vec3(0,1,0), spawnPos)) {
-						spawnPos = cameraPos + rayDir * 5.0f;
-					}
+					// Spawn roughly 10 units in front of the camera along the mouse ray
+					glm::vec3 spawnPos = cameraPos + rayDir * 10.0f;
 					scene.InstantiateModel(path, spawnPos);
 				}
 				else if (isMaterial || ext == ".mat") {
@@ -869,17 +868,18 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 		// Right-click context menu
 		if (ImGui::BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags_MouseButtonRight))
 		{
+			glm::vec3 spawnPos = camera ? camera->getCameraPosition() + camera->getCameraDirection() * 10.0f : glm::vec3(0.0f);
 			if (ImGui::BeginMenu("Create GameObject"))
 			{
-				if (ImGui::MenuItem("Plane")) scene.CreateGameObject("Plane");
-				if (ImGui::MenuItem("Cube")) scene.CreateGameObject("Cube");
-				if (ImGui::MenuItem("Sphere")) scene.CreateGameObject("Sphere");
+				if (ImGui::MenuItem("Plane")) scene.CreateGameObject("Plane", spawnPos);
+				if (ImGui::MenuItem("Cube")) scene.CreateGameObject("Cube", spawnPos);
+				if (ImGui::MenuItem("Sphere")) scene.CreateGameObject("Sphere", spawnPos);
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Create Light"))
 			{
-				if (ImGui::MenuItem("Point Light")) scene.CreateLight(LightType::Point);
-				if (ImGui::MenuItem("Spot Light")) scene.CreateLight(LightType::Spot);
+				if (ImGui::MenuItem("Point Light")) scene.CreateLight(LightType::Point, spawnPos);
+				if (ImGui::MenuItem("Spot Light")) scene.CreateLight(LightType::Spot, spawnPos);
 				ImGui::EndMenu();
 			}
 			ImGui::EndPopup();
@@ -887,7 +887,8 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 
 		// Drag-drop target (DRY: uses shared handler)
 		if (ImGui::BeginDragDropTarget()) {
-			HandleAssetDrop(scene, glm::vec3(0.0f)); // Pass a dummy spawnPos, as it's not used for material drops
+			glm::vec3 spawnPos = camera ? camera->getCameraPosition() + camera->getCameraDirection() * 10.0f : glm::vec3(0.0f);
+			HandleAssetDrop(scene, spawnPos);
 			ImGui::EndDragDropTarget();
 		}
 	}
