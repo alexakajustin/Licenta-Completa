@@ -34,7 +34,12 @@ public:
 	std::vector<LightObject*>& GetLights() { return lights; }
 
 	// ========== Selection ==========
-	void ClearSelection() { selectedObjectIndices.clear(); selectedLightIndices.clear(); activeDragAxis = 0; }
+	void ClearSelection() { 
+		selectedObjectIndices.clear(); 
+		selectedLightIndices.clear(); 
+		activeDragAxis = 0; 
+		for (auto* group : instancedGroups) if (group) group->ClearSelection();
+	}
 	
 	void SetSelectedIndex(int index, bool multiSelect = false, bool rangeSelect = false);
 	int GetSelectedIndex() const; // Returns the "anchor" or last selected object

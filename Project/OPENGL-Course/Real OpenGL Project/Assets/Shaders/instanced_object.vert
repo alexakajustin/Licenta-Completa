@@ -47,6 +47,7 @@ out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
 out vec3 LocalPos;
+out float vIsSelected;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -72,6 +73,7 @@ void main()
     vec3 instancePos = inst.posAndScale.xyz;
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
+    vIsSelected = inst.rotAndFlags.w;
     
     // Build model matrix from packed data
     mat3 rotMat = eulerToMat3(instanceRot);

@@ -11,6 +11,8 @@
 #include <cmath>
 #include <map>
 #include <algorithm>
+#include <execution>
+#include <numeric>
 
 InstancedGroup::InstancedGroup(const std::string& name)
 	: name(name)
@@ -707,6 +709,127 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 		// 5. Select the newly spawned GameObject in Editor
 		scene->SetSelectedIndex((int)scene->GetObjects().size() - 1);
 	}
+}
+
+// =====================================================================
+// Instantiates a batch of scattered grass instances into real 
+// editable GameObjects, optimized with multithreading.
+// =====================================================================
+void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneManager* scene, bool skipReuploadAndSelect)
+{
+	if (indices.empty() || !scene) return;
+
+	// Sort indices in descending order, so that swap-pop doesn't invalidate subsequent indices
+	std::vector<int> sortedIndices = indices;
+	std::sort(sortedIndices.rbegin(), sortedIndices.rend());
+
+	// Prepare an array of GameObjects to hold the results of parallel creation
+	std::vector<GameObject*> newObjects(sortedIndices.size(), nullptr);
+
+	std::vector<size_t> loopIndices(sortedIndices.size());
+	std::iota(loopIndices.begin(), loopIndices.end(), 0);
+
+	// Multi-threaded GameObject creation (Transforms + Allocations)
+	std::for_each(std::execution::par, loopIndices.begin(), loopIndices.end(), [&](size_t arrIdx) {
+		int index = sortedIndices[arrIdx];
+		
+		PackedInstance inst = cpuInstances[index];
+		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+		float scale = inst.positionAndScale.w;
+		glm::vec3 euler(inst.rotationAndFlags.x, inst.rotationAndFlags.y, inst.rotationAndFlags.z);
+
+		// Note: "new GameObject" and string allocations are thread-safe here
+		GameObject* obj = new GameObject("Extracted " + name);
+		obj->GetTransform().SetPosition(pos);
+		obj->GetTransform().SetRotation(euler);
+		obj->GetTransform().SetScale(glm::vec3(scale));
+		
+		newObjects[arrIdx] = obj;
+	});
+
+	// Sequential removal from cpuInstances (O(1) swap-pop in descending order)
+	for (int idx : sortedIndices) {
+		cpuInstances[idx] = cpuInstances.back();
+		cpuInstances.pop_back();
+	}
+
+	// Sequential assignment of shared components and scene integration
+	int baseItemIdx = (int)scene->GetObjects().size();
+	for (size_t i = 0; i < newObjects.size(); ++i) {
+		newObjects[i]->SetMesh(sharedMesh); // Thread-safe since it's sequential (modifies mesh refCount)
+		newObjects[i]->SetMaterial(material);
+		newObjects[i]->SetTexture(texture);
+		newObjects[i]->SetNormalMap(normalMap);
+		scene->AddObject(newObjects[i]);
+	}
+
+	if (!skipReuploadAndSelect) {
+		// Force a fast re-upload to GPU so the instance disappears from the scatter instantly
+		Setup(sharedMesh, cpuInstances, material, texture, normalMap, textureLayers);
+
+		// Multi-selection behavior
+		for (size_t i = 0; i < newObjects.size(); ++i) {
+			scene->SetSelectedIndex(baseItemIdx + (int)i, true, false);
+		}
+	}
+}
+
+// =====================================================================
+// GPU Selection Pipeline
+// =====================================================================
+void InstancedGroup::SelectInstances(const std::vector<int>& indices, bool additive)
+{
+	if (!additive) {
+		ClearSelection();
+	}
+
+	bool changed = false;
+	for (int idx : indices) {
+		if (idx >= 0 && idx < cpuInstances.size()) {
+			if (cpuInstances[idx].rotationAndFlags.w < 0.5f) {
+				cpuInstances[idx].rotationAndFlags.w = 1.0f;
+				selectedInstanceIndices.push_back(idx);
+				changed = true;
+			}
+		}
+	}
+
+	if (changed) {
+		ReuploadGPU();
+	}
+}
+
+void InstancedGroup::ClearSelection()
+{
+	if (selectedInstanceIndices.empty()) return;
+
+	for (int idx : selectedInstanceIndices) {
+		if (idx >= 0 && idx < cpuInstances.size()) {
+			cpuInstances[idx].rotationAndFlags.w = 0.0f;
+		}
+	}
+	selectedInstanceIndices.clear();
+	ReuploadGPU();
+}
+
+void InstancedGroup::DeleteSelectedInstances()
+{
+	if (selectedInstanceIndices.empty()) return;
+
+	// O(N) filter to delete instances physically
+	std::vector<PackedInstance> newInstances;
+	newInstances.reserve(cpuInstances.size() - selectedInstanceIndices.size());
+	
+	for (const auto& inst : cpuInstances) {
+		if (inst.rotationAndFlags.w < 0.5f) {
+			newInstances.push_back(inst);
+		}
+	}
+
+	cpuInstances = std::move(newInstances);
+	selectedInstanceIndices.clear();
+	
+	ReuploadGPU();
 }
 
 void InstancedGroup::ReuploadGPU()

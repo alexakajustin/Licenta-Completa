@@ -23,9 +23,9 @@ out vec3 NormalWorld;
 // Object-space position for height-based layer blending
 out vec3 LocalPos;
 
-// Basis for planar UV mapping (world-space axes of the object)
 out vec3 WorldXBasis;
 out vec3 WorldZBasis;
+out float vIsSelected;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -51,8 +51,10 @@ void main()
 {
 	mat4 modelMatrix = model;
 	if (useInstancing == 1) {
-		modelMatrix = instanceMatrix;
+	modelMatrix = instanceMatrix;
 	}
+
+	vIsSelected = 0.0;
 
 	gl_Position = projection * view * modelMatrix * vec4(pos, 1.0);
 	DirectionalLightSpacePos = directionalLightTransform * modelMatrix * vec4(pos, 1.0f);

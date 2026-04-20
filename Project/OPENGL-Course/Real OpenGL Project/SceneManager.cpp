@@ -55,6 +55,10 @@ void SceneManager::RemoveObject(const std::string& name)
 
 void SceneManager::DeleteSelectedObjects()
 {
+	for (auto* group : instancedGroups) {
+		if (group) group->DeleteSelectedInstances();
+	}
+
 	if (selectedObjectIndices.empty()) return;
 
 	// Collect objects to delete
@@ -689,19 +693,20 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 			}
 		}
 
-		// Extract in reverse order to preserve indices (swap-pop is index-sensitive)
-		// Use batch mode: skip GPU re-upload and selection per-instance
-		for (int j = (int)matchingIndices.size() - 1; j >= 0; j--) {
-			group->ExtractInstance(matchingIndices[j], this, true);
-			// After extraction, the newly created object is at the back of the objects list
-			int newIdx = (int)objects.size() - 1;
-			if (!IsObjectSelected(newIdx)) {
-				selectedObjectIndices.push_back(newIdx);
-			}
-		}
-
-		// Single GPU re-upload after all extractions from this group
+		// Extract all instances in parallel
 		if (!matchingIndices.empty()) {
+			int baseIdx = (int)objects.size();
+			group->ExtractInstances(matchingIndices, this, true);
+			
+			// Select the newly extracted objects
+			int newSize = (int)objects.size();
+			for (int i = baseIdx; i < newSize; i++) {
+				if (!IsObjectSelected(i)) {
+					selectedObjectIndices.push_back(i);
+				}
+			}
+
+			// Single GPU re-upload after all extractions from this group
 			group->ReuploadGPU();
 		}
 	}

@@ -15,6 +15,7 @@ in vec3 NormalWorld;
 in vec3 LocalPos;
 
 out vec4 colour;	
+in float vIsSelected;
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
@@ -574,8 +575,9 @@ void main()
 	vec3 finalColor = finalLight;
 
 	// Selection highlight: additive yellow tint
-	if (selectionTint > 0.0) {
-		finalColor += vec3(0.35, 0.25, 0.0) * selectionTint;
+	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
+	if (selectedVal > 0.0) {
+		finalColor += vec3(0.35, 0.25, 0.0) * selectedVal;
 	}
 
 	colour = vec4(finalColor, material.baseColor.a);

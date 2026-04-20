@@ -87,10 +87,17 @@ public:
 	Mesh* GetMesh() const { return sharedMesh; }
 	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
 
-	// Smart Instance Extraction
+	// Smart Instance Extraction & Selection
 	std::vector<PackedInstance> cpuInstances;
+	std::vector<int> selectedInstanceIndices;
 	bool Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outIndex, float& outDist);
+
+	// GPU Selection Pipeline
+	void SelectInstances(const std::vector<int>& indices, bool additive);
+	void ClearSelection();
+	void DeleteSelectedInstances();
 	void ExtractInstance(int index, class SceneManager* scene, bool skipReuploadAndSelect = false);
+	void ExtractInstances(const std::vector<int>& indices, class SceneManager* scene, bool skipReuploadAndSelect = false);
 	void ReuploadGPU(); // Re-upload after batch extraction
 
 	// Cleanup
