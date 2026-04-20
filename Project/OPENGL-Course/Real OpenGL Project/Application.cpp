@@ -92,6 +92,7 @@ bool Application::Init()
 
 	// SSAO initialization
 	InitSSAO();
+	editorUI.SetSSAOSettings(&ssaoSettings);
 
 	// Enable VSync — caps FPS to monitor refresh rate, prevents GPU from running at 100%
 	glfwSwapInterval(1);
@@ -322,51 +323,68 @@ void Application::Run()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// SSAO PASS
-		// 1. Generate SSAO texture
-		glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		glClear(GL_COLOR_BUFFER_BIT);
-		ssaoShader.UseShader();
-		glUniformMatrix4fv(ssaoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
-		glm::mat4 invProj = glm::inverse(projection);
-		glUniformMatrix4fv(glGetUniformLocation(ssaoShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-		glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "depthMap"), 0);
-		glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "texNoise"), 1);
-		glUniform2f(glGetUniformLocation(ssaoShader.GetShaderID(), "noiseScale"), currentViewportWidth / 4.0f, currentViewportHeight / 4.0f);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, viewportDepth);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, noiseTexture);
-		RenderQuad();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		if (ssaoSettings.enabled)
+		{
+			// 1. Generate SSAO texture
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			glClear(GL_COLOR_BUFFER_BIT);
+			ssaoShader.UseShader();
+			glUniformMatrix4fv(ssaoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+			glm::mat4 invProj = glm::inverse(projection);
+			glUniformMatrix4fv(glGetUniformLocation(ssaoShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "depthMap"), 0);
+			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "texNoise"), 1);
+			glUniform2f(glGetUniformLocation(ssaoShader.GetShaderID(), "noiseScale"), currentViewportWidth / 4.0f, currentViewportHeight / 4.0f);
+			// Pass configurable SSAO parameters
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "radius"), ssaoSettings.radius);
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "bias"), ssaoSettings.bias);
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "intensity"), ssaoSettings.intensity);
+			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "kernelSize"), ssaoSettings.kernelSize);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, viewportDepth);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, noiseTexture);
+			RenderQuad();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// 2. Blur SSAO texture
-		glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
-		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		glClear(GL_COLOR_BUFFER_BIT);
-		ssaoBlurShader.UseShader();
-		glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "ssaoInput"), 0);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
-		RenderQuad();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			// 2. Blur SSAO texture
+			glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			glClear(GL_COLOR_BUFFER_BIT);
+			ssaoBlurShader.UseShader();
+			glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "ssaoInput"), 0);
+			glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "blurSize"), ssaoSettings.blurSize);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
+			RenderQuad();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		// 3. Apply SSAO to viewportTexture using Multiplicative Blend
+			// 3. Apply SSAO to viewportTexture using Multiplicative Blend
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			glDisable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ZERO, GL_SRC_COLOR); 
+			ssaoApplyShader.UseShader();
+			glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "ssaoText"), 0);
+			glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "depthMap"), 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, viewportDepth);
+			RenderQuad();
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+
+		// Render gizmos/icons AFTER SSAO so depth buffer had valid object data for SSAO
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		glDisable(GL_DEPTH_TEST);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ZERO, GL_SRC_COLOR); 
-		ssaoApplyShader.UseShader();
-		glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "ssaoText"), 0);
-		glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "depthMap"), 1);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, viewportDepth);
-		RenderQuad();
-		glDisable(GL_BLEND);
-		glEnable(GL_DEPTH_TEST);
+		glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so gizmos always render on top
+		sceneManager.RenderIcons(projection, view);
+		sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// Now render ImGui windows using centralized states over the scene
@@ -375,6 +393,7 @@ void Application::Run()
 		assetBrowser.Render(sceneManager, uiState);
 		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
+		editorUI.RenderSSAOSettings();
 
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)

@@ -191,13 +191,8 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);
-
-	// Clear depth only so icons/gizmos draw over scene but inter-occlude
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	// Light icons + gizmos (always on top)
-	scene.RenderIcons(projection, view);
-	scene.RenderGizmo(projection, view, cameraPos);
+	// NOTE: Gizmo/icon rendering moved to Application::Run() AFTER the SSAO pass,
+	// so that the depth buffer retains valid object data for SSAO sampling.
 }
 
 Shader* Renderer::GetInstancedShader(Shader* original)

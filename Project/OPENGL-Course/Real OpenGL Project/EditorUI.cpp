@@ -1,4 +1,5 @@
 #include "EditorUI.h"
+#include "Application.h"
 #include "InputHandler.h"
 #include "External Libs/ImGUI/imgui_internal.h"
 
@@ -497,6 +498,8 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph)
 			ImGui::MenuItem("Node Builder", nullptr, &windowState.isNodeBuilderOpen);
 			ImGui::Separator();
 			ImGui::MenuItem("Debug Overlay", nullptr, &windowState.isDebugOverlayOpen);
+			ImGui::Separator();
+			ImGui::MenuItem("SSAO Settings", nullptr, &windowState.isSSAOSettingsOpen);
 			
 			if (ImGui::BeginMenu("Layout"))
 			{
@@ -1359,3 +1362,50 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 // RenderViewport renamed to Render (which handles the Scene window)
 // RenderViewportDropTarget removed as it's now handled by the Scene window logic
 
+void EditorUI::RenderSSAOSettings()
+{
+	if (!windowState.isSSAOSettingsOpen || !ssaoSettingsPtr) return;
+
+	ImGui::SetNextWindowSize(ImVec2(320, 310), ImGuiCond_FirstUseEver);
+
+	if (ImGui::Begin("SSAO Settings", &windowState.isSSAOSettingsOpen, ImGuiWindowFlags_NoCollapse))
+	{
+		// Enable toggle
+		ImGui::Checkbox("Enable SSAO", &ssaoSettingsPtr->enabled);
+		ImGui::Separator();
+
+		// Disable controls when SSAO is off
+		if (!ssaoSettingsPtr->enabled) {
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+			ImGui::BeginDisabled();
+		}
+
+		ImGui::Text("Quality");
+		ImGui::SliderInt("Kernel Samples", &ssaoSettingsPtr->kernelSize, 4, 64);
+		ImGui::SliderInt("Blur Size", &ssaoSettingsPtr->blurSize, 2, 8);
+
+		ImGui::Spacing();
+		ImGui::Text("Effect");
+		ImGui::SliderFloat("Radius", &ssaoSettingsPtr->radius, 0.01f, 5.0f, "%.3f");
+		ImGui::SliderFloat("Bias", &ssaoSettingsPtr->bias, 0.0f, 0.2f, "%.4f");
+		ImGui::SliderFloat("Intensity", &ssaoSettingsPtr->intensity, 0.1f, 5.0f, "%.2f");
+
+		ImGui::Spacing();
+		ImGui::Separator();
+
+		if (ImGui::Button("Reset Defaults", ImVec2(-1, 0)))
+		{
+			ssaoSettingsPtr->radius = 0.5f;
+			ssaoSettingsPtr->bias = 0.025f;
+			ssaoSettingsPtr->intensity = 1.5f;
+			ssaoSettingsPtr->kernelSize = 64;
+			ssaoSettingsPtr->blurSize = 4;
+		}
+
+		if (!ssaoSettingsPtr->enabled) {
+			ImGui::EndDisabled();
+			ImGui::PopStyleVar();
+		}
+	}
+	ImGui::End();
+}

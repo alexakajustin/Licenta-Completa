@@ -1,5 +1,14 @@
 #pragma once
 
+struct SSAOSettings {
+	bool enabled = true;
+	float radius = 0.5f;
+	float bias = 0.025f;
+	float intensity = 1.5f;
+	int kernelSize = 64;   // 1-64
+	int blurSize = 4;      // 2, 4, 6, 8
+};
+
 #include "Window.h"
 #include "Camera.h"
 #include "Renderer.h"
@@ -85,6 +94,11 @@ private:
 
 	GLuint quadVAO = 0;
 	GLuint quadVBO = 0;
+
+public:
+	SSAOSettings& GetSSAOSettings() { return ssaoSettings; }
+private:
+	SSAOSettings ssaoSettings;
 
 	// Models
 	// (None currently hardcoded in Application)
