@@ -49,8 +49,10 @@ void Model::LoadModelGPU()
 			max = glm::max(max, p);
 		}
 		newMesh->SetBounds(min, max);
+		newMesh->AddRef(); // Model claims ownership reference
 
 		meshList.push_back(newMesh);
+		meshNames.push_back(im.name);
 		meshToTex.push_back(im.materialIndex);
 
 		MeshData md;
@@ -134,7 +136,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 			indices.push_back(face.mIndices[j]);
 	}
 
-	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex });
+	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex, std::string(mesh->mName.C_Str()) });
 }
 
 void Model::LoadMaterials(const aiScene* scene)
@@ -190,10 +192,12 @@ void Model::ClearModel()
 	{
 		if (meshList[i])
 		{
-			delete meshList[i];
+			meshList[i]->Release(); // Use reference counting instead of direct delete
 			meshList[i] = nullptr;
 		}
 	}
+	meshList.clear();
+	meshNames.clear();
 
 	for (size_t i = 0; i < textureList.size(); i++)
 	{

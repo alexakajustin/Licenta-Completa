@@ -428,58 +428,68 @@ void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)
 		return;
 	}
 
-	glm::vec3 localMin(0.0f), localMax(0.0f);
-	if (model && !hasCustomMesh) {
-		localMin = model->GetMinBound();
-		localMax = model->GetMaxBound();
-	}
-	else if (hasCustomMesh) {
-		if (customBoundsDirty) {
-			// Recompute bounds if mesh data changed
-			if (cpuMeshData) {
-				cpuMeshData->GetBounds(customMeshMin, customMeshMax);
-			}
-			customBoundsDirty = false;
+	glm::vec3 worldMin(1e10f), worldMax(-1e10f);
+	bool hasAnyBounds = false;
+
+	// 1. Include own mesh bounds
+	if (model || mesh || hasCustomMesh) {
+		glm::vec3 localMin(0.0f), localMax(0.0f);
+		if (model && !hasCustomMesh) {
+			localMin = model->GetMinBound();
+			localMax = model->GetMaxBound();
 		}
-		localMin = customMeshMin;
-		localMax = customMeshMax;
-	}
-	else if (mesh) {
-		mesh->GetBounds(localMin, localMax);
-	}
-	else {
-		min = transform.GetPosition();
-		max = transform.GetPosition();
-		cachedWorldMin = min;
-		cachedWorldMax = max;
-		boundsDirty = false;
-		return;
-	}
+		else if (hasCustomMesh) {
+			if (customBoundsDirty) {
+				if (cpuMeshData) cpuMeshData->GetBounds(customMeshMin, customMeshMax);
+				customBoundsDirty = false;
+			}
+			localMin = customMeshMin;
+			localMax = customMeshMax;
+		}
+		else if (mesh) {
+			mesh->GetBounds(localMin, localMax);
+		}
 
-	glm::mat4 world = GetWorldMatrix();
-	glm::vec3 corners[8] = {
-		{localMin.x, localMin.y, localMin.z},
-		{localMax.x, localMin.y, localMin.z},
-		{localMin.x, localMax.y, localMin.z},
-		{localMin.x, localMin.y, localMax.z},
-		{localMax.x, localMax.y, localMin.z},
-		{localMax.x, localMin.y, localMax.z},
-		{localMin.x, localMax.y, localMax.z},
-		{localMax.x, localMax.y, localMax.z},
-	};
+		glm::mat4 world = GetWorldMatrix();
+		glm::vec3 corners[8] = {
+			{localMin.x, localMin.y, localMin.z}, {localMax.x, localMin.y, localMin.z},
+			{localMin.x, localMax.y, localMin.z}, {localMin.x, localMin.y, localMax.z},
+			{localMax.x, localMax.y, localMin.z}, {localMax.x, localMin.y, localMax.z},
+			{localMin.x, localMax.y, localMax.z}, {localMax.x, localMax.y, localMax.z},
+		};
 
-	min = glm::vec3(1e10f);
-	max = glm::vec3(-1e10f);
-	for (int i = 0; i < 8; i++) {
-		glm::vec3 worldCorner = glm::vec3(world * glm::vec4(corners[i], 1.0f));
-		min = glm::min(min, worldCorner);
-		max = glm::max(max, worldCorner);
+		for (int i = 0; i < 8; i++) {
+			glm::vec3 worldCorner = glm::vec3(world * glm::vec4(corners[i], 1.0f));
+			worldMin = glm::min(worldMin, worldCorner);
+			worldMax = glm::max(worldMax, worldCorner);
+		}
+		hasAnyBounds = true;
 	}
 
-	cachedWorldMin = min;
-	cachedWorldMax = max;
+	// 2. Include children bounds recursively
+	for (auto* child : children) {
+		glm::vec3 cMin, cMax;
+		child->GetWorldBounds(cMin, cMax);
+		
+		// Only expand if child actually has bounds (avoiding expanding by infinite/empty bounds)
+		if (cMin.x < 1e9f) {
+			worldMin = glm::min(worldMin, cMin);
+			worldMax = glm::max(worldMax, cMax);
+			hasAnyBounds = true;
+		}
+	}
 
-	// Compute bounding sphere from AABB (center + half-diagonal radius)
+	// 3. Fallback: if no mesh and no children with bounds, use position
+	if (!hasAnyBounds) {
+		worldMin = worldMax = transform.GetPosition();
+	}
+
+	cachedWorldMin = worldMin;
+	cachedWorldMax = worldMax;
+	min = cachedWorldMin;
+	max = cachedWorldMax;
+
+	// Compute bounding sphere from AABB
 	cachedSphereCenter = (min + max) * 0.5f;
 	cachedSphereRadius = glm::length(max - cachedSphereCenter);
 

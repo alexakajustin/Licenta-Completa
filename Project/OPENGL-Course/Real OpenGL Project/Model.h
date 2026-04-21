@@ -39,6 +39,12 @@ public:
 	}
 
 	const std::vector<MeshData>& GetMeshDataList() const { return meshDataList; }
+	const std::vector<std::string>& GetMeshNames() const { return meshNames; }
+	size_t GetMeshCount() const { return meshList.size(); }
+	Mesh* GetMesh(size_t index) const { return index < meshList.size() ? meshList[index] : nullptr; }
+	unsigned int GetMaterialIndex(size_t index) const { return index < meshToTex.size() ? meshToTex[index] : 0; }
+	Texture* GetTexture(unsigned int matIndex) const { return matIndex < textureList.size() ? textureList[matIndex] : nullptr; }
+	Texture* GetNormalMap(unsigned int matIndex) const { return matIndex < normalMapList.size() ? normalMapList[matIndex] : nullptr; }
 
 private:
 	// scene contains all data, node is just one part of that list of data
@@ -47,6 +53,7 @@ private:
 	void LoadMaterials(const aiScene* scene);
 
 	std::vector <Mesh*> meshList;
+	std::vector <std::string> meshNames;
 	std::vector <Texture*> textureList;
 	std::vector <Texture*> normalMapList;
 	std::vector<unsigned int> meshToTex;
@@ -60,6 +67,7 @@ private:
 		std::vector<GLfloat> vertices;
 		std::vector<unsigned int> indices;
 		unsigned int materialIndex;
+		std::string name;
 	};
 	std::vector<IntermediateMeshData> intermediateMeshes;
 

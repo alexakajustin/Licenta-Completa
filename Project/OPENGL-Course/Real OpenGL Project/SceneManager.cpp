@@ -528,7 +528,9 @@ bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 {
 	int selObj = GetSelectedIndex();
 	if (selObj != -1) {
-		outPos = glm::vec3(objects[selObj]->GetWorldMatrix()[3]);
+		glm::vec3 bMin, bMax;
+		objects[selObj]->GetWorldBounds(bMin, bMax);
+		outPos = (bMin + bMax) * 0.5f; // Center of the volume
 		return true;
 	}
 	
@@ -761,18 +763,72 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
 {
-	std::string name = path.stem().string();
-	GameObject* newObj = new GameObject(name + " " + std::to_string(objects.size()));
-	newObj->GetTransform().SetPosition(spawnPos);
-	
+	std::string baseName = path.stem().string();
 	Model* model = AssetManager::Get().GetModel(path.string());
-	newObj->SetModel(model);
-	newObj->SetModelSourcePath(path.string());
+	if (!model) return;
 
-	objects.push_back(newObj);
-	SetSelectedIndex((int)objects.size() - 1);
-	
-	printf("Instantiated model: %s (via AssetManager)\n", path.string().c_str());
+	// If the model has multiple meshes, explode it into a modular hierarchy
+	// (e.g. Tree -> [Trunk, Leaves])
+	if (model->GetMeshCount() > 1) 
+	{
+		GameObject* root = new GameObject(baseName + " (Root)");
+		root->GetTransform().SetPosition(spawnPos);
+		root->SetModelSourcePath(path.string());
+		objects.push_back(root);
+
+		const auto& meshNames = model->GetMeshNames();
+		for (size_t i = 0; i < model->GetMeshCount(); i++) 
+		{
+			std::string mName = meshNames[i];
+			if (mName.empty() || mName == "default") mName = "Mesh_" + std::to_string(i);
+
+			GameObject* child = new GameObject(mName);
+			child->SetMesh(model->GetMesh(i));
+			
+			unsigned int matIdx = model->GetMaterialIndex((unsigned int)i);
+			child->SetTexture(model->GetTexture(matIdx));
+			child->SetNormalMap(model->GetNormalMap(matIdx));
+			
+			// Logic: Set the material to a default if not present
+			if (!child->GetMaterial()) {
+				child->SetMaterial(new Material());
+			}
+
+			// Logical Auto-Configuration: Detect Foliage/Leaves
+			std::string lowerName = mName;
+			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+			if (lowerName.find("leaf") != std::string::npos || 
+				lowerName.find("leaves") != std::string::npos || 
+				lowerName.find("foliage") != std::string::npos ||
+				lowerName.find("polysurface1sg1") != std::string::npos) // Match based on Tree.obj structure
+			{
+				// Auto-assign wind parameters (matches grass.vert/frag uniforms)
+				child->GetMaterial()->SetFloat("windSpeed", 1.0f);
+				child->GetMaterial()->SetFloat("windStrength", 0.15f);
+				child->SetName(mName + " (Foliage)");
+			}
+			else if (lowerName.find("bark") != std::string::npos || lowerName.find("trunk") != std::string::npos)
+			{
+				child->SetName(mName + " (Trunk)");
+			}
+
+			child->SetParent(root);
+			objects.push_back(child);
+		}
+		SetSelectedIndex((int)objects.size() - (int)model->GetMeshCount() - 1);
+		printf("[SceneManager] Partitioned modular model '%s' into %d components.\n", baseName.c_str(), (int)model->GetMeshCount());
+	}
+	else 
+	{
+		// Fallback for single-mesh models
+		GameObject* newObj = new GameObject(baseName + " " + std::to_string(objects.size()));
+		newObj->GetTransform().SetPosition(spawnPos);
+		newObj->SetModel(model);
+		newObj->SetModelSourcePath(path.string());
+		objects.push_back(newObj);
+		SetSelectedIndex((int)objects.size() - 1);
+		printf("[SceneManager] Instantiated single-mesh model: %s\n", baseName.c_str());
+	}
 }
 
 void SceneManager::CreateLight(LightType type, glm::vec3 spawnPos)
@@ -1361,42 +1417,53 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				activeDragAxis = pickedID;
 				printf("Gizmo Drag START: Axis %d\n", activeDragAxis);
 				
-				GetGizmoPosition(dragInitialObjectPos);
+				// 1. Get Visual Gizmo Center for intersection
+				glm::vec3 gizmoCenter;
+				GetGizmoPosition(gizmoCenter);
+				dragRotationCenter = gizmoCenter; // Store as a consistent interaction center
+
+				// 2. Get Actual World Pivot Position for dragging
+				int selObj = GetSelectedIndex();
+				if (selObj != -1) {
+					// Use world matrix to get the actual world position, even for children
+					dragInitialObjectPos = glm::vec3(objects[selObj]->GetWorldMatrix()[3]);
+				}
+				else {
+					int selLight = GetSelectedLightIndex();
+					if (selLight != -1) {
+						glm::vec3* lp = lights[selLight]->GetPositionPtr();
+						if (lp) dragInitialObjectPos = *lp;
+					}
+				}
 				
-				// World-space translation arrows: ignore objRot
+				
 				glm::vec3 axis(0.0f);
 				if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
 				else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
 				else axis = glm::vec3(0, 0, 1);
 
-				// Best drag plane: contains the axis, faces the camera
-				// plane normal = cross(axis, cross(cameraForward, axis))
+				
 				glm::vec3 crossCamAxis = glm::cross(cameraForward, axis);
 				if (glm::length(crossCamAxis) < 1e-4f) {
-					// Camera looking along the axis — use camera up as fallback
 					glm::vec3 cameraUp = glm::normalize(glm::vec3(glm::inverse(view)[1]));
 					crossCamAxis = glm::cross(cameraUp, axis);
 				}
 				dragPlaneNormal = glm::normalize(glm::cross(axis, crossCamAxis));
 					
-				RayPlaneIntersect(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, dragInitialIntersectPos);
+				RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, dragInitialIntersectPos);
 			}
 			else if (pickedID >= 20004 && pickedID <= 20006) {
 				// === ROTATION ===
 				activeDragAxis = pickedID;
 				printf("Gizmo Rotation START: Axis %d\n", activeDragAxis);
 
+				GetGizmoPosition(dragRotationCenter); // Use visual center for rotation math
+				
 				int selObj = GetSelectedIndex();
 				if (selObj != -1) {
 					dragInitialObjectRot = objects[selObj]->GetTransform().GetRotation();
-					dragRotationCenter = objects[selObj]->GetTransform().GetPosition();
 				} else {
-					int selLight = GetSelectedLightIndex();
-					if (selLight != -1) {
-						dragInitialObjectRot = glm::vec3(0.0f);
-						glm::vec3* lp = lights[selLight]->GetPositionPtr();
-						if (lp) dragRotationCenter = *lp;
-					}
+					dragInitialObjectRot = glm::vec3(0.0f);
 				}
 
 				// Rotation axis in world space
@@ -1436,7 +1503,8 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 	if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
 		// === TRANSLATION ===
 		glm::vec3 currentIntersect;
-		if (!RayPlaneIntersect(rayOrigin, rayDir, dragInitialObjectPos, dragPlaneNormal, currentIntersect))
+		// IMPORTANT: Must use the same dragRotationCenter (Gizmo Center) as when we started
+		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, currentIntersect))
 			return;
 
 		glm::vec3 delta = currentIntersect - dragInitialIntersectPos;
