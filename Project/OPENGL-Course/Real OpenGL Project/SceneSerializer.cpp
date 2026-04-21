@@ -294,6 +294,23 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	pointLightCount = 0;
 	spotLightCount = 0;
 
+	// ========== Pre-load Models ==========
+	// Start loading all required models and wait for them to finish.
+	// This ensures that model->GetMeshCount() is correct when we evaluate
+	// whether an object is a modular root or a single-mesh object.
+	if (j.contains("objects"))
+	{
+		for (auto& objJson : j["objects"])
+		{
+			std::string modelPath = objJson.value("modelPath", "");
+			if (!modelPath.empty())
+			{
+				AssetManager::Get().GetModel(modelPath);
+			}
+		}
+		AssetManager::Get().WaitForAll();
+	}
+
 	// ========== Load Objects ==========
 	if (j.contains("objects"))
 	{
@@ -535,6 +552,17 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 							for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
 								if (parentModel->GetMeshNames()[m] == targetName) {
 									objects[i]->SetMesh(parentModel->GetMesh(m));
+									
+									// Re-link texture and normal map if they were not explicitly set/loaded from JSON
+									if (!objects[i]->GetTexture()) {
+										unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)m);
+										objects[i]->SetTexture(parentModel->GetTexture(matIdx));
+									}
+									if (!objects[i]->GetNormalMap()) {
+										unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)m);
+										objects[i]->SetNormalMap(parentModel->GetNormalMap(matIdx));
+									}
+									
 									break;
 								}
 							}
