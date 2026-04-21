@@ -68,6 +68,10 @@ public:
 	std::vector<InstancedGroup*>& GetInstancedGroups() { return instancedGroups; }
 	void SetCullShader(Shader* s) { cullShader = s; }
 	void SetInstancedRenderShader(Shader* s) { instancedRenderShader = s; }
+	void SetRenderDistanceMultiplier(float m) { renderDistanceMultiplier = m; }
+	void SetShadowDistanceMultiplier(float m) { shadowDistanceMultiplier = m; }
+	float GetRenderDistanceMultiplier() const { return renderDistanceMultiplier; }
+	float GetShadowDistanceMultiplier() const { return shadowDistanceMultiplier; }
 
 	// ========== Picking & Gizmo ==========
 	void InitPicking(int width, int height);
@@ -171,6 +175,9 @@ private:
 	glm::mat4 GetSelectedRotationMatrix() const;
 	// Helper: get the gizmo position (from object or light)
 	bool GetGizmoPosition(glm::vec3& outPos) const;
+
+	float renderDistanceMultiplier = 1.0f;
+	float shadowDistanceMultiplier = 1.0f;
 
 	NodeGraph nodeGraph;
 };

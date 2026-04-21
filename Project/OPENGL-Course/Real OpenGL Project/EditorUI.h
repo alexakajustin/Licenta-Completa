@@ -9,7 +9,7 @@
 #include "Mesh.h"
 #include "Texture.h"
 
-struct SSAOSettings;
+struct GraphicsSettings;
 
 class SceneManager;
 class Camera;
@@ -57,7 +57,7 @@ public:
 		bool isNodeEditorOpen = true;
 		bool isDebugOverlayOpen = true;
 		bool isNodeBuilderOpen = false; // Node Builder panel (off by default)
-		bool isSSAOSettingsOpen = false; // SSAO settings panel (off by default)
+		bool isGraphicsSettingsOpen = false; // Graphics settings panel (off by default)
 		bool forceLayout = false;
 
 		// Constraints
@@ -96,15 +96,15 @@ public:
 	glm::vec2 GetViewportSize() const { return viewportSize; }
 	bool IsViewportHovered() const { return viewportHovered; }
 
-	// SSAO settings link
-	void SetSSAOSettings(SSAOSettings* s) { ssaoSettingsPtr = s; }
-	void RenderSSAOSettings();
+	// Graphics settings link
+	void SetGraphicsSettings(GraphicsSettings* s) { graphicsSettingsPtr = s; }
+	void RenderGraphicsSettings();
 
 private:
 	glm::vec2 viewportPos = glm::vec2(0.0f);
 	glm::vec2 viewportSize = glm::vec2(1.0f, 1.0f);
 	bool viewportHovered = false;
-	SSAOSettings* ssaoSettingsPtr = nullptr;
+	GraphicsSettings* graphicsSettingsPtr = nullptr;
 
 	// Scene file action state
 	SceneAction pendingSceneAction = SceneAction::None;

@@ -1,6 +1,8 @@
 #include <functional>
 #include "SceneManager.h"
 #include "PrimitiveGenerator.h"
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/norm.hpp>
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -217,9 +219,16 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		// ===== MULTI-LAYER CULLING PIPELINE =====
 		if (frustum) {
-			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
 			glm::vec3 sphereCenter; float sphereRadius;
 			obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
+
+			// LAYER 0: Global Distance Culling (for performance/graphics settings)
+			// Reference distance: 2000.0f units
+			float distSq = glm::distance2(sphereCenter, cameraPos);
+			float maxDist = 2000.0f * renderDistanceMultiplier;
+			if (distSq > maxDist * maxDist) continue;
+
+			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
 			if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
 
 			// LAYER 2: Contribution culling — skip sub-pixel objects (camera pass only)
@@ -436,7 +445,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				cullShader->GetShaderID(),
 				*targetRenderShader,
 				projection, view, cameraPos,
-				group->GetMaxDrawDistance(),
+				group->GetMaxDrawDistance() * renderDistanceMultiplier,
 				false
 			);
 		}

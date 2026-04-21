@@ -171,7 +171,7 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	if (material)
 	{
 		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
-		material->Bind(); // IMPORTANT: This uploads all shader-specific properties (baseColor, windSpeed, etc.)
+		material->Bind(shaderID); // IMPORTANT: This uploads all shader-specific properties (baseColor, windSpeed, etc.) using the correct shader program
 	}
 	else
 	{

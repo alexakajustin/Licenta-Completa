@@ -64,9 +64,9 @@ void Material::Bind(GLuint overrideProgram)
 			uniformLocations[name] = loc;
 			return loc;
 		} else {
-			auto& cache = overrideUniformLocations[programID];
+			auto& cache = overrideUniformLocations[overrideProgram];
 			if (cache.count(name)) return cache[name];
-			GLint loc = glGetUniformLocation(programID, name.c_str());
+			GLint loc = glGetUniformLocation(overrideProgram, name.c_str());
 			cache[name] = loc;
 			return loc;
 		}

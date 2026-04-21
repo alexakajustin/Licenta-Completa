@@ -1,12 +1,17 @@
 #pragma once
 
-struct SSAOSettings {
-	bool enabled = true;
-	float radius = 0.5f;
-	float bias = 0.025f;
-	float intensity = 1.5f;
-	int kernelSize = 64;   // 1-64
-	int blurSize = 4;      // 2, 4, 6, 8
+struct GraphicsSettings {
+	// SSAO
+	bool ssaoEnabled = true;
+	float ssaoRadius = 0.5f;
+	float ssaoBias = 0.025f;
+	float ssaoIntensity = 1.5f;
+	int ssaoKernelSize = 64;   // 1-64
+	int ssaoBlurSize = 4;      // 2, 4, 6, 8
+
+	// Culling
+	float renderDistanceMultiplier = 1.0f;
+	float shadowDistanceMultiplier = 1.0f;
 };
 
 #include "Window.h"
@@ -96,9 +101,9 @@ private:
 	GLuint quadVBO = 0;
 
 public:
-	SSAOSettings& GetSSAOSettings() { return ssaoSettings; }
+	GraphicsSettings& GetGraphicsSettings() { return graphicsSettings; }
 private:
-	SSAOSettings ssaoSettings;
+	GraphicsSettings graphicsSettings;
 
 	// Models
 	// (None currently hardcoded in Application)

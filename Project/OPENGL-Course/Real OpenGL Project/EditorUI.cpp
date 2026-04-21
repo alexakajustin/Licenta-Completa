@@ -500,7 +500,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			ImGui::Separator();
 			ImGui::MenuItem("Debug Overlay", nullptr, &windowState.isDebugOverlayOpen);
 			ImGui::Separator();
-			ImGui::MenuItem("SSAO Settings", nullptr, &windowState.isSSAOSettingsOpen);
+			ImGui::MenuItem("Graphics Settings", nullptr, &windowState.isGraphicsSettingsOpen);
 			
 			if (ImGui::BeginMenu("Layout"))
 			{
@@ -1363,49 +1363,61 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 // RenderViewport renamed to Render (which handles the Scene window)
 // RenderViewportDropTarget removed as it's now handled by the Scene window logic
 
-void EditorUI::RenderSSAOSettings()
+void EditorUI::RenderGraphicsSettings()
 {
-	if (!windowState.isSSAOSettingsOpen || !ssaoSettingsPtr) return;
+	if (!windowState.isGraphicsSettingsOpen || !graphicsSettingsPtr) return;
 
-	ImGui::SetNextWindowSize(ImVec2(320, 310), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(320, 380), ImGuiCond_FirstUseEver);
 
-	if (ImGui::Begin("SSAO Settings", &windowState.isSSAOSettingsOpen, ImGuiWindowFlags_NoCollapse))
+	if (ImGui::Begin("Graphics Settings", &windowState.isGraphicsSettingsOpen, ImGuiWindowFlags_NoCollapse))
 	{
-		// Enable toggle
-		ImGui::Checkbox("Enable SSAO", &ssaoSettingsPtr->enabled);
-		ImGui::Separator();
-
-		// Disable controls when SSAO is off
-		if (!ssaoSettingsPtr->enabled) {
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
-			ImGui::BeginDisabled();
-		}
-
-		ImGui::Text("Quality");
-		ImGui::SliderInt("Kernel Samples", &ssaoSettingsPtr->kernelSize, 4, 64);
-		ImGui::SliderInt("Blur Size", &ssaoSettingsPtr->blurSize, 2, 8);
-
-		ImGui::Spacing();
-		ImGui::Text("Effect");
-		ImGui::SliderFloat("Radius", &ssaoSettingsPtr->radius, 0.01f, 5.0f, "%.3f");
-		ImGui::SliderFloat("Bias", &ssaoSettingsPtr->bias, 0.0f, 0.2f, "%.4f");
-		ImGui::SliderFloat("Intensity", &ssaoSettingsPtr->intensity, 0.1f, 5.0f, "%.2f");
-
-		ImGui::Spacing();
-		ImGui::Separator();
-
-		if (ImGui::Button("Reset Defaults", ImVec2(-1, 0)))
+		if (ImGui::CollapsingHeader("Culling & Distance", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ssaoSettingsPtr->radius = 0.5f;
-			ssaoSettingsPtr->bias = 0.025f;
-			ssaoSettingsPtr->intensity = 1.5f;
-			ssaoSettingsPtr->kernelSize = 64;
-			ssaoSettingsPtr->blurSize = 4;
+			ImGui::Text("Render Distances (Multiplier)");
+			ImGui::SliderFloat("Objects/Grass##DrawDist", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 5.0f, "%.2fx");
+			ImGui::SliderFloat("Shadows##ShadowDist", &graphicsSettingsPtr->shadowDistanceMultiplier, 0.1f, 5.0f, "%.2fx");
 		}
 
-		if (!ssaoSettingsPtr->enabled) {
-			ImGui::EndDisabled();
-			ImGui::PopStyleVar();
+		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			// Enable toggle
+			ImGui::Checkbox("Enable SSAO", &graphicsSettingsPtr->ssaoEnabled);
+			ImGui::Separator();
+
+			// Disable controls when SSAO is off
+			if (!graphicsSettingsPtr->ssaoEnabled) {
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+				ImGui::BeginDisabled();
+			}
+
+			ImGui::Text("Quality");
+			ImGui::SliderInt("Kernel Samples", &graphicsSettingsPtr->ssaoKernelSize, 4, 64);
+			ImGui::SliderInt("Blur Size", &graphicsSettingsPtr->ssaoBlurSize, 2, 8);
+
+			ImGui::Spacing();
+			ImGui::Text("Effect");
+			ImGui::SliderFloat("Radius", &graphicsSettingsPtr->ssaoRadius, 0.01f, 5.0f, "%.3f");
+			ImGui::SliderFloat("Bias", &graphicsSettingsPtr->ssaoBias, 0.0f, 0.2f, "%.4f");
+			ImGui::SliderFloat("Intensity", &graphicsSettingsPtr->ssaoIntensity, 0.1f, 5.0f, "%.2f");
+
+			ImGui::Spacing();
+			ImGui::Separator();
+
+			if (ImGui::Button("Reset Defaults", ImVec2(-1, 0)))
+			{
+				graphicsSettingsPtr->ssaoRadius = 0.5f;
+				graphicsSettingsPtr->ssaoBias = 0.025f;
+				graphicsSettingsPtr->ssaoIntensity = 1.5f;
+				graphicsSettingsPtr->ssaoKernelSize = 64;
+				graphicsSettingsPtr->ssaoBlurSize = 4;
+				graphicsSettingsPtr->renderDistanceMultiplier = 1.0f;
+				graphicsSettingsPtr->shadowDistanceMultiplier = 1.0f;
+			}
+
+			if (!graphicsSettingsPtr->ssaoEnabled) {
+				ImGui::EndDisabled();
+				ImGui::PopStyleVar();
+			}
 		}
 	}
 	ImGui::End();

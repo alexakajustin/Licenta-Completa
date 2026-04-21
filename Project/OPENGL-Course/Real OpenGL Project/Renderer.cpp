@@ -98,7 +98,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 				instancedShadowShader,
 				lightProjView,
 				cameraPos,
-				group->GetShadowDistance(),
+				group->GetShadowDistance() * scene.GetShadowDistanceMultiplier(),
 				time
 			);
 		}

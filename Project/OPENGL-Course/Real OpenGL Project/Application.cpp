@@ -92,7 +92,7 @@ bool Application::Init()
 
 	// SSAO initialization
 	InitSSAO();
-	editorUI.SetSSAOSettings(&ssaoSettings);
+	editorUI.SetGraphicsSettings(&graphicsSettings);
 
 	// Enable VSync — caps FPS to monitor refresh rate, prevents GPU from running at 100%
 	glfwSwapInterval(1);
@@ -305,6 +305,10 @@ void Application::Run()
 		glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// Synchronize Graphics Settings
+		sceneManager.SetRenderDistanceMultiplier(graphicsSettings.renderDistanceMultiplier);
+		sceneManager.SetShadowDistanceMultiplier(graphicsSettings.shadowDistanceMultiplier);
+
 		// Shadow passes (use main window resolution or fixed size for shadows)
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition());
 		for (unsigned int i = 0; i < pointLightCount; i++)
@@ -323,7 +327,7 @@ void Application::Run()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// SSAO PASS
-		if (ssaoSettings.enabled)
+		if (graphicsSettings.ssaoEnabled)
 		{
 			// 1. Generate SSAO texture
 			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -337,10 +341,10 @@ void Application::Run()
 			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "texNoise"), 1);
 			glUniform2f(glGetUniformLocation(ssaoShader.GetShaderID(), "noiseScale"), currentViewportWidth / 4.0f, currentViewportHeight / 4.0f);
 			// Pass configurable SSAO parameters
-			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "radius"), ssaoSettings.radius);
-			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "bias"), ssaoSettings.bias);
-			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "intensity"), ssaoSettings.intensity);
-			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "kernelSize"), ssaoSettings.kernelSize);
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "radius"), graphicsSettings.ssaoRadius);
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "bias"), graphicsSettings.ssaoBias);
+			glUniform1f(glGetUniformLocation(ssaoShader.GetShaderID(), "intensity"), graphicsSettings.ssaoIntensity);
+			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "kernelSize"), graphicsSettings.ssaoKernelSize);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, viewportDepth);
 			glActiveTexture(GL_TEXTURE1);
@@ -354,7 +358,7 @@ void Application::Run()
 			glClear(GL_COLOR_BUFFER_BIT);
 			ssaoBlurShader.UseShader();
 			glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "ssaoInput"), 0);
-			glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "blurSize"), ssaoSettings.blurSize);
+			glUniform1i(glGetUniformLocation(ssaoBlurShader.GetShaderID(), "blurSize"), graphicsSettings.ssaoBlurSize);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
 			RenderQuad();
@@ -393,7 +397,7 @@ void Application::Run()
 		assetBrowser.Render(sceneManager, uiState);
 		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
-		editorUI.RenderSSAOSettings();
+		editorUI.RenderGraphicsSettings();
 
 
 		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
