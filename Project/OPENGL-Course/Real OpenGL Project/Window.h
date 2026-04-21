@@ -23,6 +23,7 @@ public:
 	bool* getKeys() { return keys; };
 	GLfloat getXChange();
 	GLfloat getYChange();
+	GLfloat getYScrollChange();
 	bool* getMouseButtons() { return mouseButtons; }
 	bool isCursorEnabled() { return cursorEnabled; }
 
@@ -37,7 +38,7 @@ private:
 
 	//mouse related variables
 	GLfloat lastX, lastY;
-	GLfloat xChange, yChange;
+	GLfloat xChange, yChange, yScrollChange;
 	bool mouseFirstMoved;
 	bool cursorEnabled = false; // ESC toggles this for ImGui interaction
 
@@ -48,6 +49,7 @@ private:
 	static void handleKeys(GLFWwindow* window, int key, int code, int action, int mode); 
 	static void handleMouse(GLFWwindow* window, double xPos, double yPos); 
 	static void handleMouseButton(GLFWwindow* window, int button, int action, int mods);
+	static void handleScroll(GLFWwindow* window, double xOffset, double yOffset);
 	void createCallbacks();
 
 	bool mouseButtons[32];

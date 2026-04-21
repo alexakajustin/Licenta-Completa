@@ -41,7 +41,7 @@ private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
 	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera);
 	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
-	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, const InputHandler* inputHandler = nullptr);
+	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr);
 
 	// Helper: Unity-style Vector3 input 
 	static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f);
@@ -105,6 +105,10 @@ private:
 	glm::vec2 viewportSize = glm::vec2(1.0f, 1.0f);
 	bool viewportHovered = false;
 	GraphicsSettings* graphicsSettingsPtr = nullptr;
+	
+	// Speed Overlay logic
+	float speedOverlayTimer = 0.0f;
+	float lastCameraSpeed = 0.0f;
 
 	// Scene file action state
 	SceneAction pendingSceneAction = SceneAction::None;

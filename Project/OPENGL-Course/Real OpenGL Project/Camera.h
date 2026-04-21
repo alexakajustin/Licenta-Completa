@@ -16,6 +16,10 @@ public:
 
 	void keyControl(bool* keys, GLfloat deltaTime);
 	void mouseControl(GLfloat xChange, GLfloat yChange);
+	void scrollControl(GLfloat yOffset);
+
+	GLfloat getMoveSpeed() const { return startMoveSpeed; }
+	void setMoveSpeed(GLfloat speed) { startMoveSpeed = speed; }
 
 	glm::vec3 getCameraPosition();
 	glm::vec3 getCameraDirection();

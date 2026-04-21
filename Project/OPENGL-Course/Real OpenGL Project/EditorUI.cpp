@@ -397,7 +397,7 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
 	RenderHierarchy(scene, bufferHeight, camera);
-	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, inputHandler);
+	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, camera, inputHandler);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 }
 
@@ -652,7 +652,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 	}
 }
 
-void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, const InputHandler* inputHandler)
+void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera, const InputHandler* inputHandler)
 {
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
@@ -764,6 +764,40 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			drawList->AddRect(p1, p2, IM_COL32(120, 60, 180, 200), 0.0f, 0, 1.5f);
 		}
 
+		// --- Camera Speed Overlay ---
+		if (camera) {
+			float currentSpeed = camera->getMoveSpeed();
+			if (abs(currentSpeed - lastCameraSpeed) > 0.001f) {
+				speedOverlayTimer = 0.5f; // Show for 0.5 seconds
+				lastCameraSpeed = currentSpeed;
+			}
+
+			if (speedOverlayTimer > 0.0f) {
+				speedOverlayTimer -= ImGui::GetIO().DeltaTime;
+				
+				ImDrawList* drawList = ImGui::GetWindowDrawList();
+				ImVec2 winPos = ImGui::GetWindowPos();
+				ImVec2 winSize = ImGui::GetWindowSize();
+				
+				// Center of viewport
+				ImVec2 center(winPos.x + winSize.x * 0.5f, winPos.y + winSize.y * 0.5f);
+				
+				char speedText[32];
+				sprintf_s(speedText, "Speed: %.1f", currentSpeed);
+				
+				ImVec2 textSize = ImGui::CalcTextSize(speedText);
+				ImVec2 textPos(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f);
+				
+				// Draw semi-transparent background box
+				float pad = 10.0f;
+				drawList->AddRectFilled(ImVec2(textPos.x - pad, textPos.y - pad), 
+									  ImVec2(textPos.x + textSize.x + pad, textPos.y + textSize.y + pad), 
+									  IM_COL32(0, 0, 0, 150), 5.0f);
+				
+				// Draw text
+				drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), speedText);
+			}
+		}
 	}
 	ImGui::End();
 }

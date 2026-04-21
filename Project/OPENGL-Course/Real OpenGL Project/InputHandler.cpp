@@ -23,6 +23,12 @@ void InputHandler::UpdateCamera(Window& window, Camera& camera, GLfloat deltaTim
 		// FPS camera mode
 		camera.keyControl(window.getKeys(), deltaTime);
 		camera.mouseControl(window.getXChange(), window.getYChange());
+
+		float scroll = ImGui::GetIO().MouseWheel;
+		if (scroll != 0.0f)
+		{
+			camera.scrollControl(scroll);
+		}
 	}
 }
 

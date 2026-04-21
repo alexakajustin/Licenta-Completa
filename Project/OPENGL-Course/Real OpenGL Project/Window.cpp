@@ -6,6 +6,7 @@ Window::Window()
 	height = 600;
 	xChange = 0.0f;
 	yChange = 0.0f;
+	yScrollChange = 0.0f;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
@@ -18,10 +19,11 @@ Window::Window()
 
 Window::Window(GLfloat windowWidth, GLfloat windowHeight)/* : Window()*/
 {
-	width = windowWidth;
-	height = windowHeight;
+	width = (GLint)windowWidth;
+	height = (GLint)windowHeight;
 	xChange = 0.0f;
 	yChange = 0.0f;
+	yScrollChange = 0.0f;
 	for (size_t i = 0; i < 1024; i++)
 	{
 		keys[i] = 0;
@@ -127,6 +129,13 @@ GLfloat Window::getYChange()
 
 	return theChange;
 }
+	
+GLfloat Window::getYScrollChange()
+{
+	GLfloat theChange = yScrollChange;
+	yScrollChange = 0.0f;
+	return theChange;
+}
 
 void Window::handleKeys(GLFWwindow* window, int key, int code, int action, int mode)
 {
@@ -202,9 +211,16 @@ void Window::handleMouseButton(GLFWwindow* window, int button, int action, int m
 	}
 }
 
+void Window::handleScroll(GLFWwindow* window, double xOffset, double yOffset)
+{
+	Window* theWindow = static_cast<Window*>(glfwGetWindowUserPointer(window));
+	theWindow->yScrollChange = (GLfloat)yOffset;
+}
+
 void Window::createCallbacks()
 {
 	glfwSetKeyCallback(mainWindow, handleKeys);
 	glfwSetCursorPosCallback(mainWindow, handleMouse);
 	glfwSetMouseButtonCallback(mainWindow, handleMouseButton);
+	glfwSetScrollCallback(mainWindow, handleScroll);
 }

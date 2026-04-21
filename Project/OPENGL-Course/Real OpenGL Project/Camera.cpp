@@ -26,7 +26,15 @@ Camera::~Camera()
 
 void Camera::keyControl(bool* keys, GLfloat deltaTime)
 {
-	GLfloat velocity = moveSpeed * deltaTime;
+	GLfloat velocity;
+	if (keys[GLFW_KEY_LEFT_SHIFT])
+	{
+		velocity = (startMoveSpeed * 3) * deltaTime;
+	}
+	else 
+	{
+		velocity = startMoveSpeed * deltaTime;
+	}
 
 	if (keys[GLFW_KEY_W])
 	{
@@ -52,14 +60,20 @@ void Camera::keyControl(bool* keys, GLfloat deltaTime)
 	{
 		position -= up * velocity;
 	}
-	if (keys[GLFW_KEY_LEFT_SHIFT])
-	{
-		moveSpeed = startMoveSpeed * 3;
+}
+
+void Camera::scrollControl(GLfloat yOffset)
+{
+	// Change speed exponentially for better control (Unity style)
+	if (yOffset > 0) {
+		startMoveSpeed *= 1.1f;
+	} else if (yOffset < 0) {
+		startMoveSpeed /= 1.1f;
 	}
-	else 
-	{
-		moveSpeed = startMoveSpeed;
-	}
+
+	// Clamp speed to reasonable values
+	if (startMoveSpeed < 0.1f) startMoveSpeed = 0.1f;
+	if (startMoveSpeed > 100.0f) startMoveSpeed = 100.0f;
 }
 
 void Camera::mouseControl(GLfloat xChange, GLfloat yChange)
