@@ -396,6 +396,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// We skip instanced groups here when overrideShader is set (shadow/picking pass).
 	// ================================================================
 	if (!overrideShader && !instancedGroups.empty() && cullShader && instancedRenderShader) {
+		// Disable face culling for instanced foliage — grass blades, flowers, etc.
+		// are thin double-sided geometry that must be visible from both sides.
+		glDisable(GL_CULL_FACE);
+
 		Shader* lastShader = nullptr;
 
 		for (auto* group : instancedGroups) {
@@ -436,6 +440,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				false
 			);
 		}
+
+		glEnable(GL_CULL_FACE);
 	}
 }
 
