@@ -325,8 +325,13 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			if (!modelPath.empty())
 			{
 				Model* model = AssetManager::Get().GetModel(modelPath);
-				obj->SetModel(model);
-				obj->SetModelSourcePath(modelPath);
+				if (model && model->GetMeshCount() > 1) {
+					// Modular root: only store the source path for re-linking children
+					obj->SetModelSourcePath(modelPath);
+				} else {
+					obj->SetModel(model);
+					obj->SetModelSourcePath(modelPath);
+				}
 			}
 
 			// Load custom binary baked mesh if the old graph was cleared
@@ -505,7 +510,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			scene.AddObject(obj);
 		}
 
-		// Second pass: resolve parent-child relationships
+		// Second pass: resolve parent-child relationships and re-link modular meshes
 		auto& objects = scene.GetObjects();
 		for (int i = 0; i < (int)j["objects"].size() && i < (int)objects.size(); i++)
 		{
@@ -515,7 +520,26 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				GameObject* parent = scene.FindObject(parentName);
 				if (parent && parent != objects[i])
 				{
-					objects[i]->SetParent(parent);
+					parent->AddChild(objects[i]); // Use raw parenting to preserve local transforms from JSON
+
+					// MODULAR FIX: If this is a child of a model-based root, re-link the mesh
+					if (!parent->GetModelSourcePath().empty() && !objects[i]->GetMesh() && !objects[i]->GetModel())
+					{
+						Model* parentModel = AssetManager::Get().GetModel(parent->GetModelSourcePath());
+						if (parentModel) {
+							// Find mesh matching this object's name (stripping suffixes like " (Foliage)")
+							std::string targetName = objects[i]->GetName();
+							size_t suffixPos = targetName.find(" (");
+							if (suffixPos != std::string::npos) targetName = targetName.substr(0, suffixPos);
+
+							for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
+								if (parentModel->GetMeshNames()[m] == targetName) {
+									objects[i]->SetMesh(parentModel->GetMesh(m));
+									break;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
