@@ -291,6 +291,47 @@ struct MeshData
 		std::vector<GLfloat>().swap(vertices);
 		std::vector<unsigned int>().swap(indices);
 	}
+
+	// =====================================================================
+	// Fast Binary Serialization for Baking Procedural Geometry
+	// =====================================================================
+	bool SaveToBinary(const std::string& path) const
+	{
+		FILE* file = nullptr;
+		fopen_s(&file, path.c_str(), "wb");
+		if (!file) return false;
+
+		size_t vCount = vertices.size();
+		fwrite(&vCount, sizeof(size_t), 1, file);
+		if (vCount > 0) fwrite(vertices.data(), sizeof(GLfloat), vCount, file);
+
+		size_t iCount = indices.size();
+		fwrite(&iCount, sizeof(size_t), 1, file);
+		if (iCount > 0) fwrite(indices.data(), sizeof(unsigned int), iCount, file);
+
+		fclose(file);
+		return true;
+	}
+
+	bool LoadFromBinary(const std::string& path)
+	{
+		FILE* file = nullptr;
+		fopen_s(&file, path.c_str(), "rb");
+		if (!file) return false;
+
+		size_t vCount = 0;
+		if (fread(&vCount, sizeof(size_t), 1, file) != 1) { fclose(file); return false; }
+		vertices.resize(vCount);
+		if (vCount > 0) fread(vertices.data(), sizeof(GLfloat), vCount, file);
+
+		size_t iCount = 0;
+		if (fread(&iCount, sizeof(size_t), 1, file) != 1) { fclose(file); return false; }
+		indices.resize(iCount);
+		if (iCount > 0) fread(indices.data(), sizeof(unsigned int), iCount, file);
+
+		fclose(file);
+		return true;
+	}
 };
 
 // ========== Tagged union for data flowing between nodes ==========

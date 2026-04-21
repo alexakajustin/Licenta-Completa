@@ -386,6 +386,13 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 
 	// Bind all material properties (Standard + Custom Uniforms)
 	if (!isShadowPass && material) {
+		material->UseMaterial(
+			renderShader.GetSpecularIntensityLocation(),
+			renderShader.GetShininessLocation(),
+			glGetUniformLocation(shaderID, "material.baseColor"),
+			renderShader.GetTilingLocation(),
+			renderShader.GetOffsetLocation()
+		);
 		material->Bind(renderShader.GetShaderID());
 	}
 	else if (!isShadowPass) {
