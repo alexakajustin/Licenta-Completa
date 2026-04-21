@@ -812,7 +812,7 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 				child->SetName(mName + " (Trunk)");
 			}
 
-			child->SetParent(root);
+			root->AddChild(child); // Attach to root without maintaining world position
 			objects.push_back(child);
 		}
 		SetSelectedIndex((int)objects.size() - (int)model->GetMeshCount() - 1);
