@@ -490,6 +490,11 @@ void CalcLayeredSurface(out vec3 outColor)
             }
             
 			layerSample = texture(textureLayers[i], layerUV);
+			
+			// Alpha discard for cutout textures in layered materials
+			if (layerSample.a < 0.1) {
+				discard;
+			}
             
             if (layerData[i].hasNormalMap == 1) {
                 vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
@@ -563,6 +568,12 @@ void main()
 		// Multiply blend: baseColor tints the texture (Unity-style)
 		// White (1,1,1) = no tint, Red (1,0,0) = red tint, etc.
 		vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
+		
+		// Alpha discard for cutout transparency (e.g. foliage)
+		if (useDiffuseTexture == 1 && texColor.a < 0.1) {
+			discard;
+		}
+		
 		baseColor = material.baseColor.rgb * texColor.rgb;
 	}
 
