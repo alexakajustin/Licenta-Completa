@@ -99,9 +99,13 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 	json objectsArray = json::array();
 	for (auto* obj : scene.GetObjects())
 	{
-		// SMART FILTER: Skip objects managed by the Node Graph
-		// They will be regenerated on load via NodeGraph::Execute()
-		if (scene.GetNodeGraph().IsObjectGenerated(obj->GetName()))
+		// SMART FILTER: Skip objects managed by the Node Graph.
+		// We check the ROOT of the hierarchy because if the parent is generated, 
+		// the whole tree is generated and should not be saved to JSON.
+		GameObject* root = obj;
+		while (root->GetParent()) root = root->GetParent();
+
+		if (scene.GetNodeGraph().IsObjectGenerated(root->GetName()))
 			continue;
 
 		json objJson;

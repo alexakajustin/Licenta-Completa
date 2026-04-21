@@ -365,16 +365,38 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 	std::vector<GameObject*> opaqueObjects;
 	std::vector<GameObject*> transparentObjects;
+	std::unordered_set<GameObject*> processed;
+
+	std::function<void(GameObject*)> CollectRecursive = [&](GameObject* obj) {
+		if (!obj || processed.find(obj) != processed.end()) return;
+		processed.insert(obj);
+
+		if (obj->GetMesh() || obj->GetModel()) {
+			Material* mat = obj->GetMaterial();
+			// If it's an override shader pass (like shadows), we don't care about sorting or depth masks; render all in opaque bucket
+			if (overrideShader || (mat && mat->GetAlpha() >= 0.99f) || !mat) {
+				opaqueObjects.push_back(obj);
+			} else {
+				transparentObjects.push_back(obj);
+			}
+		}
+
+		for (auto* child : obj->GetChildren()) {
+			CollectRecursive(child);
+		}
+	};
 
 	for (auto* obj : objects) {
-		if (!obj->GetMesh() && !obj->GetModel()) continue;
-		Material* mat = obj->GetMaterial();
-		
-		// If it's an override shader pass (like shadows), we don't care about sorting or depth masks; render all in opaque bucket
-		if (overrideShader || (mat && mat->GetAlpha() >= 0.99f) || !mat) {
-			opaqueObjects.push_back(obj);
-		} else {
-			transparentObjects.push_back(obj);
+		// Only start recursion from roots or objects whose parents are NOT in the scene list
+		// This ensures we catch everything exactly once regardless of how it was added.
+		bool parentInScene = false;
+		if (obj->GetParent()) {
+			// Check if parent is also in the objects list
+			for (auto* p : objects) if (p == obj->GetParent()) { parentInScene = true; break; }
+		}
+
+		if (!parentInScene) {
+			CollectRecursive(obj);
 		}
 	}
 

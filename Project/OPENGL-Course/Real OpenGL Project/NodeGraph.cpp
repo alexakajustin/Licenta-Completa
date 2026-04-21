@@ -21,17 +21,6 @@
 #include <thread>
 #include <future>
 
-static void AddToSceneRecursive(SceneManager& scene, GameObject* obj, std::vector<std::string>& spawnedNames)
-{
-	if (!obj) return;
-	scene.AddObject(obj);
-	spawnedNames.push_back(obj->GetName());
-	for (auto* child : obj->GetChildren())
-	{
-		AddToSceneRecursive(scene, child, spawnedNames);
-	}
-}
-
 // ========== GraphNode ==========
 
 Pin* GraphNode::FindPin(int pinId)
@@ -540,6 +529,8 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						obj->GetTransform().SetFromMatrix(worldModel);
 						obj->SetInheritScale(false);
 						obj->SetParent(targetParent);
+						scene.AddObject(obj);
+						newSpawned.push_back(obj->GetName());
 
 						// OPTIMIZATION: Share GPU Mesh
 						MeshData* targetData = &defaultObjectMesh;
@@ -577,7 +568,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							obj->AddTextureLayer(layer);
 						}
 
-						AddToSceneRecursive(scene, obj, newSpawned);
+
 					}
 					scatterNode->SetSpawnedNames(newSpawned);
 					printf("Scatter spawned %d modular objects (Sharing %d GPU meshes).\n", (int)newSpawned.size(), (int)meshCache.size());
