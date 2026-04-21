@@ -21,6 +21,17 @@
 #include <thread>
 #include <future>
 
+static void AddToSceneRecursive(SceneManager& scene, GameObject* obj, std::vector<std::string>& spawnedNames)
+{
+	if (!obj) return;
+	scene.AddObject(obj);
+	spawnedNames.push_back(obj->GetName());
+	for (auto* child : obj->GetChildren())
+	{
+		AddToSceneRecursive(scene, child, spawnedNames);
+	}
+}
+
 // ========== GraphNode ==========
 
 Pin* GraphNode::FindPin(int pinId)
@@ -342,7 +353,8 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					// ================================================================
 					const int INSTANCED_GROUP_THRESHOLD = 1000;
 
-					if ((int)transforms.size() >= INSTANCED_GROUP_THRESHOLD && !defaultObjectMesh.vertices.empty())
+					if ((int)transforms.size() >= INSTANCED_GROUP_THRESHOLD && !defaultObjectMesh.vertices.empty() && 
+						(!instancesPin.data.sourceObject || instancesPin.data.sourceObject->GetChildren().empty()))
 					{
 						// Build packed instance data MULTI-THREADED
 						std::vector<InstancedGroup::PackedInstance> packedInstances(transforms.size());
@@ -491,7 +503,19 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					for (int i = 0; i < (int)transforms.size(); i++)
 					{
 						std::string name = "Instance_" + std::to_string(node->id) + "_" + std::to_string(i);
-						GameObject* obj = new GameObject(name);
+						
+						GameObject* sourceObj = instancesPin.data.sourceObject;
+						GameObject* obj = nullptr;
+
+						// If we have a source object and it has children, we MUST clone the whole hierarchy
+						if (sourceObj && !sourceObj->GetChildren().empty())
+						{
+							obj = sourceObj->Clone(name);
+						}
+						else
+						{
+							obj = new GameObject(name);
+						}
 
 						glm::mat4 worldModel = glm::mat4(1.0f);
 						worldModel = glm::translate(worldModel, transforms[i].position);
@@ -553,8 +577,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							obj->AddTextureLayer(layer);
 						}
 
-						scene.AddObject(obj);
-						newSpawned.push_back(name);
+						AddToSceneRecursive(scene, obj, newSpawned);
 					}
 					scatterNode->SetSpawnedNames(newSpawned);
 					printf("Scatter spawned %d modular objects (Sharing %d GPU meshes).\n", (int)newSpawned.size(), (int)meshCache.size());

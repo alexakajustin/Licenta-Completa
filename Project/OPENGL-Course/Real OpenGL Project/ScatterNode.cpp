@@ -209,7 +209,10 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	MeshData& objectMesh = inputs[1].data.meshData;
 
 	bool hasSurface = (inputs[0].data.type == PinDataType::Mesh && !surfaceMesh.vertices.empty());
-	bool hasObject = (inputs[1].data.type == PinDataType::Mesh && !objectMesh.vertices.empty());
+	
+	// An object is valid if it has a mesh OR it has a source object with children (hierarchy)
+	bool hasObject = (inputs[1].data.type == PinDataType::Mesh && 
+		(!objectMesh.vertices.empty() || (inputs[1].data.sourceObject && !inputs[1].data.sourceObject->GetChildren().empty())));
 
 	if (!hasSurface || !hasObject)
 	{
@@ -346,7 +349,8 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
 	outputs[0].data.textureLayers = inputs[0].data.textureLayers;
 
-	outputs[1].data.sourceObjectName = "(none)"; 
+	outputs[1].data.sourceObject = inputs[1].data.sourceObject;
+	outputs[1].data.sourceObjectName = inputs[1].data.sourceObjectName;
 	outputs[1].data.sourceMaterial = inputs[1].data.sourceMaterial;
 	outputs[1].data.sourceTexture = inputs[1].data.sourceTexture;
 	outputs[1].data.sourceNormalMap = inputs[1].data.sourceNormalMap;

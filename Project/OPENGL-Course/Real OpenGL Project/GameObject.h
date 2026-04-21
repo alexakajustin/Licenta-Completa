@@ -22,6 +22,8 @@ public:
 	GameObject(const std::string& name);
 	~GameObject();
 
+	GameObject* Clone(const std::string& newName);
+
 	// Getters
 	std::string GetName() const { return name; }
 	Transform& GetTransform() { SetDirty(); return transform; }

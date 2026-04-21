@@ -10,6 +10,7 @@
 
 class Material;
 class Texture;
+class GameObject;
 #include "TextureLayer.h"
 
 // ========== Transform Data ==========
@@ -342,6 +343,7 @@ struct PinData
 	TransformList transforms;
 	std::vector<MeshData> instanceMeshes;
 	std::string sourceObjectName = "(none)";
+	GameObject* sourceObject = nullptr;
 	Material* sourceMaterial = nullptr;
 	Texture* sourceTexture = nullptr;
 	Texture* sourceNormalMap = nullptr;
@@ -361,6 +363,7 @@ struct PinData
 		transforms.clear();
 		instanceMeshes.clear();
 		sourceObjectName = "(none)";
+		sourceObject = nullptr;
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;
@@ -380,6 +383,7 @@ struct PinData
 		for (auto& m : instanceMeshes) m.DeepClear();
 		std::vector<MeshData>().swap(instanceMeshes);
 		sourceObjectName = "(none)";
+		sourceObject = nullptr;
 		sourceMaterial = nullptr;
 		sourceTexture = nullptr;
 		sourceNormalMap = nullptr;

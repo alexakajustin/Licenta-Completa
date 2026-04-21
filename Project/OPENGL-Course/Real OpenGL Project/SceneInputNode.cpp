@@ -197,6 +197,8 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
 	{
 		obj = objects[selectedIndex];
+		outputs[0].data.sourceObject = obj;
+		outputs[0].data.sourceObjectName = selectedName;
 		
 		// 1. Always prefer existing procedural/modified mesh data from the scene object.
 		//    This ensures that if a Perlin noise or erosion pass already modified the mesh,
@@ -226,6 +228,10 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 			if (!data.vertices.empty()) found = true;
 		}
+
+		// Even if no mesh was found (empty container), we still "found" the object itself 
+		// for hierarchy and transform propagation (essential for modular trees).
+		if (obj) found = true;
 
 		// Update cache if successfully found!
 		if (found)
@@ -287,7 +293,6 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (found) {
 		outputs[0].data.meshData = data;
-		outputs[0].data.sourceObjectName = selectedName;
 		
 		if (obj) {
 			outputs[0].data.sourceMaterial = obj->GetMaterial();

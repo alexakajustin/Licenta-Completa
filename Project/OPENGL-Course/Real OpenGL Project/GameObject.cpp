@@ -10,6 +10,39 @@ GameObject::GameObject(const std::string& name)
 {
 }
 
+GameObject* GameObject::Clone(const std::string& newName)
+{
+	GameObject* clone = new GameObject(newName);
+
+	// Copy local transform
+	clone->transform = this->transform;
+	clone->inheritScale = this->inheritScale;
+
+	// Copy components
+	clone->model = this->model;
+	if (this->mesh) {
+		clone->SetMesh(this->mesh);
+	}
+	clone->texture = this->texture;
+	clone->normalMap = this->normalMap;
+	clone->material = this->material;
+	clone->textureLayers = this->textureLayers;
+	clone->primitiveType = this->primitiveType;
+	clone->modelSourcePath = this->modelSourcePath;
+
+	if (this->hasCustomMesh && this->cpuMeshData) {
+		clone->SetCPUMeshData(this->cpuMeshData); // Shared ref
+	}
+
+	// Recursively clone children
+	for (auto* child : this->children) {
+		GameObject* childClone = child->Clone(child->GetName());
+		clone->AddChild(childClone); // Safe: preserves local transforms exactly as they were in the source
+	}
+
+	return clone;
+}
+
 GameObject::~GameObject()
 {
 	if (parent) {
