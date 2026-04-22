@@ -23,6 +23,21 @@ json ScatterNode::Serialize() const
 	j["seed"] = seed;
 	j["spawnAsObjects"] = spawnAsObjects;
 	j["targetParentName"] = targetParentName;
+
+	// Save all created group names
+	json groups = json::array();
+	for (const auto& name : createdGroupNames) groups.push_back(name);
+	j["createdGroupNames"] = groups;
+
+	// Save spawned map
+	json sMap = json::object();
+	for (auto const& [objName, instances] : spawnedMap) {
+		json instArr = json::array();
+		for (const auto& name : instances) instArr.push_back(name);
+		sMap[objName] = instArr;
+	}
+	j["spawnedMap"] = sMap;
+
 	return j;
 }
 
@@ -38,6 +53,22 @@ void ScatterNode::Deserialize(const json& j)
 	spawnAsObjects = true; // Forced
 	targetParentName = j.value("targetParentName", "(none)");
 	targetParentIndex = -1; // Force re-resolution on first Execute
+
+	// Restore group names
+	createdGroupNames.clear();
+	if (j.contains("createdGroupNames")) {
+		for (const auto& g : j["createdGroupNames"]) createdGroupNames.insert(g.get<std::string>());
+	}
+
+	// Restore spawned map
+	spawnedMap.clear();
+	if (j.contains("spawnedMap")) {
+		for (auto it = j["spawnedMap"].begin(); it != j["spawnedMap"].end(); ++it) {
+			std::vector<std::string> instances;
+			for (const auto& name : it.value()) instances.push_back(name.get<std::string>());
+			spawnedMap[it.key()] = instances;
+		}
+	}
 }
 
 void ScatterNode::RenderContent(SceneManager* scene)
@@ -365,12 +396,25 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 void ScatterNode::OnRemove(SceneManager& scene)
 {
-	// 1. Clean up "Spawn as Objects" instantiated meshes
-	for (const auto& name : spawnedNames)
-		scene.RemoveObject(name);
-	spawnedNames.clear();
+	// 1. Clean up ALL "Spawn as Objects" instantiated meshes across all object types
+	for (auto const& [objName, instances] : spawnedMap) {
+		for (const auto& name : instances)
+			scene.RemoveObject(name);
+	}
+	spawnedMap.clear();
 
-	// 2. Clean up "Combined / Instances Only" Instanced Group
-	std::string groupName = "Scatter_Instanced_" + std::to_string(id);
-	scene.RemoveInstancedGroup(groupName);
+	// 2. Clean up ALL tracked Instanced Groups
+	for (const auto& groupName : createdGroupNames) {
+		scene.RemoveInstancedGroup(groupName);
+		
+		// Also try to remove the placeholder parent if it exists
+		// Pattern: "Scatter_Group_{id}_{name}" or "Scatter_Group_{id}"
+		std::string parentName = groupName;
+		size_t pos = parentName.find("Instanced_");
+		if (pos != std::string::npos) {
+			parentName.replace(pos, 10, "Group_");
+			scene.RemoveObject(parentName);
+		}
+	}
+	createdGroupNames.clear();
 }

@@ -5,6 +5,8 @@
 #include "PerlinNoiseGenerator.h"
 #include <cmath>
 #include <cstdlib>
+#include <set>
+#include <map>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -41,6 +43,26 @@ public:
 	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
 	void OnRemove(SceneManager& scene) override;
 
+	// Multi-Object tracking
+	void AddCreatedGroupName(const std::string& name) { createdGroupNames.insert(name); }
+	const std::set<std::string>& GetCreatedGroupNames() const { return createdGroupNames; }
+	void SetCreatedGroupNames(const std::set<std::string>& names) { createdGroupNames = names; }
+	
+	std::map<std::string, std::vector<std::string>>& GetSpawnedMap() { return spawnedMap; }
+
+	bool IsAlignToNormal() const { return alignToNormal; }
+	bool IsSpawnMode() const { return spawnAsObjects; }
+	int GetParentIndex() const { return targetParentIndex; }
+	std::string GetParentName() const { return targetParentName; }
+	
+	// Legacy tracking support
+	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
+	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }
+
+	// Setters for programmatic setup (templates)
+	void SetSpawnAsObjects(bool value) { spawnAsObjects = value; }
+	void SetTargetParent(int index, const std::string& name) { targetParentIndex = index; targetParentName = name; }
+
 private:
 	int count = 50;
 	float minScale = 0.8f;
@@ -53,7 +75,13 @@ private:
 	bool spawnAsObjects = false;
 	std::string targetParentName = "(none)";
 	int targetParentIndex = -1;
-	std::vector<std::string> spawnedNames;
+	
+	// Legacy tracking (single object)
+	std::vector<std::string> spawnedNames; 
+	
+	// Advanced tracking (multiple objects)
+	std::set<std::string> createdGroupNames;
+	std::map<std::string, std::vector<std::string>> spawnedMap; // objectName -> list of instance names
 	
 	// Random float in [min, max]
 	float RandRange(float min, float max);
@@ -66,16 +94,4 @@ private:
 	void MergeTransformed(const MeshData& objectMesh, const glm::vec3& pos,
 		const glm::vec3& rotation, const glm::vec3& scale,
 		const glm::vec3& surfaceNormal, MeshData& output);
-
-public:
-	bool IsAlignToNormal() const { return alignToNormal; }
-	bool IsSpawnMode() const { return spawnAsObjects; }
-	int GetParentIndex() const { return targetParentIndex; }
-	std::string GetParentName() const { return targetParentName; }
-	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }
-	void SetSpawnedNames(const std::vector<std::string>& names) { spawnedNames = names; }
-
-	// Setters for programmatic setup (templates)
-	void SetSpawnAsObjects(bool value) { spawnAsObjects = value; }
-	void SetTargetParent(int index, const std::string& name) { targetParentIndex = index; targetParentName = name; }
 };
