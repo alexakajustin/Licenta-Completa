@@ -269,10 +269,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// Render Single
 			PrepareShader(targetShader);
 
-			if (!overrideShader) {
-				GLint selLoc = glGetUniformLocation(targetShader->GetShaderID(), "selectionTint");
-				if (selLoc != -1) glUniform1f(selLoc, isSelected ? 1.0f : 0.0f);
-			}
+
 
 			// Upload material alpha for shadow pass dithering
 			if (overrideShader) {
@@ -306,10 +303,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		PrepareShader(targetShader);
 
-		if (!overrideShader) {
-			GLint selLoc = glGetUniformLocation(targetShader->GetShaderID(), "selectionTint");
-			if (selLoc != -1) glUniform1f(selLoc, b.isSelected ? 1.0f : 0.0f);
-		}
+
 
 		if (!overrideShader && b.material) {
 			b.material->UseMaterial(
@@ -487,6 +481,46 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 
 		glEnable(GL_CULL_FACE);
+	}
+
+	// ================================================================
+	// Selection Wireframe Overlay (multi-select only)
+	// Dead-simple approach: render selected objects as bright wireframe
+	// using the gizmo shader. Works with ANY mesh/model regardless of
+	// material or custom shader — no selectionTint uniform needed.
+	// ================================================================
+	if (!overrideShader && selectedObjs.size() > 1 && gizmoShader.GetShaderID()) {
+		// Save state
+		GLint oldPolygonMode[2];
+		glGetIntegerv(GL_POLYGON_MODE, oldPolygonMode);
+		GLboolean oldDepthTest = glIsEnabled(GL_DEPTH_TEST);
+		GLboolean oldCullFace = glIsEnabled(GL_CULL_FACE);
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glLineWidth(2.0f);
+		glDepthFunc(GL_LEQUAL); // Draw on top of existing geometry
+		glDisable(GL_CULL_FACE);
+
+		gizmoShader.UseShader();
+		glUniformMatrix4fv(gizmoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
+
+		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+		GLint modelLoc = gizmoShader.GetModelLocation();
+		glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f); // Bright orange
+
+		for (auto* obj : selectedObjs) {
+			glm::mat4 modelMatrix = obj->GetWorldMatrix();
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+			if (obj->GetModel()) obj->GetModel()->RenderModel(-1, -1, -1, -1);
+			else if (obj->GetMesh()) obj->GetMesh()->RenderMesh();
+		}
+
+		// Restore state
+		glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
+		glDepthFunc(GL_LESS);
+		if (oldDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+		if (oldCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
 	}
 }
 
