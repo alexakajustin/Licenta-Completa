@@ -12,6 +12,7 @@
 #include "Texture.h"
 #include "Material.h"
 #include "InstancedGroup.h"
+#include "AssetManager.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -341,7 +342,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 				scene.RemoveInstancedGroup(legacyGroupName);
 
 				auto& transforms = instancesPin.data.transforms;
-				auto& instanceMeshes = instancesPin.data.instanceMeshes;
 				MeshData& defaultObjectMesh = node->inputs[1].data.meshData;
 
 				if (!transforms.empty())
@@ -350,178 +350,228 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					scatterNode->AddCreatedGroupName(groupName);
 
 					// ================================================================
-					// GPU-DRIVEN PATH: For large instance counts (>= 1000),
-					// create an InstancedGroup instead of individual GameObjects.
+					// GPU-DRIVEN PATH: ALL scattered objects use instanced rendering.
+					// For multi-mesh models (trees), we create one InstancedGroup per
+					// sub-mesh so each part keeps its own texture/material.
 					// ================================================================
-					const int INSTANCED_GROUP_THRESHOLD = 1000;
 
-					if ((int)transforms.size() >= INSTANCED_GROUP_THRESHOLD && !defaultObjectMesh.vertices.empty() && 
-						(!instancesPin.data.sourceObject || instancesPin.data.sourceObject->GetChildren().empty()))
+					GameObject* sourceObj = instancesPin.data.sourceObject;
+
+					// Build packed instance data MULTI-THREADED (shared by all sub-meshes)
+					std::vector<InstancedGroup::PackedInstance> packedInstances(transforms.size());
+					int packCount = (int)transforms.size();
+					unsigned int packThreads = std::thread::hardware_concurrency();
+					if (packThreads == 0) packThreads = 4;
+					if (packThreads > (unsigned int)packCount) packThreads = (unsigned int)packCount;
+
+					std::vector<std::future<void>> packFutures;
+					int packPerThread = packCount / packThreads;
+					bool alignToNorm = scatterNode->IsAlignToNormal();
+
+					for (unsigned int tIdx = 0; tIdx < packThreads; tIdx++)
 					{
-						// Build packed instance data MULTI-THREADED
-						std::vector<InstancedGroup::PackedInstance> packedInstances(transforms.size());
+						int startIdx = tIdx * packPerThread;
+						int endIdx = (tIdx == packThreads - 1) ? packCount : (tIdx + 1) * packPerThread;
 
-						int packCount = (int)transforms.size();
-						unsigned int packThreads = std::thread::hardware_concurrency();
-						if (packThreads == 0) packThreads = 4;
-						if (packThreads > (unsigned int)packCount) packThreads = (unsigned int)packCount;
+						packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm]() {
+							for (int i = startIdx; i < endIdx; i++) {
+								const auto& t = transforms[i];
+								InstancedGroup::PackedInstance packed;
+								float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
+								packed.positionAndScale = glm::vec4(t.position, avgScale);
 
-						std::vector<std::future<void>> packFutures;
-						int packPerThread = packCount / packThreads;
-						bool alignToNorm = scatterNode->IsAlignToNormal();
-
-						for (unsigned int tIdx = 0; tIdx < packThreads; tIdx++)
-						{
-							int startIdx = tIdx * packPerThread;
-							int endIdx = (tIdx == packThreads - 1) ? packCount : (tIdx + 1) * packPerThread;
-
-							packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm]() {
-								for (int i = startIdx; i < endIdx; i++) {
-									const auto& t = transforms[i];
-									InstancedGroup::PackedInstance packed;
-									float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
-									packed.positionAndScale = glm::vec4(t.position, avgScale);
-
-									glm::vec3 euler = t.rotation;
-									if (alignToNorm && glm::length(t.normal) > 0.001f) {
-										glm::vec3 up(0, 1, 0);
-										if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
-											glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
-											float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
-											euler.x += glm::degrees(angle * axis.x);
-											euler.z += glm::degrees(angle * axis.z);
-										}
+								glm::vec3 euler = t.rotation;
+								if (alignToNorm && glm::length(t.normal) > 0.001f) {
+									glm::vec3 up(0, 1, 0);
+									if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
+										glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
+										float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
+										euler.x += glm::degrees(angle * axis.x);
+										euler.z += glm::degrees(angle * axis.z);
 									}
-									packed.rotationAndFlags = glm::vec4(euler, 0.0f);
-									packedInstances[i] = packed;
 								}
-							}));
-						}
-						
-						for (auto& f : packFutures) f.get();
-
-						size_t dataKey = (size_t)defaultObjectMesh.vertices.data() ^ (size_t)defaultObjectMesh.vertices.size();
-						if (meshCache.find(dataKey) == meshCache.end()) {
-							meshCache[dataKey] = defaultObjectMesh.ToMesh(0);
-						}
-
-						Material* finalMat = instancesPin.data.sourceMaterial;
-						Texture* finalTex = instancesPin.data.sourceTexture;
-						Texture* finalNorm = instancesPin.data.sourceNormalMap;
-						std::vector<TextureLayer> finalLayers = instancesPin.data.textureLayers;
-
-						InstancedGroup* group = new InstancedGroup(groupName);
-						group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
-
-						int instanceCount = (int)packedInstances.size();
-						if (instanceCount >= 5000000) { group->SetMaxDrawDistance(150.0f); group->SetShadowDistance(20.0f); }
-						else if (instanceCount >= 1000000) { group->SetMaxDrawDistance(200.0f); group->SetShadowDistance(25.0f); }
-						else { group->SetMaxDrawDistance(250.0f); group->SetShadowDistance(30.0f); }
-
-						scene.AddInstancedGroup(group);
-
-						// Placeholder parent for hierarchy
-						std::string parentName = "Scatter_Group_" + std::to_string(node->id) + "_" + objName;
-						GameObject* placeholder = scene.FindObject(parentName);
-						if (!placeholder) {
-							placeholder = new GameObject(parentName);
-							scene.AddObject(placeholder);
-						}
-
-						printf("[NodeGraph] GPU-Driven: Created InstancedGroup '%s' with %d instances\n",
-							groupName.c_str(), (int)packedInstances.size());
+								packed.rotationAndFlags = glm::vec4(euler, 0.0f);
+								packedInstances[i] = packed;
+							}
+						}));
 					}
-					else
-					{
-						// ================================================================
-						// LEGACY PATH: Small counts — create individual GameObjects
-						// ================================================================
-						int parentIdx = scatterNode->GetParentIndex();
-						std::string parentName = scatterNode->GetParentName();
+					for (auto& f : packFutures) f.get();
 
-						if (parentIdx < 0 || parentIdx >= (int)objects.size() || objects[parentIdx]->GetName() != parentName)
-						{
-							parentIdx = -1;
-							if (parentName != "(none)") {
-								for (int i = 0; i < (int)objects.size(); i++) {
-									if (objects[i]->GetName() == parentName) {
-										parentIdx = i;
-										scatterNode->SetTargetParent(i, parentName);
-										break;
+					// Determine if we have a multi-mesh model (tree, building, etc.)
+					Model* multiMeshModel = nullptr;
+
+					// Check source object's own model
+					if (sourceObj && sourceObj->GetModel() && sourceObj->GetModel()->GetMeshCount() > 0)
+						multiMeshModel = sourceObj->GetModel();
+
+					// Fallback: check parent's model source path (for scene-loaded modular trees)
+					if (!multiMeshModel && sourceObj && !sourceObj->GetModelSourcePath().empty())
+						multiMeshModel = AssetManager::Get().GetModel(sourceObj->GetModelSourcePath());
+
+					// Also check children's models
+					if (!multiMeshModel && sourceObj) {
+						for (auto* child : sourceObj->GetChildren()) {
+							if (child->GetModel() && child->GetModel()->GetMeshCount() > 0) {
+								multiMeshModel = child->GetModel();
+								break;
+							}
+						}
+					}
+
+					int instanceCount = (int)packedInstances.size();
+					float maxDist = instanceCount >= 5000000 ? 150.0f : (instanceCount >= 1000000 ? 200.0f : 250.0f);
+					float shadowDist = instanceCount >= 5000000 ? 20.0f : (instanceCount >= 1000000 ? 25.0f : 30.0f);
+
+					if (multiMeshModel && multiMeshModel->GetMeshCount() > 1 && sourceObj) {
+						// ============================================================
+						// MULTI-MESH PATH: One InstancedGroup per child/sub-mesh.
+						// Gets textures and materials from the CHILD GameObjects,
+						// not from the Model's material table.
+						// ============================================================
+						const auto& meshDataList = multiMeshModel->GetMeshDataList();
+						const auto& meshNames = multiMeshModel->GetMeshNames();
+						const auto& children = sourceObj->GetChildren();
+
+						for (size_t m = 0; m < multiMeshModel->GetMeshCount(); m++) {
+							// Get mesh data for this sub-mesh
+							if (m >= meshDataList.size() || meshDataList[m].vertices.empty())
+								continue;
+
+							MeshData subMeshData = meshDataList[m];
+
+							// Create GPU mesh
+							size_t dataKey = (size_t)subMeshData.vertices.data() ^ subMeshData.vertices.size() ^ m;
+							if (meshCache.find(dataKey) == meshCache.end()) {
+								meshCache[dataKey] = subMeshData.ToMesh(0);
+							}
+
+							// Find the child GameObject that matches this sub-mesh
+							// (by mesh name or index)
+							GameObject* matchingChild = nullptr;
+							std::string subMeshName = (m < meshNames.size()) ? meshNames[m] : "";
+							
+							for (auto* child : children) {
+								std::string childName = child->GetName();
+								// Strip suffix like " (Foliage)" for matching
+								size_t suffixPos = childName.find(" (");
+								if (suffixPos != std::string::npos) childName = childName.substr(0, suffixPos);
+
+								if (childName == subMeshName) {
+									matchingChild = child;
+									break;
+								}
+							}
+							// Fallback: match by index
+							if (!matchingChild && m < children.size())
+								matchingChild = children[m];
+
+							// Pull texture/material from the matching child (or from model)
+							Texture* subTex = nullptr;
+							Texture* subNorm = nullptr;
+							Material* subMat = nullptr;
+							std::vector<TextureLayer> subLayers;
+
+							if (matchingChild) {
+								subTex = matchingChild->GetTexture();
+								subNorm = matchingChild->GetNormalMap();
+								subMat = matchingChild->GetMaterial();
+								subLayers = matchingChild->GetTextureLayers();
+							}
+
+							// Fallback to model's material table if child has no texture
+							if (!subTex) {
+								unsigned int matIdx = multiMeshModel->GetMaterialIndex(m);
+								subTex = multiMeshModel->GetTexture(matIdx);
+								subNorm = multiMeshModel->GetNormalMap(matIdx);
+							}
+
+							// Unique group name per sub-mesh
+							std::string subGroupName = groupName + "_" + std::to_string(m);
+							scene.RemoveInstancedGroup(subGroupName);
+
+							InstancedGroup* group = new InstancedGroup(subGroupName);
+							group->Setup(meshCache[dataKey], packedInstances, subMat, subTex, subNorm, subLayers);
+							group->SetMaxDrawDistance(maxDist);
+							group->SetShadowDistance(shadowDist);
+
+							scene.AddInstancedGroup(group);
+							scatterNode->AddCreatedGroupName(subGroupName);
+						}
+
+						printf("[NodeGraph] GPU-Driven: Created %d InstancedGroups for '%s' with %d instances each\n",
+							(int)multiMeshModel->GetMeshCount(), objName.c_str(), (int)packedInstances.size());
+					}
+					else {
+						// ============================================================
+						// SINGLE-MESH PATH: One InstancedGroup (grass, rocks, etc.)
+						// ============================================================
+						MeshData singleMesh = defaultObjectMesh;
+
+						// If empty, try to collect from hierarchy
+						if (singleMesh.vertices.empty() && sourceObj) {
+							std::function<void(GameObject*)> collectMeshes = [&](GameObject* obj) {
+								if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty()) {
+									for (const auto& md : obj->GetModel()->GetMeshDataList()) {
+										int baseIdx = singleMesh.GetVertexCount();
+										singleMesh.vertices.insert(singleMesh.vertices.end(), md.vertices.begin(), md.vertices.end());
+										for (unsigned int idx : md.indices) singleMesh.indices.push_back(idx + baseIdx);
+									}
+								} else if (obj->HasCustomMesh()) {
+									const MeshData& data = obj->GetCPUMeshData();
+									if (!data.vertices.empty()) {
+										int baseIdx = singleMesh.GetVertexCount();
+										singleMesh.vertices.insert(singleMesh.vertices.end(), data.vertices.begin(), data.vertices.end());
+										for (unsigned int idx : data.indices) singleMesh.indices.push_back(idx + baseIdx);
 									}
 								}
-							}
+								for (auto* child : obj->GetChildren()) collectMeshes(child);
+							};
+							collectMeshes(sourceObj);
 						}
 
-						GameObject* targetParent = nullptr;
-						if (parentIdx >= 0 && parentIdx < (int)objects.size())
-							targetParent = objects[parentIdx];
-
-						if (!targetParent) {
-							std::string groupName2 = "Scatter_Group_" + std::to_string(node->id) + "_" + objName;
-							targetParent = scene.FindObject(groupName2);
-							if (!targetParent) { targetParent = new GameObject(groupName2); scene.AddObject(targetParent); }
+						// Fallback to parent model
+						if (singleMesh.vertices.empty() && multiMeshModel && !multiMeshModel->GetMeshDataList().empty()) {
+							const auto& md = multiMeshModel->GetMeshDataList()[0];
+							singleMesh = md;
 						}
 
-						std::shared_ptr<MeshData> sharedInputMesh = nullptr;
-						MeshData* lastSource = nullptr;
-						Material* groupMat = nullptr;
-
-						std::vector<std::string> newSpawned;
-						for (int i = 0; i < (int)transforms.size(); i++)
-						{
-							std::string name = "Instance_" + std::to_string(node->id) + "_" + objName + "_" + std::to_string(i);
-							
-							GameObject* sourceObj = instancesPin.data.sourceObject;
-							GameObject* obj = sourceObj && !sourceObj->GetChildren().empty() ? sourceObj->Clone(name) : new GameObject(name);
-
-							glm::mat4 worldModel = glm::mat4(1.0f);
-							worldModel = glm::translate(worldModel, transforms[i].position);
-							
-							glm::vec3 n = transforms[i].normal;
-							if (glm::length(n) > 0.001f) {
-								glm::vec3 up(0, 1, 0);
-								if (glm::abs(glm::dot(up, n)) < 0.999f) {
-									glm::vec3 axis = glm::normalize(glm::cross(up, n));
-									float angle = acos(glm::clamp(glm::dot(up, n), -1.0f, 1.0f));
-									worldModel = glm::rotate(worldModel, angle, axis);
-								}
+						if (singleMesh.vertices.empty()) {
+							printf("[NodeGraph] Warning: No mesh data for '%s', skipping.\n", objName.c_str());
+						} else {
+							size_t dataKey = (size_t)singleMesh.vertices.data() ^ singleMesh.vertices.size();
+							if (meshCache.find(dataKey) == meshCache.end()) {
+								meshCache[dataKey] = singleMesh.ToMesh(0);
 							}
-							
-							worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.x), glm::vec3(1, 0, 0));
-							worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.y), glm::vec3(0, 1, 0));
-							worldModel = glm::rotate(worldModel, glm::radians(transforms[i].rotation.z), glm::vec3(0, 0, 1));
-							worldModel = glm::scale(worldModel, transforms[i].scale);
-
-							obj->GetTransform().SetFromMatrix(worldModel);
-							obj->SetInheritScale(false);
-							obj->SetParent(targetParent);
-							scene.AddObject(obj);
-							newSpawned.push_back(obj->GetName());
-
-							MeshData* targetData = i < (int)instanceMeshes.size() && !instanceMeshes[i].vertices.empty() ? &instanceMeshes[i] : &defaultObjectMesh;
-							size_t dataKey2 = (size_t)targetData->vertices.data() ^ (size_t)targetData->vertices.size();
-							if (meshCache.find(dataKey2) == meshCache.end()) {
-								meshCache[dataKey2] = targetData->ToMesh((int)transforms.size());
-							}
-							obj->SetMesh(meshCache[dataKey2]);
-							
-							if (lastSource != targetData) { sharedInputMesh = std::make_shared<MeshData>(*targetData); lastSource = targetData; }
-							obj->SetCPUMeshData(sharedInputMesh);
 
 							Material* finalMat = instancesPin.data.sourceMaterial;
-							if (!finalMat && (instancesPin.data.sourceTexture || instancesPin.data.sourceNormalMap)) {
-								if (i == 0) groupMat = new Material(0.1f, 32.0f);
-								finalMat = groupMat;
+							Texture* finalTex = instancesPin.data.sourceTexture;
+							Texture* finalNorm = instancesPin.data.sourceNormalMap;
+							std::vector<TextureLayer> finalLayers = instancesPin.data.textureLayers;
+
+							// If no texture from pin, try from model
+							if (!finalTex && multiMeshModel) {
+								finalTex = multiMeshModel->GetTexture(multiMeshModel->GetMaterialIndex(0));
+								finalNorm = multiMeshModel->GetNormalMap(multiMeshModel->GetMaterialIndex(0));
 							}
 
-							if (finalMat) obj->SetMaterial(finalMat);
-							if (instancesPin.data.sourceTexture) obj->SetTexture(instancesPin.data.sourceTexture);
-							if (instancesPin.data.sourceNormalMap) obj->SetNormalMap(instancesPin.data.sourceNormalMap);
-							for (const auto& layer : instancesPin.data.textureLayers) obj->AddTextureLayer(layer);
+							InstancedGroup* group = new InstancedGroup(groupName);
+							group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
+							group->SetMaxDrawDistance(maxDist);
+							group->SetShadowDistance(shadowDist);
+
+							scene.AddInstancedGroup(group);
+
+							printf("[NodeGraph] GPU-Driven: Created InstancedGroup '%s' with %d instances (%d verts)\n",
+								groupName.c_str(), (int)packedInstances.size(), singleMesh.GetVertexCount());
 						}
-						sMap[objName] = newSpawned;
-						printf("Scatter spawned %d modular objects for '%s'.\n", (int)newSpawned.size(), objName.c_str());
+					}
+
+					// Placeholder parent for hierarchy
+					std::string parentName = "Scatter_Group_" + std::to_string(node->id) + "_" + objName;
+					GameObject* placeholder = scene.FindObject(parentName);
+					if (!placeholder) {
+						placeholder = new GameObject(parentName);
+						scene.AddObject(placeholder);
 					}
 				}
 			}
