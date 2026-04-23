@@ -706,6 +706,9 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 	obj->SetMaterial(material);
 	obj->SetTexture(texture);
 	obj->SetNormalMap(normalMap);
+	for (const auto& layer : textureLayers) {
+		obj->AddTextureLayer(layer);
+	}
 	
 	scene->AddObject(obj);
 
@@ -767,6 +770,9 @@ void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneMana
 		newObjects[i]->SetMaterial(material);
 		newObjects[i]->SetTexture(texture);
 		newObjects[i]->SetNormalMap(normalMap);
+		for (const auto& layer : textureLayers) {
+			newObjects[i]->AddTextureLayer(layer);
+		}
 		scene->AddObject(newObjects[i]);
 	}
 

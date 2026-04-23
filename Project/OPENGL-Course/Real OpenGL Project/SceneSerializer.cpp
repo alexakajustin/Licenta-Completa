@@ -783,9 +783,21 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			else if (sourceObj && sourceObj->GetModel())
 			{
 				Model* model = sourceObj->GetModel();
-				if (model->GetMeshCount() > 0) {
-					Mesh* mesh = model->GetMesh(0);
-					unsigned int matIdx = model->GetMaterialIndex(0);
+				
+				// Extract sub-mesh index from group name (e.g., "_0", "_1")
+				int mIdx = 0;
+				size_t lastUnderscore = name.find_last_of('_');
+				if (lastUnderscore != std::string::npos && lastUnderscore < name.length() - 1) {
+					try {
+						mIdx = std::stoi(name.substr(lastUnderscore + 1));
+					} catch (...) {
+						mIdx = 0;
+					}
+				}
+
+				if (mIdx >= 0 && mIdx < model->GetMeshCount()) {
+					Mesh* mesh = model->GetMesh(mIdx);
+					unsigned int matIdx = model->GetMaterialIndex(mIdx);
 					Material* mat = sourceObj->GetMaterial() ? sourceObj->GetMaterial() : defaultMaterial;
 					Texture* tex = sourceObj->GetTexture() ? sourceObj->GetTexture() : model->GetTexture(matIdx);
 					if (!tex) tex = defaultTexture;

@@ -1,6 +1,13 @@
 {
     "instancedGroups": [
         {
+            "instanceDataPath": "SampleScene_Scatter_Instanced_8_grass_4.inst",
+            "maxDrawDistance": 250.0,
+            "name": "Scatter_Instanced_8_grass 4",
+            "shadowDistance": 30.0,
+            "sourceObjectName": "grass 4"
+        },
+        {
             "instanceDataPath": "SampleScene_Scatter_Instanced_8_Tree_(Root)_0.inst",
             "maxDrawDistance": 250.0,
             "name": "Scatter_Instanced_8_Tree (Root)_0",
@@ -13,13 +20,6 @@
             "name": "Scatter_Instanced_8_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
-        },
-        {
-            "instanceDataPath": "SampleScene_Scatter_Instanced_8_grass_4.inst",
-            "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_8_grass 4",
-            "shadowDistance": 30.0,
-            "sourceObjectName": "grass 4"
         }
     ],
     "lights": [
@@ -53,7 +53,7 @@
                 "start": 2
             }
         ],
-        "nextId": 29,
+        "nextId": 38,
         "nodes": [
             {
                 "cachedMatColor": [
@@ -95,12 +95,12 @@
                         "heightMax": 100.0,
                         "heightMin": 0.0,
                         "invert": false,
-                        "normalMapPath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_nor_1k.png",
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
                         "opacity": 1.0,
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
-                        "texturePath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_diff_1k.jpg",
-                        "tiling": 25.0
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                        "tiling": 50.0
                     }
                 ],
                 "cachedTexturePath": "",
@@ -118,27 +118,12 @@
                 "title": "Scene Input"
             },
             {
-                "cachedMatColor": [
-                    0.07580962777137756,
-                    0.7656765580177307,
-                    0.0
-                ],
-                "cachedMatOffset": [
-                    0.0,
-                    0.0
-                ],
-                "cachedMatShininess": 32.0,
-                "cachedMatSpecular": 0.5,
-                "cachedMatTiling": [
-                    1.0,
-                    1.0
-                ],
-                "cachedModelPath": "Assets\\Models\\grass.obj",
+                "cachedModelPath": "Assets\\Models\\Tree.obj",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -80.5975570678711,
-                    62.44777297973633,
-                    72.37592315673828
+                    -59.50497055053711,
+                    43.69472885131836,
+                    53.67136001586914
                 ],
                 "cachedPrimitiveType": "",
                 "cachedRotation": [
@@ -157,18 +142,18 @@
                     50.0,
                     250.0
                 ],
-                "hasCachedMaterial": true,
+                "hasCachedMaterial": false,
                 "id": 3,
                 "inputPins": [],
                 "outputPins": [
                     4
                 ],
-                "selectedName": "grass 4",
+                "selectedName": "Tree (Root)",
                 "title": "Scene Input"
             },
             {
                 "alignToNormal": false,
-                "count": 10000,
+                "count": 100,
                 "createdGroupNames": [
                     "Scatter_Instanced_8_Tree (Root)",
                     "Scatter_Instanced_8_Tree (Root)_0",
@@ -471,7 +456,7 @@
         {
             "inheritScale": true,
             "modelPath": "",
-            "name": "Scatter_Group_8_Tree (Root)",
+            "name": "Scatter_Group_8_grass 4",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
@@ -497,7 +482,7 @@
         {
             "inheritScale": true,
             "modelPath": "",
-            "name": "Scatter_Group_8_grass 4",
+            "name": "Scatter_Group_8_Tree (Root)",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",

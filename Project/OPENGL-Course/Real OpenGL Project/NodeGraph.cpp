@@ -485,6 +485,14 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								subNorm = multiMeshModel->GetNormalMap(matIdx);
 							}
 
+							if (!subMat) {
+								subMat = sourceObj->GetMaterial();
+							}
+
+							if (subLayers.empty()) {
+								subLayers = sourceObj->GetTextureLayers();
+							}
+
 							// Unique group name per sub-mesh
 							std::string subGroupName = groupName + "_" + std::to_string(m);
 							scene.RemoveInstancedGroup(subGroupName);
