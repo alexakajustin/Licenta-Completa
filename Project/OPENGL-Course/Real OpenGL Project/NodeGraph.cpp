@@ -778,7 +778,6 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 	// Also check child objects of generated groups
 	// (ScatterNode uses 'Instance_X_Y' or 'Instance_X_Name_Y' patterns)
 	if (name.find("Instance_") != std::string::npos || 
-		name.find("Scatter_Group_") != std::string::npos ||
 		name.find("Scatter_Instanced_") != std::string::npos)
 		return true;
 

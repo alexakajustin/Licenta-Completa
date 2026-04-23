@@ -1,25 +1,25 @@
 {
     "instancedGroups": [
         {
-            "instanceDataPath": "Grass_Scatter_Instanced_26_Tree_(Root)_0.inst",
+            "instanceDataPath": "SampleScene_Scatter_Instanced_8_Tree_(Root)_0.inst",
             "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_26_Tree (Root)_0",
+            "name": "Scatter_Instanced_8_Tree (Root)_0",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 polySurface1"
         },
         {
-            "instanceDataPath": "Grass_Scatter_Instanced_26_Tree_(Root)_1.inst",
+            "instanceDataPath": "SampleScene_Scatter_Instanced_8_Tree_(Root)_1.inst",
             "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_26_Tree (Root)_1",
+            "name": "Scatter_Instanced_8_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
         },
         {
-            "instanceDataPath": "Grass_Scatter_Instanced_26_grass_1.inst",
-            "maxDrawDistance": 200.0,
-            "name": "Scatter_Instanced_26_grass 1",
-            "shadowDistance": 25.0,
-            "sourceObjectName": "grass 1"
+            "instanceDataPath": "SampleScene_Scatter_Instanced_8_grass_4.inst",
+            "maxDrawDistance": 250.0,
+            "name": "Scatter_Instanced_8_grass 4",
+            "shadowDistance": 30.0,
+            "sourceObjectName": "grass 4"
         }
     ],
     "lights": [
@@ -43,98 +43,18 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 28,
-                "id": 36,
-                "start": 22
+                "end": 10,
+                "id": 18,
+                "start": 4
             },
             {
-                "end": 27,
-                "id": 39,
-                "start": 38
+                "end": 9,
+                "id": 19,
+                "start": 2
             }
         ],
-        "nextId": 67,
+        "nextId": 29,
         "nodes": [
-            {
-                "cachedMatColor": [
-                    0.28232523798942566,
-                    0.594059407711029,
-                    0.0
-                ],
-                "cachedMatOffset": [
-                    0.0,
-                    0.0
-                ],
-                "cachedMatShininess": 32.0,
-                "cachedMatSpecular": 0.5,
-                "cachedMatTiling": [
-                    1.0,
-                    1.0
-                ],
-                "cachedModelPath": "Assets\\Models\\grass.obj",
-                "cachedNormalMapPath": "",
-                "cachedPosition": [
-                    0.0,
-                    -0.9563727974891663,
-                    0.0
-                ],
-                "cachedPrimitiveType": "",
-                "cachedRotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "cachedScale": [
-                    5.0,
-                    5.0,
-                    5.0
-                ],
-                "cachedTextureLayers": [],
-                "cachedTexturePath": "",
-                "editorPos": [
-                    50.0,
-                    250.0
-                ],
-                "hasCachedMaterial": true,
-                "id": 21,
-                "inputPins": [],
-                "outputPins": [
-                    22
-                ],
-                "selectedName": "grass 1",
-                "title": "Scene Input"
-            },
-            {
-                "alignToNormal": true,
-                "count": 1000000,
-                "createdGroupNames": [
-                    "Scatter_Instanced_26_Tree (Root)",
-                    "Scatter_Instanced_26_Tree (Root)_0",
-                    "Scatter_Instanced_26_Tree (Root)_1",
-                    "Scatter_Instanced_26_grass 1"
-                ],
-                "editorPos": [
-                    450.0,
-                    250.0
-                ],
-                "id": 26,
-                "inputPins": [
-                    27,
-                    28
-                ],
-                "maxScale": 1.2000000476837158,
-                "minScale": 0.800000011920929,
-                "outputPins": [
-                    29,
-                    30
-                ],
-                "randomRotation": true,
-                "seed": 42,
-                "spawnAsObjects": true,
-                "spawnedMap": {},
-                "targetParentName": "Plane",
-                "title": "Scatter"
-            },
             {
                 "cachedMatColor": [
                     1.0,
@@ -155,7 +75,7 @@
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
                     0.0,
-                    -0.9318869113922119,
+                    0.0,
                     0.0
                 ],
                 "cachedPrimitiveType": "Plane",
@@ -165,9 +85,9 @@
                     0.0
                 ],
                 "cachedScale": [
-                    1000.0,
+                    100.0,
                     1.0,
-                    1000.0
+                    100.0
                 ],
                 "cachedTextureLayers": [
                     {
@@ -175,27 +95,107 @@
                         "heightMax": 100.0,
                         "heightMin": 0.0,
                         "invert": false,
-                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                        "normalMapPath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_nor_1k.png",
                         "opacity": 1.0,
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
-                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
-                        "tiling": 1000.0
+                        "texturePath": "Assets\\Textures\\Terrain_Brown_Mud\\brown_mud_03_diff_1k.jpg",
+                        "tiling": 25.0
                     }
                 ],
                 "cachedTexturePath": "",
                 "editorPos": [
-                    281.0,
-                    218.0
+                    50.0,
+                    50.0
                 ],
                 "hasCachedMaterial": true,
-                "id": 37,
+                "id": 1,
                 "inputPins": [],
                 "outputPins": [
-                    38
+                    2
                 ],
                 "selectedName": "Plane",
                 "title": "Scene Input"
+            },
+            {
+                "cachedMatColor": [
+                    0.07580962777137756,
+                    0.7656765580177307,
+                    0.0
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\grass.obj",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    -80.5975570678711,
+                    62.44777297973633,
+                    72.37592315673828
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    10.0,
+                    10.0,
+                    10.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    250.0
+                ],
+                "hasCachedMaterial": true,
+                "id": 3,
+                "inputPins": [],
+                "outputPins": [
+                    4
+                ],
+                "selectedName": "grass 4",
+                "title": "Scene Input"
+            },
+            {
+                "alignToNormal": false,
+                "count": 10000,
+                "createdGroupNames": [
+                    "Scatter_Instanced_8_Tree (Root)",
+                    "Scatter_Instanced_8_Tree (Root)_0",
+                    "Scatter_Instanced_8_Tree (Root)_1",
+                    "Scatter_Instanced_8_grass 4"
+                ],
+                "editorPos": [
+                    450.0,
+                    250.0
+                ],
+                "id": 8,
+                "inputPins": [
+                    9,
+                    10
+                ],
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
+                "outputPins": [
+                    11,
+                    12
+                ],
+                "randomRotation": true,
+                "seed": 12289,
+                "spawnAsObjects": true,
+                "spawnedMap": {},
+                "targetParentName": "(none)",
+                "title": "Scatter"
             }
         ]
     },
@@ -242,14 +242,14 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
-                    "tiling": 1000.0
+                    "tiling": 50.0
                 }
             ],
             "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
-                    -0.9318869113922119,
+                    0.0,
                     0.0
                 ],
                 "rotation": [
@@ -258,59 +258,9 @@
                     0.0
                 ],
                 "scale": [
-                    1000.0,
+                    100.0,
                     1.0,
-                    1000.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "material.baseColor": [
-                    0.28232523798942566,
-                    0.594059407711029,
-                    0.0,
-                    1.0
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/grass.frag",
-                "shader_vert": "Assets/Shaders/grass.vert",
-                "windSpeed": 0.5,
-                "windStrength": 0.004999999888241291
-            },
-            "modelPath": "Assets\\Models\\grass.obj",
-            "name": "grass 1",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    -0.9563727974891663,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    5.0,
-                    5.0
+                    100.0
                 ]
             }
         },
@@ -324,9 +274,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -6.466206073760986,
-                    -3.8134207725524902,
-                    -1.216145634651184
+                    -59.50497055053711,
+                    43.69472885131836,
+                    53.67136001586914
                 ],
                 "rotation": [
                     0.0,
@@ -334,9 +284,9 @@
                     0.0
                 ],
                 "scale": [
-                    5.0,
-                    5.0,
-                    5.0
+                    10.0,
+                    10.0,
+                    10.0
                 ]
             }
         },
@@ -450,6 +400,108 @@
                 }
             ],
             "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    0.0303892083466053,
+                    0.3069307208061218,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/grass.frag",
+                "shader_vert": "Assets/Shaders/grass.vert",
+                "windSpeed": 1.0,
+                "windStrength": 0.004999999888241291
+            },
+            "modelPath": "Assets\\Models\\grass.obj",
+            "name": "grass 4",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -80.5975570678711,
+                    62.44777297973633,
+                    72.37592315673828
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    10.0,
+                    10.0,
+                    10.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_8_Tree (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_8_grass 4",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,

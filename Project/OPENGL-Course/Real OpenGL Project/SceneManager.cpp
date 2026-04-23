@@ -104,11 +104,18 @@ void SceneManager::DeleteGameObject(int index)
 	std::string name = obj->GetName();
 	if (name.find("Scatter_Group_") == 0) {
 		std::string idStr = name.substr(14);
-		RemoveInstancedGroup("Scatter_Instanced_" + idStr);
-	}
-
-
-	// Recursive deletion: delete all children first
+		std::string prefix = "Scatter_Instanced_" + idStr;
+		
+		std::vector<std::string> toRemove;
+		for (auto* group : instancedGroups) {
+			if (group && group->GetName().find(prefix) == 0) {
+				toRemove.push_back(group->GetName());
+			}
+		}
+		for (const auto& groupName : toRemove) {
+			RemoveInstancedGroup(groupName);
+		}
+	}	// Recursive deletion: delete all children first
 	// We make a copy of the children vector because deleting a child 
 	// will modify the original vector via the destructor/parent detachment
 	std::vector<GameObject*> childrenCopy = obj->GetChildren();
