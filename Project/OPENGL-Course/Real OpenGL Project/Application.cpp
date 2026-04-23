@@ -130,16 +130,20 @@ void Application::LoadResources()
 
 void Application::SetupScene()
 {
-	// Setup default scene: Directional Light + 20x1x20 Plane
+	// Setup default scene: Directional Light + 100x1x100 Plane
 	
 	// Create Plane
 	GameObject* plane = new GameObject("Plane");
-	plane->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f));
-	// Set position to 0, -500, 0
-	plane->GetTransform().SetPosition(glm::vec3(0.0f, -500.0f, 0.0f));
+	plane->GetTransform().SetScale(glm::vec3(100.0f, 1.0f, 100.0f));
+	plane->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 	plane->SetMesh(PrimitiveGenerator::CreatePlane(1, 1));
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
+
+	// Reset Directional Light
+	if (mainLight.GetDirectionPtr()) {
+		*mainLight.GetDirectionPtr() = glm::vec3(-20.0f, -5.0f, 7.0f);
+	}
 
 	// Create Directional Light
 	LightObject* sun = new LightObject("Sun", &mainLight);

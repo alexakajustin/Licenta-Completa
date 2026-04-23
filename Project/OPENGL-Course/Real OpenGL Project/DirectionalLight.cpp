@@ -2,7 +2,7 @@
 
 DirectionalLight::DirectionalLight() : Light()
 {
-	direction = glm::vec3(0.0f, -1.0f, 0.0f);
+	direction = glm::vec3(-20.0f, -5.0f, 7.0f);
 	lightProj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 200.0f);
 }
 
