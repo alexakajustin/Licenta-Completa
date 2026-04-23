@@ -242,6 +242,41 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 	}
 	j["lights"] = lightsArray;
 
+	// ========== Serialize Instanced Groups ==========
+	json instancedGroupsArray = json::array();
+	for (auto* group : scene.GetInstancedGroups())
+	{
+		json groupJson;
+		groupJson["name"] = group->GetName();
+		groupJson["sourceObjectName"] = group->GetSourceObjectName();
+		groupJson["maxDrawDistance"] = group->GetMaxDrawDistance();
+		groupJson["shadowDistance"] = group->GetShadowDistance();
+
+		// Save the cpuInstances to a binary file
+		std::filesystem::path scenePath(filePath);
+		std::string sceneStem = scenePath.stem().string();
+		std::string safeGroupName = group->GetName();
+		for (char& c : safeGroupName) if (c == ' ' || c == '\\' || c == '/' || c == ':' || c == '<' || c == '>' || c == '|' || c == '*' || c == '?') c = '_';
+		std::string instFileName = sceneStem + "_" + safeGroupName + ".inst";
+		std::string instFilePath = (scenePath.parent_path() / instFileName).string();
+
+		// Write binary instance data
+		std::ofstream instFile(instFilePath, std::ios::binary);
+		if (instFile.is_open())
+		{
+			uint32_t count = (uint32_t)group->cpuInstances.size();
+			instFile.write((const char*)&count, sizeof(uint32_t));
+			if (count > 0) {
+				instFile.write((const char*)group->cpuInstances.data(), count * sizeof(InstancedGroup::PackedInstance));
+			}
+			instFile.close();
+			groupJson["instanceDataPath"] = instFileName;
+		}
+
+		instancedGroupsArray.push_back(groupJson);
+	}
+	j["instancedGroups"] = instancedGroupsArray;
+
 	// ========== Write to File ==========
 	std::ofstream file(filePath);
 	if (!file.is_open())
@@ -679,6 +714,95 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					scene.AddLight(lightObj);
 					spotLightCount++;
 				}
+			}
+		}
+	}
+
+	if (progressCallback) progressCallback(38.0f, 0.0f, "Loading Instanced Groups...");
+
+	// ========== Load Instanced Groups ==========
+	if (j.contains("instancedGroups"))
+	{
+		for (auto& groupJson : j["instancedGroups"])
+		{
+			std::string name = groupJson.value("name", "InstancedGroup");
+			std::string sourceObjName = groupJson.value("sourceObjectName", "");
+			float maxDraw = groupJson.value("maxDrawDistance", 200.0f);
+			float shadowDist = groupJson.value("shadowDistance", 30.0f);
+
+			std::string instFileName = groupJson.value("instanceDataPath", "");
+			if (instFileName.empty()) continue;
+
+			std::string instFilePath = (std::filesystem::path(filePath).parent_path() / instFileName).string();
+			std::ifstream instFile(instFilePath, std::ios::binary);
+			if (!instFile.is_open())
+			{
+				printf("[SceneSerializer] Warning: Could not find instance data file %s\n", instFilePath.c_str());
+				continue;
+			}
+
+			uint32_t count = 0;
+			instFile.read((char*)&count, sizeof(uint32_t));
+			std::vector<InstancedGroup::PackedInstance> instances(count);
+			if (count > 0) {
+				instFile.read((char*)instances.data(), count * sizeof(InstancedGroup::PackedInstance));
+			}
+			instFile.close();
+
+			// Reconstruct setup by finding the source object
+			GameObject* sourceObj = scene.FindObject(sourceObjName);
+			if (!sourceObj && !sourceObjName.empty()) {
+				// Fallback to searching by prefix if sourceObjName is a sub-mesh name
+				for (auto* obj : scene.GetObjects()) {
+					std::string objName = obj->GetName();
+					size_t suffixPos = objName.find(" (");
+					if (suffixPos != std::string::npos) objName = objName.substr(0, suffixPos);
+					
+					if (objName == sourceObjName) {
+						sourceObj = obj;
+						break;
+					}
+				}
+			}
+
+			if (sourceObj && sourceObj->GetMesh())
+			{
+				Mesh* mesh = sourceObj->GetMesh();
+				Material* mat = sourceObj->GetMaterial() ? sourceObj->GetMaterial() : defaultMaterial;
+				Texture* tex = sourceObj->GetTexture() ? sourceObj->GetTexture() : defaultTexture;
+				Texture* norm = sourceObj->GetNormalMap();
+				auto layers = sourceObj->GetTextureLayers();
+				
+				InstancedGroup* group = new InstancedGroup(name);
+				group->SetSourceObjectName(sourceObjName);
+				group->Setup(mesh, instances, mat, tex, norm, layers);
+				group->SetMaxDrawDistance(maxDraw);
+				group->SetShadowDistance(shadowDist);
+				scene.AddInstancedGroup(group);
+			}
+			else if (sourceObj && sourceObj->GetModel())
+			{
+				Model* model = sourceObj->GetModel();
+				if (model->GetMeshCount() > 0) {
+					Mesh* mesh = model->GetMesh(0);
+					unsigned int matIdx = model->GetMaterialIndex(0);
+					Material* mat = sourceObj->GetMaterial() ? sourceObj->GetMaterial() : defaultMaterial;
+					Texture* tex = sourceObj->GetTexture() ? sourceObj->GetTexture() : model->GetTexture(matIdx);
+					if (!tex) tex = defaultTexture;
+					Texture* norm = sourceObj->GetNormalMap() ? sourceObj->GetNormalMap() : model->GetNormalMap(matIdx);
+					auto layers = sourceObj->GetTextureLayers();
+
+					InstancedGroup* group = new InstancedGroup(name);
+					group->SetSourceObjectName(sourceObjName);
+					group->Setup(mesh, instances, mat, tex, norm, layers);
+					group->SetMaxDrawDistance(maxDraw);
+					group->SetShadowDistance(shadowDist);
+					scene.AddInstancedGroup(group);
+				}
+			}
+			else
+			{
+				printf("[SceneSerializer] Warning: Could not reconstruct InstancedGroup '%s', missing source object '%s'\n", name.c_str(), sourceObjName.c_str());
 			}
 		}
 	}

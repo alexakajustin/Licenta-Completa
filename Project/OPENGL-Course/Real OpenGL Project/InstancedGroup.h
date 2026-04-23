@@ -87,6 +87,11 @@ public:
 	Mesh* GetMesh() const { return sharedMesh; }
 	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
 
+	// Serialization Helper
+	std::string sourceObjectName;
+	const std::string& GetSourceObjectName() const { return sourceObjectName; }
+	void SetSourceObjectName(const std::string& name) { sourceObjectName = name; }
+
 	// Smart Instance Extraction & Selection
 	std::vector<PackedInstance> cpuInstances;
 	std::vector<int> selectedInstanceIndices;

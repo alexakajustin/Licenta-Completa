@@ -490,6 +490,8 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							scene.RemoveInstancedGroup(subGroupName);
 
 							InstancedGroup* group = new InstancedGroup(subGroupName);
+							if (matchingChild) group->SetSourceObjectName(matchingChild->GetName());
+							else group->SetSourceObjectName(objName);
 							group->Setup(meshCache[dataKey], packedInstances, subMat, subTex, subNorm, subLayers);
 							group->SetMaxDrawDistance(maxDist);
 							group->SetShadowDistance(shadowDist);
@@ -555,6 +557,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							}
 
 							InstancedGroup* group = new InstancedGroup(groupName);
+							group->SetSourceObjectName(objName);
 							group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
 							group->SetMaxDrawDistance(maxDist);
 							group->SetShadowDistance(shadowDist);
