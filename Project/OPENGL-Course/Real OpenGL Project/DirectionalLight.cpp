@@ -100,36 +100,56 @@ void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, con
 			center += glm::vec3(corners[j]);
 		}
 		center /= 8.0f;
+		// Snap center to world grid to prevent sub-texel camera movement from affecting light view
+		center = glm::floor(center * 2.0f) / 2.0f; 
 
-		float radius = 0.0f;
-		for (int j = 0; j < 8; j++) {
-			float distance = glm::length(glm::vec3(corners[j]) - center);
-			radius = std::max(radius, distance);
-		}
-		radius = std::ceil(radius * 16.0f) / 16.0f; // Round up slightly to avoid precision flickering
+
+		// 1. Find a rotation-invariant bounding sphere for this frustum segment
+		// Instead of calculating from corners (which can fluctuate), we use a stable radius
+		// based on the split distance and the FOV.
+		float tanHalfFOV = 1.0f / projection[1][1];
+		float aspect = projection[1][1] / projection[0][0];
+		
+		float h = nextSplit * tanHalfFOV;
+		float w = h * aspect;
+		float radius = std::sqrt(nextSplit * nextSplit + h * h + w * w);
+		
+		// Round to a coarse step to be extra safe
+		radius = std::ceil(radius / 8.0f) * 8.0f;
 
 		// 2. Create stable light view/proj matrices
 		glm::vec3 lightDir = glm::normalize(direction);
 		
-		// The view matrix should be centered on the sphere center
-		glm::mat4 lightView = glm::lookAt(center - lightDir * radius * 2.0f, center, glm::vec3(0.0f, 1.0f, 0.0f));
-		
-		// Projection is a fixed-size square based on the sphere diameter
-		glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, 0.0f, radius * 4.0f);
+		// Use a fixed UP vector unless light is parallel to it
+		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+		if (std::abs(glm::dot(lightDir, up)) > 0.99f) {
+			up = glm::vec3(0.0f, 0.0f, 1.0f);
+		}
 
-		// 3. SNAPPING: Snap the light's "eye" to texel increments in light-space
+		// Fixed radius quantization to prevent flickering as the frustum segment shifts
+		// We use a coarser step (1.0 units) to ensure the orthographic box size is extremely stable
+		radius = std::ceil(radius); 
+
+		// Build a view matrix that only translates with the center and rotates with the light
+		glm::mat4 lightView = glm::lookAt(center - lightDir * radius, center, up);
+		
+		// Projection is a fixed-size square based on the stable radius
+		glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, -radius * 6.0f, radius * 6.0f);
+
+		// 3. PIXEL-PERFECT SNAPPING
+		// We transform the origin to light-space, snap it to the texel grid, and apply the offset.
 		glm::mat4 shadowMatrix = lightProjection * lightView;
-		glm::vec4 shadowOrigin(0.0f, 0.0f, 0.0f, 1.0f);
-		shadowOrigin = shadowMatrix * shadowOrigin;
+		glm::vec4 shadowOrigin = shadowMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		float texelsPerUnit = (float)shadowMap->GetShadowWidth() / (radius * 2.0f);
+
 		shadowOrigin *= (float)shadowMap->GetShadowWidth() / 2.0f;
 
-		glm::vec4 roundedOrigin = glm::round(shadowOrigin);
-		glm::vec4 roundOffset = roundedOrigin - shadowOrigin;
+		glm::vec2 roundedOrigin = glm::round(glm::vec2(shadowOrigin.x, shadowOrigin.y));
+		glm::vec2 roundOffset = roundedOrigin - glm::vec2(shadowOrigin.x, shadowOrigin.y);
 		roundOffset = roundOffset * 2.0f / (float)shadowMap->GetShadowWidth();
-		roundOffset.z = 0.0f;
-		roundOffset.w = 0.0f;
 
-		lightProjection[3] += roundOffset;
+		lightProjection[3][0] += roundOffset.x;
+		lightProjection[3][1] += roundOffset.y;
 
 		cascadedLightMatrices.push_back(lightProjection * lightView);
 	}
