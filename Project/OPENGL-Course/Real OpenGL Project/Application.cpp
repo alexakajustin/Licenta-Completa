@@ -124,7 +124,7 @@ void Application::LoadResources()
 		0.4f, 0.6f,
 		-20.0f, -5.0f, 7.0f);
 	// Focused frustum for better shadow resolution (30 units area)
-	mainLight.SetShadowFrustum(30.0f, 0.1f, 200.0f);
+	mainLight.SetShadowFrustum(300.0f, 0.1f, 1000.0f);
 	spotLightCount = 0;
 }
 

@@ -1404,8 +1404,9 @@ void EditorUI::RenderGraphicsSettings()
 		if (ImGui::CollapsingHeader("Culling & Distance", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Text("Render Distances (Multiplier)");
-			ImGui::SliderFloat("Objects/Grass##DrawDist", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 5.0f, "%.2fx");
-			ImGui::SliderFloat("Shadows##ShadowDist", &graphicsSettingsPtr->shadowDistanceMultiplier, 0.1f, 5.0f, "%.2fx");
+			if (ImGui::SliderFloat("Render Distance##GlobalDist", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 5.0f, "%.2fx")) {
+				graphicsSettingsPtr->shadowDistanceMultiplier = graphicsSettingsPtr->renderDistanceMultiplier;
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))

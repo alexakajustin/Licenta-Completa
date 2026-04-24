@@ -253,45 +253,69 @@ vec3 sampleOffsetDirections[20] = vec3[]
    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 );
 
+vec2 poissonDisk[16] = vec2[](
+   vec2( -0.94201624, -0.39906216 ), vec2( 0.94558609, -0.76890725 ),
+   vec2( -0.094184101, -0.92938870 ), vec2( 0.34495938, 0.29387760 ),
+   vec2( -0.91588581, 0.45771432 ), vec2( -0.81544232, -0.87912464 ),
+   vec2( -0.38277543, 0.27676845 ), vec2( 0.97484398, 0.75648379 ),
+   vec2( 0.44323325, -0.97511554 ), vec2( 0.53742981, -0.47373420 ),
+   vec2( -0.65476012, -0.051443273 ), vec2( -0.43701662, -0.81599235 ),
+   vec2( 0.60288572, 0.44872051 ), vec2( -0.21151840, -0.36960612 ),
+   vec2( -0.54245971, 0.48821213 ), vec2( -0.34613928, -0.64444749 )
+);
+
+float random(vec3 seed, int i){
+	vec4 seed4 = vec4(seed,i);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+
 float CalcDirectionalShadowFactor(DirectionalLight light)
 {
 	vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
-	float current = projCoords.z;
+	// Distance-based shadow fade: Start fading at 200 units, complete at 300
+	float fragDist = length(eyePosition - FragPos);
+	float shadowFade = clamp((fragDist - 200.0) / 100.0, 0.0, 1.0);
 	
+	if(projCoords.z > 1.0 || fragDist > 300.0)
+	{
+		return 0.0;
+	}
+
+	float current = projCoords.z;
 	vec3 normal = GetEffectiveNormal();
 	vec3 lightDir = normalize(directionalLight.direction);
 	
-	// Lowered bias for focused frustum (30 units area) to fix peter panning
-	// Using -lightDir (Fragment -> Light) as per standard bias calculation
-	float bias = max(0.002 * (1.0 - dot(normal, -lightDir)), 0.0002);
+	// Bias adjusted for 300-unit frustum
+	float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.0005);
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / vec2(textureSize(directionalShadowMap, 0));
 	
-	// 3x3 Grid-based PCF sampling as per reference course
-	for(int x = -1; x <= 1; ++x)
+	// Randomized rotation for Poisson Disk to hide patterns
+	float angle = random(FragPos, 0) * 6.283185;
+	float s = sin(angle);
+	float c = cos(angle);
+	mat2 rot = mat2(c, s, -s, c);
+
+	for(int i = 0; i < 16; i++)
 	{
-		for(int y = -1; y <= 1; ++y)
-		{
-			vec2 samplePos = projCoords.xy + vec2(x, y) * texelSize;
-			float pcfDepth = texture(directionalShadowMap, samplePos).r;
-			float occluderAlpha = texture(directionalShadowColorMap, samplePos).r;
-			
-			float isShadow = current - bias > pcfDepth ? 1.0 : 0.0;
-			shadow += isShadow * occluderAlpha;
+		vec2 offset = rot * poissonDisk[i] * texelSize * 1.5; // Spread the samples slightly
+		vec2 samplePos = projCoords.xy + offset;
+		float pcfDepth = texture(directionalShadowMap, samplePos).r;
+		float occluderAlpha = texture(directionalShadowColorMap, samplePos).r;
+		
+		if (current - bias > pcfDepth) {
+			shadow += 1.0 * occluderAlpha;
 		}
 	}
 
-	shadow /= 9.0;
+	shadow /= 16.0;
 	
-	if(projCoords.z > 1.0)
-	{
-		shadow = 0.0;
-	}									
-	
-	return shadow;
+	// Apply fade so shadows merge smoothly with distant terrain
+	return shadow * (1.0 - shadowFade);
 }
 
 float CalcOmniShadowFactor(PointLight light, int shadowIndex)
