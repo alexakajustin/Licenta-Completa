@@ -123,8 +123,8 @@ void Application::LoadResources()
 		1.0f, 1.0f, 1.0f,
 		0.4f, 0.6f,
 		-20.0f, -5.0f, 7.0f);
-	// Shadow frustum: 150 units covers the 100x100 plane well. Percentage-based fade in shader.
-	mainLight.SetShadowFrustum(150.0f, 0.1f, 400.0f);
+	// Shadow frustum: 250 units gives good coverage. Edge-based fading in shader handles smooth boundaries.
+	mainLight.SetShadowFrustum(250.0f, 0.1f, 500.0f);
 	spotLightCount = 0;
 }
 

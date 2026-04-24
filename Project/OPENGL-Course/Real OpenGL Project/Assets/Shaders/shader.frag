@@ -271,27 +271,25 @@ float random(vec3 seed, int i){
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-// Shadow distance uniform — set by CPU to match the shadow frustum size
-uniform float shadowDistance;
-
 float CalcDirectionalShadowFactor(DirectionalLight light)
 {
 	vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
-	// Use actual shadow distance (set by CPU from frustum size)
-	float sd = max(shadowDistance, 10.0);
+	// Early out: behind the shadow map far plane
+	if(projCoords.z > 1.0) return 0.0;
 	
-	// Distance-based shadow fade: 80% to 100% of shadow distance
-	float fragDist = length(eyePosition - FragPos);
-	float fadeStart = sd * 0.8;
-	float shadowFade = clamp((fragDist - fadeStart) / (sd - fadeStart), 0.0, 1.0);
+	// Edge fade: smoothly fade shadows near the borders of the shadow map
+	// This prevents hard shadow cutoff regardless of light direction or frustum size
+	float fadeMargin = 0.1; // 10% of shadow map = fade zone
+	float edgeFade = 1.0;
+	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.x));
+	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.x));
+	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.y));
+	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.y));
 	
-	// Early out: outside shadow map or beyond shadow distance
-	if(projCoords.z > 1.0 || fragDist > sd)
-	{
-		return 0.0;
-	}
+	// If fully outside the shadow map, no shadow
+	if(edgeFade <= 0.0) return 0.0;
 
 	float current = projCoords.z;
 	vec3 normal = GetEffectiveNormal();
@@ -323,8 +321,8 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 
 	shadow /= 16.0;
 	
-	// Smooth fade so shadows merge with distant terrain
-	return shadow * (1.0 - shadowFade);
+	// Apply edge fade for smooth shadow boundary
+	return shadow * edgeFade;
 }
 
 float CalcOmniShadowFactor(PointLight light, int shadowIndex)
