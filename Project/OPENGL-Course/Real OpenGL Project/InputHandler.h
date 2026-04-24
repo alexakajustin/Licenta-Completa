@@ -20,7 +20,7 @@ public:
 
 	// Editor picking & gizmo (call AFTER UI rendering so "Scene" window exists)
 	void UpdateEditor(Window& window, Camera& camera, SceneManager& scene,
-					  const glm::mat4& projection, const EditorUI& editorUI);
+					  const glm::mat4& projection, const EditorUI& editorUI, GLuint viewportFBO = 0);
 
 	// Box selection accessors (for overlay drawing)
 	bool IsBoxSelecting() const { return boxSelecting; }

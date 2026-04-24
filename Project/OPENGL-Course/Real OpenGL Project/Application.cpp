@@ -387,10 +387,13 @@ void Application::Run()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
+		// Scene Selection (Move before depth clear so we can use scene depth)
+		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI, viewportFBO);
+
 		// Render gizmos/icons AFTER SSAO so depth buffer had valid object data for SSAO
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so gizmos always render on top
+		// glClear(GL_DEPTH_BUFFER_BIT); // Removed to prevent "see-through" gizmos (allows occlusion by scene)
 		sceneManager.RenderIcons(projection, view);
 		sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -404,9 +407,7 @@ void Application::Run()
 		editorUI.RenderGraphicsSettings();
 
 
-		// Editor picking & gizmo (AFTER UI so "Scene" window exists)
-
-		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI);
+		// Editor picking & gizmo (REMOVED: moved up)
 
 		glUseProgram(0);
 

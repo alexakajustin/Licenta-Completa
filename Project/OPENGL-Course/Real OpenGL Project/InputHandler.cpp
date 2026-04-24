@@ -33,7 +33,7 @@ void InputHandler::UpdateCamera(Window& window, Camera& camera, GLfloat deltaTim
 }
 
 void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& scene,
-								const glm::mat4& projection, const EditorUI& editorUI)
+								const glm::mat4& projection, const EditorUI& editorUI, GLuint viewportFBO)
 {
 	if (!window.isCursorEnabled())
 	{
@@ -131,7 +131,7 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 			bool shiftHeld = glfwGetKey(window.getWindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
 							 glfwGetKey(window.getWindow(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS;
 
-			scene.BoxSelect(rectMin, rectMax, projection, view, vSize.x, vSize.y, shiftHeld);
+			scene.BoxSelect(rectMin, rectMax, projection, view, vSize.x, vSize.y, shiftHeld, viewportFBO);
 
 			boxSelecting = false;
 			boxDragStarted = false;

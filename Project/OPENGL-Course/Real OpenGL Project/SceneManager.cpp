@@ -714,38 +714,84 @@ bool SceneManager::IsLightSelected(int index) const
 	return std::find(selectedLightIndices.begin(), selectedLightIndices.end(), index) != selectedLightIndices.end();
 }
 
-void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool additive)
+void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool additive, GLuint depthFBO)
 {
 	if (!additive) {
 		selectedObjectIndices.clear();
 		selectedLightIndices.clear();
+		for (auto* group : instancedGroups) if (group) group->ClearSelection();
 	}
 
 	glm::mat4 vp = projection * view;
 
 	// Helper: project world position to viewport pixel coordinates
 	// Returns false if behind camera
-	auto ProjectToScreen = [&](glm::vec3 worldPos, glm::vec2& screenPos) -> bool {
+	auto ProjectToScreen = [&](glm::vec3 worldPos, glm::vec2& screenPos, float& outDepth) -> bool {
 		glm::vec4 clip = vp * glm::vec4(worldPos, 1.0f);
 		if (clip.w <= 0.0f) return false; // Behind camera
 
 		glm::vec3 ndc = glm::vec3(clip) / clip.w;
 		// NDC to viewport pixel coords
 		screenPos.x = (ndc.x * 0.5f + 0.5f) * viewportWidth;
-		screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * viewportHeight; // Y flipped
+		screenPos.y = (1.0f - (ndc.y * 0.5f + 0.5f)) * viewportHeight; // Y flipped (0 at top)
+		outDepth = ndc.z * 0.5f + 0.5f; // Map [-1, 1] to [0, 1]
 		return true;
+	};
+
+	// Optional: Read depth buffer for occlusion culling
+	std::vector<float> depthBuffer;
+	int rX = (int)rectMin.x;
+	int rY = (int)(viewportHeight - rectMax.y); // OpenGL Y starts at bottom
+	int rW = (int)(rectMax.x - rectMin.x);
+	int rH = (int)(rectMax.y - rectMin.y);
+
+	if (depthFBO != 0) {
+		// Clamp to viewport bounds
+		if (rX < 0) { rW += rX; rX = 0; }
+		if (rY < 0) { rH += rY; rY = 0; }
+		if (rX + rW > (int)viewportWidth) rW = (int)viewportWidth - rX;
+		if (rY + rH > (int)viewportHeight) rH = (int)viewportHeight - rY;
+
+		if (rW > 0 && rH > 0) {
+			depthBuffer.resize(rW * rH);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, depthFBO);
+			glPixelStorei(GL_PACK_ALIGNMENT, 1);
+			glReadPixels(rX, rY, rW, rH, GL_DEPTH_COMPONENT, GL_FLOAT, depthBuffer.data());
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		}
+	}
+
+	auto IsVisible = [&](glm::vec2 screenPos, float depth) -> bool {
+		if (depthBuffer.empty()) return true;
+
+		int lx = (int)screenPos.x - rX;
+		int ly = (int)(viewportHeight - screenPos.y) - rY;
+		if (ly < 0) ly = 0;
+		if (ly >= rH) ly = rH - 1;
+
+		if (lx >= 0 && lx < rW) {
+			float sampledDepth = depthBuffer[lx + ly * rW];
+			// Bias to account for floating point precision and self-occlusion.
+			// Increased to 0.001f for better tolerance on slopes.
+			return depth <= sampledDepth + 0.001f; 
+		}
+		return false;
 	};
 
 	// Select regular objects
 	for (int i = 0; i < (int)objects.size(); i++) {
 		glm::vec3 worldPos = glm::vec3(objects[i]->GetWorldMatrix()[3]);
 		glm::vec2 screenPos;
-		if (!ProjectToScreen(worldPos, screenPos)) continue;
+		float depth;
+		if (!ProjectToScreen(worldPos, screenPos, depth)) continue;
 
 		if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
 			screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
-			if (!IsObjectSelected(i)) {
-				selectedObjectIndices.push_back(i);
+			
+			if (IsVisible(screenPos, depth)) {
+				if (!IsObjectSelected(i)) {
+					selectedObjectIndices.push_back(i);
+				}
 			}
 		}
 	}
@@ -757,20 +803,22 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 			if (!lightPos) continue;
 
 			glm::vec2 screenPos;
-			if (!ProjectToScreen(*lightPos, screenPos)) continue;
+			float depth;
+			if (!ProjectToScreen(*lightPos, screenPos, depth)) continue;
 
 			if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
 				screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
-				if (!IsLightSelected(i)) {
-					selectedLightIndices.push_back(i);
+				
+				if (IsVisible(screenPos, depth)) {
+					if (!IsLightSelected(i)) {
+						selectedLightIndices.push_back(i);
+					}
 				}
 			}
 		}
 	}
 
 	// Extract instanced scatter objects that fall within the box
-	// Collect all matching indices per group first, then extract in reverse order
-	// (reverse order preserves indices during swap-pop extraction)
 	for (auto* group : instancedGroups) {
 		if (!group || group->cpuInstances.empty()) continue;
 
@@ -780,11 +828,15 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 			glm::vec3 worldPos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
 
 			glm::vec2 screenPos;
-			if (!ProjectToScreen(worldPos, screenPos)) continue;
+			float depth;
+			if (!ProjectToScreen(worldPos, screenPos, depth)) continue;
 
 			if (screenPos.x >= rectMin.x && screenPos.x <= rectMax.x &&
 				screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
-				matchingIndices.push_back(i);
+				
+				if (IsVisible(screenPos, depth)) {
+					matchingIndices.push_back(i);
+				}
 			}
 		}
 
@@ -1324,6 +1376,8 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 	iconShader.UseShader();
 	
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
 	glDisable(GL_CULL_FACE);
 	
 	GLint projLoc = iconShader.GetProjectionLocation();
@@ -1402,6 +1456,8 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	float torusScaleFactor = dist * 0.1f * 0.6f;
 
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
 	glDisable(GL_CULL_FACE);
 
 	gizmoShader.UseShader();
