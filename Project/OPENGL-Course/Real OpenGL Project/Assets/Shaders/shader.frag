@@ -4,7 +4,7 @@ in vec4 vertex_color;
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
-in vec4 DirectionalLightSpacePos;
+// in DirectionalLightSpacePos removed for CSM
 
 // TBN vectors from vertex shader
 in vec3 TangentWorld;
@@ -78,9 +78,13 @@ uniform sampler2D theTexture;
 uniform int useDiffuseTexture;
 uniform sampler2D normalMap;
 uniform int useNormalMap;
-uniform sampler2D directionalShadowMap;
-uniform sampler2D directionalShadowColorMap;
+uniform sampler2DArray directionalShadowMap;
+uniform sampler2DArray directionalShadowColorMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
+
+uniform mat4 dirLightMatrices[3];
+uniform float cascadeSplits[3];
+uniform mat4 viewMatrix; // We need this to get view-space depth
 
 uniform Material material;
 
@@ -271,37 +275,26 @@ float random(vec3 seed, int i){
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-float CalcDirectionalShadowFactor(DirectionalLight light)
+float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
-	vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
+	// Normal Offset Bias: Offset world position along normal to prevent acne
+	// Distant cascades need larger offsets because their texels cover more area
+	float offsetScale = 0.2 * (layer + 1); 
+	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
+	
+	vec4 fragPosLightSpace = dirLightMatrices[layer] * vec4(worldPosWithOffset, 1.0);
+	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
-	// Early out: behind the shadow map far plane
 	if(projCoords.z > 1.0) return 0.0;
 	
-	// Edge fade: smoothly fade shadows near the borders of the shadow map
-	// This prevents hard shadow cutoff regardless of light direction or frustum size
-	float fadeMargin = 0.1; // 10% of shadow map = fade zone
-	float edgeFade = 1.0;
-	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.x));
-	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.x));
-	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.y));
-	edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.y));
-	
-	// If fully outside the shadow map, no shadow
-	if(edgeFade <= 0.0) return 0.0;
-
 	float current = projCoords.z;
-	vec3 normal = GetEffectiveNormal();
-	vec3 lightDir = normalize(directionalLight.direction);
-	
-	// Adaptive bias
-	float bias = max(0.003 * (1.0 - dot(normal, -lightDir)), 0.0003);
+	float bias = max(0.0005 * (1.0 - dot(normal, -lightDir)), 0.0001);
 	
 	float shadow = 0.0;
-	vec2 texelSize = 1.0 / vec2(textureSize(directionalShadowMap, 0));
+	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
+	vec2 texelSize = 1.0 / texSize;
 	
-	// Randomized rotation for Poisson Disk to hide patterns
 	float angle = random(FragPos, 0) * 6.283185;
 	float s = sin(angle);
 	float c = cos(angle);
@@ -309,8 +302,9 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 
 	for(int i = 0; i < 16; i++)
 	{
-		vec2 offset = rot * poissonDisk[i] * texelSize * 1.5;
-		vec2 samplePos = projCoords.xy + offset;
+		// Reduced kernel size (0.8) for sharper details while maintaining soft edges
+		vec2 offset = rot * poissonDisk[i] * texelSize * 0.8;
+		vec3 samplePos = vec3(projCoords.xy + offset, layer);
 		float pcfDepth = texture(directionalShadowMap, samplePos).r;
 		float occluderAlpha = texture(directionalShadowColorMap, samplePos).r;
 		
@@ -320,9 +314,51 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	}
 
 	shadow /= 16.0;
-	
-	// Apply edge fade for smooth shadow boundary
-	return shadow * edgeFade;
+
+	// Edge fade for the last cascade only
+	if (layer == 2) {
+		float fadeMargin = 0.1;
+		float edgeFade = 1.0;
+		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.x));
+		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.x));
+		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.y));
+		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, 1.0 - projCoords.y));
+		shadow *= edgeFade;
+	}
+
+	return shadow;
+}
+
+float CalcDirectionalShadowFactor(DirectionalLight light)
+{
+	vec4 fragPosViewSpace = viewMatrix * vec4(FragPos, 1.0);
+	float depth = abs(fragPosViewSpace.z);
+	vec3 normal = GetEffectiveNormal();
+	vec3 lightDir = normalize(directionalLight.direction);
+
+	int layer = -1;
+	for (int i = 0; i < 3; i++) {
+		if (depth < cascadeSplits[i]) {
+			layer = i;
+			break;
+		}
+	}
+	if (layer == -1) layer = 2;
+
+	float shadow = GetShadowFactorAtLayer(layer, normal, lightDir);
+
+	// Cascade Blending: Smoothly blend between cascades at the split points
+	float blendThreshold = 5.0; // 5 meters before split
+	if (layer < 2) {
+		float splitDist = cascadeSplits[layer];
+		if (depth > splitDist - blendThreshold) {
+			float blendFactor = (depth - (splitDist - blendThreshold)) / blendThreshold;
+			float nextShadow = GetShadowFactorAtLayer(layer + 1, normal, lightDir);
+			shadow = mix(shadow, nextShadow, blendFactor);
+		}
+	}
+
+	return shadow;
 }
 
 float CalcOmniShadowFactor(PointLight light, int shadowIndex)
@@ -413,11 +449,13 @@ vec3 CalcDirectionalLight(vec3 baseColor)
 	float sssThickness = 0.0;
 	if (material.baseColor.a < 1.0) 
 	{
-		vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
-		projCoords = (projCoords * 0.5) + 0.5;
-		float currentDepth = projCoords.z;
-		float closestDepth = texture(directionalShadowMap, projCoords.xy).r;
-		sssThickness = max(currentDepth - closestDepth, 0.0);
+		// For SSS, we use the first cascade (layer 0) as it's typically used for close-range detail.
+		vec4 fragPosLightSpaceSSS = dirLightMatrices[0] * vec4(FragPos, 1.0);
+		vec3 projCoordsSSS = (fragPosLightSpaceSSS.xyz / fragPosLightSpaceSSS.w) * 0.5 + 0.5;
+		
+		// Sample depth from first cascade
+		float closestDepth = texture(directionalShadowMap, vec3(projCoordsSSS.xy, 0.0)).r;
+		sssThickness = max(projCoordsSSS.z - closestDepth, 0.0);
 	}
 
 	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, sssThickness, baseColor);

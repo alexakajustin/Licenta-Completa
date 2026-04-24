@@ -1,5 +1,7 @@
 #pragma once
 #include "Light.h"
+#include <vector>
+
 class DirectionalLight : public Light
 {
 public:
@@ -16,6 +18,11 @@ public:
 
 	glm::mat4 CalculateLightTransform(glm::vec3 target);
 
+	// Cascaded Shadow Map methods
+	void CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far);
+	const std::vector<glm::mat4>& GetCascadedLightMatrices() const { return cascadedLightMatrices; }
+	const std::vector<float>& GetCascadeSplitDistances() const { return cascadeSplitDistances; }
+
 	// Getter for editing
 	glm::vec3* GetDirectionPtr() { return &direction; }
 	float GetShadowFrustumSize() const { return shadowFrustumSize; }
@@ -24,6 +31,10 @@ public:
 private:
 	glm::vec3 direction;
 	float shadowFrustumSize = 100.0f;
+
+	// CSM Data
+	std::vector<glm::mat4> cascadedLightMatrices;
+	std::vector<float> cascadeSplitDistances;
 };
 
 

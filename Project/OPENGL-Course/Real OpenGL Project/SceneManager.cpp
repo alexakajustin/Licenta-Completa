@@ -192,12 +192,19 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (sLights) s->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
 
 			if (dLight) {
-				// Avoid rebinding shadow map if we are currently WRITING it in an override shader
+				// For CSM, the shadow map binding and matrix updates are handled by the Renderer
+				// before calling RenderAll, to avoid redundant state changes in the batch loop.
+				// However, if we are not using an override shader (main pass), we ensure split distances are set.
 				if (!overrideShader) {
-					dLight->GetShadowMap()->Read(GL_TEXTURE3);
-					s->SetDirectionalShadowMap(3);
+					const auto& matrices = dLight->GetCascadedLightMatrices();
+					const auto& splits = dLight->GetCascadeSplitDistances();
+					if (!matrices.empty()) {
+						glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "dirLightMatrices"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
+						glUniform1fv(glGetUniformLocation(s->GetShaderID(), "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
+					}
+					// View matrix for depth calculation
+					glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
 				}
-				s->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
 			}
 		}
 	};
@@ -465,7 +472,15 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 				if (dLight) {
 					targetRenderShader->SetDirectionalLight(dLight);
-					targetRenderShader->SetDirectionalLightTransform(dLight->CalculateLightTransform(cameraPos));
+					
+					const auto& matrices = dLight->GetCascadedLightMatrices();
+					const auto& splits = dLight->GetCascadeSplitDistances();
+					if (!matrices.empty()) {
+						glUniformMatrix4fv(glGetUniformLocation(sid, "dirLightMatrices"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
+						glUniform1fv(glGetUniformLocation(sid, "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
+					}
+					glUniformMatrix4fv(glGetUniformLocation(sid, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
+					
 					dLight->GetShadowMap()->Read(GL_TEXTURE3);
 					targetRenderShader->SetDirectionalShadowMap(3);
 				}

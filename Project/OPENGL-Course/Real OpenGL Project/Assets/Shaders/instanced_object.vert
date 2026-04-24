@@ -42,7 +42,7 @@ out vec4 vertex_color;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
-out vec4 DirectionalLightSpacePos;
+// DirectionalLightSpacePos removed (calculated in frag shader for CSM)
 out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
@@ -95,7 +95,7 @@ void main()
     modelMatrix[3] = vec4(instancePos, 1.0);
     
     gl_Position = projection * view * vec4(worldPos, 1.0);
-    DirectionalLightSpacePos = directionalLightTransform * vec4(worldPos, 1.0);
+    // DirectionalLightSpacePos calculation removed for CSM
     
     vertex_color = vec4(clamp(pos, 0.0, 1.0), 1.0);
 

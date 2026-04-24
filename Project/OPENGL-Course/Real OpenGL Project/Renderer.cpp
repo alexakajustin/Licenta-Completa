@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <fstream>
 #include <sstream>
+#include "CascadedShadowMap.h"
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
@@ -62,45 +63,50 @@ void Renderer::CacheUniforms()
 	uniformUseInstancing = glGetUniformLocation(mainShader.GetShaderID(), "useInstancing");
 }
 
-void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos)
+void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far)
 {
-	directionalShadowShader.UseShader();
+	CascadedShadowMap* csm = (CascadedShadowMap*)light->GetShadowMap();
+	if (!csm) return;
 
+	// 1. Calculate the cascade matrices
+	light->CalculateCascadedLightMatrices(view, projection, near, far);
+	const auto& matrices = light->GetCascadedLightMatrices();
+
+	directionalShadowShader.UseShader();
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
 
-	light->GetShadowMap()->Write();
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // default alpha 1.0
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	// 2. Loop through each cascade and render
+	for (GLuint i = 0; i < csm->GetCascadeCount(); i++)
+	{
+		csm->WriteLayer(i);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-	GLint shadowModelLoc = directionalShadowShader.GetModelLocation();
-	glm::mat4 lightProjView = light->CalculateLightTransform(cameraPos);
-	directionalShadowShader.SetDirectionalLightTransform(lightProjView);
+		glm::mat4 lightProjView = matrices[i];
+		directionalShadowShader.SetDirectionalLightTransform(lightProjView);
 
-	directionalShadowShader.Validate();
+		directionalShadowShader.Validate();
 
-	Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
+		Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
 
-	// Render regular objects into shadow map
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this);
+		// Render regular objects
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this);
 
-	// ================================================================
-	// GPU-Driven Instanced Groups: Shadow Pass
-	// Cull against light frustum with tight distance limit,
-	// then render using instanced shadow vertex shader.
-	// ================================================================
-	float time = (float)glfwGetTime();
-	auto& groups = scene.GetInstancedGroups();
-	if (!groups.empty() && instancedCullShader.GetShaderID()) {
-		for (auto* group : groups) {
-			if (!group) continue;
-			group->CullAndDrawShadow(
-				instancedCullShader.GetShaderID(),
-				instancedShadowShader,
-				lightProjView,
-				cameraPos,
-				group->GetShadowDistance() * scene.GetShadowDistanceMultiplier(),
-				time
-			);
+		// GPU-Driven Instanced Groups
+		float time = (float)glfwGetTime();
+		auto& groups = scene.GetInstancedGroups();
+		if (!groups.empty() && instancedCullShader.GetShaderID()) {
+			for (auto* group : groups) {
+				if (!group) continue;
+				group->CullAndDrawShadow(
+					instancedCullShader.GetShaderID(),
+					instancedShadowShader,
+					lightProjView,
+					cameraPos,
+					group->GetShadowDistance() * scene.GetShadowDistanceMultiplier(),
+					time
+				);
+			}
 		}
 	}
 
@@ -168,7 +174,15 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
 	mainShader.SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
-	mainShader.SetDirectionalLightTransform(mainLight.CalculateLightTransform(cameraPos));
+	
+	// Pass cascade matrices and split distances
+	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
+	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
+	if (!cascadedMatrices.empty()) {
+		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "dirLightMatrices"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
+		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
+	}
+	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
 	mainLight.GetShadowMap()->ReadColor(GL_TEXTURE20);

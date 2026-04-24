@@ -13,7 +13,7 @@ out vec3 Normal;
 out vec3 FragPos;
 
 // fragment relative to light
-out vec4 DirectionalLightSpacePos;
+// DirectionalLightSpacePos removed (calculated in frag shader for CSM)
 
 // TBN matrix vectors for normal mapping
 out vec3 TangentWorld;
@@ -59,7 +59,7 @@ void main()
 	vFadeFactor = 0.0; // Non-instanced objects are always fully visible
 
 	gl_Position = projection * view * modelMatrix * vec4(pos, 1.0);
-	DirectionalLightSpacePos = directionalLightTransform * modelMatrix * vec4(pos, 1.0f);
+	// DirectionalLightSpacePos calculation removed for CSM
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	

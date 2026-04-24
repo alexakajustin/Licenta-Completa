@@ -36,6 +36,7 @@ struct Material {
 uniform Material material;
 
 out vec2 TexCoord;
+out float vFadeFactor;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -89,6 +90,7 @@ void main()
     vec3 worldPos = rotatedPos + instancePos + wind;
     
     TexCoord = tex * material.tiling + material.offset;
+    vFadeFactor = inst.rotAndFlags.w;
     
     gl_Position = directionalLightTransform * vec4(worldPos, 1.0);
 }

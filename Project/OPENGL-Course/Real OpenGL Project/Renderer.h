@@ -26,7 +26,7 @@ public:
 	void LoadSkybox(const std::vector<std::string>& faces);
 
 	// Render passes
-	void DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos);
+	void DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far);
 	void OmniShadowMapPass(PointLight* light, SceneManager& scene);
 	void RenderPass(const glm::mat4& projection, const glm::mat4& view, 
 					const glm::vec3& cameraPos, SceneManager& scene,
