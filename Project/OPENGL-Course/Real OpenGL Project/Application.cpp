@@ -393,7 +393,7 @@ void Application::Run()
 		// Render gizmos/icons AFTER SSAO so depth buffer had valid object data for SSAO
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		// glClear(GL_DEPTH_BUFFER_BIT); // Removed to prevent "see-through" gizmos (allows occlusion by scene)
+		glClear(GL_DEPTH_BUFFER_BIT); // Always render gizmos/icons on top of the scene
 		sceneManager.RenderIcons(projection, view);
 		sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
