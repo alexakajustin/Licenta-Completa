@@ -9,12 +9,15 @@
 
 struct PackedInstance {
     vec4 posAndScale;     // xyz = position, w = scale
-    vec4 rotAndFlags;     // xyz = euler degrees, w = flags
+    vec4 rotAndFlags;     // xyz = euler degrees, w = fade factor
 };
 
 layout(std430, binding = 1) readonly buffer VisibleInstances {
     PackedInstance instances[];
 };
+
+// Intermediate storage for fade factor (avoids forward-reference to vFadeFactor)
+float _instanceFadeFactor = 0.0;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -34,12 +37,16 @@ mat3 eulerToMat3(vec3 euler) {
 }
 
 // Build the model matrix for the current instance (gl_InstanceID)
+// Stores fade factor in _instanceFadeFactor (copied to vFadeFactor in main())
 mat4 ResolveInstancedModelMatrix() {
     PackedInstance inst = instances[gl_InstanceID];
     
     vec3 instancePos = inst.posAndScale.xyz;
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
+    
+    // Store fade factor for later copy to vFadeFactor
+    _instanceFadeFactor = inst.rotAndFlags.w;
     
     mat3 rotMat = eulerToMat3(instanceRot);
     
@@ -62,6 +69,7 @@ out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
 out float vIsSelected;
+out float vFadeFactor;
 
 uniform mat4 _unused_model;
 uniform mat4 projection;
@@ -76,6 +84,7 @@ void main()
 {
     mat4 model; model = ResolveInstancedModelMatrix();
     mat4 instanceMatrix; instanceMatrix = model;
+    vFadeFactor = _instanceFadeFactor;
 
 	mat4 modelMatrix = model;
 	if (useInstancing == 1) {
@@ -89,6 +98,7 @@ void main()
 	}
 	
 	vIsSelected = 0.0;
+	// vFadeFactor set by ResolveInstancedModelMatrix()
 	gl_Position = projection * view * modelMatrix * vec4(displacedPos, 1.0);
 	TexCoord = tex;
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;

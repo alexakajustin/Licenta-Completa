@@ -16,6 +16,7 @@ in vec3 LocalPos;
 
 out vec4 colour;	
 in float vIsSelected;
+in float vFadeFactor;
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
@@ -270,16 +271,24 @@ float random(vec3 seed, int i){
 	return fract(sin(dot_product) * 43758.5453);
 }
 
+// Shadow distance uniform — set by CPU to match the shadow frustum size
+uniform float shadowDistance;
+
 float CalcDirectionalShadowFactor(DirectionalLight light)
 {
 	vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
-	// Distance-based shadow fade: Start fading at 200 units, complete at 300
-	float fragDist = length(eyePosition - FragPos);
-	float shadowFade = clamp((fragDist - 200.0) / 100.0, 0.0, 1.0);
+	// Use actual shadow distance (set by CPU from frustum size)
+	float sd = max(shadowDistance, 10.0);
 	
-	if(projCoords.z > 1.0 || fragDist > 300.0)
+	// Distance-based shadow fade: 80% to 100% of shadow distance
+	float fragDist = length(eyePosition - FragPos);
+	float fadeStart = sd * 0.8;
+	float shadowFade = clamp((fragDist - fadeStart) / (sd - fadeStart), 0.0, 1.0);
+	
+	// Early out: outside shadow map or beyond shadow distance
+	if(projCoords.z > 1.0 || fragDist > sd)
 	{
 		return 0.0;
 	}
@@ -288,8 +297,8 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	vec3 normal = GetEffectiveNormal();
 	vec3 lightDir = normalize(directionalLight.direction);
 	
-	// Bias adjusted for 300-unit frustum
-	float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.0005);
+	// Adaptive bias
+	float bias = max(0.003 * (1.0 - dot(normal, -lightDir)), 0.0003);
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / vec2(textureSize(directionalShadowMap, 0));
@@ -302,7 +311,7 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 
 	for(int i = 0; i < 16; i++)
 	{
-		vec2 offset = rot * poissonDisk[i] * texelSize * 1.5; // Spread the samples slightly
+		vec2 offset = rot * poissonDisk[i] * texelSize * 1.5;
 		vec2 samplePos = projCoords.xy + offset;
 		float pcfDepth = texture(directionalShadowMap, samplePos).r;
 		float occluderAlpha = texture(directionalShadowColorMap, samplePos).r;
@@ -314,7 +323,7 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 
 	shadow /= 16.0;
 	
-	// Apply fade so shadows merge smoothly with distant terrain
+	// Smooth fade so shadows merge with distant terrain
 	return shadow * (1.0 - shadowFade);
 }
 
@@ -581,6 +590,21 @@ void CalcLayeredSurface(out vec3 outColor)
 
 void main()								         
 {
+	// Distance dithered fade: discard pixels based on a 4x4 Bayer pattern
+	if (vFadeFactor > 0.001) {
+		int x = int(mod(gl_FragCoord.x, 4.0));
+		int y = int(mod(gl_FragCoord.y, 4.0));
+		// 4x4 Bayer dither matrix (values 0.0 to ~0.9375)
+		float bayerMatrix[16] = float[16](
+			 0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+			12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
+			 3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+			15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
+		);
+		float threshold = bayerMatrix[y * 4 + x];
+		if (vFadeFactor > threshold) discard;
+	}
+
 	// 1. Compute surface color (and blended normal if layers active)
 	vec3 baseColor;
 

@@ -140,7 +140,7 @@ private:
 	float meshBoundRadius = 1.0f;
 	glm::vec3 meshBoundsCenter = glm::vec3(0.0f); // Center of mesh AABB relative to origin
 	float defaultMaxDrawDistance = 200.0f;
-	float shadowDrawDistance = 30.0f;  // Only cast shadows within this range
+	float shadowDrawDistance = 200.0f;  // Match render distance so all visible instances cast shadows
 
 	// Spatial chunking for 10M+ scale
 	struct Chunk {

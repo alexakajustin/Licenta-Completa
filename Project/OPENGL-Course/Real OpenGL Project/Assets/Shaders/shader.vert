@@ -26,6 +26,7 @@ out vec3 LocalPos;
 out vec3 WorldXBasis;
 out vec3 WorldZBasis;
 out float vIsSelected;
+out float vFadeFactor;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -55,6 +56,7 @@ void main()
 	}
 
 	vIsSelected = 0.0;
+	vFadeFactor = 0.0; // Non-instanced objects are always fully visible
 
 	gl_Position = projection * view * modelMatrix * vec4(pos, 1.0);
 	DirectionalLightSpacePos = directionalLightTransform * modelMatrix * vec4(pos, 1.0f);

@@ -177,6 +177,10 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalShadowMap(3);
 	mainShader.SetDirectionalShadowColorMap(20);
 
+	// Pass shadow distance to shader for percentage-based fade
+	GLint sdLoc = glGetUniformLocation(mainShader.GetShaderID(), "shadowDistance");
+	if (sdLoc != -1) glUniform1f(sdLoc, mainLight.GetShadowFrustumSize());
+
 	// mainShader.Validate(); 
 	
 	// Scene objects with Frustum Culling
@@ -249,6 +253,8 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 	neutralize("uniform mat4 model", "uniform mat4 _unused_model");
 	neutralize("in mat4 instanceMatrix", "in mat4 _unused_inst");
 	neutralize("attribute mat4 instanceMatrix", "attribute mat4 _unused_inst2");
+	// Header sets vFadeFactor from SSBO — neutralize the original 0.0 assignment so it doesn't overwrite
+	neutralize("vFadeFactor = 0.0;", "// vFadeFactor set by ResolveInstancedModelMatrix()");
 
 	// 5. Inject the shadow variables at the start of main()
 	size_t mainPos = vSource.find("void main()");
@@ -257,7 +263,8 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 		if (mainPos != std::string::npos) {
 			std::string shadowInjection = 
 				"\n    mat4 model; model = ResolveInstancedModelMatrix();"
-				"\n    mat4 instanceMatrix; instanceMatrix = model;\n";
+				"\n    mat4 instanceMatrix; instanceMatrix = model;"
+				"\n    vFadeFactor = _instanceFadeFactor;\n";
 			vSource.insert(mainPos + 1, shadowInjection);
 		}
 	}

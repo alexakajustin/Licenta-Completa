@@ -97,6 +97,16 @@ void main()
     float dist = distance(pos, cameraPos);
     if (dist > maxDrawDistance) return;
 
+    // ------- Distance Fade (dithered discard in fragment shader) -------
+    // Fade zone: 85% to 100% of maxDrawDistance
+    float fadeStart = maxDrawDistance * 0.85;
+    float fadeFactor = 0.0;
+    if (dist > fadeStart) {
+        fadeFactor = clamp((dist - fadeStart) / (maxDrawDistance - fadeStart), 0.0, 1.0);
+    }
+    // Store fade factor in rotAndFlags.w for the fragment shader
+    inst.rotAndFlags.w = fadeFactor;
+
     // ------- Frustum Culling (clip-space sphere test) -------
     vec4 clipPos = viewProj * vec4(testPos, 1.0);
 

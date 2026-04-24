@@ -9,6 +9,7 @@ out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
 out float vIsSelected;
+out float vFadeFactor;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -33,6 +34,7 @@ void main()
 	}
 	
 	vIsSelected = 0.0;
+	vFadeFactor = 0.0;
 	gl_Position = projection * view * modelMatrix * vec4(displacedPos, 1.0);
 	TexCoord = tex;
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;

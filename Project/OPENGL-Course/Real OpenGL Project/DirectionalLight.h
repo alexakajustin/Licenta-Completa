@@ -18,10 +18,12 @@ public:
 
 	// Getter for editing
 	glm::vec3* GetDirectionPtr() { return &direction; }
+	float GetShadowFrustumSize() const { return shadowFrustumSize; }
 
 	~DirectionalLight();
 private:
 	glm::vec3 direction;
+	float shadowFrustumSize = 100.0f;
 };
 
 
