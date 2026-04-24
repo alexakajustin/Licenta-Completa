@@ -8,11 +8,15 @@ uniform mat4 model;
 uniform mat4 directionalLightTransform;
 uniform int useInstancing;
 
+layout (location = 1) in vec2 tex;
+out vec2 TexCoord;
+
 void main()
 {
 	mat4 modelMatrix = model;
 	if (useInstancing == 1) {
 		modelMatrix = instanceMatrix;
 	}
+	TexCoord = tex;
 	gl_Position = directionalLightTransform * modelMatrix * vec4(pos, 1.0);
 }

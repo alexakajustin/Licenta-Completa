@@ -4,8 +4,18 @@ uniform float materialAlpha;
 in float vFadeFactor;
 layout(location = 0) out float outAlpha;
 
+uniform sampler2D theTexture;
+uniform int useDiffuseTexture;
+in vec2 TexCoord;
+
 void main() {
-    // 1. Distance dithered fade (matches main shader)
+    // 1. Alpha Testing (for foliage/leaves)
+    if (useDiffuseTexture == 1) {
+        float alpha = texture(theTexture, TexCoord).a;
+        if (alpha < 0.5) discard;
+    }
+
+    // 2. Distance dithered fade (matches main shader)
     if (vFadeFactor > 0.001) {
         int x = int(mod(gl_FragCoord.x, 4.0));
         int y = int(mod(gl_FragCoord.y, 4.0));
@@ -19,6 +29,6 @@ void main() {
         if (vFadeFactor > threshold) discard;
     }
 
-    // 2. Output alpha to the shadow color map (matches directional_shadow_map.frag)
+    // 3. Output alpha to the shadow color map
     outAlpha = materialAlpha;
 }

@@ -561,7 +561,8 @@ void CalcLayeredSurface(out vec3 outColor)
 			layerSample = texture(textureLayers[i], layerUV);
 			
 			// Alpha discard for cutout textures in layered materials
-			if (layerSample.a < 0.1) {
+			// Threshold increased to 0.5 to prevent white outlines/halo (mip bleed)
+			if (layerSample.a < 0.5) {
 				discard;
 			}
             
@@ -654,7 +655,8 @@ void main()
 		vec4 texColor = (useDiffuseTexture == 1) ? texture(theTexture, TexCoord) : vec4(1.0);
 		
 		// Alpha discard for cutout transparency (e.g. foliage)
-		if (useDiffuseTexture == 1 && texColor.a < 0.1) {
+		// Threshold increased to 0.5 to prevent white outlines/halo (mip bleed)
+		if (useDiffuseTexture == 1 && texColor.a < 0.5) {
 			discard;
 		}
 		
