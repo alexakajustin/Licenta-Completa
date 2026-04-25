@@ -1580,20 +1580,35 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				GetGizmoPosition(gizmoCenter);
 				dragRotationCenter = gizmoCenter; // Store as a consistent interaction center
 
-				// 2. Get Actual World Pivot Position for dragging
-				int selObj = GetSelectedIndex();
-				if (selObj != -1) {
-					// Use world matrix to get the actual world position, even for children
+				// 2. Capture Initial States for ALL selected items
+				dragInitialObjectStates.clear();
+				dragInitialLightPositions.clear();
+
+				if (!selectedObjectIndices.empty()) {
+					for (int idx : selectedObjectIndices) {
+						if (idx >= 0 && idx < (int)objects.size()) {
+							GameObject* obj = objects[idx];
+							dragInitialObjectStates[obj] = { glm::vec3(obj->GetWorldMatrix()[3]), obj->GetTransform().GetRotation() };
+						}
+					}
+					// Anchor point for the main gizmo
+					int selObj = GetSelectedIndex();
 					dragInitialObjectPos = glm::vec3(objects[selObj]->GetWorldMatrix()[3]);
 				}
-				else {
-					int selLight = GetSelectedLightIndex();
-					if (selLight != -1) {
-						glm::vec3* lp = lights[selLight]->GetPositionPtr();
-						if (lp) dragInitialObjectPos = *lp;
+				else if (!selectedLightIndices.empty()) {
+					for (int idx : selectedLightIndices) {
+						if (idx >= 0 && idx < (int)lights.size()) {
+							LightObject* lo = lights[idx];
+							if (lo->GetPositionPtr()) {
+								dragInitialLightPositions[lo] = *lo->GetPositionPtr();
+							}
+						}
 					}
+					// Anchor point for the main gizmo
+					int selLight = GetSelectedLightIndex();
+					glm::vec3* lp = lights[selLight]->GetPositionPtr();
+					if (lp) dragInitialObjectPos = *lp;
 				}
-				
 				
 				glm::vec3 axis(0.0f);
 				if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
@@ -1617,6 +1632,15 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 
 				GetGizmoPosition(dragRotationCenter); // Use visual center for rotation math
 				
+				// Capture Initial States for ALL selected objects (Lights don't rotate via gizmo yet)
+				dragInitialObjectStates.clear();
+				for (int idx : selectedObjectIndices) {
+					if (idx >= 0 && idx < (int)objects.size()) {
+						GameObject* obj = objects[idx];
+						dragInitialObjectStates[obj] = { glm::vec3(obj->GetWorldMatrix()[3]), obj->GetTransform().GetRotation() };
+					}
+				}
+
 				int selObj = GetSelectedIndex();
 				if (selObj != -1) {
 					dragInitialObjectRot = objects[selObj]->GetTransform().GetRotation();
@@ -1628,7 +1652,7 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				glm::mat4 objRot = GetSelectedRotationMatrix();
 				if (activeDragAxis == 20004) dragRotationAxis = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
 				else if (activeDragAxis == 20005) dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
-				else dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
+				else if (activeDragAxis == 20006) dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
 				dragRotationAxis = glm::normalize(dragRotationAxis);
 
 				// Rotation plane: perpendicular to the rotation axis, through center
@@ -1674,68 +1698,84 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
 		
 		float movement = glm::dot(delta, axis);
-		// Removed movement clamp to allow uninhibited dragging across large scenes
+		glm::vec3 worldDelta = axis * movement;
 
-		glm::vec3 newPos = dragInitialObjectPos + axis * movement;
-		
-		int selObj = GetSelectedIndex();
-		int selLight = GetSelectedLightIndex();
-		if (selObj != -1) {
-			GameObject* target = objects[selObj];
-			if (target->GetParent()) {
-				glm::mat4 parentWorld = target->GetParent()->GetWorldMatrix();
-				if (!target->GetInheritScale()) {
+		// Move ALL selected objects
+		for (auto const& [obj, state] : dragInitialObjectStates) {
+			// Hierarchy Optimization: If the parent is also being moved, don't move the child directly
+			// otherwise it gets double-translated.
+			bool parentMoved = false;
+			GameObject* p = obj->GetParent();
+			while (p) {
+				if (dragInitialObjectStates.count(p)) { parentMoved = true; break; }
+				p = p->GetParent();
+			}
+			if (parentMoved) continue;
+
+			glm::vec3 newPos = state.position + worldDelta;
+
+			if (obj->GetParent()) {
+				glm::mat4 parentWorld = obj->GetParent()->GetWorldMatrix();
+				// Use unscaled parent matrix to avoid distortion if target doesn't inherit scale
+				if (!obj->GetInheritScale()) {
 					parentWorld[0] = glm::normalize(parentWorld[0]);
 					parentWorld[1] = glm::normalize(parentWorld[1]);
 					parentWorld[2] = glm::normalize(parentWorld[2]);
 				}
 				glm::mat4 invParent = glm::inverse(parentWorld);
 				glm::vec4 localPos = invParent * glm::vec4(newPos, 1.0f);
-				target->GetTransform().SetPosition(glm::vec3(localPos));
+				obj->GetTransform().SetPosition(glm::vec3(localPos));
 			} else {
-				target->GetTransform().SetPosition(newPos);
+				obj->GetTransform().SetPosition(newPos);
 			}
 		}
-		else if (selLight != -1) lights[selLight]->SetPosition(newPos);
+
+		// Move ALL selected lights
+		for (auto const& [light, initialPos] : dragInitialLightPositions) {
+			light->SetPosition(initialPos + worldDelta);
+		}
 	}
 	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
 		// === ROTATION ===
-		int selObj = GetSelectedIndex();
-		if (selObj == -1) return;
-
 		glm::vec3 hitPoint;
+		float deltaAngle = 0.0f;
+
 		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
 			// Fallback: use mouse delta for rotation when ray is parallel to plane
 			float dx = mouseX - dragInitialMousePos.x;
-			float deltaAngle = dx * 0.5f; // No clamp for smoother rotation
-
-			glm::vec3 rotationDelta(0.0f);
-			if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
-			else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
-			else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
-
-			objects[selObj]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
-			return;
+			deltaAngle = dx * 0.5f; 
+		} else {
+			glm::vec3 currentVec = hitPoint - dragRotationCenter;
+			float len = glm::length(currentVec);
+			if (len > 1e-6f) {
+				currentVec /= len;
+				// Signed angle between initial and current vectors, relative to the rotation axis
+				float dotVal = glm::clamp(glm::dot(dragInitialRotVec, currentVec), -1.0f, 1.0f);
+				glm::vec3 crossVal = glm::cross(dragInitialRotVec, currentVec);
+				float sign = glm::dot(crossVal, dragRotationAxis);
+				float angleRad = atan2(glm::length(crossVal) * (sign >= 0 ? 1.0f : -1.0f), dotVal);
+				deltaAngle = glm::degrees(angleRad);
+			}
 		}
-
-		glm::vec3 currentVec = hitPoint - dragRotationCenter;
-		float len = glm::length(currentVec);
-		if (len < 1e-6f) return;
-		currentVec /= len;
-
-		// Signed angle between initial and current vectors, relative to the rotation axis
-		float dotVal = glm::clamp(glm::dot(dragInitialRotVec, currentVec), -1.0f, 1.0f);
-		glm::vec3 crossVal = glm::cross(dragInitialRotVec, currentVec);
-		float sign = glm::dot(crossVal, dragRotationAxis);
-		float angleRad = atan2(glm::length(crossVal) * (sign >= 0 ? 1.0f : -1.0f), dotVal);
-		float deltaAngle = glm::degrees(angleRad);
 
 		glm::vec3 rotationDelta(0.0f);
 		if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
 		else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
 		else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
 
-		objects[selObj]->GetTransform().SetRotation(dragInitialObjectRot + rotationDelta);
+		// Rotate ALL selected objects
+		for (auto const& [obj, state] : dragInitialObjectStates) {
+			// Like translation, avoid double-rotation if parent is also selected
+			bool parentRotated = false;
+			GameObject* p = obj->GetParent();
+			while (p) {
+				if (dragInitialObjectStates.count(p)) { parentRotated = true; break; }
+				p = p->GetParent();
+			}
+			if (parentRotated) continue;
+
+			obj->GetTransform().SetRotation(state.rotation + rotationDelta);
+		}
 	}
 }
 

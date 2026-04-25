@@ -161,6 +161,14 @@ private:
 	// Gizmo dragging state
 	int activeDragAxis = 0;
 	bool isBoxSelecting = false;
+	
+	struct InitialState {
+		glm::vec3 position; // World position
+		glm::vec3 rotation; // Euler angles
+	};
+	std::map<GameObject*, InitialState> dragInitialObjectStates;
+	std::map<LightObject*, glm::vec3> dragInitialLightPositions;
+
 	glm::vec3 dragInitialObjectPos;
 	glm::vec3 dragInitialObjectRot;
 	glm::vec2 dragInitialMousePos;
