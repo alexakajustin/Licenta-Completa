@@ -24,6 +24,7 @@ SceneManager::SceneManager()
 SceneManager::~SceneManager()
 {
 	Clear();
+	ClearClipboard();
 	
 	if (pickingFBO) glDeleteFramebuffers(1, &pickingFBO);
 	if (pickingTexture) glDeleteTextures(1, &pickingTexture);
@@ -1055,6 +1056,102 @@ void SceneManager::DeleteLight(int index)
 	delete light;
 	lights.erase(lights.begin() + index);
 	selectedLightIndices.clear();
+}
+
+void SceneManager::CopySelected()
+{
+	ClearClipboard();
+
+	// Copy Objects
+	for (int idx : selectedObjectIndices) {
+		if (idx >= 0 && idx < (int)objects.size()) {
+			GameObject* original = objects[idx];
+			// Clone recursively
+			GameObject* clone = original->Clone(original->GetName() + " (Copy)");
+			clipboardObjects.push_back(clone);
+		}
+	}
+
+	// Copy Lights
+	for (int idx : selectedLightIndices) {
+		if (idx >= 0 && idx < (int)lights.size()) {
+			LightObject* lo = lights[idx];
+			LightClipboardEntry entry;
+			entry.type = lo->GetLightType();
+			entry.name = lo->GetName() + " (Copy)";
+			entry.color = *lo->GetColorPtr();
+			entry.ambientIntensity = *lo->GetAmbientIntensityPtr();
+			entry.diffuseIntensity = *lo->GetDiffuseIntensityPtr();
+			
+			if (lo->GetPositionPtr()) entry.position = *lo->GetPositionPtr();
+			if (lo->GetDirectionPtr()) entry.direction = *lo->GetDirectionPtr();
+			if (lo->GetConstantPtr()) entry.constant = *lo->GetConstantPtr();
+			if (lo->GetLinearPtr()) entry.linear = *lo->GetLinearPtr();
+			if (lo->GetExponentPtr()) entry.exponent = *lo->GetExponentPtr();
+			if (entry.type == LightType::Spot) entry.edge = *lo->GetSpotEdgePtr();
+			
+			clipboardLights.push_back(entry);
+		}
+	}
+
+	if (!clipboardObjects.empty() || !clipboardLights.empty()) {
+		printf("[SceneManager] Copied %d objects and %d lights to clipboard.\n", 
+			(int)clipboardObjects.size(), (int)clipboardLights.size());
+	}
+}
+
+void SceneManager::Paste()
+{
+	if (clipboardObjects.empty() && clipboardLights.empty()) return;
+
+	ClearSelection();
+
+	// Paste Objects
+	for (GameObject* proto : clipboardObjects) {
+		// Clone again so we can paste multiple times
+		GameObject* clone = proto->Clone(proto->GetName());
+		objects.push_back(clone);
+		selectedObjectIndices.push_back((int)objects.size() - 1);
+	}
+
+	// Paste Lights
+	for (const auto& entry : clipboardLights) {
+		CreateLight(entry.type, entry.position);
+		// The new light is now at lights.back(), and it's already selected by CreateLight
+		LightObject* lo = lights.back();
+		lo->SetName(entry.name);
+		*lo->GetColorPtr() = entry.color;
+		*lo->GetAmbientIntensityPtr() = entry.ambientIntensity;
+		*lo->GetDiffuseIntensityPtr() = entry.diffuseIntensity;
+		if (lo->GetDirectionPtr()) *lo->GetDirectionPtr() = entry.direction;
+		if (lo->GetConstantPtr()) *lo->GetConstantPtr() = entry.constant;
+		if (lo->GetLinearPtr()) *lo->GetLinearPtr() = entry.linear;
+		if (lo->GetExponentPtr()) *lo->GetExponentPtr() = entry.exponent;
+		if (entry.type == LightType::Spot) *lo->GetSpotEdgePtr() = entry.edge;
+		
+		// If we are pasting multiple lights, we need to add them to selection
+		// CreateLight already adds one, but Paste might handle multiple
+		if (clipboardLights.size() > 1) {
+			if (!IsLightSelected((int)lights.size() - 1)) {
+				selectedLightIndices.push_back((int)lights.size() - 1);
+			}
+		}
+	}
+
+	printf("[SceneManager] Pasted %d objects and %d lights.\n", 
+		(int)clipboardObjects.size(), (int)clipboardLights.size());
+}
+
+void SceneManager::ClearClipboard()
+{
+	for (auto* obj : clipboardObjects) {
+		// Since these are detached clones, we need a way to delete them.
+		// However, GameObject destructor removes from parent.
+		// But these aren't in the scene list, so it's safe.
+		delete obj; 
+	}
+	clipboardObjects.clear();
+	clipboardLights.clear();
 }
 
 // =====================================================================

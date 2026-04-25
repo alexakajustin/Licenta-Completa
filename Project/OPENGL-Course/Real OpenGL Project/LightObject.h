@@ -45,6 +45,7 @@ public:
 	float* GetConstantPtr();
 	float* GetLinearPtr();
 	float* GetExponentPtr();
+	float* GetSpotEdgePtr();
 
 private:
 	std::string name;

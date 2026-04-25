@@ -135,3 +135,8 @@ float* LightObject::GetExponentPtr()
 		return nullptr;
 	}
 }
+float* LightObject::GetSpotEdgePtr()
+{
+	if (lightType == LightType::Spot) return spotLight->GetEdgePtr();
+	return nullptr;
+}

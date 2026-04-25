@@ -87,6 +87,9 @@ public:
 	
 	void DeleteSelectedObjects();
 	void DeleteSelectedLights();
+	
+	void CopySelected();
+	void Paste();
 
 	// ========== Creation / Deletion ==========
 	void CreateGameObject(const std::string& type, glm::vec3 spawnPos = glm::vec3(0.0f));
@@ -178,6 +181,22 @@ private:
 	glm::vec3 dragRotationCenter;
 	glm::vec3 dragInitialRotVec;  // Initial vector from center to plane intersection
 	glm::vec3 dragRotationAxis;   // The world-space rotation axis
+	
+	// Clipboard
+	struct LightClipboardEntry {
+		LightType type;
+		std::string name;
+		glm::vec3 color;
+		float ambientIntensity;
+		float diffuseIntensity;
+		glm::vec3 position;
+		glm::vec3 direction;
+		float constant, linear, exponent;
+		float edge;
+	};
+	std::vector<GameObject*> clipboardObjects;
+	std::vector<LightClipboardEntry> clipboardLights;
+	void ClearClipboard();
 
 	// Helper: build rotation matrix from Euler angles (DRY — used by picking, gizmo, drag)
 	glm::mat4 GetSelectedRotationMatrix() const;

@@ -24,6 +24,7 @@ public:
 
     // Getter for editing
     glm::vec3* GetDirectionPtr() { return &direction; }
+    float* GetEdgePtr() { return &edge; }
      
     ~SpotLight();
 private:

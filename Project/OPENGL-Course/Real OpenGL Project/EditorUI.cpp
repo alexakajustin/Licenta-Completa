@@ -736,13 +736,26 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 		}
 
 		// Global Shortcut: Delete key handling for the Viewport
-		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
+		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
 		{
-			if (!scene.GetSelectedObjectIndices().empty()) {
-				scene.DeleteSelectedObjects();
+			if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+			{
+				if (!scene.GetSelectedObjectIndices().empty()) {
+					scene.DeleteSelectedObjects();
+				}
+				else if (!scene.GetSelectedLightIndices().empty()) {
+					scene.DeleteSelectedLights();
+				}
 			}
-			else if (!scene.GetSelectedLightIndices().empty()) {
-				scene.DeleteSelectedLights();
+			
+			// Copy/Paste
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C))
+			{
+				scene.CopySelected();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V))
+			{
+				scene.Paste();
 			}
 		}
 
@@ -885,17 +898,29 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 			}
 		}
 
-		// Delete key — only when this window is focused
-		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
+		// Delete/Copy/Paste keys — only when this window is focused
+		if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
 		{
-			auto& selObjects = scene.GetSelectedObjectIndices();
-			auto& selLights = scene.GetSelectedLightIndices();
+			if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+			{
+				auto& selObjects = scene.GetSelectedObjectIndices();
+				auto& selLights = scene.GetSelectedLightIndices();
 
-			if (!selObjects.empty()) {
-				scene.DeleteSelectedObjects();
+				if (!selObjects.empty()) {
+					scene.DeleteSelectedObjects();
+				}
+				else if (!selLights.empty()) {
+					scene.DeleteSelectedLights();
+				}
 			}
-			else if (!selLights.empty()) {
-				scene.DeleteSelectedLights();
+
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C))
+			{
+				scene.CopySelected();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V))
+			{
+				scene.Paste();
 			}
 		}
 
@@ -1378,6 +1403,11 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				ImGui::SliderFloat("Constant", light->GetConstantPtr(), 0.01f, 2.0f);
 				ImGui::SliderFloat("Linear", light->GetLinearPtr(), 0.001f, 0.5f);
 				ImGui::SliderFloat("Exponent", light->GetExponentPtr(), 0.001f, 0.5f);
+				
+				if (light->GetSpotEdgePtr()) {
+					ImGui::Separator();
+					ImGui::SliderFloat("Spot Edge", light->GetSpotEdgePtr(), 0.0f, 90.0f);
+				}
 			}
 		}
 
