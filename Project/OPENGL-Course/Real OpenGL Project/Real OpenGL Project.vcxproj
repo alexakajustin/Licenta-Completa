@@ -194,6 +194,7 @@
     <ClCompile Include="SpotLight.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="UndoActions.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="NodeGraph.cpp" />
     <ClCompile Include="NodeEditorUI.cpp" />
@@ -540,6 +541,8 @@
     <ClInclude Include="FluidSimulation.h" />
     <ClInclude Include="Grid2D.h" />
     <ClInclude Include="HydraulicErosionNode.h" />
+    <ClInclude Include="UndoManager.h" />
+    <ClInclude Include="UndoActions.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\ai_assert.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\anim.h" />

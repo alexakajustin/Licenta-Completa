@@ -16,6 +16,7 @@
 #include "Frustum.h"
 #include "NodeGraph.h"
 #include "InstancedGroup.h"
+#include "UndoManager.h"
 
 class SceneManager
 {
@@ -109,6 +110,13 @@ public:
 	void SetMainShader(Shader* s) { mainShader = s; }
 	Shader* GetMainShader() const { return mainShader; }
 	NodeGraph& GetNodeGraph() { return nodeGraph; }
+
+	// ========== Undo/Redo ==========
+	UndoManager& GetUndoManager() { return undoManager; }
+
+	// Low-level helpers for undo actions (no memory management, no undo recording)
+	void InsertObjectAt(GameObject* obj, int index);
+	void RemoveObjectRaw(int index); // Removes from vector WITHOUT deleting memory
 
 	// ========== Utilities (public for EditorUI viewport drop) ==========
 	glm::vec3 GetMouseRay(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight);
@@ -207,4 +215,5 @@ private:
 	float shadowDistanceMultiplier = 1.0f;
 
 	NodeGraph nodeGraph;
+	UndoManager undoManager;
 };

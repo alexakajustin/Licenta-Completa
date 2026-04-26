@@ -17,6 +17,7 @@
 #include "OutputNode.h"
 #include "HydraulicErosionNode.h"
 #include "SceneSerializer.h"
+#include "UndoActions.h"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -473,6 +474,26 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Edit"))
+		{
+			std::string undoLabel = scene.GetUndoManager().CanUndo() 
+				? "Undo " + scene.GetUndoManager().GetUndoDescription() 
+				: "Undo";
+			std::string redoLabel = scene.GetUndoManager().CanRedo() 
+				? "Redo " + scene.GetUndoManager().GetRedoDescription() 
+				: "Redo";
+
+			if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, scene.GetUndoManager().CanUndo()))
+			{
+				scene.GetUndoManager().Undo();
+			}
+			if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Shift+Z", false, scene.GetUndoManager().CanRedo()))
+			{
+				scene.GetUndoManager().Redo();
+			}
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("GameObject"))
 		{
 			if (ImGui::MenuItem("Create Empty")) { scene.CreateGameObject("Empty Object", spawnPos); }
@@ -757,6 +778,20 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			{
 				scene.Paste();
 			}
+
+			// Undo/Redo
+			if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
+			{
+				scene.GetUndoManager().Undo();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
+			{
+				scene.GetUndoManager().Redo();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
+			{
+				scene.GetUndoManager().Redo();
+			}
 		}
 
 		// Box Selection Overlay
@@ -921,6 +956,20 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V))
 			{
 				scene.Paste();
+			}
+
+			// Undo/Redo
+			if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
+			{
+				scene.GetUndoManager().Undo();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
+			{
+				scene.GetUndoManager().Redo();
+			}
+			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
+			{
+				scene.GetUndoManager().Redo();
 			}
 		}
 
@@ -1115,9 +1164,40 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			// --- Transform (collapsible) ---
 			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
+				// Capture before-state when user starts editing
+				if (!inspectorEditingTransform && ImGui::IsItemActive()) {
+					// Will be caught below
+				}
+
+				// Snapshot before first edit
+				bool anyActive = false;
+				
 				DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f);
+				anyActive |= ImGui::IsItemActive();
 				DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f);
+				anyActive |= ImGui::IsItemActive();
 				DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
+				anyActive |= ImGui::IsItemActive();
+
+				if (anyActive && !inspectorEditingTransform) {
+					// User just started editing — snapshot the before state
+					inspectorEditingTransform = true;
+					inspectorTransformBeforePos = transform.GetPosition();
+					inspectorTransformBeforeRot = transform.GetRotation();
+					inspectorTransformBeforeScale = transform.GetScale();
+				}
+				else if (!anyActive && inspectorEditingTransform) {
+					// User stopped editing — push undo if values changed
+					inspectorEditingTransform = false;
+					if (inspectorTransformBeforePos != transform.GetPosition() ||
+						inspectorTransformBeforeRot != transform.GetRotation() ||
+						inspectorTransformBeforeScale != transform.GetScale())
+					{
+						std::vector<TransformSnapshot> before = {{ selected, inspectorTransformBeforePos, inspectorTransformBeforeRot, inspectorTransformBeforeScale }};
+						std::vector<TransformSnapshot> after = {{ selected, transform.GetPosition(), transform.GetRotation(), transform.GetScale() }};
+						scene.GetUndoManager().PushAction(std::make_unique<TransformAction>("Inspector Transform", before, after));
+					}
+				}
 			}
 
 				// --- Texture Layers (collapsible) ---

@@ -9,6 +9,7 @@
 #include "Mesh.h"
 #include "Texture.h"
 
+struct TransformSnapshot;
 struct GraphicsSettings;
 
 class SceneManager;
@@ -113,6 +114,12 @@ private:
 	// Scene file action state
 	SceneAction pendingSceneAction = SceneAction::None;
 	std::string pendingScenePath;
+
+	// Inspector transform undo tracking
+	bool inspectorEditingTransform = false;
+	glm::vec3 inspectorTransformBeforePos;
+	glm::vec3 inspectorTransformBeforeRot;
+	glm::vec3 inspectorTransformBeforeScale;
 
 private:
 

@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include "InstancedGroup.h"
 #include "Renderer.h"
+#include "UndoActions.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -64,21 +65,80 @@ void SceneManager::DeleteSelectedObjects()
 
 	if (selectedObjectIndices.empty()) return;
 
-	// Collect objects to delete
-	std::vector<GameObject*> toDelete;
+	// Snapshot for undo: capture objects, their indices, and parent info
+	std::vector<DeletedObjectEntry> undoEntries;
+	std::vector<int> prevSelection = selectedObjectIndices;
+
+	// Collect objects to delete (sorted ascending by index for snapshot)
+	std::vector<std::pair<int, GameObject*>> toDelete;
 	for (int idx : selectedObjectIndices) {
 		if (idx >= 0 && idx < (int)objects.size()) {
-			toDelete.push_back(objects[idx]);
+			toDelete.push_back({ idx, objects[idx] });
 		}
 	}
 
-	for (auto* obj : toDelete) {
-		// Re-verify object exists as it might have been deleted as a child of a previous selection
+	// Also collect children that will be recursively deleted
+	std::vector<GameObject*> allToDelete;
+	for (auto& [idx, obj] : toDelete) {
+		allToDelete.push_back(obj);
+		// Collect children recursively
+		std::function<void(GameObject*)> collectChildren = [&](GameObject* parent) {
+			for (auto* child : parent->GetChildren()) {
+				allToDelete.push_back(child);
+				collectChildren(child);
+			}
+		};
+		collectChildren(obj);
+	}
+
+	// Build entries for all objects that will be removed (in order of their indices)
+	for (auto* obj : allToDelete) {
 		auto it = std::find(objects.begin(), objects.end(), obj);
 		if (it != objects.end()) {
-			DeleteGameObject((int)(it - objects.begin()));
+			int idx = (int)(it - objects.begin());
+			// Check if already captured
+			bool alreadyCaptured = false;
+			for (auto& e : undoEntries) {
+				if (e.object == obj) { alreadyCaptured = true; break; }
+			}
+			if (!alreadyCaptured) {
+				undoEntries.push_back({ obj, idx, obj->GetParent(), obj->GetName() });
+			}
 		}
 	}
+
+	// Remove objects from scene WITHOUT freeing memory (undo action owns them)
+	// Process in descending index order to preserve indices
+	std::sort(undoEntries.begin(), undoEntries.end(),
+		[](const DeletedObjectEntry& a, const DeletedObjectEntry& b) {
+			return a.originalIndex > b.originalIndex;
+		});
+
+	for (auto& entry : undoEntries) {
+		auto it = std::find(objects.begin(), objects.end(), entry.object);
+		if (it != objects.end()) {
+			int idx = (int)(it - objects.begin());
+			// Detach from parent without triggering world recalc
+			if (entry.object->GetParent()) {
+				entry.object->GetParent()->RemoveChild(entry.object);
+			}
+			// Orphan children that are NOT being deleted
+			for (auto* child : entry.object->GetChildren()) {
+				bool childBeingDeleted = false;
+				for (auto& e : undoEntries) {
+					if (e.object == child) { childBeingDeleted = true; break; }
+				}
+				if (!childBeingDeleted) {
+					child->SetParent(nullptr);
+				}
+			}
+			objects.erase(objects.begin() + idx);
+		}
+	}
+
+	// Push undo action (it now owns the deleted objects' memory)
+	undoManager.PushAction(std::make_unique<DeleteObjectsAction>(this, undoEntries, prevSelection));
+
 	ClearSelection();
 }
 
@@ -86,13 +146,45 @@ void SceneManager::DeleteSelectedLights()
 {
 	if (selectedLightIndices.empty()) return;
 
+	// Snapshot for undo
+	std::vector<DeletedLightEntry> undoEntries;
+	std::vector<int> prevSelection = selectedLightIndices;
+
 	// Sort descending to maintain indices
 	std::vector<int> sorted = selectedLightIndices;
 	std::sort(sorted.rbegin(), sorted.rend());
 
 	for (int idx : sorted) {
+		if (idx < 0 || idx >= (int)lights.size()) continue;
+		LightObject* lo = lights[idx];
+
+		DeletedLightEntry entry;
+		entry.light = lo;
+		entry.originalIndex = idx;
+		entry.type = lo->GetLightType();
+		entry.name = lo->GetName();
+		entry.color = *lo->GetColorPtr();
+		entry.ambientIntensity = *lo->GetAmbientIntensityPtr();
+		entry.diffuseIntensity = *lo->GetDiffuseIntensityPtr();
+		if (lo->GetPositionPtr()) entry.position = *lo->GetPositionPtr();
+		if (lo->GetDirectionPtr()) entry.direction = *lo->GetDirectionPtr();
+		if (lo->GetConstantPtr()) entry.constant = *lo->GetConstantPtr();
+		if (lo->GetLinearPtr()) entry.linear = *lo->GetLinearPtr();
+		if (lo->GetExponentPtr()) entry.exponent = *lo->GetExponentPtr();
+		if (entry.type == LightType::Spot && lo->GetSpotEdgePtr())
+			entry.edge = *lo->GetSpotEdgePtr();
+
+		undoEntries.push_back(entry);
+	}
+
+	// Now actually delete
+	for (int idx : sorted) {
 		DeleteLight(idx);
 	}
+
+	// Push undo action
+	undoManager.PushAction(std::make_unique<DeleteLightsAction>(this, undoEntries, prevSelection));
+
 	ClearSelection();
 }
 
@@ -576,6 +668,35 @@ void SceneManager::Clear()
 	selectedObjectIndices.clear();
 	selectedLightIndices.clear();
 	nodeGraph.Clear();
+	undoManager.Clear();
+}
+
+// =====================================================================
+// Undo Helpers (no memory management, no undo recording)
+// =====================================================================
+
+void SceneManager::InsertObjectAt(GameObject* obj, int index)
+{
+	if (!obj) return;
+	if (index < 0 || index > (int)objects.size()) index = (int)objects.size();
+	objects.insert(objects.begin() + index, obj);
+}
+
+void SceneManager::RemoveObjectRaw(int index)
+{
+	if (index < 0 || index >= (int)objects.size()) return;
+	// DO NOT delete the object — caller (undo action) owns the memory
+	objects.erase(objects.begin() + index);
+
+	// Update selection indices
+	std::vector<int> newSelection;
+	for (int selIdx : selectedObjectIndices) {
+		if (selIdx == index) continue;
+		if (selIdx > index) newSelection.push_back(selIdx - 1);
+		else newSelection.push_back(selIdx);
+	}
+	selectedObjectIndices = newSelection;
+	if (selectedObjectIndices.empty()) activeDragAxis = 0;
 }
 
 // =====================================================================
@@ -912,6 +1033,9 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 
 	objects.push_back(newObj);
 	SetSelectedIndex((int)objects.size() - 1);
+
+	// Record undo action
+	undoManager.PushAction(std::make_unique<CreateObjectAction>(this, std::vector<GameObject*>{newObj}, "Create " + type));
 }
 
 #include "AssetManager.h"
@@ -972,6 +1096,14 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		}
 		SetSelectedIndex((int)objects.size() - (int)model->GetMeshCount() - 1);
 		printf("[SceneManager] Partitioned modular model '%s' into %d components.\n", baseName.c_str(), (int)model->GetMeshCount());
+
+		// Record undo for all created objects (root + children)
+		std::vector<GameObject*> created;
+		created.push_back(root);
+		for (size_t i = 0; i < model->GetMeshCount(); i++) {
+			created.push_back(objects[objects.size() - model->GetMeshCount() + i]);
+		}
+		undoManager.PushAction(std::make_unique<CreateObjectAction>(this, created, "Instantiate " + baseName));
 	}
 	else 
 	{
@@ -983,6 +1115,9 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		objects.push_back(newObj);
 		SetSelectedIndex((int)objects.size() - 1);
 		printf("[SceneManager] Instantiated single-mesh model: %s\n", baseName.c_str());
+
+		// Record undo
+		undoManager.PushAction(std::make_unique<CreateObjectAction>(this, std::vector<GameObject*>{newObj}, "Instantiate " + baseName));
 	}
 }
 
@@ -998,6 +1133,11 @@ void SceneManager::CreateLight(LightType type, glm::vec3 spawnPos)
 			lights.push_back(newLightObj);
 			(*globalPointLightCount)++;
 			SetSelectedLightIndex((int)lights.size() - 1);
+
+			// Record undo
+			auto action = std::make_unique<CreateLightAction>(this, type, "Create Point Light");
+			action->SetCreatedIndex((int)lights.size() - 1);
+			undoManager.PushAction(std::move(action));
 		}
 	} else if (type == LightType::Spot) {
 		if (globalSpotLights && globalSpotLightCount && *globalSpotLightCount < MAX_SPOT_LIGHTS) {
@@ -1009,6 +1149,11 @@ void SceneManager::CreateLight(LightType type, glm::vec3 spawnPos)
 			lights.push_back(newLightObj);
 			(*globalSpotLightCount)++;
 			SetSelectedLightIndex((int)lights.size() - 1);
+
+			// Record undo
+			auto action = std::make_unique<CreateLightAction>(this, type, "Create Spot Light");
+			action->SetCreatedIndex((int)lights.size() - 1);
+			undoManager.PushAction(std::move(action));
 		}
 	}
 }
@@ -1767,7 +1912,43 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 			}
 		}
 		else if (action == GLFW_RELEASE) {
-			if (activeDragAxis != 0) printf("Gizmo Drag END\n");
+			if (activeDragAxis != 0) {
+				printf("Gizmo Drag END\n");
+
+				// Record undo action for the completed drag
+				if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
+					// TRANSLATION — record transform undo for objects
+					if (!dragInitialObjectStates.empty()) {
+						std::vector<TransformSnapshot> before, after;
+						for (auto const& [obj, state] : dragInitialObjectStates) {
+							before.push_back({ obj, state.position, state.rotation, obj->GetTransform().GetScale() });
+							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
+						}
+						undoManager.PushAction(std::make_unique<TransformAction>("Move Object", before, after));
+					}
+					// TRANSLATION — record light position undo
+					if (!dragInitialLightPositions.empty()) {
+						std::vector<LightTransformSnapshot> before, after;
+						for (auto const& [light, initialPos] : dragInitialLightPositions) {
+							before.push_back({ light, initialPos });
+							glm::vec3* curPos = light->GetPositionPtr();
+							after.push_back({ light, curPos ? *curPos : initialPos });
+						}
+						undoManager.PushAction(std::make_unique<LightTransformAction>("Move Light", before, after));
+					}
+				}
+				else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
+					// ROTATION — record transform undo
+					if (!dragInitialObjectStates.empty()) {
+						std::vector<TransformSnapshot> before, after;
+						for (auto const& [obj, state] : dragInitialObjectStates) {
+							before.push_back({ obj, state.position, state.rotation, obj->GetTransform().GetScale() });
+							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
+						}
+						undoManager.PushAction(std::make_unique<TransformAction>("Rotate Object", before, after));
+					}
+				}
+			}
 			activeDragAxis = 0;
 		}
 }
