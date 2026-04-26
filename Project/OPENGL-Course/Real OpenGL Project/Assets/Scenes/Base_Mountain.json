@@ -13,17 +13,24 @@
             "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
+        },
+        {
+            "instanceDataPath": "Base_Mountain_Scatter_Instanced_399_grass_5.inst",
+            "maxDrawDistance": 250.0,
+            "name": "Scatter_Instanced_399_grass 5",
+            "shadowDistance": 30.0,
+            "sourceObjectName": "grass 5"
         }
     ],
     "lights": [
         {
-            "ambientIntensity": 0.41200000047683716,
+            "ambientIntensity": 0.6209999918937683,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.4440000057220459,
+            "diffuseIntensity": 1.5420000553131104,
             "direction": [
                 -20.0,
                 -5.0,
@@ -51,7 +58,7 @@
                 "start": 403
             }
         ],
-        "nextId": 412,
+        "nextId": 440,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -83,7 +90,7 @@
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
-                        "tiling": 25.0
+                        "tiling": 100.0
                     },
                     {
                         "blendMode": 1,
@@ -95,7 +102,7 @@
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
-                        "tiling": 25.0
+                        "tiling": 100.0
                     }
                 ],
                 "cachedTexturePath": "",
@@ -113,12 +120,27 @@
                 "title": "Scene Input"
             },
             {
-                "cachedModelPath": "Assets\\Models\\Tree.obj",
+                "cachedMatColor": [
+                    0.0,
+                    0.29372936487197876,
+                    0.046531371772289276
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\grass.obj",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -337.9215393066406,
-                    394.48406982421875,
-                    -320.5399475097656
+                    891.544921875,
+                    275.9862976074219,
+                    -362.2575378417969
                 ],
                 "cachedPrimitiveType": "",
                 "cachedRotation": [
@@ -137,22 +159,23 @@
                     50.0,
                     250.0
                 ],
-                "hasCachedMaterial": false,
+                "hasCachedMaterial": true,
                 "id": 397,
                 "inputPins": [],
                 "outputPins": [
                     398
                 ],
-                "selectedName": "Tree (Root)",
+                "selectedName": "grass 5",
                 "title": "Scene Input"
             },
             {
                 "alignToNormal": false,
-                "count": 10000,
+                "count": 1000000,
                 "createdGroupNames": [
                     "Scatter_Instanced_399_Tree (Root)",
                     "Scatter_Instanced_399_Tree (Root)_0",
-                    "Scatter_Instanced_399_Tree (Root)_1"
+                    "Scatter_Instanced_399_Tree (Root)_1",
+                    "Scatter_Instanced_399_grass 5"
                 ],
                 "editorPos": [
                     250.0,
@@ -190,14 +213,14 @@
                 ],
                 "normalAxis": 1,
                 "normalComparison": 1,
-                "normalThreshold": 0.699999988079071,
+                "normalThreshold": 0.8100000023841858,
                 "outputPins": [
                     407,
                     408
                 ],
-                "threshold": 53.79999923706055,
+                "threshold": 60.5,
                 "title": "Filter Transforms",
-                "useNormalFilter": false,
+                "useNormalFilter": true,
                 "usePercentage": true
             }
         ]
@@ -224,7 +247,7 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
-                    "tiling": 25.0
+                    "tiling": 100.0
                 },
                 {
                     "blendMode": 1,
@@ -238,7 +261,7 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
-                    "tiling": 25.0
+                    "tiling": 100.0
                 }
             ],
             "texturePath": "",
@@ -299,20 +322,38 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
+                "material.shininess": 0.0,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 polySurface1",
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\bark_0021.jpg",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "Assets/Textures/plain.png",
             "transform": {
                 "position": [
@@ -352,13 +393,31 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 g2 polySurface1",
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "Assets/Textures/plain.png",
             "transform": {
                 "position": [
@@ -382,6 +441,82 @@
             "inheritScale": true,
             "modelPath": "",
             "name": "Scatter_Group_399_Tree (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    0.0,
+                    0.29372936487197876,
+                    0.046531371772289276,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/grass.frag",
+                "shader_vert": "Assets/Shaders/grass.vert",
+                "windSpeed": 2.0,
+                "windStrength": 0.004999999888241291
+            },
+            "modelPath": "Assets\\Models\\grass.obj",
+            "name": "grass 5",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    891.544921875,
+                    275.9862976074219,
+                    -362.2575378417969
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    5.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_399_grass 5",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
