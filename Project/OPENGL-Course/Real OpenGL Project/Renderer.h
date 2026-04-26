@@ -33,7 +33,14 @@ public:
 					DirectionalLight& mainLight,
 					PointLight* pointLights, unsigned int pointLightCount,
 					SpotLight* spotLights, unsigned int spotLightCount,
-					int fbw, int fbh, GLuint sceneDepthTexture = 0);
+					int fbw, int fbh, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0);
+
+	void ReflectionPass(const glm::mat4& projection, const glm::mat4& view,
+						const glm::vec3& cameraPos, SceneManager& scene,
+						DirectionalLight& mainLight,
+						PointLight* pointLights, unsigned int pointLightCount,
+						SpotLight* spotLights, unsigned int spotLightCount,
+						int fbw, int fbh, float waterHeight);
 
 	Shader& GetMainShader() { return mainShader; }
 	Shader* GetInstancedShader(Shader* original);

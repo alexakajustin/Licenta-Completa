@@ -58,7 +58,7 @@ public:
 		class DirectionalLight* mainLight, class PointLight* pointLights, unsigned int pointLightCount,
 		class SpotLight* spotLights, unsigned int spotLightCount,
 		float time = 0.0f, const Frustum* frustum = nullptr, Shader* overrideShader = nullptr,
-		float screenHeight = 0.0f, class Renderer* renderer = nullptr, GLuint sceneDepthTexture = 0);
+		float screenHeight = 0.0f, class Renderer* renderer = nullptr, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 

@@ -22,6 +22,7 @@ out vec3 WorldXBasis;
 out vec3 WorldZBasis;
 out float vIsSelected;
 out float vFadeFactor;
+out vec4 clipSpaceCoords;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -42,11 +43,13 @@ struct Material {
 uniform int textureLayerCount;
 uniform Material material;
 
-// Custom Material Parameters (we set fallback defaults if they are 0)
+// Custom Material Parameters
 uniform float material_waveSpeed;
 uniform float material_waveStrength;
 uniform float material_waveScale;
+uniform vec4 clipPlane;
 
+// Gerstner wave function - displaces vertices for large-scale ocean movement
 vec3 GerstnerWave(vec4 wave, vec3 p, inout vec3 tangentOut, inout vec3 binormalOut, float actualWaveSpeed) {
     float steepness = wave.z;
     float wavelength = wave.w;
@@ -94,20 +97,32 @@ void main()
 	vec3 binormalG = vec3(0.0, 0.0, 1.0);
 	vec3 p = gridPoint;
 	
+    // 6 Gerstner waves at different scales for rich, varied motion
     // Direction X, Direction Z, Steepness, Wavelength
-	vec4 waveA = vec4(1.0, 1.0, 0.25 * actualWaveStrength, 15.0 / actualWaveScale);
-	vec4 waveB = vec4(1.0, 0.6, 0.25 * actualWaveStrength, 7.0 / actualWaveScale);
-	vec4 waveC = vec4(-1.0, 1.3, 0.25 * actualWaveStrength, 4.0 / actualWaveScale);
-    vec4 waveD = vec4(-0.2, 0.7, 0.20 * actualWaveStrength, 2.0 / actualWaveScale);
+	vec4 waveA = vec4(1.0, 1.0, 0.25 * actualWaveStrength, 60.0 / actualWaveScale);
+	vec4 waveB = vec4(1.0, 0.6, 0.20 * actualWaveStrength, 31.0 / actualWaveScale);
+	vec4 waveC = vec4(1.0, 1.3, 0.15 * actualWaveStrength, 18.0 / actualWaveScale);
+    vec4 waveD = vec4(0.7, 1.0, 0.15 * actualWaveStrength, 10.0 / actualWaveScale);
+    vec4 waveE = vec4(0.2, 0.8, 0.10 * actualWaveStrength,  5.0 / actualWaveScale);
+    vec4 waveF = vec4(-0.4, 0.6, 0.08 * actualWaveStrength,  3.0 / actualWaveScale);
     
-    p += GerstnerWave(waveA, gridPoint, tangentG, binormalG, actualWaveSpeed);
-	p += GerstnerWave(waveB, gridPoint, tangentG, binormalG, actualWaveSpeed);
-	p += GerstnerWave(waveC, gridPoint, tangentG, binormalG, actualWaveSpeed);
-    p += GerstnerWave(waveD, gridPoint, tangentG, binormalG, actualWaveSpeed);
+    vec3 waveOffset = vec3(0.0);
+    waveOffset += GerstnerWave(waveA, gridPoint, tangentG, binormalG, actualWaveSpeed);
+	waveOffset += GerstnerWave(waveB, gridPoint, tangentG, binormalG, actualWaveSpeed);
+	waveOffset += GerstnerWave(waveC, gridPoint, tangentG, binormalG, actualWaveSpeed);
+    waveOffset += GerstnerWave(waveD, gridPoint, tangentG, binormalG, actualWaveSpeed);
+    waveOffset += GerstnerWave(waveE, gridPoint, tangentG, binormalG, actualWaveSpeed);
+    waveOffset += GerstnerWave(waveF, gridPoint, tangentG, binormalG, actualWaveSpeed);
+    
+    // Only apply vertical (Y) displacement — keep the plane stationary in XZ
+    p.y += waveOffset.y;
     
 	vec3 normalG = normalize(cross(binormalG, tangentG));
 
-	gl_Position = projection * view * modelMatrix * vec4(p, 1.0);
+    vec4 worldPos = modelMatrix * vec4(p, 1.0);
+	gl_ClipDistance[0] = dot(worldPos, clipPlane);
+	clipSpaceCoords = projection * view * worldPos;
+	gl_Position = clipSpaceCoords;
 
 	vertex_color = vec4(clamp(p, 0.0f, 1.0f), 1.0f);
 	
@@ -120,7 +135,7 @@ void main()
 	mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
     Normal = normalMatrix * normalG;
 	
-	FragPos = (modelMatrix * vec4(p, 1.0)).xyz; 
+	FragPos = worldPos.xyz; 
 	LocalPos = p; 
 
 	TangentWorld = normalize(normalMatrix * tangentG);

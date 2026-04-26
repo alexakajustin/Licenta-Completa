@@ -46,6 +46,7 @@ uniform int useDiffuseTexture;
 uniform int useNormalMap;
 uniform Material material;
 uniform int textureLayerCount;  // Passed in so vertex shader can skip material tiling when layers are active
+uniform vec4 clipPlane;
 
 
 void main()
@@ -58,7 +59,9 @@ void main()
 	vIsSelected = 0.0;
 	vFadeFactor = 0.0; // Non-instanced objects are always fully visible
 
-	gl_Position = projection * view * modelMatrix * vec4(pos, 1.0);
+	vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
+	gl_ClipDistance[0] = dot(worldPosition, clipPlane);
+	gl_Position = projection * view * worldPosition;
 	// DirectionalLightSpacePos calculation removed for CSM
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
@@ -73,7 +76,7 @@ void main()
 	
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;
 	
-	FragPos = (modelMatrix * vec4(pos, 1.0)).xyz; 
+	FragPos = worldPosition.xyz; 
 	LocalPos = pos; // Object-space position (before model transform)
 
 	// Transform TBN vectors to world space for normal mapping

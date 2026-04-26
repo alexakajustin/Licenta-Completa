@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "Shader.h"
+#include "Texture.h"
 
 class Material
 {
@@ -39,6 +40,9 @@ public:
 	void SetVec2(const std::string& name, glm::vec2 val) { vec2s[name] = val; }
 	glm::vec2 GetVec2(const std::string& name) const { return vec2s.count(name) ? vec2s.at(name) : glm::vec2(0.0f); }
 
+	void SetTextureParam(const std::string& name, const std::string& path);
+	const std::map<std::string, std::string>& GetTexturePaths() const { return texturePaths; }
+
 	// Keep these for backward compatibility/helper access
 	glm::vec4 GetColor() const { return GetVec4("material.baseColor"); }
 	void SetColor(glm::vec4 val) { SetVec4("material.baseColor", val); }
@@ -71,6 +75,8 @@ private:
 	std::map<std::string, glm::vec2> vec2s;
 	std::map<std::string, glm::vec3> vec3s;
 	std::map<std::string, glm::vec4> vec4s;
+	std::map<std::string, std::string> texturePaths;
+	std::map<std::string, Texture*> textures;
 
 	mutable std::map<std::string, GLint> uniformLocations;
 	mutable std::map<GLuint, std::map<std::string, GLint>> overrideUniformLocations;

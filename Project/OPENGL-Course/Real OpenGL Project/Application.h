@@ -84,6 +84,15 @@ private:
 	int currentViewportWidth = 0;
 	int currentViewportHeight = 0;
 
+	// Water Reflection FBO
+	void InitReflectionFBO();
+	void ResizeReflectionFBO(int width, int height);
+	GLuint reflectionFBO = 0;
+	GLuint reflectionTexture = 0;
+	GLuint reflectionDepth = 0;
+	int reflectionWidth = 0;
+	int reflectionHeight = 0;
+
 	// SSAO
 	void InitSSAO();
 	void RenderQuad();

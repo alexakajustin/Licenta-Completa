@@ -271,7 +271,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture)
+	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture, GLuint reflectionTexture)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -303,7 +303,18 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (timeLoc != -1) glUniform1f(timeLoc, time);
 			
 			GLint depthMapLoc = glGetUniformLocation(s->GetShaderID(), "sceneDepthMap");
-			if (depthMapLoc != -1) glUniform1i(depthMapLoc, 14); // Binding 14
+			if (depthMapLoc != -1) {
+				glActiveTexture(GL_TEXTURE14);
+				glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+				glUniform1i(depthMapLoc, 14); // Binding 14
+			}
+
+			GLint reflectionMapLoc = glGetUniformLocation(s->GetShaderID(), "reflectionMap");
+			if (reflectionMapLoc != -1) {
+				glActiveTexture(GL_TEXTURE15);
+				glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+				glUniform1i(reflectionMapLoc, 15); // Binding 15
+			}
 
 			// Screen size is required for depth sampling via gl_FragCoord
 			GLint screenSizeLoc = glGetUniformLocation(s->GetShaderID(), "screenSize");

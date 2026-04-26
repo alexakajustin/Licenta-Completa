@@ -57,13 +57,30 @@ void Material::SetShader(Shader* shader)
 				floats["material_waveScale"] = 1.0f;
 				floats["material_fresnelPower"] = 4.0f;
 				floats["material_foamDistance"] = 2.5f;
-				floats["material_specularIntensityOverride"] = 2.0f;
-				floats["material_shininessOverride"] = 128.0f;
+				floats["material_dudvTiling"] = 6.0f;
+				floats["material_dudvStrength"] = 0.02f;
+				floats["material_specularIntensityOverride"] = 3.0f;
+				floats["material_shininessOverride"] = 256.0f;
 				vec4s["material_waterColorDeep"] = glm::vec4(0.01f, 0.15f, 0.35f, 0.95f);
 				vec4s["material_waterColorShallow"] = glm::vec4(0.05f, 0.6f, 0.75f, 0.7f);
 				vec4s["material_foamColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 0.9f);
+				vec4s["material.baseColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 0.85f);
+				SetTextureParam("material_dudvMap", "Assets/Textures/Water/dudv.png");
+				SetTextureParam("material_waterNormalMap", "Assets/Textures/Water/normal.png");
 			}
 		}
+	}
+}
+
+void Material::SetTextureParam(const std::string& name, const std::string& path)
+{
+	texturePaths[name] = path;
+	// Load the texture if not already loaded
+	if (textures.find(name) == textures.end() || textures[name] == nullptr) {
+		Texture* tex = new Texture(path.c_str());
+		tex->LoadTextureA();
+		textures[name] = tex;
+		printf("[Material] Loaded texture param '%s' from '%s'\n", name.c_str(), path.c_str());
 	}
 }
 
@@ -111,6 +128,19 @@ void Material::Bind(GLuint overrideProgram)
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform4fv(loc, 1, glm::value_ptr(val));
 	}
+
+	// Bind texture parameters to high texture units (10+)
+	int texUnit = 10;
+	for (auto const& [name, tex] : textures) {
+		if (!tex) continue;
+		GLint loc = GetLoc(name);
+		if (loc != -1) {
+			glActiveTexture(GL_TEXTURE0 + texUnit);
+			glBindTexture(GL_TEXTURE_2D, tex->GetTextureID());
+			glUniform1i(loc, texUnit);
+			texUnit++;
+		}
+	}
 }
 
 void Material::UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, GLint tilingLocation, GLint offsetLocation)
@@ -144,6 +174,11 @@ Material* Material::LoadFromFile(const std::string& path)
 			// but we'll store the path or let the caller handle it.
 			// For now, these will be handled by the SceneSerializer
 		}
+		else if (key.rfind("texture_", 0) == 0) {
+			// texture_XXX=path/to/file.png -> loads texture and stores as "material_XXX"
+			std::string uniformName = "material_" + key.substr(8); // strip "texture_" prefix
+			mat->SetTextureParam(uniformName, valStr);
+		}
 		else if (valStr.find(',') != std::string::npos) {
 			// Probable vec2, vec3, or vec4
 			std::stringstream ss(valStr);
@@ -176,6 +211,12 @@ bool Material::SaveToFile(const std::string& path) const
 	for (auto const& [name, val] : vec2s)  file << name << "=" << val.x << "," << val.y << "\n";
 	for (auto const& [name, val] : vec3s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "\n";
 	for (auto const& [name, val] : vec4s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "," << val.w << "\n";
+	for (auto const& [name, path] : texturePaths) {
+		// Convert back: "material_XXX" -> "texture_XXX"
+		std::string key = name;
+		if (key.rfind("material_", 0) == 0) key = "texture_" + key.substr(9);
+		file << key << "=" << path << "\n";
+	}
 
 	return true;
 }

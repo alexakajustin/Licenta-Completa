@@ -143,7 +143,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  DirectionalLight& mainLight,
 						  PointLight* pointLights, unsigned int pointLightCount,
 						  SpotLight* spotLights, unsigned int spotLightCount,
-						  int fbw, int fbh, GLuint sceneDepthTexture)
+						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture)
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -170,6 +170,9 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(view));
 	glUniform3f(uniformEyePosition, cameraPos.x, cameraPos.y, cameraPos.z);
+	
+	GLint clipPlaneLoc = glGetUniformLocation(mainShader.GetShaderID(), "clipPlane");
+	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
 
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
@@ -205,12 +208,96 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture);
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);
 	// NOTE: Gizmo/icon rendering moved to Application::Run() AFTER the SSAO pass,
 	// so that the depth buffer retains valid object data for SSAO sampling.
+}
+
+void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view,
+							  const glm::vec3& cameraPos, SceneManager& scene,
+							  DirectionalLight& mainLight,
+							  PointLight* pointLights, unsigned int pointLightCount,
+							  SpotLight* spotLights, unsigned int spotLightCount,
+							  int fbw, int fbh, float waterHeight)
+{
+	glViewport(0, 0, fbw, fbh);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Reflect camera across water plane (y = waterHeight)
+	glm::mat4 reflectionMatrix(1.0f);
+	reflectionMatrix[1][1] = -1.0f;
+	reflectionMatrix[3][1] = 2.0f * waterHeight;
+	glm::mat4 reflectedView = view * reflectionMatrix;
+
+	glm::vec3 reflectedCamPos = cameraPos;
+	reflectedCamPos.y = 2.0f * waterHeight - reflectedCamPos.y;
+
+	// Flip face winding since reflection inverts the coordinate system
+	glFrontFace(GL_CW);
+
+	// Enable clip plane to only render above water
+	glEnable(GL_CLIP_DISTANCE0);
+
+	// Skybox (reflected)
+	glDisable(GL_BLEND);
+	glDisable(GL_CULL_FACE);
+	skybox.DrawSkybox(reflectedView, projection);
+	glEnable(GL_CULL_FACE);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Main shader
+	mainShader.UseShader();
+
+	GLint layerCountLoc = glGetUniformLocation(mainShader.GetShaderID(), "textureLayerCount");
+	if (layerCountLoc != -1) glUniform1i(layerCountLoc, 0);
+
+	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(reflectedView));
+	glUniform3f(uniformEyePosition, reflectedCamPos.x, reflectedCamPos.y, reflectedCamPos.z);
+
+	// Set clip plane: render only stuff ABOVE water (y > waterHeight)
+	// Clip plane equation: 0*x + 1*y + 0*z + (-waterHeight) > 0
+	GLint clipPlaneLoc = glGetUniformLocation(mainShader.GetShaderID(), "clipPlane");
+	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
+
+	mainShader.SetDirectionalLight(&mainLight);
+	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
+	mainShader.SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
+
+	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
+	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
+	if (!cascadedMatrices.empty()) {
+		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "dirLightMatrices"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
+		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
+	}
+	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(reflectedView));
+
+	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
+	mainLight.GetShadowMap()->ReadColor(GL_TEXTURE20);
+	mainShader.SetTexture(0);
+	mainShader.SetNormalMap(1);
+	mainShader.SetDirectionalShadowMap(3);
+	mainShader.SetDirectionalShadowColorMap(20);
+
+	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * reflectedView);
+	float time = (float)glfwGetTime();
+
+	// Render opaque scene objects only (no transparent/water) with clip plane active
+	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0);
+
+	// Restore state
+	glDisable(GL_CLIP_DISTANCE0);
+	glFrontFace(GL_CCW);
+	glDisable(GL_BLEND);
+
+	// Reset clip plane to neutral on the main shader
+	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 Shader* Renderer::GetInstancedShader(Shader* original)

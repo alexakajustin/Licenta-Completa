@@ -10,6 +10,7 @@ in vec3 BitangentWorld;
 in vec3 NormalWorld;
 
 in vec3 LocalPos;
+in vec4 clipSpaceCoords;
 
 out vec4 colour;	
 in float vIsSelected;
@@ -83,14 +84,25 @@ uniform Material material;
 
 uniform vec3 eyePosition;
 uniform float selectionTint;
+uniform float time;
 
+// Water-specific uniforms
 uniform vec4 material_waterColorDeep;
 uniform vec4 material_waterColorShallow;
 uniform float material_fresnelPower;
 uniform float material_specularIntensityOverride;
 uniform float material_shininessOverride;
 
+// DuDv distortion (from reference repo)
+uniform sampler2D material_dudvMap;
+uniform sampler2D material_waterNormalMap;
+uniform float material_dudvTiling;
+uniform float material_dudvStrength;
+uniform float material_waveSpeed;
+
+// Foam
 uniform sampler2D sceneDepthMap;
+uniform sampler2D reflectionMap;
 uniform vec2 screenSize;
 uniform vec4 material_foamColor;
 uniform float material_foamDistance;
@@ -121,33 +133,59 @@ float random(vec3 seed, int i){
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-mat3 GetTBN()
-{
-	vec3 N = normalize(NormalWorld);
-	vec3 T = normalize(TangentWorld);
-	vec3 B = normalize(BitangentWorld);
-	T = normalize(T - dot(T, N) * N);
-	B = normalize(B - dot(B, N) * N - dot(B, T) * T);
-	return mat3(T, B, N);
+// ============================================================
+// DuDv-based normal perturbation (from reference water repo)
+// This gives micro-detail ripples entirely in fragment shader
+// ============================================================
+vec3 GetWaterNormal(vec2 uv) {
+    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
+    float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
+    float moveFactor = time * moveSpeed * 0.03;
+    
+    // Two-pass distortion from the reference repo
+    vec2 distortedTexCoords = texture(material_dudvMap, vec2(uv.x + moveFactor, uv.y) * dudvTiling).rg * 0.1;
+    distortedTexCoords = uv * dudvTiling + vec2(distortedTexCoords.x, distortedTexCoords.y + moveFactor);
+    
+    // Sample normal from the water normal map with the distorted coords
+    vec4 normalMapColor = texture(material_waterNormalMap, distortedTexCoords);
+    vec3 rippleNormal = vec3(normalMapColor.r * 2.0 - 1.0, normalMapColor.b * 3.0, normalMapColor.g * 2.0 - 1.0);
+    return normalize(rippleNormal);
 }
 
-vec3 TangentToWorld(vec3 tangentNormal, mat3 TBN)
-{
-	return normalize(TBN * tangentNormal);
+vec2 GetDuDvDistortion(vec2 uv) {
+    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
+    float dudvStrength = material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength;
+    float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
+    float moveFactor = time * moveSpeed * 0.03;
+    
+    vec2 distortedTexCoords = texture(material_dudvMap, vec2(uv.x + moveFactor, uv.y) * dudvTiling).rg * 0.1;
+    distortedTexCoords = uv * dudvTiling + vec2(distortedTexCoords.x, distortedTexCoords.y + moveFactor);
+    vec2 totalDistortion = (texture(material_dudvMap, distortedTexCoords).rg * 2.0 - 1.0) * dudvStrength;
+    return totalDistortion;
 }
 
+// ============================================================
+// Effective normal: blend Gerstner geometric normal + DuDv ripple normal
+// ============================================================
 vec3 GetEffectiveNormal()
 {
-	if(useNormalMap == 1)
-	{
-		vec3 sampledNormal = texture(normalMap, TexCoord).rgb;
-		sampledNormal = normalize(sampledNormal * 2.0 - 1.0);
-		return TangentToWorld(sampledNormal, GetTBN());
-	}
-	else
-	{
-		return normalize(Normal);
-	}
+    vec3 gerstnerNormal = normalize(Normal);
+    
+    // World-space TBN from the Gerstner wave normals
+    vec3 N = normalize(NormalWorld);
+    vec3 T = normalize(TangentWorld);
+    vec3 B = normalize(BitangentWorld);
+    T = normalize(T - dot(T, N) * N);
+    B = normalize(B - dot(B, N) * N - dot(B, T) * T);
+    mat3 TBN = mat3(T, B, N);
+    
+    // Get the ripple normal from DuDv + normal map
+    vec3 rippleNormal = GetWaterNormal(TexCoord);
+    
+    // Transform ripple into world space and blend with Gerstner normal
+    vec3 worldRipple = normalize(TBN * rippleNormal);
+    
+    return worldRipple;
 }
 
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
@@ -268,13 +306,13 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 
 	if(diffuseFactor > 0.0f)
 	{
 		vec3 fragToEye = normalize(eyePosition - FragPos);
-		vec3 reflectedVertex = normalize(reflect(normalize(direction), effectiveNormal));
-		float specularFactor = dot(fragToEye, reflectedVertex);
+		vec3 halfwayDir = normalize(fragToEye + normalize(-direction));
+		float specularFactor = max(dot(effectiveNormal, halfwayDir), 0.0);
 
 		if(specularFactor > 0.0f) 
 		{
-            float specPower = material_shininessOverride == 0.0 ? 128.0 : material_shininessOverride;
-            float specIntens = material_specularIntensityOverride == 0.0 ? 2.0 : material_specularIntensityOverride;
+            float specPower = material_shininessOverride == 0.0 ? 256.0 : material_shininessOverride;
+            float specIntens = material_specularIntensityOverride == 0.0 ? 3.0 : material_specularIntensityOverride;
 			specularFactor = pow(specularFactor, specPower);
 			specularColour = light.colour * specIntens * specularFactor * light.diffuseIntensity;
 		}
@@ -364,6 +402,9 @@ void main()
 		if (vFadeFactor > threshold) discard;
 	}
 
+    // ============================================================
+    // Water color via Fresnel
+    // ============================================================
     vec4 deepColor = material_waterColorDeep == vec4(0.0) ? vec4(0.01, 0.15, 0.35, 0.95) : material_waterColorDeep;
     vec4 shallowColor = material_waterColorShallow == vec4(0.0) ? vec4(0.05, 0.6, 0.75, 0.7) : material_waterColorShallow;
     float fresnelPower = material_fresnelPower == 0.0 ? 4.0 : material_fresnelPower;
@@ -371,12 +412,34 @@ void main()
     vec3 viewDir = normalize(eyePosition - FragPos);
     vec3 effectiveNormal = GetEffectiveNormal();
 
+    // Fresnel: looking straight down = deep color, grazing angle = shallow/reflective
     float fresnelFactor = max(dot(viewDir, effectiveNormal), 0.0);
     fresnelFactor = pow(1.0 - fresnelFactor, fresnelPower);
+    fresnelFactor = clamp(fresnelFactor, 0.0, 1.0);
     
-    vec4 baseColor = mix(deepColor, shallowColor, fresnelFactor);
+    // ============================================================
+    // Planar Reflections
+    // ============================================================
+    vec2 ndc = (clipSpaceCoords.xy / clipSpaceCoords.w) / 2.0 + 0.5;
+    vec2 reflectTexCoords = vec2(ndc.x, ndc.y);
+    
+    // Distort reflection coordinates using DuDv distortion
+    vec2 distortion = GetDuDvDistortion(TexCoord);
+    reflectTexCoords += distortion;
+    reflectTexCoords = clamp(reflectTexCoords, 0.001, 0.999);
+    
+    vec3 reflectionColor = texture(reflectionMap, reflectTexCoords).rgb;
+    
+    // Blend deep/shallow color with reflection based on Fresnel
+    vec3 waterColor = mix(deepColor.rgb, reflectionColor, fresnelFactor);
+    // Also mix in some shallow color for tinted reflections at angles
+    waterColor = mix(waterColor, shallowColor.rgb, fresnelFactor * 0.5);
 
-    // Foam Intersection Logic
+    vec4 finalBaseColor = vec4(waterColor, mix(deepColor.a, shallowColor.a, fresnelFactor));
+
+    // ============================================================
+    // Foam Intersection (depth-based, from our earlier work)
+    // ============================================================
     vec2 screenUV = gl_FragCoord.xy / screenSize;
     float backgroundDepth = texture(sceneDepthMap, screenUV).r;
     float linearBackgroundDepth = LinearizeDepth(backgroundDepth);
@@ -390,23 +453,30 @@ void main()
     if (depthDiff > 0.0 && depthDiff < foamDist) {
         float foamFactor = 1.0 - smoothstep(0.0, foamDist, depthDiff);
         
-        // Add some noise to the foam
-        float foamNoise = random(FragPos, 0) * 0.2 + 0.8; 
+        // Animated foam edge with noise
+        float foamNoise = random(FragPos * 3.0, int(time * 5.0)) * 0.3 + 0.7; 
         foamFactor *= foamNoise;
         
-        baseColor = mix(baseColor, foamColor, foamFactor);
+        finalBaseColor.rgb = mix(finalBaseColor.rgb, foamColor.rgb, foamFactor * 0.8);
     }
 
-	vec3 finalLight = CalcDirectionalLight(baseColor.rgb);
-	finalLight += CalcPointLights(baseColor.rgb);
-	finalLight += CalcSpotLights(baseColor.rgb);
+    // ============================================================
+    // Lighting
+    // ============================================================
+	vec3 finalLight = CalcDirectionalLight(finalBaseColor.rgb);
+	finalLight += CalcPointLights(finalBaseColor.rgb);
+	finalLight += CalcSpotLights(finalBaseColor.rgb);
 
 	vec3 finalColor = finalLight;
+
+    // Edge alpha fade (water becomes transparent at shallow edges)
+    float edgeAlpha = clamp(depthDiff / 1.5, 0.0, 1.0);
+    float finalAlpha = finalBaseColor.a * edgeAlpha;
 
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
 	if (selectedVal > 0.0) {
 		finalColor += vec3(0.35, 0.25, 0.0) * selectedVal;
 	}
 
-	colour = vec4(finalColor, baseColor.a);
+	colour = vec4(finalColor, finalAlpha);
 }

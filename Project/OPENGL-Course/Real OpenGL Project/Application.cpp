@@ -89,6 +89,7 @@ bool Application::Init()
 
 	// Viewport FBO initialization
 	InitViewportFBO();
+	InitReflectionFBO();
 
 	// SSAO initialization
 	InitSSAO();
@@ -299,6 +300,7 @@ void Application::Run()
 		if (vHeight < 1) vHeight = 1;
 
 		ResizeViewportFBO(vWidth, vHeight);
+		ResizeReflectionFBO(vWidth / 2, vHeight / 2); // Half resolution for performance
 
 		float aspect = (float)vWidth / (float)vHeight;
 		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 2000.0f);
@@ -320,13 +322,24 @@ void Application::Run()
 		for (unsigned int i = 0; i < spotLightCount; i++)
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
 
-		// Final Scene Render (Viewport FBO)
+		// 1. Reflection Pass (if there is water)
+		// Usually we'd find the water height dynamically, but we'll assume 0.0 for now
+		float waterHeight = 0.0f; 
+		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+		glViewport(0, 0, reflectionWidth, reflectionHeight);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight);
+		
+		// 2. Final Scene Render (Viewport FBO)
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -501,6 +514,49 @@ void Application::InitViewportFBO()
 		printf("Viewport Framebuffer not complete!\n");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::InitReflectionFBO()
+{
+	glGenFramebuffers(1, &reflectionFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+
+	reflectionWidth = 1920 / 2;
+	reflectionHeight = 1080 / 2;
+
+	glGenTextures(1, &reflectionTexture);
+	glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, reflectionWidth, reflectionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionTexture, 0);
+
+	glGenTextures(1, &reflectionDepth);
+	glBindTexture(GL_TEXTURE_2D, reflectionDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, reflectionWidth, reflectionHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, reflectionDepth, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("Reflection Framebuffer not complete!\n");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::ResizeReflectionFBO(int width, int height)
+{
+	if (reflectionTexture == 0 || width <= 0 || height <= 0) return;
+	if (width == reflectionWidth && height == reflectionHeight) return;
+	
+	reflectionWidth = width;
+	reflectionHeight = height;
+
+	glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, reflectionWidth, reflectionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	
+	glBindTexture(GL_TEXTURE_2D, reflectionDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, reflectionWidth, reflectionHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 }
 
 void Application::ResizeViewportFBO(int width, int height)
