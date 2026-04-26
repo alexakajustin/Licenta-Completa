@@ -5,6 +5,12 @@
 #include "HydraulicErosionNode.h"
 #include "CustomNode.h"
 #include "MergeMeshNode.h"
+#include "ConstantNode.h"
+#include "MathNode.h"
+#include "CompareNode.h"
+#include "BranchNode.h"
+#include "FilterTransformListNode.h"
+#include "ForEachNode.h"
 #include "NodeBuilderUI.h"
 #include "SceneManager.h"
 #include "GameObject.h"
@@ -344,7 +350,38 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 				auto& transforms = instancesPin.data.transforms;
 				MeshData& defaultObjectMesh = node->inputs[1].data.meshData;
 
-				if (!transforms.empty())
+				// === Filter Chain Resolution ===
+				// Follow links from Scatter's "Instances Only" output to find
+				// downstream FilterTransformListNode(s) and use filtered transforms.
+				TransformList* finalTransforms = &transforms;
+				{
+					Pin* currentPin = &instancesPin;
+					bool foundFilter = true;
+					while (foundFilter)
+					{
+						foundFilter = false;
+						for (auto& link : links)
+						{
+							if (link.startPinId == currentPin->id)
+							{
+								GraphNode* downstream = FindNodeByPinId(link.endPinId);
+								if (downstream && downstream->title == "Filter Transforms")
+								{
+									// Use this filter's "Passed" output (outputs[0])
+									if (!downstream->outputs.empty())
+									{
+										finalTransforms = &downstream->outputs[0].data.transforms;
+										currentPin = &downstream->outputs[0];
+										foundFilter = true;
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				if (!finalTransforms->empty())
 				{
 					// Register this group name so the node can clean it up on removal
 					scatterNode->AddCreatedGroupName(groupName);
@@ -358,8 +395,8 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					GameObject* sourceObj = instancesPin.data.sourceObject;
 
 					// Build packed instance data MULTI-THREADED (shared by all sub-meshes)
-					std::vector<InstancedGroup::PackedInstance> packedInstances(transforms.size());
-					int packCount = (int)transforms.size();
+					std::vector<InstancedGroup::PackedInstance> packedInstances(finalTransforms->size());
+					int packCount = (int)finalTransforms->size();
 					unsigned int packThreads = std::thread::hardware_concurrency();
 					if (packThreads == 0) packThreads = 4;
 					if (packThreads > (unsigned int)packCount) packThreads = (unsigned int)packCount;
@@ -375,7 +412,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 						packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm]() {
 							for (int i = startIdx; i < endIdx; i++) {
-								const auto& t = transforms[i];
+								const auto& t = (*finalTransforms)[i];
 								InstancedGroup::PackedInstance packed;
 								float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
 								packed.positionAndScale = glm::vec4(t.position, avgScale);
@@ -749,6 +786,15 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "Perlin Noise") node = new PerlinNoiseNode(*this);
 			else if (title == "Hydraulic Erosion") node = new HydraulicErosionNode(*this);
 			else if (title == "Merge Mesh") node = new MergeMeshNode(*this);
+			else if (title == "Float") node = new FloatConstantNode(*this);
+			else if (title == "Int") node = new IntConstantNode(*this);
+			else if (title == "Vec3") node = new Vec3ConstantNode(*this);
+			else if (title == "Bool") node = new BoolConstantNode(*this);
+			else if (title == "Math") node = new MathNode(*this);
+			else if (title == "Compare") node = new CompareNode(*this);
+			else if (title == "Branch") node = new BranchNode(*this);
+			else if (title == "Filter Transforms") node = new FilterTransformListNode(*this);
+			else if (title == "For Each") node = new ForEachNode(*this);
 			else
 			{
 				// Check if it's a Custom Node

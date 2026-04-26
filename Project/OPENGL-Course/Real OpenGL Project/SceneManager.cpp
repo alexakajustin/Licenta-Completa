@@ -136,6 +136,28 @@ void SceneManager::DeleteSelectedObjects()
 		}
 	}
 
+	// Clean up InstancedGroups associated with any deleted scatter parents.
+	// This MUST happen after removing objects but before pushing the undo action,
+	// because the instanced data (GPU buffers) cannot be meaningfully restored by undo.
+	for (auto& entry : undoEntries) {
+		std::string name = entry.name;
+		if (name.find("Scatter_Group_") == 0) {
+			std::string idStr = name.substr(14); // everything after "Scatter_Group_"
+			std::string prefix = "Scatter_Instanced_" + idStr;
+
+			// Collect matching groups first, then remove (to avoid iterator invalidation)
+			std::vector<std::string> toRemove;
+			for (auto* group : instancedGroups) {
+				if (group && group->GetName().find(prefix) == 0) {
+					toRemove.push_back(group->GetName());
+				}
+			}
+			for (const auto& groupName : toRemove) {
+				RemoveInstancedGroup(groupName);
+			}
+		}
+	}
+
 	// Push undo action (it now owns the deleted objects' memory)
 	undoManager.PushAction(std::make_unique<DeleteObjectsAction>(this, undoEntries, prevSelection));
 

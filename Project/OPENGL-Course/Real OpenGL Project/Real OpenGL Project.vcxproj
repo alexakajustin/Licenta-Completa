@@ -543,6 +543,12 @@
     <ClInclude Include="HydraulicErosionNode.h" />
     <ClInclude Include="UndoManager.h" />
     <ClInclude Include="UndoActions.h" />
+    <ClInclude Include="ConstantNode.h" />
+    <ClInclude Include="MathNode.h" />
+    <ClInclude Include="CompareNode.h" />
+    <ClInclude Include="BranchNode.h" />
+    <ClInclude Include="FilterTransformListNode.h" />
+    <ClInclude Include="ForEachNode.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\ai_assert.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\anim.h" />

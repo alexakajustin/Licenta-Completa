@@ -8,6 +8,12 @@
 #include "OutputNode.h"
 #include "CustomNode.h"
 #include "NodeBuilderUI.h"
+#include "ConstantNode.h"
+#include "MathNode.h"
+#include "CompareNode.h"
+#include "BranchNode.h"
+#include "FilterTransformListNode.h"
+#include "ForEachNode.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -246,6 +252,35 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
 		if (ImGui::MenuItem("Merge Mesh")) newNode = new MergeMeshNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
+
+		ImGui::Separator();
+
+		// Logic Nodes submenu
+		if (ImGui::BeginMenu("Logic"))
+		{
+			if (ImGui::MenuItem("Compare")) newNode = new CompareNode(graph);
+			if (ImGui::MenuItem("Branch (If/Else)")) newNode = new BranchNode(graph);
+			if (ImGui::MenuItem("Filter Transforms")) newNode = new FilterTransformListNode(graph);
+			if (ImGui::MenuItem("For Each")) newNode = new ForEachNode(graph);
+			ImGui::EndMenu();
+		}
+
+		// Math Nodes submenu
+		if (ImGui::BeginMenu("Math"))
+		{
+			if (ImGui::MenuItem("Math")) newNode = new MathNode(graph);
+			ImGui::EndMenu();
+		}
+
+		// Constants submenu
+		if (ImGui::BeginMenu("Constants"))
+		{
+			if (ImGui::MenuItem("Float")) newNode = new FloatConstantNode(graph);
+			if (ImGui::MenuItem("Int")) newNode = new IntConstantNode(graph);
+			if (ImGui::MenuItem("Vec3")) newNode = new Vec3ConstantNode(graph);
+			if (ImGui::MenuItem("Bool")) newNode = new BoolConstantNode(graph);
+			ImGui::EndMenu();
+		}
 
 		// Custom Nodes from saved definitions
 		const auto& customDefs = NodeBuilderUI::GetSavedDefinitions();

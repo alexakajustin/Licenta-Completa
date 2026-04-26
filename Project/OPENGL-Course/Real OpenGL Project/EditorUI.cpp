@@ -13,6 +13,7 @@
 #include "SceneInputNode.h"
 #include "PerlinNoiseNode.h"
 #include "ScatterNode.h"
+#include "FilterTransformListNode.h"
 #include "MergeMeshNode.h"
 #include "OutputNode.h"
 #include "HydraulicErosionNode.h"
@@ -580,32 +581,20 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				nodeGraph.Clear();
 				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
 				SceneInputNode* rockInput = new SceneInputNode(nodeGraph);
-				PerlinNoiseNode* groundNoise = new PerlinNoiseNode(nodeGraph);
 				ScatterNode* scatter = new ScatterNode(nodeGraph);
-				OutputNode* groundOutput = new OutputNode(nodeGraph);
 
 				groundInput->editorPos = glm::vec2(50, 50);
-				groundNoise->editorPos = glm::vec2(250, 50);
-				groundOutput->editorPos = glm::vec2(450, 50);
-
 				rockInput->editorPos = glm::vec2(50, 250);
-				scatter->editorPos = glm::vec2(450, 250);
+				scatter->editorPos = glm::vec2(300, 150);
 
 				scatter->SetSpawnAsObjects(true);
-				groundOutput->SetSameAsInput(true);
 
 				nodeGraph.AddNode(groundInput);
 				nodeGraph.AddNode(rockInput);
-				nodeGraph.AddNode(groundNoise);
 				nodeGraph.AddNode(scatter);
-				nodeGraph.AddNode(groundOutput);
 
-				// Connect Ground Pipeline
-				nodeGraph.AddLink(groundInput->outputs[0].id, groundNoise->inputs[0].id);
-				nodeGraph.AddLink(groundNoise->outputs[0].id, groundOutput->inputs[0].id);
-
-				// Connect Scatter Surface (from noisy ground)
-				nodeGraph.AddLink(groundNoise->outputs[0].id, scatter->inputs[0].id);
+				// Connect Scatter Surface (from ground)
+				nodeGraph.AddLink(groundInput->outputs[0].id, scatter->inputs[0].id);
 
 				// Connect Rock Input to Scatter
 				nodeGraph.AddLink(rockInput->outputs[0].id, scatter->inputs[1].id);
@@ -618,6 +607,45 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 					}
 					if (name == "Cube 1") {
 						rockInput->SetSelection(i, "Cube 1");
+					}
+				}
+			}
+
+			if (ImGui::MenuItem("Filtered Scattering"))
+			{
+				nodeGraph.Clear();
+				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
+				SceneInputNode* objectInput = new SceneInputNode(nodeGraph);
+				ScatterNode* scatter = new ScatterNode(nodeGraph);
+				FilterTransformListNode* filter = new FilterTransformListNode(nodeGraph);
+
+				groundInput->editorPos = glm::vec2(50, 50);
+				objectInput->editorPos = glm::vec2(50, 250);
+				scatter->editorPos = glm::vec2(250, 150);
+				filter->editorPos = glm::vec2(500, 150);
+
+				scatter->SetSpawnAsObjects(true);
+
+				nodeGraph.AddNode(groundInput);
+				nodeGraph.AddNode(objectInput);
+				nodeGraph.AddNode(scatter);
+				nodeGraph.AddNode(filter);
+
+				// Connect Scatter Pipeline
+				nodeGraph.AddLink(groundInput->outputs[0].id, scatter->inputs[0].id); // Surface
+				nodeGraph.AddLink(objectInput->outputs[0].id, scatter->inputs[1].id); // Object
+
+				// Connect Filter Pipeline
+				nodeGraph.AddLink(scatter->outputs[1].id, filter->inputs[0].id); // Instances -> Filter
+
+				// Auto-setup defaults
+				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
+					std::string name = scene.GetObjects()[i]->GetName();
+					if (name == "Plane") {
+						groundInput->SetSelection(i, "Plane");
+					}
+					if (name == "grass 1" || name == "Sphere 1" || name == "Cube 1") {
+						objectInput->SetSelection(i, name);
 					}
 				}
 			}

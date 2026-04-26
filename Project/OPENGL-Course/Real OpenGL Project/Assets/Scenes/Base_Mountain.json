@@ -1,36 +1,29 @@
 {
     "instancedGroups": [
         {
-            "instanceDataPath": "GrassAndTrees_Scatter_Instanced_53_Tree_(Root)_0.inst",
+            "instanceDataPath": "Base_Mountain_Scatter_Instanced_399_Tree_(Root)_0.inst",
             "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_53_Tree (Root)_0",
+            "name": "Scatter_Instanced_399_Tree (Root)_0",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 polySurface1"
         },
         {
-            "instanceDataPath": "GrassAndTrees_Scatter_Instanced_53_Tree_(Root)_1.inst",
+            "instanceDataPath": "Base_Mountain_Scatter_Instanced_399_Tree_(Root)_1.inst",
             "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_53_Tree (Root)_1",
+            "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
-        },
-        {
-            "instanceDataPath": "GrassAndTrees_Scatter_Instanced_53_grass_1.inst",
-            "maxDrawDistance": 200.0,
-            "name": "Scatter_Instanced_53_grass 1",
-            "shadowDistance": 25.0,
-            "sourceObjectName": "grass 1"
         }
     ],
     "lights": [
         {
-            "ambientIntensity": 0.4000000059604645,
+            "ambientIntensity": 0.41200000047683716,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.6000000238418579,
+            "diffuseIntensity": 0.4440000057220459,
             "direction": [
                 -20.0,
                 -5.0,
@@ -43,24 +36,29 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 55,
-                "id": 63,
-                "start": 49
+                "end": 400,
+                "id": 409,
+                "start": 396
             },
             {
-                "end": 54,
-                "id": 64,
-                "start": 47
+                "end": 401,
+                "id": 410,
+                "start": 398
+            },
+            {
+                "end": 405,
+                "id": 411,
+                "start": 403
             }
         ],
-        "nextId": 65,
+        "nextId": 412,
         "nodes": [
             {
                 "cachedModelPath": "",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
                     0.0,
-                    -151.4619140625,
+                    0.0,
                     0.0
                 ],
                 "cachedPrimitiveType": "Plane",
@@ -74,43 +72,53 @@
                     1.0,
                     1000.0
                 ],
-                "cachedTextureLayers": [],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 1,
+                        "heightMax": 100.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                        "tiling": 25.0
+                    },
+                    {
+                        "blendMode": 1,
+                        "heightMax": 348.0,
+                        "heightMin": 329.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                        "tiling": 25.0
+                    }
+                ],
                 "cachedTexturePath": "",
                 "editorPos": [
                     50.0,
                     50.0
                 ],
                 "hasCachedMaterial": false,
-                "id": 46,
+                "id": 395,
                 "inputPins": [],
                 "outputPins": [
-                    47
+                    396
                 ],
                 "selectedName": "Plane",
                 "title": "Scene Input"
             },
             {
-                "cachedMatColor": [
-                    0.0,
-                    0.29702967405319214,
-                    0.04117245227098465
-                ],
-                "cachedMatOffset": [
-                    0.0,
-                    0.0
-                ],
-                "cachedMatShininess": 32.0,
-                "cachedMatSpecular": 0.5,
-                "cachedMatTiling": [
-                    1.0,
-                    1.0
-                ],
-                "cachedModelPath": "Assets\\Models\\grass.obj",
+                "cachedModelPath": "Assets\\Models\\Tree.obj",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -8.633310317993164,
-                    -0.06777876615524292,
-                    -0.5498433113098145
+                    -337.9215393066406,
+                    394.48406982421875,
+                    -320.5399475097656
                 ],
                 "cachedPrimitiveType": "",
                 "cachedRotation": [
@@ -129,38 +137,37 @@
                     50.0,
                     250.0
                 ],
-                "hasCachedMaterial": true,
-                "id": 48,
+                "hasCachedMaterial": false,
+                "id": 397,
                 "inputPins": [],
                 "outputPins": [
-                    49
+                    398
                 ],
-                "selectedName": "grass 1",
+                "selectedName": "Tree (Root)",
                 "title": "Scene Input"
             },
             {
                 "alignToNormal": false,
-                "count": 1000000,
+                "count": 10000,
                 "createdGroupNames": [
-                    "Scatter_Instanced_53_Tree (Root)",
-                    "Scatter_Instanced_53_Tree (Root)_0",
-                    "Scatter_Instanced_53_Tree (Root)_1",
-                    "Scatter_Instanced_53_grass 1"
+                    "Scatter_Instanced_399_Tree (Root)",
+                    "Scatter_Instanced_399_Tree (Root)_0",
+                    "Scatter_Instanced_399_Tree (Root)_1"
                 ],
                 "editorPos": [
-                    450.0,
-                    250.0
+                    250.0,
+                    150.0
                 ],
-                "id": 53,
+                "id": 399,
                 "inputPins": [
-                    54,
-                    55
+                    400,
+                    401
                 ],
                 "maxScale": 1.2000000476837158,
                 "minScale": 0.800000011920929,
                 "outputPins": [
-                    56,
-                    57
+                    402,
+                    403
                 ],
                 "randomRotation": true,
                 "seed": 42,
@@ -168,23 +175,77 @@
                 "spawnedMap": {},
                 "targetParentName": "(none)",
                 "title": "Scatter"
+            },
+            {
+                "axis": 1,
+                "comparison": 0,
+                "editorPos": [
+                    500.0,
+                    150.0
+                ],
+                "id": 404,
+                "inputPins": [
+                    405,
+                    406
+                ],
+                "normalAxis": 1,
+                "normalComparison": 1,
+                "normalThreshold": 0.699999988079071,
+                "outputPins": [
+                    407,
+                    408
+                ],
+                "threshold": 53.79999923706055,
+                "title": "Filter Transforms",
+                "useNormalFilter": false,
+                "usePercentage": true
             }
         ]
     },
     "objects": [
         {
-            "customMeshPath": "GrassAndTrees_Plane.mesh",
+            "customMeshPath": "Base_Mountain_Plane.mesh",
             "inheritScale": true,
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                    "tiling": 25.0
+                },
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 348.0,
+                    "heightMin": 329.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                    "tiling": 25.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
-                    -151.4619140625,
+                    0.0,
                     0.0
                 ],
                 "rotation": [
@@ -201,56 +262,6 @@
         },
         {
             "inheritScale": true,
-            "material": {
-                "material.baseColor": [
-                    0.0,
-                    0.29702967405319214,
-                    0.04117245227098465,
-                    1.0
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
-                "material.sssDistortion": 1.0,
-                "material.sssScale": 50.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/grass.frag",
-                "shader_vert": "Assets/Shaders/grass.vert",
-                "windSpeed": 1.0,
-                "windStrength": 0.004999999888241291
-            },
-            "modelPath": "Assets\\Models\\grass.obj",
-            "name": "grass 1",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    -8.633310317993164,
-                    -0.06777876615524292,
-                    -0.5498433113098145
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    5.0,
-                    5.0,
-                    5.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
             "modelPath": "Assets\\Models\\Tree.obj",
             "name": "Tree (Root)",
             "normalMapPath": "",
@@ -259,9 +270,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -2.8835787773132324,
-                    -0.2669382095336914,
-                    -5.604429721832275
+                    -337.9215393066406,
+                    394.48406982421875,
+                    -320.5399475097656
                 ],
                 "rotation": [
                     0.0,
@@ -289,7 +300,7 @@
                     0.0
                 ],
                 "material.shininess": 32.0,
-                "material.specularIntensity": 0.0,
+                "material.specularIntensity": 0.5,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
@@ -302,22 +313,6 @@
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\bark_0021.jpg",
-                    "tiling": 1.0
-                }
-            ],
             "texturePath": "Assets/Textures/plain.png",
             "transform": {
                 "position": [
@@ -350,7 +345,7 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 1024.0,
+                "material.shininess": 32.0,
                 "material.specularIntensity": 0.5,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
@@ -364,22 +359,6 @@
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
-                    "tiling": 1.0
-                }
-            ],
             "texturePath": "Assets/Textures/plain.png",
             "transform": {
                 "position": [
@@ -402,33 +381,7 @@
         {
             "inheritScale": true,
             "modelPath": "",
-            "name": "Scatter_Group_53_Tree (Root)",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "modelPath": "",
-            "name": "Scatter_Group_53_grass 1",
+            "name": "Scatter_Group_399_Tree (Root)",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
