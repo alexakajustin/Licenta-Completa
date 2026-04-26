@@ -45,6 +45,26 @@ void Material::SetShader(Shader* shader)
 {
 	this->shader = shader;
 	uniformLocations.clear();
+
+	if (shader) {
+		std::string vPath = shader->GetVertexPath();
+		std::string fPath = shader->GetFragmentPath();
+		
+		if (vPath.find("water.vert") != std::string::npos || fPath.find("water.frag") != std::string::npos) {
+			if (floats.find("material_waveSpeed") == floats.end()) {
+				floats["material_waveSpeed"] = 0.75f;
+				floats["material_waveStrength"] = 1.0f;
+				floats["material_waveScale"] = 1.0f;
+				floats["material_fresnelPower"] = 4.0f;
+				floats["material_foamDistance"] = 2.5f;
+				floats["material_specularIntensityOverride"] = 2.0f;
+				floats["material_shininessOverride"] = 128.0f;
+				vec4s["material_waterColorDeep"] = glm::vec4(0.01f, 0.15f, 0.35f, 0.95f);
+				vec4s["material_waterColorShallow"] = glm::vec4(0.05f, 0.6f, 0.75f, 0.7f);
+				vec4s["material_foamColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 0.9f);
+			}
+		}
+	}
 }
 
 void Material::Bind(GLuint overrideProgram)

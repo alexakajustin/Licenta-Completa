@@ -8,3 +8,5 @@ material_fresnelPower=4.0
 material_waveSpeed=0.75
 material_waveStrength=1.0
 material_waveScale=1.0
+material_foamColor=1.0,1.0,1.0,0.9
+material_foamDistance=2.5

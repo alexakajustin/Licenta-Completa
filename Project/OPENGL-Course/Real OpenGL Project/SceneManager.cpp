@@ -271,7 +271,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer)
+	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -301,6 +301,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (viewLoc != -1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 			if (eyeLoc != -1) glUniform3f(eyeLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 			if (timeLoc != -1) glUniform1f(timeLoc, time);
+			
+			GLint depthMapLoc = glGetUniformLocation(s->GetShaderID(), "sceneDepthMap");
+			if (depthMapLoc != -1) glUniform1i(depthMapLoc, 14); // Binding 14
+
+			// Screen size is required for depth sampling via gl_FragCoord
+			GLint screenSizeLoc = glGetUniformLocation(s->GetShaderID(), "screenSize");
+			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1]/projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
 			if (dLight) s->SetDirectionalLight(dLight);
 			if (pLights) s->SetPointLights(pLights, pCount, 4, 0);
@@ -537,6 +544,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		// Render with Z-Write OFF so overlapping transparent objects don't clip each other
 		glDepthMask(GL_FALSE);
+
+		if (sceneDepthTexture > 0) {
+			glActiveTexture(GL_TEXTURE14);
+			glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+		}
+
 		RenderQueue(transparentObjects);
 		glDepthMask(GL_TRUE); // Restore depth mask
 	}

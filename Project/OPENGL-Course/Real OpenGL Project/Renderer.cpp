@@ -143,7 +143,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  DirectionalLight& mainLight,
 						  PointLight* pointLights, unsigned int pointLightCount,
 						  SpotLight* spotLights, unsigned int spotLightCount,
-						  int fbw, int fbh)
+						  int fbw, int fbh, GLuint sceneDepthTexture)
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -205,7 +205,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture);
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);

@@ -33,7 +33,7 @@ public:
 					DirectionalLight& mainLight,
 					PointLight* pointLights, unsigned int pointLightCount,
 					SpotLight* spotLights, unsigned int spotLightCount,
-					int fbw, int fbh);
+					int fbw, int fbh, GLuint sceneDepthTexture = 0);
 
 	Shader& GetMainShader() { return mainShader; }
 	Shader* GetInstancedShader(Shader* original);

@@ -136,7 +136,7 @@ void Application::SetupScene()
 	GameObject* plane = new GameObject("Plane");
 	plane->GetTransform().SetScale(glm::vec3(100.0f, 1.0f, 100.0f));
 	plane->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-	plane->SetMesh(PrimitiveGenerator::CreatePlane(1, 1));
+	plane->SetMesh(PrimitiveGenerator::CreatePlane(200, 200));
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
 
@@ -326,7 +326,7 @@ void Application::Run()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

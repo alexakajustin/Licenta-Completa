@@ -90,6 +90,11 @@ uniform float material_fresnelPower;
 uniform float material_specularIntensityOverride;
 uniform float material_shininessOverride;
 
+uniform sampler2D sceneDepthMap;
+uniform vec2 screenSize;
+uniform vec4 material_foamColor;
+uniform float material_foamDistance;
+
 vec3 sampleOffsetDirections[20] = vec3[]
 (
    vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
@@ -336,6 +341,14 @@ vec3 CalcSpotLights(vec3 baseColor)
 	return totalColour;
 }
 
+float LinearizeDepth(float depth) 
+{
+    float near = 0.1; 
+    float far  = 2000.0; 
+    float z = depth * 2.0 - 1.0; 
+    return (2.0 * near * far) / (far + near - z * (far - near));	
+}
+
 void main()								         
 {
 	if (vFadeFactor > 0.001) {
@@ -362,6 +375,27 @@ void main()
     fresnelFactor = pow(1.0 - fresnelFactor, fresnelPower);
     
     vec4 baseColor = mix(deepColor, shallowColor, fresnelFactor);
+
+    // Foam Intersection Logic
+    vec2 screenUV = gl_FragCoord.xy / screenSize;
+    float backgroundDepth = texture(sceneDepthMap, screenUV).r;
+    float linearBackgroundDepth = LinearizeDepth(backgroundDepth);
+    float linearFragmentDepth = LinearizeDepth(gl_FragCoord.z);
+    
+    float depthDiff = linearBackgroundDepth - linearFragmentDepth;
+    
+    vec4 foamColor = material_foamColor == vec4(0.0) ? vec4(1.0, 1.0, 1.0, 0.9) : material_foamColor;
+    float foamDist = material_foamDistance == 0.0 ? 2.5 : material_foamDistance;
+    
+    if (depthDiff > 0.0 && depthDiff < foamDist) {
+        float foamFactor = 1.0 - smoothstep(0.0, foamDist, depthDiff);
+        
+        // Add some noise to the foam
+        float foamNoise = random(FragPos, 0) * 0.2 + 0.8; 
+        foamFactor *= foamNoise;
+        
+        baseColor = mix(baseColor, foamColor, foamFactor);
+    }
 
 	vec3 finalLight = CalcDirectionalLight(baseColor.rgb);
 	finalLight += CalcPointLights(baseColor.rgb);

@@ -8,7 +8,7 @@
 class PrimitiveGenerator
 {
 public:
-    static Mesh* CreatePlane(int resolutionX = 1, int resolutionZ = 1);
+    static Mesh* CreatePlane(int resolutionX = 200, int resolutionZ = 200);
     static Mesh* CreateCube();
     static Mesh* CreateSphere(unsigned int rings = 20, unsigned int sectors = 20);
 
