@@ -141,6 +141,7 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			for (auto const& [name, val] : mat->GetVec2s())  objJson["material"][name] = { val.x, val.y };
 			for (auto const& [name, val] : mat->GetVec3s())  objJson["material"][name] = { val.x, val.y, val.z };
 			for (auto const& [name, val] : mat->GetVec4s())  objJson["material"][name] = { val.x, val.y, val.z, val.w };
+			for (auto const& [name, path] : mat->GetTexturePaths()) objJson["material"][name] = path;
 		}
 
 		// SMART FILTER: We no longer save custom vertex/index data to the JSON file.
@@ -482,6 +483,11 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				for (auto it = matJson.begin(); it != matJson.end(); ++it) {
 					if (it.value().is_number_float() || it.value().is_number_integer()) {
 						mat->SetFloat(it.key(), it.value().get<float>());
+					}
+					else if (it.value().is_string()) {
+						if (it.key() != "shader_vert" && it.key() != "shader_frag") {
+							mat->SetTextureParam(it.key(), it.value().get<std::string>());
+						}
 					}
 					else if (it.value().is_array() && it.value().size() == 2) {
 						mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));

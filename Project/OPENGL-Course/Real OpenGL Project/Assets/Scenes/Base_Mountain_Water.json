@@ -58,7 +58,7 @@
                 "start": 403
             }
         ],
-        "nextId": 482,
+        "nextId": 510,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -609,30 +609,32 @@
                     1.0,
                     1.0
                 ],
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
                 "material_dudvStrength": 0.019999999552965164,
                 "material_dudvTiling": 0.0,
                 "material_foamColor": [
                     1.0,
                     1.0,
-                    1.0,
-                    0.8999999761581421
+                    0.9020000100135803,
+                    1.0
                 ],
                 "material_foamDistance": 10.0,
                 "material_fresnelPower": 4.0,
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
-                    0.009999999776482582,
-                    0.15000000596046448,
-                    0.3499999940395355,
-                    0.949999988079071
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.05000000074505806,
+                    0.050999999046325684,
                     0.6000000238418579,
-                    0.75,
-                    0.699999988079071
+                    0.7490000128746033,
+                    0.7020000219345093
                 ],
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
                 "material_waveSpeed": 0.009999999776482582,
                 "material_waveStrength": 0.10000000149011612,
@@ -640,16 +642,16 @@
                 "shader_vert": "Assets/Shaders/water.vert"
             },
             "modelPath": "",
-            "name": "Waterplane",
+            "name": "Plane 7",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    312.6181335449219,
-                    0.0
+                    -100.36104583740234,
+                    311.8489685058594,
+                    151.88693237304688
                 ],
                 "rotation": [
                     0.0,

@@ -129,7 +129,7 @@ private:
 	bool customBoundsDirty = true;
 
 	// GPU Tessellation settings
-	bool useTessellation = true;
+	bool useTessellation = false;
 	float tessLevel = 8.0f;              // Max tessellation subdivision level
 	float tessDistance = 50.0f;          // Distance at which tessellation fades to minimum
 	float tessDisplacementScale = 1.0f;  // World-space displacement height
