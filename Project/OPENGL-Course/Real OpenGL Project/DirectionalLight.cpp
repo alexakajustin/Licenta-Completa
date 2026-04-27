@@ -71,10 +71,9 @@ void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, con
 	float cascadeSplits[cascadeCount + 1];
 	
 	// Split distances (Logarithmic/Linear mix)
-	// lambda = 1.0 is purely logarithmic (good for close-up detail, poor for distant coverage)
-	// lambda = 0.0 is purely linear (uniform resolution, bad for close-up)
-	// 0.8 - 0.9 is better for balancing sharpness at close range with distant coverage
-	float lambda = 0.85f; 
+	// lambda = 0.8 - 0.9 is better for balancing sharpness at close range with distant coverage
+	// Using 0.95 to keep the first cascade very tight even at large shadow distances (preventing blur)
+	float lambda = 0.95f; 
 	float ratio = far / near;
 
 	cascadeSplits[0] = near;

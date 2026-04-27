@@ -316,7 +316,8 @@ void Application::Run()
 		sceneManager.SetShadowDistanceMultiplier(graphicsSettings.shadowDistanceMultiplier);
 
 		// Shadow passes (use main window resolution or fixed size for shadows)
-		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, 2000.0f);
+		float shadowFar = 2000.0f * graphicsSettings.shadowDistanceMultiplier;
+		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
 		for (unsigned int i = 0; i < spotLightCount; i++)
