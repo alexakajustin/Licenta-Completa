@@ -114,6 +114,27 @@ void Mesh::RenderMesh()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
 }
 
+void Mesh::RenderMeshTessellated()
+{
+	// Set patch size to 3 vertices per patch (triangles)
+	glPatchParameteri(GL_PATCH_VERTICES, 3);
+
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	// Draw with GL_PATCHES instead of GL_TRIANGLES — the tessellation hardware
+	// will subdivide each 3-vertex patch according to the TCS tessellation levels
+	glDrawElements(GL_PATCHES, indexCount, GL_UNSIGNED_INT, 0);
+
+	// Track stats (tessellated triangle count is unknown at CPU side, count input patches)
+	if (DebugOverlay::GetInstance()) {
+		DebugOverlay::GetInstance()->CountDrawCall();
+		DebugOverlay::GetInstance()->CountTriangles(indexCount / 3);
+	}
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
 void Mesh::RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices)
 {
 	if (instanceCount == 0) return;

@@ -419,6 +419,36 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// Render Single
 			PrepareShader(targetShader);
 
+			// === GPU TESSELLATION PATH ===
+			bool renderAsTessellated = false;
+			if (!overrideShader && obj->GetUseTessellation() && renderer && renderer->GetTessShader().GetShaderID() != 0) {
+				Texture* dispTex = nullptr;
+				for (const auto& layer : obj->GetTextureLayers()) {
+					if (layer.displacementMap) { dispTex = layer.displacementMap; break; }
+				}
+				if (dispTex && msh) {
+					renderAsTessellated = true;
+					Shader& tess = renderer->GetTessShader();
+					PrepareShader(&tess);
+					targetShader = &tess;
+					GLuint sid = tess.GetShaderID();
+					GLint tessLevelLoc = glGetUniformLocation(sid, "tessLevel");
+					GLint tessDistLoc  = glGetUniformLocation(sid, "tessDistance");
+					GLint tessDispScaleLoc = glGetUniformLocation(sid, "tessDisplacementScale");
+					GLint tessDispBiasLoc  = glGetUniformLocation(sid, "tessDisplacementBias");
+					GLint tessDispMapLoc   = glGetUniformLocation(sid, "tessDisplacementMap");
+					if (tessLevelLoc != -1) glUniform1f(tessLevelLoc, obj->GetTessLevel());
+					if (tessDistLoc != -1)  glUniform1f(tessDistLoc, obj->GetTessDistance());
+					if (tessDispScaleLoc != -1) glUniform1f(tessDispScaleLoc, obj->GetTessDisplacementScale());
+					if (tessDispBiasLoc != -1)  glUniform1f(tessDispBiasLoc, obj->GetTessDisplacementBias());
+					if (tessDispMapLoc != -1) {
+						glActiveTexture(GL_TEXTURE9);
+						glBindTexture(GL_TEXTURE_2D, dispTex->GetTextureID());
+						glUniform1i(tessDispMapLoc, 9);
+					}
+				}
+			}
+
 
 
 			// Upload material alpha for shadow pass dithering

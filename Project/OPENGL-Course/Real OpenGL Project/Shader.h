@@ -44,6 +44,7 @@ public:
 	void CreateFromString(const char* vertexCode, const char* fragmentCode);
 	void CreateFromFiles(const char* vertexLocation, const char* fragmentLocation);
 	void CreateFromFiles(const char* vertexLocation, const char* geometryLocation, const char* fragmentLocation);
+	void CreateFromFiles(const char* vertexLocation, const char* tcsLocation, const char* tesLocation, const char* fragmentLocation);
 	void CreateComputeShader(const char* computePath);
 
 	void Validate();
@@ -86,6 +87,7 @@ public:
 
 	const std::string& GetVertexPath() const { return vertexPath; }
 	const std::string& GetFragmentPath() const { return fragmentPath; }
+	bool HasTessellation() const { return hasTessellation; }
 
 	bool isComputeShader = false;
 
@@ -93,6 +95,9 @@ private:
 	std::string vertexPath;
 	std::string fragmentPath;
 	std::string geometryPath;
+	std::string tcsPath;
+	std::string tesPath;
+	bool hasTessellation = false;
 
 	std::map<std::string, UniformProperty> uniformProperties;
 	void DiscoverUniforms();
@@ -153,6 +158,7 @@ private:
 	
 	void CompileShader(const char* vertexCode, const char* fragmentCode);
 	void CompileShader(const char* vertexCode, const char* geometryCode, const char* fragmentCode);
+	void CompileShader(const char* vertexCode, const char* tcsCode, const char* tesCode, const char* fragmentCode);
 	bool AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
 	void CompileProgram();
 };

@@ -43,6 +43,7 @@ public:
 						int fbw, int fbh, float waterHeight);
 
 	Shader& GetMainShader() { return mainShader; }
+	Shader& GetTessShader() { return tessShader; }
 	Shader* GetInstancedShader(Shader* original);
 
 private:
@@ -52,6 +53,7 @@ private:
 	Shader instancedCullShader;    // GPU compute shader for frustum culling
 	Shader instancedRenderShader;  // Vertex/Fragment shader for instanced objects
 	Shader instancedShadowShader;  // Vertex/Fragment shader for instanced shadow pass
+	Shader tessShader;             // Tessellation shader (vert+tcs+tes+frag) for GPU displacement
 	Skybox skybox;
 
 	// Cached uniform locations (fetched once at init)

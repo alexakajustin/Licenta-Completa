@@ -1,0 +1,85 @@
+#version 400 core
+
+// Tessellation Evaluation Shader
+// Interpolates vertex attributes using barycentric coordinates,
+// then physically displaces the vertex position along its normal
+// using a displacement map. This creates REAL geometry, not a visual trick.
+
+layout(triangles, equal_spacing, ccw) in;
+
+// Inputs from TCS (arrayed, one per control point)
+in vec2 TexCoord_TCS[];
+in vec3 Normal_TCS[];
+in vec3 FragPos_TCS[];
+in vec3 TangentWorld_TCS[];
+in vec3 BitangentWorld_TCS[];
+in vec3 NormalWorld_TCS[];
+in vec3 LocalPos_TCS[];
+
+// Outputs — must match what shader.frag expects
+out vec4 vertex_color;
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 FragPos;
+out vec3 TangentWorld;
+out vec3 BitangentWorld;
+out vec3 NormalWorld;
+out vec3 LocalPos;
+out float vIsSelected;
+out float vFadeFactor;
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+
+// Displacement sampling
+uniform sampler2D tessDisplacementMap;
+uniform float tessDisplacementScale;  // World-space max displacement height
+uniform float tessDisplacementBias;   // Offset (usually -0.5 to center around surface)
+
+// Barycentric interpolation helpers
+vec2 interp2(vec2 a, vec2 b, vec2 c) {
+	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
+}
+
+vec3 interp3(vec3 a, vec3 b, vec3 c) {
+	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
+}
+
+void main()
+{
+	// Interpolate all vertex attributes across the tessellated triangle
+	TexCoord       = interp2(TexCoord_TCS[0],       TexCoord_TCS[1],       TexCoord_TCS[2]);
+	Normal         = interp3(Normal_TCS[0],          Normal_TCS[1],         Normal_TCS[2]);
+	FragPos        = interp3(FragPos_TCS[0],         FragPos_TCS[1],        FragPos_TCS[2]);
+	TangentWorld   = interp3(TangentWorld_TCS[0],    TangentWorld_TCS[1],   TangentWorld_TCS[2]);
+	BitangentWorld = interp3(BitangentWorld_TCS[0],  BitangentWorld_TCS[1], BitangentWorld_TCS[2]);
+	NormalWorld    = interp3(NormalWorld_TCS[0],      NormalWorld_TCS[1],    NormalWorld_TCS[2]);
+	LocalPos       = interp3(LocalPos_TCS[0],        LocalPos_TCS[1],       LocalPos_TCS[2]);
+
+	vIsSelected = 0.0;
+	vFadeFactor = 0.0;
+	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
+
+	// Normalize the interpolated normal
+	vec3 displaceDir = normalize(Normal);
+
+	// Sample displacement map at the interpolated texture coordinate
+	float heightSample = texture(tessDisplacementMap, TexCoord).r;
+
+	// Apply bias and scale: bias of -0.5 centers the displacement around the surface
+	// so valleys go inward and peaks go outward
+	float displacement = (heightSample + tessDisplacementBias) * tessDisplacementScale;
+
+	// Physically displace the world-space position along the normal
+	FragPos += displaceDir * displacement;
+
+	// Also update LocalPos to keep height-based layer blending in sync
+	// We transform the displacement direction back to object space
+	vec3 localDisplaceDir = normalize(mat3(transpose(inverse(model))) * displaceDir);
+	// Simplified: for most terrain-like objects the normal is close to object-space Y
+	LocalPos += localDisplaceDir * displacement;
+
+	// Final clip-space position
+	gl_Position = projection * view * vec4(FragPos, 1.0);
+}

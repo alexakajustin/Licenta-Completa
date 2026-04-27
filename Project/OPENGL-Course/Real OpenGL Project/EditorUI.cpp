@@ -1368,6 +1368,48 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 			}
 
+			// --- GPU Tessellation (collapsible) ---
+			if (ImGui::CollapsingHeader("GPU Tessellation"))
+			{
+				bool useTess = selected->GetUseTessellation();
+				if (ImGui::Checkbox("Enable Tessellation", &useTess)) {
+					selected->SetUseTessellation(useTess);
+				}
+
+				if (useTess) {
+					float tessLevel = selected->GetTessLevel();
+					float tessDist  = selected->GetTessDistance();
+					float tessScale = selected->GetTessDisplacementScale();
+					float tessBias  = selected->GetTessDisplacementBias();
+
+					ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
+					if (ImGui::SliderFloat("Tess Level", &tessLevel, 1.0f, 64.0f, "%.0f")) {
+						selected->SetTessLevel(tessLevel);
+					}
+					if (ImGui::SliderFloat("Tess Distance", &tessDist, 5.0f, 500.0f, "%.0f")) {
+						selected->SetTessDistance(tessDist);
+					}
+					if (ImGui::DragFloat("Disp Scale##Tess", &tessScale, 0.01f, 0.0f, 50.0f, "%.2f")) {
+						selected->SetTessDisplacementScale(tessScale);
+					}
+					if (ImGui::DragFloat("Disp Bias##Tess", &tessBias, 0.01f, -1.0f, 1.0f, "%.2f")) {
+						selected->SetTessDisplacementBias(tessBias);
+					}
+					ImGui::PopItemWidth();
+
+					// Verify a displacement map exists
+					bool hasDispMap = false;
+					for (const auto& layer : selected->GetTextureLayers()) {
+						if (layer.displacementMap) { hasDispMap = true; break; }
+					}
+					if (!hasDispMap) {
+						ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "Add a displacement map\nto a texture layer first!");
+					}
+				} else {
+					ImGui::TextDisabled("Enable to access tessellation settings");
+				}
+			}
+
 			// --- Material (collapsible, with preview sphere) ---
 			if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
 			{

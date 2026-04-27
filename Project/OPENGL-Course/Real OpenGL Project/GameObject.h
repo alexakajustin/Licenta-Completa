@@ -73,6 +73,18 @@ public:
 	void AddTextureLayer(const TextureLayer& layer);
 	void RemoveTextureLayer(int index);
 
+	// GPU Tessellation
+	void SetUseTessellation(bool val) { useTessellation = val; }
+	bool GetUseTessellation() const { return useTessellation; }
+	void SetTessLevel(float val) { tessLevel = val; }
+	float GetTessLevel() const { return tessLevel; }
+	void SetTessDistance(float val) { tessDistance = val; }
+	float GetTessDistance() const { return tessDistance; }
+	void SetTessDisplacementScale(float val) { tessDisplacementScale = val; }
+	float GetTessDisplacementScale() const { return tessDisplacementScale; }
+	void SetTessDisplacementBias(float val) { tessDisplacementBias = val; }
+	float GetTessDisplacementBias() const { return tessDisplacementBias; }
+
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data);
 	void SetCPUMeshData(std::shared_ptr<MeshData> data);
@@ -115,6 +127,13 @@ private:
 	glm::vec3 customMeshMin = glm::vec3(0.0f);
 	glm::vec3 customMeshMax = glm::vec3(0.0f);
 	bool customBoundsDirty = true;
+
+	// GPU Tessellation settings
+	bool useTessellation = false;
+	float tessLevel = 8.0f;              // Max tessellation subdivision level
+	float tessDistance = 50.0f;          // Distance at which tessellation fades to minimum
+	float tessDisplacementScale = 1.0f;  // World-space displacement height
+	float tessDisplacementBias = -0.5f;  // Offset (centers displacement around surface)
 
 	// Serialization: track creation source
 	std::string primitiveType;    // "Plane", "Cube", "Sphere", "Empty", or ""

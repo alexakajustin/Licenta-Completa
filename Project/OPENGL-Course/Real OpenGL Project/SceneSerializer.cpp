@@ -191,6 +191,15 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			objJson["textureLayers"] = layersArray;
 		}
 
+		// GPU Tessellation
+		if (obj->GetUseTessellation()) {
+			objJson["tessellation"]["enabled"] = true;
+			objJson["tessellation"]["level"] = obj->GetTessLevel();
+			objJson["tessellation"]["distance"] = obj->GetTessDistance();
+			objJson["tessellation"]["displacementScale"] = obj->GetTessDisplacementScale();
+			objJson["tessellation"]["displacementBias"] = obj->GetTessDisplacementBias();
+		}
+
 		objectsArray.push_back(objJson);
 	}
 	j["objects"] = objectsArray;
@@ -561,6 +570,16 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 					obj->AddTextureLayer(layer);
 				}
+			}
+
+			// GPU Tessellation
+			if (objJson.contains("tessellation")) {
+				auto& tessJson = objJson["tessellation"];
+				obj->SetUseTessellation(tessJson.value("enabled", false));
+				obj->SetTessLevel(tessJson.value("level", 8.0f));
+				obj->SetTessDistance(tessJson.value("distance", 50.0f));
+				obj->SetTessDisplacementScale(tessJson.value("displacementScale", 1.0f));
+				obj->SetTessDisplacementBias(tessJson.value("displacementBias", -0.5f));
 			}
 
 			scene.AddObject(obj);

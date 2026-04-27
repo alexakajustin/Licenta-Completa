@@ -68,6 +68,28 @@ void Shader::CreateFromFiles(const char* vertexLocation, const char* geometryLoc
 	CompileShader(vertexCode, geometryCode, fragmentCode);
 }
 
+void Shader::CreateFromFiles(const char* vertexLocation, const char* tcsLocation, const char* tesLocation, const char* fragmentLocation)
+{
+	vertexPath = vertexLocation;
+	fragmentPath = fragmentLocation;
+	tcsPath = tcsLocation;
+	tesPath = tesLocation;
+	geometryPath = "";
+	hasTessellation = true;
+
+	std::string vertexString = ReadFile(vertexLocation);
+	std::string tcsString = ReadFile(tcsLocation);
+	std::string tesString = ReadFile(tesLocation);
+	std::string fragmentString = ReadFile(fragmentLocation);
+
+	if (vertexString.empty() || tcsString.empty() || tesString.empty() || fragmentString.empty()) {
+		printf("[Shader] Failed to read one or more tessellation shader files!\n");
+		return;
+	}
+
+	CompileShader(vertexString.c_str(), tcsString.c_str(), tesString.c_str(), fragmentString.c_str());
+}
+
 void Shader::CreateComputeShader(const char* computePath)
 {
 	isComputeShader = true;
@@ -145,6 +167,27 @@ void Shader::CompileShader(const char* vertexCode, const char* geometryCode, con
 
 	CompileProgram();
 	if (shaderID == 0) return;
+}
+
+void Shader::CompileShader(const char* vertexCode, const char* tcsCode, const char* tesCode, const char* fragmentCode)
+{
+	shaderID = glCreateProgram();
+
+	if (!shaderID)
+	{
+		printf("Error creating tessellation shader program!");
+		return;
+	}
+
+	if (!AddShader(shaderID, vertexCode, GL_VERTEX_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, tcsCode, GL_TESS_CONTROL_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, tesCode, GL_TESS_EVALUATION_SHADER)) { ClearShader(); return; }
+	if (!AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER)) { ClearShader(); return; }
+
+	CompileProgram();
+	if (shaderID == 0) return;
+
+	printf("[Shader] Tessellation shader compiled successfully (ID: %u)\n", shaderID);
 }
 
 bool Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)

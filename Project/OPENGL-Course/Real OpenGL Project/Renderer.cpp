@@ -37,6 +37,13 @@ void Renderer::Init()
 	instancedRenderShader.CreateFromFiles("Assets/Shaders/instanced_object.vert", "Assets/Shaders/shader.frag");
 	instancedShadowShader.CreateFromFiles("Shaders/instanced_shadow.vert", "Shaders/instanced_shadow.frag");
 
+	// GPU Tessellation shader (vert -> TCS -> TES -> frag)
+	tessShader.CreateFromFiles(
+		"Assets/Shaders/shader_tess.vert",
+		"Assets/Shaders/terrain_tess.tcs",
+		"Assets/Shaders/terrain_tess.tes",
+		"Assets/Shaders/shader.frag");
+
 	CacheUniforms();
 }
 

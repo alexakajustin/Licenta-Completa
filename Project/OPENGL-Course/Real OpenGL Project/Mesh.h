@@ -12,6 +12,7 @@ public:
 	void CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices);
 	void CreateInstancedMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices, unsigned int maxInstances);
 	void RenderMesh();
+	void RenderMeshTessellated();
 	void RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices);
 	void RenderIndirect(GLuint indirectBuffer); // GPU-driven indirect draw
 	void ClearMesh();

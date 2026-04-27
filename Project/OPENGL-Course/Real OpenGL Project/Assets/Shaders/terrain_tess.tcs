@@ -1,0 +1,59 @@
+#version 400 core
+
+// Tessellation Control Shader
+// Decides how much to subdivide each triangle based on camera distance.
+// Close triangles get more subdivision = more displaced detail.
+
+layout(vertices = 3) out;
+
+// Inputs from vertex shader (one per input vertex, arrayed)
+in vec2 TexCoord_VS[];
+in vec3 Normal_VS[];
+in vec3 FragPos_VS[];
+in vec3 TangentWorld_VS[];
+in vec3 BitangentWorld_VS[];
+in vec3 NormalWorld_VS[];
+in vec3 LocalPos_VS[];
+
+// Outputs to TES (one per output control point, arrayed)
+out vec2 TexCoord_TCS[];
+out vec3 Normal_TCS[];
+out vec3 FragPos_TCS[];
+out vec3 TangentWorld_TCS[];
+out vec3 BitangentWorld_TCS[];
+out vec3 NormalWorld_TCS[];
+out vec3 LocalPos_TCS[];
+
+uniform vec3 eyePosition;
+uniform float tessLevel;     // Max tessellation level (user-controlled, e.g. 1-64)
+uniform float tessDistance;  // Distance at which tessellation fades to 1.0
+
+float GetTessLevel(float dist0, float dist1)
+{
+	float avgDist = (dist0 + dist1) / 2.0;
+	// Quadratic falloff: closer = more tessellation
+	float factor = 1.0 - clamp(avgDist / tessDistance, 0.0, 1.0);
+	return max(1.0, mix(1.0, tessLevel, factor * factor));
+}
+
+void main()
+{
+	// Pass through all vertex attributes to the TES
+	TexCoord_TCS[gl_InvocationID]      = TexCoord_VS[gl_InvocationID];
+	Normal_TCS[gl_InvocationID]        = Normal_VS[gl_InvocationID];
+	FragPos_TCS[gl_InvocationID]       = FragPos_VS[gl_InvocationID];
+	TangentWorld_TCS[gl_InvocationID]  = TangentWorld_VS[gl_InvocationID];
+	BitangentWorld_TCS[gl_InvocationID]= BitangentWorld_VS[gl_InvocationID];
+	NormalWorld_TCS[gl_InvocationID]   = NormalWorld_VS[gl_InvocationID];
+	LocalPos_TCS[gl_InvocationID]      = LocalPos_VS[gl_InvocationID];
+
+	// Only invocation 0 needs to set tessellation levels (but all do it — harmless)
+	float d0 = distance(eyePosition, FragPos_VS[0]);
+	float d1 = distance(eyePosition, FragPos_VS[1]);
+	float d2 = distance(eyePosition, FragPos_VS[2]);
+
+	gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
+	gl_TessLevelOuter[1] = GetTessLevel(d2, d0);
+	gl_TessLevelOuter[2] = GetTessLevel(d0, d1);
+	gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+}

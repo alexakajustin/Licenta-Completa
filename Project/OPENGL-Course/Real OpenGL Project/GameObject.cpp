@@ -30,6 +30,13 @@ GameObject* GameObject::Clone(const std::string& newName)
 	clone->primitiveType = this->primitiveType;
 	clone->modelSourcePath = this->modelSourcePath;
 
+	// Copy tessellation settings
+	clone->useTessellation = this->useTessellation;
+	clone->tessLevel = this->tessLevel;
+	clone->tessDistance = this->tessDistance;
+	clone->tessDisplacementScale = this->tessDisplacementScale;
+	clone->tessDisplacementBias = this->tessDisplacementBias;
+
 	if (this->hasCustomMesh && this->cpuMeshData) {
 		clone->SetCPUMeshData(this->cpuMeshData); // Shared ref
 	}
@@ -388,7 +395,12 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		} else {
 			glUniform1i(uniformUseNormalMap, 0);
 		}
-		mesh->RenderMesh();
+		// GPU Tessellation: use GL_PATCHES when tessellation shader is active
+		if (useTessellation) {
+			mesh->RenderMeshTessellated();
+		} else {
+			mesh->RenderMesh();
+		}
 	}
 }
 
