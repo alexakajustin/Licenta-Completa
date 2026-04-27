@@ -1,13 +1,6 @@
 {
     "instancedGroups": [
         {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_grass_5.inst",
-            "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_399_grass 5",
-            "shadowDistance": 30.0,
-            "sourceObjectName": "grass 5"
-        },
-        {
             "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_Tree_(Root)_0.inst",
             "maxDrawDistance": 250.0,
             "name": "Scatter_Instanced_399_Tree (Root)_0",
@@ -20,6 +13,13 @@
             "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
+        },
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_grass_5.inst",
+            "maxDrawDistance": 250.0,
+            "name": "Scatter_Instanced_399_grass 5",
+            "shadowDistance": 30.0,
+            "sourceObjectName": "grass 5"
         }
     ],
     "lights": [
@@ -58,7 +58,7 @@
                 "start": 403
             }
         ],
-        "nextId": 454,
+        "nextId": 468,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -120,12 +120,27 @@
                 "title": "Scene Input"
             },
             {
-                "cachedModelPath": "Assets\\Models\\Tree.obj",
+                "cachedMatColor": [
+                    0.0,
+                    0.06270629167556763,
+                    0.00993366725742817
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\grass.obj",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -337.9215393066406,
-                    394.48406982421875,
-                    -320.5399475097656
+                    891.544921875,
+                    275.9862976074219,
+                    -362.2575378417969
                 ],
                 "cachedPrimitiveType": "",
                 "cachedRotation": [
@@ -144,18 +159,18 @@
                     50.0,
                     250.0
                 ],
-                "hasCachedMaterial": false,
+                "hasCachedMaterial": true,
                 "id": 397,
                 "inputPins": [],
                 "outputPins": [
                     398
                 ],
-                "selectedName": "Tree (Root)",
+                "selectedName": "grass 5",
                 "title": "Scene Input"
             },
             {
                 "alignToNormal": false,
-                "count": 20000,
+                "count": 1000000,
                 "createdGroupNames": [
                     "Scatter_Instanced_399_Tree (Root)",
                     "Scatter_Instanced_399_Tree (Root)_0",
@@ -178,7 +193,7 @@
                     403
                 ],
                 "randomRotation": true,
-                "seed": 42,
+                "seed": 18467,
                 "spawnAsObjects": true,
                 "spawnedMap": {},
                 "targetParentName": "(none)",
@@ -203,7 +218,7 @@
                     407,
                     408
                 ],
-                "threshold": 37.5,
+                "threshold": 49.0,
                 "title": "Filter Transforms",
                 "useNormalFilter": true,
                 "usePercentage": true
@@ -546,14 +561,14 @@
                     1.0
                 ],
                 "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 100.0,
+                "material_dudvTiling": 0.0,
                 "material_foamColor": [
                     1.0,
                     1.0,
                     1.0,
                     0.8999999761581421
                 ],
-                "material_foamDistance": 2.5,
+                "material_foamDistance": 10.0,
                 "material_fresnelPower": 4.0,
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
@@ -569,18 +584,14 @@
                     0.75,
                     0.699999988079071
                 ],
-                "material_waveScale": 10000.0,
+                "material_waveScale": 1.0,
                 "material_waveSpeed": 0.009999999776482582,
-                "material_waveStrength": 0.009999999776482582,
-                "screenSize": [
-                    0.0,
-                    0.0
-                ],
+                "material_waveStrength": 0.10000000149011612,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
             },
             "modelPath": "",
-            "name": "Plane 7",
+            "name": "Waterplane",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
@@ -588,7 +599,7 @@
             "transform": {
                 "position": [
                     0.0,
-                    289.28839111328125,
+                    312.6181335449219,
                     0.0
                 ],
                 "rotation": [
@@ -598,7 +609,7 @@
                 ],
                 "scale": [
                     1000.0,
-                    1000.0,
+                    1.0,
                     1000.0
                 ]
             }

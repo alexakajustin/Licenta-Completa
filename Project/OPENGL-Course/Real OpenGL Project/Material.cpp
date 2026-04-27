@@ -52,18 +52,18 @@ void Material::SetShader(Shader* shader)
 		
 		if (vPath.find("water.vert") != std::string::npos || fPath.find("water.frag") != std::string::npos) {
 			if (floats.find("material_waveSpeed") == floats.end()) {
-				floats["material_waveSpeed"] = 0.75f;
-				floats["material_waveStrength"] = 0.0f;  // 0 = auto-scale from object size
-				floats["material_waveScale"] = 0.0f;     // 0 = auto-scale from object size
+				floats["material_waveSpeed"] = 0.01f;
+				floats["material_waveStrength"] = 0.1f;
+				floats["material_waveScale"] = 1.0f;
 				floats["material_fresnelPower"] = 4.0f;
-				floats["material_foamDistance"] = 0.0f;   // 0 = auto-scale from object size
+				floats["material_foamDistance"] = 10.0f;
 				floats["material_dudvTiling"] = 0.0f;     // 0 = auto-scale from object size
 				floats["material_dudvStrength"] = 0.02f;
 				floats["material_specularIntensityOverride"] = 3.0f;
 				floats["material_shininessOverride"] = 256.0f;
-				vec4s["material_waterColorDeep"] = glm::vec4(0.01f, 0.15f, 0.35f, 0.95f);
-				vec4s["material_waterColorShallow"] = glm::vec4(0.05f, 0.6f, 0.75f, 0.7f);
-				vec4s["material_foamColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 0.9f);
+				vec4s["material_waterColorDeep"] = glm::vec4(0.012f, 0.149f, 0.349f, 0.949f);
+				vec4s["material_waterColorShallow"] = glm::vec4(0.051f, 0.6f, 0.749f, 0.702f);
+				vec4s["material_foamColor"] = glm::vec4(1.0f, 1.0f, 0.902f, 1.0f);
 				vec4s["material.baseColor"] = glm::vec4(1.0f, 1.0f, 1.0f, 0.85f);
 				SetTextureParam("material_dudvMap", "Assets/Textures/Water/dudv.png");
 				SetTextureParam("material_waterNormalMap", "Assets/Textures/Water/normal.png");
