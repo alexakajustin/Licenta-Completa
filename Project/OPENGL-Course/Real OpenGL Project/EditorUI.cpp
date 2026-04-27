@@ -1645,7 +1645,7 @@ void EditorUI::RenderGraphicsSettings()
 			ImGui::Spacing();
 			ImGui::Separator();
 
-			if (ImGui::Button("Reset Defaults", ImVec2(-1, 0)))
+			if (ImGui::Button("Reset Defaults##SSAO", ImVec2(-1, 0)))
 			{
 				graphicsSettingsPtr->ssaoRadius = 0.5f;
 				graphicsSettingsPtr->ssaoBias = 0.025f;
@@ -1676,7 +1676,7 @@ void EditorUI::RenderGraphicsSettings()
 			ImGui::SliderFloat("Decay", &graphicsSettingsPtr->godraysDecay, 0.8f, 1.0f);
 			ImGui::SliderFloat("Density", &graphicsSettingsPtr->godraysDensity, 0.1f, 1.0f);
 
-			if (ImGui::Button("Reset Defaults", ImVec2(-1, 0))) {
+			if (ImGui::Button("Reset Defaults##GodRays", ImVec2(-1, 0))) {
 				graphicsSettingsPtr->godraysDecay = 0.95f;
 				graphicsSettingsPtr->godraysDensity = 1.0f;
 			}

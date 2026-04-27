@@ -271,7 +271,8 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane)
+	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, 
+	GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -340,6 +341,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					}
 					// View matrix for depth calculation
 					glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
+
+					// Bind shadow maps for main pass shaders
+					s->SetDirectionalShadowMap(3);
+					s->SetDirectionalShadowColorMap(20);
 				}
 			}
 		}
@@ -423,7 +428,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// Fully automatic: TES uses per-layer displacement maps/scales directly,
 			// TCS auto-computes tessellation level from maxLayerTiling.
 			bool renderAsTessellated = false;
-			if (!overrideShader && obj->GetUseTessellation() && renderer && renderer->GetTessShader().GetShaderID() != 0) {
+			if (obj->GetUseTessellation() && renderer) {
 				bool hasDispMap = false;
 				float maxTiling = 1.0f;
 				for (const auto& layer : obj->GetTextureLayers()) {
@@ -432,15 +437,37 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						if (layer.tiling > maxTiling) maxTiling = layer.tiling;
 					}
 				}
+
 				if (hasDispMap && msh) {
-					renderAsTessellated = true;
-					Shader& tess = renderer->GetTessShader();
-					PrepareShader(&tess);
-					targetShader = &tess;
-					GLuint sid = tess.GetShaderID();
-					// Auto-set max tiling for TCS tessellation level calculation
-					GLint maxTilingLoc = glGetUniformLocation(sid, "maxLayerTiling");
-					if (maxTilingLoc != -1) glUniform1f(maxTilingLoc, maxTiling);
+					Shader* tessShaderToUse = nullptr;
+					
+					// Detect if we are in a shadow pass
+					bool isShadowPass = (overrideShader && renderer && overrideShader->GetShaderID() == renderer->GetDirectionalShadowShader().GetShaderID());
+					
+					if (isShadowPass) {
+						tessShaderToUse = &renderer->GetTessShadowShader();
+					} else if (!overrideShader) {
+						tessShaderToUse = &renderer->GetTessShader();
+					}
+
+					if (tessShaderToUse && tessShaderToUse->GetShaderID() != 0) {
+						renderAsTessellated = true;
+						PrepareShader(tessShaderToUse);
+						targetShader = tessShaderToUse;
+						GLuint sid = tessShaderToUse->GetShaderID();
+						
+						// Auto-set max tiling for TCS tessellation level calculation
+						GLint maxTilingLoc = glGetUniformLocation(sid, "maxLayerTiling");
+						if (maxTilingLoc != -1) glUniform1f(maxTilingLoc, maxTiling);
+
+						// For shadow tessellation, we need to manually pass the light transform
+						if (isShadowPass) {
+							GLint lightTransLoc = glGetUniformLocation(sid, "directionalLightTransform");
+							if (lightTransLoc != -1) {
+								glUniformMatrix4fv(lightTransLoc, 1, GL_FALSE, glm::value_ptr(shadowTransform));
+							}
+						}
+					}
 				}
 			}
 

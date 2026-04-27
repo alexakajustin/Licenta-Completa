@@ -13,24 +13,17 @@
             "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
-        },
-        {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_grass_5.inst",
-            "maxDrawDistance": 250.0,
-            "name": "Scatter_Instanced_399_grass 5",
-            "shadowDistance": 30.0,
-            "sourceObjectName": "grass 5"
         }
     ],
     "lights": [
         {
-            "ambientIntensity": 0.6209999918937683,
+            "ambientIntensity": 0.6140000224113464,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 1.5420000553131104,
+            "diffuseIntensity": 0.8759999871253967,
             "direction": [
                 -20.0,
                 -3.180000066757202,
@@ -58,7 +51,7 @@
                 "start": 403
             }
         ],
-        "nextId": 538,
+        "nextId": 566,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -227,10 +220,10 @@
     },
     "objects": [
         {
-            "customMeshPath": "Base_Mountain_Water_Plane.mesh",
+            "customMeshPath": "Base_Mountain_Water_Terrain.mesh",
             "inheritScale": true,
             "modelPath": "",
-            "name": "Plane",
+            "name": "Terrain",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
@@ -610,29 +603,29 @@
                     1.0
                 ],
                 "material_dudvMap": "Assets/Textures/Water/dudv.png",
-                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvStrength": 0.03999999910593033,
                 "material_dudvTiling": 0.0,
                 "material_foamColor": [
                     1.0,
                     1.0,
-                    0.9020000100135803,
+                    1.0,
                     1.0
                 ],
-                "material_foamDistance": 10.0,
-                "material_fresnelPower": 4.0,
+                "material_foamDistance": 2.0,
+                "material_fresnelPower": 0.019999999552965164,
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
-                    0.012000000104308128,
-                    0.14900000393390656,
-                    0.3490000069141388,
-                    0.9490000009536743
+                    0.25082510709762573,
+                    0.25082510709762573,
+                    0.25082510709762573,
+                    0.9803921580314636
                 ],
                 "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
-                    0.7020000219345093
+                    0.09929309785366058,
+                    0.13583476841449738,
+                    0.28382837772369385,
+                    0.9333333373069763
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,

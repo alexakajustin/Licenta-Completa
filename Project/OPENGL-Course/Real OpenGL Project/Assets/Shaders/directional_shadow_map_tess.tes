@@ -1,0 +1,69 @@
+#version 400 core
+
+layout(triangles, equal_spacing, ccw) in;
+
+in vec2 TexCoord_TCS[];
+in vec3 Normal_TCS[];
+in vec3 FragPos_TCS[];
+in vec3 LocalPos_TCS[];
+
+out vec2 TexCoord;
+
+uniform mat4 directionalLightTransform;
+
+// ========== Same texture layer uniforms as shader.frag ==========
+const int MAX_TEXTURE_LAYERS = 4;
+
+struct TextureLayerData {
+	int blendMode;
+	float opacity;
+	float tiling;
+	float heightMin;
+	float heightMax;
+	float slopeMin;
+	float slopeMax;
+	int invert;
+	int hasNormalMap;
+	int hasDisplacementMap;
+	float displacementScale;
+};
+
+uniform int textureLayerCount;
+uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS];
+uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
+
+// Interpolation
+vec2 interp2(vec2 a, vec2 b, vec2 c) {
+	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
+}
+vec3 interp3(vec3 a, vec3 b, vec3 c) {
+	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
+}
+
+float getDisplacement(vec2 uv) {
+	float totalDisp = 0.0;
+	if (textureLayerCount > 0 && layerData[0].hasDisplacementMap == 1) {
+		totalDisp += texture(layerDisplacementMaps[0], uv * layerData[0].tiling).r * layerData[0].displacementScale;
+	}
+	if (textureLayerCount > 1 && layerData[1].hasDisplacementMap == 1) {
+		totalDisp += texture(layerDisplacementMaps[1], uv * layerData[1].tiling).r * layerData[1].displacementScale;
+	}
+	if (textureLayerCount > 2 && layerData[2].hasDisplacementMap == 1) {
+		totalDisp += texture(layerDisplacementMaps[2], uv * layerData[2].tiling).r * layerData[2].displacementScale;
+	}
+	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1) {
+		totalDisp += texture(layerDisplacementMaps[3], uv * layerData[3].tiling).r * layerData[3].displacementScale;
+	}
+	return totalDisp;
+}
+
+void main()
+{
+	TexCoord = interp2(TexCoord_TCS[0], TexCoord_TCS[1], TexCoord_TCS[2]);
+	vec3 FragPos = interp3(FragPos_TCS[0], FragPos_TCS[1], FragPos_TCS[2]);
+
+	float displacement = getDisplacement(TexCoord);
+	FragPos.y += displacement;
+
+	gl_Position = directionalLightTransform * vec4(FragPos, 1.0);
+}

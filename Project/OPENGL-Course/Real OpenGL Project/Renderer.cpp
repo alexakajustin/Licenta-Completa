@@ -37,13 +37,19 @@ void Renderer::Init()
 	instancedRenderShader.CreateFromFiles("Assets/Shaders/instanced_object.vert", "Assets/Shaders/shader.frag");
 	instancedShadowShader.CreateFromFiles("Shaders/instanced_shadow.vert", "Shaders/instanced_shadow.frag");
 
-	// GPU Tessellation shader (vert -> TCS -> TES -> frag)
 	tessShader.CreateFromFiles(
 		"Assets/Shaders/shader_tess.vert",
 		"Assets/Shaders/terrain_tess.tcs",
 		"Assets/Shaders/terrain_tess.tes",
 		"Assets/Shaders/shader.frag");
 
+	directionalShadowTessShader.CreateFromFiles(
+		"Assets/Shaders/shader_tess.vert",
+		"Assets/Shaders/directional_shadow_map_tess.tcs",
+		"Assets/Shaders/directional_shadow_map_tess.tes",
+		"Shaders/directional_shadow_map.frag"
+	);
+	
 	CacheUniforms();
 }
 
@@ -97,7 +103,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 		Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
 
 		// Render regular objects
-		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this);
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this, 0, 0, glm::vec4(0.0f), lightProjView);
 
 		// GPU-Driven Instanced Groups
 		float time = (float)glfwGetTime();

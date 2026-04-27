@@ -1,0 +1,60 @@
+#version 400 core
+
+layout (vertices = 3) out;
+
+in vec2 TexCoord_VS[];
+in vec3 Normal_VS[];
+in vec3 FragPos_VS[];
+in vec3 TangentWorld_VS[];
+in vec3 BitangentWorld_VS[];
+in vec3 NormalWorld_VS[];
+in vec3 LocalPos_VS[];
+
+out vec2 TexCoord_TCS[];
+out vec3 Normal_TCS[];
+out vec3 FragPos_TCS[];
+out vec3 TangentWorld_TCS[];
+out vec3 BitangentWorld_TCS[];
+out vec3 NormalWorld_TCS[];
+out vec3 LocalPos_TCS[];
+
+uniform vec3 eyePosition;
+uniform float maxLayerTiling;
+
+float GetTessLevel(float dist0, float dist1)
+{
+	float avgDist = (dist0 + dist1) / 2.0;
+	
+	// Base tessellation from tiling: more repetitions = more vertices needed
+	// Shadow max is capped at 16.0 for performance (64.0 is overkill for depth maps)
+	float baseTess = clamp(sqrt(maxLayerTiling) * 4.0, 2.0, 16.0);
+	
+	// Distance falloff: full detail within 30 units, fades to 1 at 200+ units
+	float distFactor = 1.0 - smoothstep(30.0, 200.0, avgDist);
+	
+	return max(1.0, baseTess * distFactor);
+}
+
+void main()
+{
+	// Pass attributes through
+	TexCoord_TCS[gl_InvocationID]       = TexCoord_VS[gl_InvocationID];
+	Normal_TCS[gl_InvocationID]         = Normal_VS[gl_InvocationID];
+	FragPos_TCS[gl_InvocationID]        = FragPos_VS[gl_InvocationID];
+	TangentWorld_TCS[gl_InvocationID]   = TangentWorld_VS[gl_InvocationID];
+	BitangentWorld_TCS[gl_InvocationID] = BitangentWorld_VS[gl_InvocationID];
+	NormalWorld_TCS[gl_InvocationID]    = NormalWorld_VS[gl_InvocationID];
+	LocalPos_TCS[gl_InvocationID]       = LocalPos_VS[gl_InvocationID];
+
+	if (gl_InvocationID == 0)
+	{
+		float d0 = distance(eyePosition, FragPos_VS[0]);
+		float d1 = distance(eyePosition, FragPos_VS[1]);
+		float d2 = distance(eyePosition, FragPos_VS[2]);
+
+		gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
+		gl_TessLevelOuter[1] = GetTessLevel(d2, d0);
+		gl_TessLevelOuter[2] = GetTessLevel(d0, d1);
+		gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+	}
+}

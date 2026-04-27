@@ -44,6 +44,8 @@ public:
 
 	Shader& GetMainShader() { return mainShader; }
 	Shader& GetTessShader() { return tessShader; }
+	Shader& GetTessShadowShader() { return directionalShadowTessShader; }
+	Shader& GetDirectionalShadowShader() { return directionalShadowShader; }
 	Shader* GetInstancedShader(Shader* original);
 
 private:
@@ -54,6 +56,7 @@ private:
 	Shader instancedRenderShader;  // Vertex/Fragment shader for instanced objects
 	Shader instancedShadowShader;  // Vertex/Fragment shader for instanced shadow pass
 	Shader tessShader;             // Tessellation shader (vert+tcs+tes+frag) for GPU displacement
+	Shader directionalShadowTessShader; // Tessellation shader for shadow pass
 	Skybox skybox;
 
 	// Cached uniform locations (fetched once at init)
