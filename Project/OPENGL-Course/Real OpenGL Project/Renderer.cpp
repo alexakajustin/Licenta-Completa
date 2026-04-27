@@ -208,7 +208,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1));
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);
@@ -289,7 +289,8 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	float time = (float)glfwGetTime();
 
 	// Render opaque scene objects only (no transparent/water) with clip plane active
-	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0);
+	glm::vec4 reflectionClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
+	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0, 0, reflectionClipPlane);
 
 	// Restore state
 	glDisable(GL_CLIP_DISTANCE0);

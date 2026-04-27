@@ -25,6 +25,7 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 directionalLightTransform;
+uniform vec4 clipPlane;
 
 // Material struct (same as main shader for compatibility)
 struct Material {
@@ -94,6 +95,7 @@ void main()
     modelMatrix[2] = vec4(rotMat[2] * instanceScale, 0.0);
     modelMatrix[3] = vec4(instancePos, 1.0);
     
+    gl_ClipDistance[0] = dot(vec4(worldPos, 1.0), clipPlane);
     gl_Position = projection * view * vec4(worldPos, 1.0);
     // DirectionalLightSpacePos calculation removed for CSM
     

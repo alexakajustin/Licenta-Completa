@@ -23,6 +23,7 @@ out vec3 WorldZBasis;
 out float vIsSelected;
 out float vFadeFactor;
 out vec4 clipSpaceCoords;
+out float vObjectScale;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -88,9 +89,19 @@ void main()
 	vIsSelected = 0.0;
 	vFadeFactor = 0.0; 
 
+    // Extract object scale from model matrix (length of basis vectors)
+    float scaleX = length(modelMatrix[0].xyz);
+    float scaleZ = length(modelMatrix[2].xyz);
+    float objectScale = max(scaleX, scaleZ); // Use largest horizontal axis
+    
+    // Auto-derive wave parameters from object scale
+    // Reference: scale=100 -> baseline (waveScale=1, dudvTiling=6, etc.)
+    float scaleFactor = objectScale / 100.0;
+    
+    // Allow manual overrides, but default to auto-scaled values
     float actualWaveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
-    float actualWaveStrength = material_waveStrength == 0.0 ? 1.0 : material_waveStrength;
-    float actualWaveScale = material_waveScale == 0.0 ? 1.0 : material_waveScale;
+    float actualWaveStrength = material_waveStrength == 0.0 ? scaleFactor : material_waveStrength;
+    float actualWaveScale = material_waveScale == 0.0 ? (1.0 / scaleFactor) : material_waveScale;
 
 	vec3 gridPoint = pos;
 	vec3 tangentG = vec3(1.0, 0.0, 0.0);
@@ -114,8 +125,15 @@ void main()
     waveOffset += GerstnerWave(waveE, gridPoint, tangentG, binormalG, actualWaveSpeed);
     waveOffset += GerstnerWave(waveF, gridPoint, tangentG, binormalG, actualWaveSpeed);
     
+    // Edge fade: smoothly kill vertex displacement near mesh borders
+    // Plane local coords go from -1 to +1. Fade starts at 0.7 (outer ~15% of each edge).
+    float edgeFadeX = smoothstep(0.0, 0.3, 1.0 - abs(gridPoint.x));
+    float edgeFadeZ = smoothstep(0.0, 0.3, 1.0 - abs(gridPoint.z));
+    float edgeFade = edgeFadeX * edgeFadeZ;
+
     // Only apply vertical (Y) displacement — keep the plane stationary in XZ
-    p.y += waveOffset.y;
+    // Multiply by edgeFade so corners/edges stay perfectly flat
+    p.y += waveOffset.y * edgeFade;
     
 	vec3 normalG = normalize(cross(binormalG, tangentG));
 
@@ -137,6 +155,7 @@ void main()
 	
 	FragPos = worldPos.xyz; 
 	LocalPos = p; 
+	vObjectScale = objectScale;
 
 	TangentWorld = normalize(normalMatrix * tangentG);
 	BitangentWorld = normalize(normalMatrix * binormalG);

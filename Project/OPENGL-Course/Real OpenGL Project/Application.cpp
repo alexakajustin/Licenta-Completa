@@ -323,15 +323,26 @@ void Application::Run()
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
 
 		// 1. Reflection Pass (if there is water)
-		// Usually we'd find the water height dynamically, but we'll assume 0.0 for now
-		float waterHeight = 0.0f; 
-		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
-		glViewport(0, 0, reflectionWidth, reflectionHeight);
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		float waterHeight = -1000.0f; 
+		bool hasWater = false;
+		for (auto* obj : sceneManager.GetObjects()) {
+			Material* mat = obj->GetMaterial();
+			if (mat && mat->GetShader() && (mat->GetShader()->GetVertexPath().find("water.vert") != std::string::npos)) {
+				waterHeight = obj->GetTransform().GetPosition().y;
+				hasWater = true;
+				break;
+			}
+		}
 
-		renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight);
+		if (hasWater) {
+			glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+			glViewport(0, 0, reflectionWidth, reflectionHeight);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
+				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight);
+		}
 		
 		// 2. Final Scene Render (Viewport FBO)
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);

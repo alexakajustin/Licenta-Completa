@@ -271,7 +271,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture, GLuint reflectionTexture)
+	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -301,6 +301,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (viewLoc != -1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 			if (eyeLoc != -1) glUniform3f(eyeLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 			if (timeLoc != -1) glUniform1f(timeLoc, time);
+			
+			GLint clipLoc = glGetUniformLocation(s->GetShaderID(), "clipPlane");
+			if (clipLoc != -1) glUniform4fv(clipLoc, 1, glm::value_ptr(clipPlane));
 			
 			GLint depthMapLoc = glGetUniformLocation(s->GetShaderID(), "sceneDepthMap");
 			if (depthMapLoc != -1) {
@@ -628,6 +631,26 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 				GLint timeLoc = glGetUniformLocation(sid, "time");
 				if (timeLoc != -1) glUniform1f(timeLoc, time);
+
+				GLint clipLoc = glGetUniformLocation(sid, "clipPlane");
+				if (clipLoc != -1) glUniform4fv(clipLoc, 1, glm::value_ptr(clipPlane));
+
+				GLint depthMapLoc = glGetUniformLocation(sid, "sceneDepthMap");
+				if (depthMapLoc != -1) {
+					glActiveTexture(GL_TEXTURE14);
+					glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+					glUniform1i(depthMapLoc, 14);
+				}
+
+				GLint reflectionMapLoc = glGetUniformLocation(sid, "reflectionMap");
+				if (reflectionMapLoc != -1) {
+					glActiveTexture(GL_TEXTURE15);
+					glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+					glUniform1i(reflectionMapLoc, 15);
+				}
+
+				GLint screenSizeLoc = glGetUniformLocation(sid, "screenSize");
+				if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1] / projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
 				// Pass shadow distance to instanced shader for percentage-based fade
 				if (dLight) {

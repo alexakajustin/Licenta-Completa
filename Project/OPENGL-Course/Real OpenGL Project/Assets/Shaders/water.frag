@@ -15,6 +15,7 @@ in vec4 clipSpaceCoords;
 out vec4 colour;	
 in float vIsSelected;
 in float vFadeFactor;
+in float vObjectScale;
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
@@ -138,7 +139,8 @@ float random(vec3 seed, int i){
 // This gives micro-detail ripples entirely in fragment shader
 // ============================================================
 vec3 GetWaterNormal(vec2 uv) {
-    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
+    float scaleFactor = max(vObjectScale / 100.0, 0.01);
+    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 * scaleFactor : material_dudvTiling;
     float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
     float moveFactor = time * moveSpeed * 0.03;
     
@@ -153,7 +155,8 @@ vec3 GetWaterNormal(vec2 uv) {
 }
 
 vec2 GetDuDvDistortion(vec2 uv) {
-    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
+    float scaleFactor = max(vObjectScale / 100.0, 0.01);
+    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 * scaleFactor : material_dudvTiling;
     float dudvStrength = material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength;
     float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
     float moveFactor = time * moveSpeed * 0.03;
@@ -448,7 +451,8 @@ void main()
     float depthDiff = linearBackgroundDepth - linearFragmentDepth;
     
     vec4 foamColor = material_foamColor == vec4(0.0) ? vec4(1.0, 1.0, 1.0, 0.9) : material_foamColor;
-    float foamDist = material_foamDistance == 0.0 ? 2.5 : material_foamDistance;
+    float autoFoamScaleFactor = max(vObjectScale / 100.0, 0.01);
+    float foamDist = material_foamDistance == 0.0 ? 2.5 * autoFoamScaleFactor : material_foamDistance;
     
     if (depthDiff > 0.0 && depthDiff < foamDist) {
         float foamFactor = 1.0 - smoothstep(0.0, foamDist, depthDiff);

@@ -19,6 +19,7 @@ uniform int useInstancing;
 uniform float windSpeed = 1.0;
 uniform float windStrength = 0.1;
 uniform float time;
+uniform vec4 clipPlane;
 
 void main()
 {
@@ -35,8 +36,10 @@ void main()
 	
 	vIsSelected = 0.0;
 	vFadeFactor = 0.0;
-	gl_Position = projection * view * modelMatrix * vec4(displacedPos, 1.0);
+	vec4 worldPos = modelMatrix * vec4(displacedPos, 1.0);
+	gl_ClipDistance[0] = dot(worldPos, clipPlane);
+	gl_Position = projection * view * worldPos;
 	TexCoord = tex;
 	Normal = mat3(transpose(inverse(modelMatrix))) * norm;
-	FragPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+	FragPos = worldPos.xyz;
 }
