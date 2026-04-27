@@ -15,10 +15,8 @@ struct GraphicsSettings {
 
 	// God Rays
 	bool godraysEnabled = true;
-	float godraysExposure = 0.26f;
 	float godraysDecay = 0.95f;
 	float godraysDensity = 1.0f;
-	float godraysWeight = 0.098f;
 
 	// Volumetric Sky
 	bool volumetricSkyEnabled = true;

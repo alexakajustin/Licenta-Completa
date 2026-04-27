@@ -1673,16 +1673,12 @@ void EditorUI::RenderGraphicsSettings()
 				ImGui::BeginDisabled();
 			}
 
-			ImGui::SliderFloat("Exposure", &graphicsSettingsPtr->godraysExposure, 0.0f, 2.0f);
 			ImGui::SliderFloat("Decay", &graphicsSettingsPtr->godraysDecay, 0.8f, 1.0f);
 			ImGui::SliderFloat("Density", &graphicsSettingsPtr->godraysDensity, 0.1f, 1.0f);
-			ImGui::SliderFloat("Weight", &graphicsSettingsPtr->godraysWeight, 0.01f, 0.5f);
 
 			if (ImGui::Button("Reset Defaults", ImVec2(-1, 0))) {
-				graphicsSettingsPtr->godraysExposure = 0.26f;
 				graphicsSettingsPtr->godraysDecay = 0.95f;
 				graphicsSettingsPtr->godraysDensity = 1.0f;
-				graphicsSettingsPtr->godraysWeight = 0.098f;
 			}
 
 			if (!graphicsSettingsPtr->godraysEnabled) {
