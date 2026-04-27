@@ -18,8 +18,12 @@ struct GraphicsSettings {
 	float godraysDecay = 0.95f;
 	float godraysDensity = 1.0f;
 
-	// Volumetric Sky
+	// Volumetric Sky & Clouds
 	bool volumetricSkyEnabled = true;
+	bool cloudsEnabled = true;
+	float cloudsDensity = 0.5f;
+	float cloudsSpeed = 0.05f;
+	float cloudsSharpness = 0.3f;
 };
 
 #include "Window.h"

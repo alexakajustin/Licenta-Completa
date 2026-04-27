@@ -364,6 +364,13 @@ void Application::Run()
 				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
 				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
 				
+				// Cloud data
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+				glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+
 				RenderQuad();
 				glEnable(GL_DEPTH_TEST);
 			}
@@ -391,6 +398,14 @@ void Application::Run()
 			glm::vec3 dirToSun = -glm::normalize(sunDir);
 			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
 			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+			
+			// Cloud data
+			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+			glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
+			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
+			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
+			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+
 			RenderQuad();
 			glEnable(GL_DEPTH_TEST);
 		}

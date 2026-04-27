@@ -1681,6 +1681,31 @@ void EditorUI::RenderGraphicsSettings()
 				graphicsSettingsPtr->godraysDensity = 1.0f;
 			}
 
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Text("Procedural Clouds");
+			ImGui::Checkbox("Enable Clouds", &graphicsSettingsPtr->cloudsEnabled);
+			
+			if (!graphicsSettingsPtr->cloudsEnabled) {
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+				ImGui::BeginDisabled();
+			}
+			
+			ImGui::SliderFloat("Cloud Density", &graphicsSettingsPtr->cloudsDensity, 0.1f, 0.9f);
+			ImGui::SliderFloat("Cloud Speed", &graphicsSettingsPtr->cloudsSpeed, 0.0f, 0.5f);
+			ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
+
+			if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
+				graphicsSettingsPtr->cloudsDensity = 0.5f;
+				graphicsSettingsPtr->cloudsSpeed = 0.05f;
+				graphicsSettingsPtr->cloudsSharpness = 0.3f;
+			}
+
+			if (!graphicsSettingsPtr->cloudsEnabled) {
+				ImGui::EndDisabled();
+				ImGui::PopStyleVar();
+			}
+
 			if (!graphicsSettingsPtr->godraysEnabled) {
 				ImGui::EndDisabled();
 				ImGui::PopStyleVar();
