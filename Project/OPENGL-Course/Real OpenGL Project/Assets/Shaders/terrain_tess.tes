@@ -1,13 +1,15 @@
 #version 400 core
 
 // Tessellation Evaluation Shader
-// Interpolates vertex attributes using barycentric coordinates,
-// then physically displaces the vertex position along its normal
-// using a displacement map. This creates REAL geometry, not a visual trick.
+// Uses the SAME texture layer system as shader.frag.
+// Each layer's displacement map + displacement scale directly controls geometry.
+// Displacement is along world Y (height), per tile, matching layer tiling.
+//
+// NOTE: Sampler arrays CANNOT be dynamically indexed in GLSL 400 on AMD GPUs.
+// The loop is unrolled with explicit constant indices to work on all hardware.
 
 layout(triangles, equal_spacing, ccw) in;
 
-// Inputs from TCS (arrayed, one per control point)
 in vec2 TexCoord_TCS[];
 in vec3 Normal_TCS[];
 in vec3 FragPos_TCS[];
@@ -16,7 +18,6 @@ in vec3 BitangentWorld_TCS[];
 in vec3 NormalWorld_TCS[];
 in vec3 LocalPos_TCS[];
 
-// Outputs — must match what shader.frag expects
 out vec4 vertex_color;
 out vec2 TexCoord;
 out vec3 Normal;
@@ -32,23 +33,104 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
-// Displacement sampling
-uniform sampler2D tessDisplacementMap;
-uniform float tessDisplacementScale;  // World-space max displacement height
-uniform float tessDisplacementBias;   // Offset (usually -0.5 to center around surface)
+// ========== Same texture layer uniforms as shader.frag ==========
+const int MAX_TEXTURE_LAYERS = 4;
 
-// Barycentric interpolation helpers
+struct TextureLayerData {
+	int blendMode;
+	float opacity;
+	float tiling;
+	float heightMin;
+	float heightMax;
+	float slopeMin;
+	float slopeMax;
+	int invert;
+	int hasNormalMap;
+	int hasDisplacementMap;
+	float displacementScale;
+};
+
+uniform int textureLayerCount;
+uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS];
+uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
+
+// Interpolation
 vec2 interp2(vec2 a, vec2 b, vec2 c) {
 	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
 }
-
 vec3 interp3(vec3 a, vec3 b, vec3 c) {
 	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
 }
 
+// Sample a specific layer's displacement (constant index for AMD compatibility)
+float sampleLayerHeight(int layerIdx, vec2 uv) {
+	vec2 tiledUV = uv * layerData[layerIdx].tiling;
+	// Must use constant index for sampler — handled by caller
+	return 0.0; // placeholder, actual sampling in getDisplacement
+}
+
+// Compute blend weight for a layer
+float getLayerWeight(int i, vec3 localPos, vec3 normal) {
+	float weight = layerData[i].opacity;
+
+	// Height-based blending
+	if (layerData[i].blendMode == 1 || layerData[i].blendMode == 3) {
+		float objH = localPos.y;
+		float range = max(layerData[i].heightMax - layerData[i].heightMin, 0.001);
+		float edge = range * 0.3;
+		weight *= smoothstep(layerData[i].heightMin, layerData[i].heightMin + edge, objH)
+		        * (1.0 - smoothstep(layerData[i].heightMax - edge, layerData[i].heightMax, objH));
+	}
+
+	// Slope-based blending
+	if (layerData[i].blendMode == 2 || layerData[i].blendMode == 3) {
+		float slope = 1.0 - abs(normalize(normal).y);
+		weight *= smoothstep(layerData[i].slopeMin, layerData[i].slopeMax, slope);
+	}
+
+	if (layerData[i].invert == 1) weight = 1.0 - weight;
+
+	return weight;
+}
+
+// Sample displacement from ALL layers — unrolled to avoid dynamic sampler indexing
+float getDisplacement(vec2 uv, vec3 localPos, vec3 normal) {
+	float totalDisp = 0.0;
+
+	// Layer 0
+	if (textureLayerCount > 0 && layerData[0].hasDisplacementMap == 1 && layerData[0].displacementScale > 0.0) {
+		float h = texture(layerDisplacementMaps[0], uv * layerData[0].tiling).r;
+		float w = getLayerWeight(0, localPos, normal);
+		totalDisp += h * layerData[0].displacementScale * w;
+	}
+
+	// Layer 1
+	if (textureLayerCount > 1 && layerData[1].hasDisplacementMap == 1 && layerData[1].displacementScale > 0.0) {
+		float h = texture(layerDisplacementMaps[1], uv * layerData[1].tiling).r;
+		float w = getLayerWeight(1, localPos, normal);
+		totalDisp += h * layerData[1].displacementScale * w;
+	}
+
+	// Layer 2
+	if (textureLayerCount > 2 && layerData[2].hasDisplacementMap == 1 && layerData[2].displacementScale > 0.0) {
+		float h = texture(layerDisplacementMaps[2], uv * layerData[2].tiling).r;
+		float w = getLayerWeight(2, localPos, normal);
+		totalDisp += h * layerData[2].displacementScale * w;
+	}
+
+	// Layer 3
+	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1 && layerData[3].displacementScale > 0.0) {
+		float h = texture(layerDisplacementMaps[3], uv * layerData[3].tiling).r;
+		float w = getLayerWeight(3, localPos, normal);
+		totalDisp += h * layerData[3].displacementScale * w;
+	}
+
+	return totalDisp;
+}
+
 void main()
 {
-	// Interpolate all vertex attributes across the tessellated triangle
+	// Interpolate all vertex attributes
 	TexCoord       = interp2(TexCoord_TCS[0],       TexCoord_TCS[1],       TexCoord_TCS[2]);
 	Normal         = interp3(Normal_TCS[0],          Normal_TCS[1],         Normal_TCS[2]);
 	FragPos        = interp3(FragPos_TCS[0],         FragPos_TCS[1],        FragPos_TCS[2]);
@@ -61,25 +143,35 @@ void main()
 	vFadeFactor = 0.0;
 	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
 
-	// Normalize the interpolated normal
-	vec3 displaceDir = normalize(Normal);
+	// ========== DISPLACEMENT ==========
+	float displacement = getDisplacement(TexCoord, LocalPos, Normal);
 
-	// Sample displacement map at the interpolated texture coordinate
-	float heightSample = texture(tessDisplacementMap, TexCoord).r;
+	// Displace along world Y
+	FragPos.y += displacement;
+	LocalPos.y += displacement;
 
-	// Apply bias and scale: bias of -0.5 centers the displacement around the surface
-	// so valleys go inward and peaks go outward
-	float displacement = (heightSample + tessDisplacementBias) * tessDisplacementScale;
+	// ========== NORMAL RECOMPUTATION ==========
+	// Finite differences on the displacement field
+	float eps = 0.3;
+	float edgeLen = length(FragPos_TCS[1] - FragPos_TCS[0]);
+	float uvLen = length(TexCoord_TCS[1] - TexCoord_TCS[0]);
+	float uvPerWorld = (uvLen > 0.001) ? (uvLen / edgeLen) : 0.001;
+	vec2 uvStep = vec2(eps * uvPerWorld);
 
-	// Physically displace the world-space position along the normal
-	FragPos += displaceDir * displacement;
+	float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0), LocalPos - vec3(eps, 0, 0), Normal);
+	float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0), LocalPos + vec3(eps, 0, 0), Normal);
+	float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y), LocalPos - vec3(0, 0, eps), Normal);
+	float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y), LocalPos + vec3(0, 0, eps), Normal);
 
-	// Also update LocalPos to keep height-based layer blending in sync
-	// We transform the displacement direction back to object space
-	vec3 localDisplaceDir = normalize(mat3(transpose(inverse(model))) * displaceDir);
-	// Simplified: for most terrain-like objects the normal is close to object-space Y
-	LocalPos += localDisplaceDir * displacement;
+	vec3 computedNormal = normalize(vec3(hL - hR, 2.0 * eps, hD - hU));
 
-	// Final clip-space position
+	float dispStrength = clamp(abs(displacement) * 5.0, 0.0, 1.0);
+	Normal = normalize(mix(normalize(Normal), computedNormal, dispStrength));
+	NormalWorld = Normal;
+
+	TangentWorld = normalize(cross(Normal, vec3(0.0, 0.0, 1.0)));
+	if (length(TangentWorld) < 0.01) TangentWorld = normalize(cross(Normal, vec3(1.0, 0.0, 0.0)));
+	BitangentWorld = normalize(cross(TangentWorld, Normal));
+
 	gl_Position = projection * view * vec4(FragPos, 1.0);
 }

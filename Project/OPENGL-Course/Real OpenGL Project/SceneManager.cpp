@@ -420,32 +420,27 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			PrepareShader(targetShader);
 
 			// === GPU TESSELLATION PATH ===
+			// Fully automatic: TES uses per-layer displacement maps/scales directly,
+			// TCS auto-computes tessellation level from maxLayerTiling.
 			bool renderAsTessellated = false;
 			if (!overrideShader && obj->GetUseTessellation() && renderer && renderer->GetTessShader().GetShaderID() != 0) {
-				Texture* dispTex = nullptr;
+				bool hasDispMap = false;
+				float maxTiling = 1.0f;
 				for (const auto& layer : obj->GetTextureLayers()) {
-					if (layer.displacementMap) { dispTex = layer.displacementMap; break; }
+					if (layer.displacementMap) {
+						hasDispMap = true;
+						if (layer.tiling > maxTiling) maxTiling = layer.tiling;
+					}
 				}
-				if (dispTex && msh) {
+				if (hasDispMap && msh) {
 					renderAsTessellated = true;
 					Shader& tess = renderer->GetTessShader();
 					PrepareShader(&tess);
 					targetShader = &tess;
 					GLuint sid = tess.GetShaderID();
-					GLint tessLevelLoc = glGetUniformLocation(sid, "tessLevel");
-					GLint tessDistLoc  = glGetUniformLocation(sid, "tessDistance");
-					GLint tessDispScaleLoc = glGetUniformLocation(sid, "tessDisplacementScale");
-					GLint tessDispBiasLoc  = glGetUniformLocation(sid, "tessDisplacementBias");
-					GLint tessDispMapLoc   = glGetUniformLocation(sid, "tessDisplacementMap");
-					if (tessLevelLoc != -1) glUniform1f(tessLevelLoc, obj->GetTessLevel());
-					if (tessDistLoc != -1)  glUniform1f(tessDistLoc, obj->GetTessDistance());
-					if (tessDispScaleLoc != -1) glUniform1f(tessDispScaleLoc, obj->GetTessDisplacementScale());
-					if (tessDispBiasLoc != -1)  glUniform1f(tessDispBiasLoc, obj->GetTessDisplacementBias());
-					if (tessDispMapLoc != -1) {
-						glActiveTexture(GL_TEXTURE9);
-						glBindTexture(GL_TEXTURE_2D, dispTex->GetTextureID());
-						glUniform1i(tessDispMapLoc, 9);
-					}
+					// Auto-set max tiling for TCS tessellation level calculation
+					GLint maxTilingLoc = glGetUniformLocation(sid, "maxLayerTiling");
+					if (maxTilingLoc != -1) glUniform1f(maxTilingLoc, maxTiling);
 				}
 			}
 
