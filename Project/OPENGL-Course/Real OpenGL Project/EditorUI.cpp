@@ -1608,6 +1608,35 @@ void EditorUI::RenderGraphicsSettings()
 				ImGui::PopStyleVar();
 			}
 		}
+
+		if (ImGui::CollapsingHeader("Screen Space God Rays", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Checkbox("Enable God Rays", &graphicsSettingsPtr->godraysEnabled);
+			ImGui::Separator();
+
+			if (!graphicsSettingsPtr->godraysEnabled) {
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+				ImGui::BeginDisabled();
+			}
+
+			ImGui::SliderFloat("Exposure", &graphicsSettingsPtr->godraysExposure, 0.0f, 2.0f);
+			ImGui::SliderFloat("Decay", &graphicsSettingsPtr->godraysDecay, 0.8f, 1.0f);
+			ImGui::SliderFloat("Density", &graphicsSettingsPtr->godraysDensity, 0.1f, 1.0f);
+			ImGui::SliderFloat("Weight", &graphicsSettingsPtr->godraysWeight, 0.01f, 0.5f);
+
+			if (ImGui::Button("Reset God Rays Defaults", ImVec2(-1, 0)))
+			{
+				graphicsSettingsPtr->godraysExposure = 0.2f;
+				graphicsSettingsPtr->godraysDecay = 0.95f;
+				graphicsSettingsPtr->godraysDensity = 0.4f;
+				graphicsSettingsPtr->godraysWeight = 0.12f;
+			}
+
+			if (!graphicsSettingsPtr->godraysEnabled) {
+				ImGui::EndDisabled();
+				ImGui::PopStyleVar();
+			}
+		}
 	}
 	ImGui::End();
 }

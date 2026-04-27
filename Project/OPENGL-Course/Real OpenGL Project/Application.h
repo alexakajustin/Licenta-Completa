@@ -12,6 +12,13 @@ struct GraphicsSettings {
 	// Culling
 	float renderDistanceMultiplier = 1.0f;
 	float shadowDistanceMultiplier = 1.0f;
+
+	// God Rays
+	bool godraysEnabled = true;
+	float godraysExposure = 0.2f;
+	float godraysDecay = 0.95f;
+	float godraysDensity = 0.4f;
+	float godraysWeight = 0.12f;
 };
 
 #include "Window.h"
@@ -105,6 +112,7 @@ private:
 	Shader ssaoShader;
 	Shader ssaoBlurShader;
 	Shader ssaoApplyShader;
+	Shader godrayShader;
 
 	GLuint quadVAO = 0;
 	GLuint quadVBO = 0;

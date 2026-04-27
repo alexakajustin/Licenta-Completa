@@ -411,6 +411,55 @@ void Application::Run()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
+		// GOD RAYS PASS
+		if (graphicsSettings.godraysEnabled)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			
+			glDisable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE); // Additive blending for god rays
+
+			godrayShader.UseShader();
+			
+			// Matrices
+			glUniformMatrix4fv(glGetUniformLocation(godrayShader.GetShaderID(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+			glUniformMatrix4fv(glGetUniformLocation(godrayShader.GetShaderID(), "view"), 1, GL_FALSE, glm::value_ptr(view));
+			
+			glm::mat4 invProj = glm::inverse(projection);
+			glm::mat4 invView = glm::inverse(view);
+			glUniformMatrix4fv(glGetUniformLocation(godrayShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+			glUniformMatrix4fv(glGetUniformLocation(godrayShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+
+			// Sun data
+			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+			// We want direction FROM sun TO center (which is -direction) or direction TO the sun?
+			// The shader uses view * vec4(sunDir * 1000.0, 1.0) and expects sunDir to be direction TO the sun.
+			// DirectionalLight::direction is usually direction the light is travelING (towards the origin).
+			// So -sunDir is direction TO the sun.
+			glm::vec3 dirToSun = -glm::normalize(sunDir);
+			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+
+			// God ray parameters
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "exposure"), graphicsSettings.godraysExposure);
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "decay"), graphicsSettings.godraysDecay);
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "density"), graphicsSettings.godraysDensity);
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "weight"), graphicsSettings.godraysWeight);
+
+			// Depth map
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, viewportDepth);
+			glUniform1i(glGetUniformLocation(godrayShader.GetShaderID(), "depthMap"), 0);
+
+			RenderQuad();
+
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+
 		// Scene Selection (Move before depth clear so we can use scene depth)
 		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI, viewportFBO);
 
@@ -607,6 +656,7 @@ void Application::InitSSAO()
 	ssaoShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao.frag");
 	ssaoBlurShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_blur.frag");
 	ssaoApplyShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
+	godrayShader.CreateFromFiles("Assets/Shaders/godrays.vert", "Assets/Shaders/godrays.frag");
 
 	// Gen FBOs
 	glGenFramebuffers(1, &ssaoFBO);
