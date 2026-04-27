@@ -91,6 +91,18 @@ glm::vec3* LightObject::GetDirectionPtr()
 	}
 }
 
+float* LightObject::GetPitchPtr()
+{
+	if (lightType == LightType::Directional) return directionalLight->GetPitchPtr();
+	return nullptr;
+}
+
+float* LightObject::GetYawPtr()
+{
+	if (lightType == LightType::Directional) return directionalLight->GetYawPtr();
+	return nullptr;
+}
+
 void LightObject::SetPosition(const glm::vec3& pos)
 {
 	glm::vec3* p = GetPositionPtr();

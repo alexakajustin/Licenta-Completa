@@ -8,6 +8,10 @@ DirectionalLight::DirectionalLight() : Light()
 	// It will be properly initialized in LoadResources() or when a scene is loaded.
 	direction = glm::vec3(-20.0f, -5.0f, 7.0f);
 	lightProj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 200.0f);
+	
+	// Initial pitch/yaw from default direction
+	pitch = glm::degrees(asin(glm::clamp(direction.y, -1.0f, 1.0f)));
+	yaw = glm::degrees(atan2(direction.z, direction.x));
 }
 
 DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
@@ -21,6 +25,9 @@ DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
 
 	direction = glm::vec3(xDirection, yDirection, zDirection);
 	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
+
+	pitch = glm::degrees(asin(glm::clamp(direction.y, -1.0f, 1.0f)));
+	yaw = glm::degrees(atan2(direction.z, direction.x));
 }
 
 void DirectionalLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation, GLuint diffuseIntensityLocation, GLuint directionLocation)
@@ -36,6 +43,16 @@ void DirectionalLight::SetShadowFrustum(float size, float near, float far)
 {
 	shadowFrustumSize = size;
 	lightProj = glm::ortho(-size, size, -size, size, near, far);
+}
+
+void DirectionalLight::UpdateDirectionFromEuler()
+{
+	float p = glm::radians(pitch);
+	float y = glm::radians(yaw);
+	direction.x = cos(p) * cos(y);
+	direction.y = sin(p);
+	direction.z = cos(p) * sin(y);
+	direction = glm::normalize(direction);
 }
 
 glm::mat4 DirectionalLight::CalculateLightTransform(glm::vec3 target)

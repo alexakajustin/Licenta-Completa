@@ -25,11 +25,17 @@ public:
 
 	// Getter for editing
 	glm::vec3* GetDirectionPtr() { return &direction; }
+	float* GetPitchPtr() { return &pitch; }
+	float* GetYawPtr() { return &yaw; }
+	void UpdateDirectionFromEuler();
+
 	float GetShadowFrustumSize() const { return shadowFrustumSize; }
 
 	~DirectionalLight();
 private:
 	glm::vec3 direction;
+	float pitch = 0.0f;
+	float yaw = 0.0f;
 	float shadowFrustumSize = 100.0f;
 
 	// CSM Data

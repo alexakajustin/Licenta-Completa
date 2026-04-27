@@ -139,6 +139,38 @@ void EditorUI::RenderMaterialPreview(float specular, float shininess, glm::vec3 
 	if (oldDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
 }
 
+void EditorUI::DrawVec2Control(const std::string& label, float& v1, float& v2, const std::string& label1, const std::string& label2, float resetValue, float speed)
+{
+	ImGui::PushID(label.c_str());
+
+	ImGui::Text(label.c_str());
+	ImGui::SameLine(70.0f);
+
+	float totalWidth = ImGui::GetContentRegionAvail().x;
+	float inputWidth = (totalWidth - 5.0f) / 2.0f;
+
+	ImGui::PushItemWidth(inputWidth);
+
+	// Val 1
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+	std::string fmt1 = label1 + ":%.2f";
+	ImGui::DragFloat("##V1", &v1, speed, 0.0f, 0.0f, fmt1.c_str());
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemClicked(1)) v1 = resetValue;
+
+	ImGui::SameLine(0, 5);
+
+	// Val 2
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
+	std::string fmt2 = label2 + ":%.2f";
+	ImGui::DragFloat("##V2", &v2, speed, 0.0f, 0.0f, fmt2.c_str());
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemClicked(1)) v2 = resetValue;
+
+	ImGui::PopItemWidth();
+	ImGui::PopID();
+}
+
 void EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue, float speed)
 {
 	ImGui::PushID(label.c_str());
@@ -1523,7 +1555,28 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			ImGui::SliderFloat("Diffuse", light->GetDiffuseIntensityPtr(), 0.0f, 2.0f);
 			
 			if (light->GetPositionPtr()) DrawVec3Control("Position", *light->GetPositionPtr(), 0.0f, 0.1f);
-			if (light->GetDirectionPtr()) DrawVec3Control("Direction", *light->GetDirectionPtr(), 0.0f, 0.01f);
+			
+			if (light->GetDirectionPtr()) {
+				if (light->GetLightType() == LightType::Directional) {
+					float* pitchPtr = light->GetPitchPtr();
+					float* yawPtr = light->GetYawPtr();
+					
+					float oldP = *pitchPtr;
+					float oldY = *yawPtr;
+					
+					DrawVec2Control("Rotation", *pitchPtr, *yawPtr, "P", "Y", 0.0f, 0.5f);
+
+					if (*pitchPtr != oldP || *yawPtr != oldY) {
+						light->GetDirectionalLight()->UpdateDirectionFromEuler();
+					}
+					
+					glm::vec3& dir = *light->GetDirectionPtr();
+					ImGui::TextDisabled("Direction Vector: %.2f, %.2f, %.2f", dir.x, dir.y, dir.z);
+				}
+				else {
+					DrawVec3Control("Direction", *light->GetDirectionPtr(), 0.0f, 0.01f);
+				}
+			}
 			
 			if (light->GetConstantPtr()) {
 				ImGui::Separator();

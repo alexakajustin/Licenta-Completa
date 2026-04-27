@@ -46,6 +46,7 @@ private:
 
 	// Helper: Unity-style Vector3 input 
 	static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f);
+	static void DrawVec2Control(const std::string& label, float& v1, float& v2, const std::string& label1 = "X", const std::string& label2 = "Y", float resetValue = 0.0f, float speed = 0.1f);
 
 	// Helper: handle ASSET_PATH drag-drop (DRY — used by hierarchy, inspector, and viewport)
 	static void HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos = glm::vec3(0.0f));

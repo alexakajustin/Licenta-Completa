@@ -39,6 +39,8 @@ public:
 	float* GetDiffuseIntensityPtr();
 	glm::vec3* GetPositionPtr();  // For point/spot
 	glm::vec3* GetDirectionPtr(); // For directional/spot
+	float* GetPitchPtr();         // For directional
+	float* GetYawPtr();           // For directional
 	void SetPosition(const glm::vec3& pos);
 
 	// Attenuation (for point/spot lights)
