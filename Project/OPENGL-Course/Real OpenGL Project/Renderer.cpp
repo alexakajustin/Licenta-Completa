@@ -156,11 +156,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Skybox
-	glDisable(GL_BLEND);
+	// Skybox (Disabled in favor of Volumetric Sky pass)
+	/*glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
 	skybox.DrawSkybox(view, projection);
-	glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);*/
 
 	// Enable alpha blending for transparent materials (Unity-style Fade)
 	glEnable(GL_BLEND);
@@ -249,11 +249,11 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	// Enable clip plane to only render above water
 	glEnable(GL_CLIP_DISTANCE0);
 
-	// Skybox (reflected)
-	glDisable(GL_BLEND);
+	// Skybox (reflected) - Disabled in favor of Volumetric Sky
+	/*glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
 	skybox.DrawSkybox(reflectedView, projection);
-	glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);*/
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

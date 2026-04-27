@@ -1,21 +1,21 @@
 {
     "instancedGroups": [
         {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_Tree_(Root)_0.inst",
+            "instanceDataPath": "Misc_Stuff_Scatter_Instanced_399_Tree_(Root)_0.inst",
             "maxDrawDistance": 250.0,
             "name": "Scatter_Instanced_399_Tree (Root)_0",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 polySurface1"
         },
         {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_Tree_(Root)_1.inst",
+            "instanceDataPath": "Misc_Stuff_Scatter_Instanced_399_Tree_(Root)_1.inst",
             "maxDrawDistance": 250.0,
             "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
         },
         {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_grass_5.inst",
+            "instanceDataPath": "Misc_Stuff_Scatter_Instanced_399_grass_5.inst",
             "maxDrawDistance": 250.0,
             "name": "Scatter_Instanced_399_grass 5",
             "shadowDistance": 30.0,
@@ -24,13 +24,13 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.6209999918937683,
+            "ambientIntensity": 0.5619999766349792,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 1.5420000553131104,
+            "diffuseIntensity": 0.5490000247955322,
             "direction": [
                 -20.0,
                 -3.180000066757202,
@@ -227,20 +227,13 @@
     },
     "objects": [
         {
-            "customMeshPath": "Base_Mountain_Water_Plane.mesh",
+            "customMeshPath": "Misc_Stuff_Plane.mesh",
             "inheritScale": true,
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
-            "tessellation": {
-                "displacementBias": -0.5,
-                "displacementScale": 1.0,
-                "distance": 50.0,
-                "enabled": true,
-                "level": 8.0
-            },
             "textureLayers": [
                 {
                     "blendMode": 1,
@@ -662,6 +655,58 @@
                     1000.0,
                     1.0,
                     1000.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "Assets\\Models\\rug.obj",
+            "name": "rug 8",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    660.496826171875,
+                    314.92742919921875,
+                    -403.9001770019531
+                ],
+                "rotation": [
+                    0.0,
+                    -58.89105987548828,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "Assets\\Models\\statue.obj",
+            "name": "statue 9",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    693.361572265625,
+                    347.1351318359375,
+                    -378.9826354980469
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             }
         }

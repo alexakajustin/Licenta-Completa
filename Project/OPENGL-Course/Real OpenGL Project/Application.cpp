@@ -411,6 +411,42 @@ void Application::Run()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
+		// VOLUMETRIC SKY PASS
+		if (graphicsSettings.volumetricSkyEnabled)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+
+			glDisable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+			volumetricSkyShader.UseShader();
+
+			// Matrices for world direction reconstruction
+			glm::mat4 invProj = glm::inverse(projection);
+			glm::mat4 invView = glm::inverse(view);
+			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+
+			// Sun data
+			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+			glm::vec3 dirToSun = -glm::normalize(sunDir);
+			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+
+			// Depth map for sky area masking
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, viewportDepth);
+			glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "depthMap"), 0);
+
+			RenderQuad();
+
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+
 		// GOD RAYS PASS
 		if (graphicsSettings.godraysEnabled)
 		{
@@ -657,6 +693,7 @@ void Application::InitSSAO()
 	ssaoBlurShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_blur.frag");
 	ssaoApplyShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
 	godrayShader.CreateFromFiles("Assets/Shaders/godrays.vert", "Assets/Shaders/godrays.frag");
+	volumetricSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/volumetric_sky.frag");
 
 	// Gen FBOs
 	glGenFramebuffers(1, &ssaoFBO);

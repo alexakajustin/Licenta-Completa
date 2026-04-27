@@ -1612,6 +1612,7 @@ void EditorUI::RenderGraphicsSettings()
 		if (ImGui::CollapsingHeader("Screen Space God Rays", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Checkbox("Enable God Rays", &graphicsSettingsPtr->godraysEnabled);
+			ImGui::Checkbox("Enable Volumetric Sky", &graphicsSettingsPtr->volumetricSkyEnabled);
 			ImGui::Separator();
 
 			if (!graphicsSettingsPtr->godraysEnabled) {
@@ -1624,12 +1625,11 @@ void EditorUI::RenderGraphicsSettings()
 			ImGui::SliderFloat("Density", &graphicsSettingsPtr->godraysDensity, 0.1f, 1.0f);
 			ImGui::SliderFloat("Weight", &graphicsSettingsPtr->godraysWeight, 0.01f, 0.5f);
 
-			if (ImGui::Button("Reset God Rays Defaults", ImVec2(-1, 0)))
-			{
-				graphicsSettingsPtr->godraysExposure = 0.2f;
+			if (ImGui::Button("Reset Defaults", ImVec2(-1, 0))) {
+				graphicsSettingsPtr->godraysExposure = 0.26f;
 				graphicsSettingsPtr->godraysDecay = 0.95f;
-				graphicsSettingsPtr->godraysDensity = 0.4f;
-				graphicsSettingsPtr->godraysWeight = 0.12f;
+				graphicsSettingsPtr->godraysDensity = 1.0f;
+				graphicsSettingsPtr->godraysWeight = 0.098f;
 			}
 
 			if (!graphicsSettingsPtr->godraysEnabled) {

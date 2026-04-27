@@ -15,10 +15,13 @@ struct GraphicsSettings {
 
 	// God Rays
 	bool godraysEnabled = true;
-	float godraysExposure = 0.2f;
+	float godraysExposure = 0.26f;
 	float godraysDecay = 0.95f;
-	float godraysDensity = 0.4f;
-	float godraysWeight = 0.12f;
+	float godraysDensity = 1.0f;
+	float godraysWeight = 0.098f;
+
+	// Volumetric Sky
+	bool volumetricSkyEnabled = true;
 };
 
 #include "Window.h"
@@ -113,6 +116,7 @@ private:
 	Shader ssaoBlurShader;
 	Shader ssaoApplyShader;
 	Shader godrayShader;
+	Shader volumetricSkyShader;
 
 	GLuint quadVAO = 0;
 	GLuint quadVBO = 0;
