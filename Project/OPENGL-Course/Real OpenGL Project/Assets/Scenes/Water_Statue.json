@@ -29,81 +29,6 @@
             "material": {
                 "material.baseColor": [
                     1.0,
-                    1.0,
-                    1.0,
-                    0.8500000238418579
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 0.0,
-                "material_foamColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.8999999761581421
-                ],
-                "material_foamDistance": 25.0,
-                "material_fresnelPower": 4.0,
-                "material_shininessOverride": 32.0,
-                "material_specularIntensityOverride": 1.0,
-                "material_waterColorDeep": [
-                    0.0,
-                    0.44642695784568787,
-                    0.8349834680557251,
-                    0.949999988079071
-                ],
-                "material_waterColorShallow": [
-                    0.44884490966796875,
-                    0.8768007755279541,
-                    1.0,
-                    0.9843137264251709
-                ],
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 0.10000000149011612,
-                "material_waveStrength": 1.0,
-                "shader_frag": "Assets/Shaders/water.frag",
-                "shader_vert": "Assets/Shaders/water.vert"
-            },
-            "modelPath": "",
-            "name": "Plane",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "Plane",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    -25.261276245117188,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    250.0,
-                    0.5,
-                    250.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
                     0.0,
                     0.9504952430725098,
                     1.0
@@ -131,9 +56,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -16.72650909423828,
-                    -24.753440856933594,
-                    -8.765378952026367
+                    0.0,
+                    -11.167732238769531,
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -144,6 +69,83 @@
                     25.0,
                     25.0,
                     25.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    0.9020000100135803,
+                    1.0
+                ],
+                "material_foamDistance": 10.0,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 256.0,
+                "material_specularIntensityOverride": 3.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.10000000149011612,
+                "material_waveStrength": 0.10000000149011612,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
+            },
+            "modelPath": "",
+            "name": "Plane 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    14.998886108398438,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
                 ]
             }
         }

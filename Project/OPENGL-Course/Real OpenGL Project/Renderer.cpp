@@ -154,7 +154,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Skybox (Disabled in favor of Volumetric Sky pass)
 	/*glDisable(GL_BLEND);
@@ -232,7 +232,7 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Reflect camera across water plane (y = waterHeight)
 	glm::mat4 reflectionMatrix(1.0f);

@@ -340,6 +340,34 @@ void Application::Run()
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			// RENDER SKY FOR REFLECTIONS
+			if (graphicsSettings.volumetricSkyEnabled)
+			{
+				glDisable(GL_DEPTH_TEST);
+				glDisable(GL_BLEND);
+				volumetricSkyShader.UseShader();
+				
+				// Calculate reflected matrices
+				glm::mat4 reflectionMatrix(1.0f);
+				reflectionMatrix[1][1] = -1.0f;
+				reflectionMatrix[3][1] = 2.0f * waterHeight;
+				glm::mat4 reflectedView = view * reflectionMatrix;
+
+				glm::mat4 invProj = glm::inverse(projection);
+				glm::mat4 invView = glm::inverse(reflectedView);
+				
+				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+				
+				glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+				glm::vec3 dirToSun = -glm::normalize(sunDir);
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+				
+				RenderQuad();
+				glEnable(GL_DEPTH_TEST);
+			}
+
 			renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
 				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight);
 		}
@@ -348,6 +376,24 @@ void Application::Run()
 		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// RENDER SKY AS BACKGROUND
+		if (graphicsSettings.volumetricSkyEnabled)
+		{
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_BLEND); // Solid background
+			volumetricSkyShader.UseShader();
+			glm::mat4 invProj = glm::inverse(projection);
+			glm::mat4 invView = glm::inverse(view);
+			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+			glm::vec3 dirToSun = -glm::normalize(sunDir);
+			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+			RenderQuad();
+			glEnable(GL_DEPTH_TEST);
+		}
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture);
@@ -411,41 +457,6 @@ void Application::Run()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
-		// VOLUMETRIC SKY PASS
-		if (graphicsSettings.volumetricSkyEnabled)
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
-			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-
-			glDisable(GL_DEPTH_TEST);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-			volumetricSkyShader.UseShader();
-
-			// Matrices for world direction reconstruction
-			glm::mat4 invProj = glm::inverse(projection);
-			glm::mat4 invView = glm::inverse(view);
-			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
-
-			// Sun data
-			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-			glm::vec3 dirToSun = -glm::normalize(sunDir);
-			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
-
-			// Depth map for sky area masking
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, viewportDepth);
-			glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "depthMap"), 0);
-
-			RenderQuad();
-
-			glDisable(GL_BLEND);
-			glEnable(GL_DEPTH_TEST);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		}
 
 		// GOD RAYS PASS
 		if (graphicsSettings.godraysEnabled)

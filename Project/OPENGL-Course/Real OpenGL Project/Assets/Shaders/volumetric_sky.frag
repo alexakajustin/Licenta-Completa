@@ -5,21 +5,11 @@ out vec4 FragColor;
 in vec2 TexCoord;
 in vec3 WorldDir;
 
-uniform sampler2D depthMap;
 uniform vec3 sunDir;
 uniform vec3 sunColor;
 
 void main()
 {
-    float depth = texture(depthMap, TexCoord).r;
-    
-    // Only render where there is no geometry (skybox area)
-    // We use a very strict check to avoid 'eating' distant mountains
-    if (depth < 1.0) {
-        FragColor = vec4(0.0, 0.0, 0.0, 0.0);
-        return;
-    }
-
     vec3 normalizedWorldDir = normalize(WorldDir);
     float h = max(normalizedWorldDir.y, 0.0);
     
