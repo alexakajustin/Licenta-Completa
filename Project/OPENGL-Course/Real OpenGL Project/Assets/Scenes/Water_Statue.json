@@ -1,0 +1,152 @@
+{
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [],
+        "nextId": 1,
+        "nodes": []
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8999999761581421
+                ],
+                "material_foamDistance": 25.0,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 32.0,
+                "material_specularIntensityOverride": 1.0,
+                "material_waterColorDeep": [
+                    0.0,
+                    0.44642695784568787,
+                    0.8349834680557251,
+                    0.949999988079071
+                ],
+                "material_waterColorShallow": [
+                    0.44884490966796875,
+                    0.8768007755279541,
+                    1.0,
+                    0.9843137264251709
+                ],
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.10000000149011612,
+                "material_waveStrength": 1.0,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
+            },
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -25.261276245117188,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    250.0,
+                    0.5,
+                    250.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    0.0,
+                    0.9504952430725098,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "Assets\\Models\\statue.obj",
+            "name": "statue 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -16.72650909423828,
+                    -24.753440856933594,
+                    -8.765378952026367
+                ],
+                "rotation": [
+                    0.0,
+                    90.6014175415039,
+                    0.0
+                ],
+                "scale": [
+                    25.0,
+                    25.0,
+                    25.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}
