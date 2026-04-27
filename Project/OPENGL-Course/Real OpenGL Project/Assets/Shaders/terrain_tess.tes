@@ -1,12 +1,14 @@
 #version 400 core
 
 // Tessellation Evaluation Shader
-// Uses the SAME texture layer system as shader.frag.
-// Each layer's displacement map + displacement scale directly controls geometry.
-// Displacement is along world Y (height), per tile, matching layer tiling.
+// Uses the SAME texture layer system as shader.frag for displacement maps.
+// 
+// KEY DESIGN DECISION: Displacement is INDEPENDENT of layer blend mode.
+// Layer blend mode (Height/Slope/Normal) controls which COLOR TEXTURE shows where.
+// Displacement always applies everywhere a displacement map exists.
+// The per-layer Disp Scale controls intensity.
 //
-// NOTE: Sampler arrays CANNOT be dynamically indexed in GLSL 400 on AMD GPUs.
-// The loop is unrolled with explicit constant indices to work on all hardware.
+// Sampler arrays are unrolled with constant indices for AMD GPU compatibility.
 
 layout(triangles, equal_spacing, ccw) in;
 
@@ -62,67 +64,35 @@ vec3 interp3(vec3 a, vec3 b, vec3 c) {
 	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
 }
 
-// Sample a specific layer's displacement (constant index for AMD compatibility)
-float sampleLayerHeight(int layerIdx, vec2 uv) {
-	vec2 tiledUV = uv * layerData[layerIdx].tiling;
-	// Must use constant index for sampler — handled by caller
-	return 0.0; // placeholder, actual sampling in getDisplacement
-}
-
-// Compute blend weight for a layer
-float getLayerWeight(int i, vec3 localPos, vec3 normal) {
-	float weight = layerData[i].opacity;
-
-	// Height-based blending
-	if (layerData[i].blendMode == 1 || layerData[i].blendMode == 3) {
-		float objH = localPos.y;
-		float range = max(layerData[i].heightMax - layerData[i].heightMin, 0.001);
-		float edge = range * 0.3;
-		weight *= smoothstep(layerData[i].heightMin, layerData[i].heightMin + edge, objH)
-		        * (1.0 - smoothstep(layerData[i].heightMax - edge, layerData[i].heightMax, objH));
-	}
-
-	// Slope-based blending
-	if (layerData[i].blendMode == 2 || layerData[i].blendMode == 3) {
-		float slope = 1.0 - abs(normalize(normal).y);
-		weight *= smoothstep(layerData[i].slopeMin, layerData[i].slopeMax, slope);
-	}
-
-	if (layerData[i].invert == 1) weight = 1.0 - weight;
-
-	return weight;
-}
-
-// Sample displacement from ALL layers — unrolled to avoid dynamic sampler indexing
-float getDisplacement(vec2 uv, vec3 localPos, vec3 normal) {
+// Sample displacement from ALL layers — NO blend mode filtering.
+// Displacement is independent of texture blending — it always applies.
+// Each layer's displacementScale controls how much geometry is displaced.
+// Unrolled for AMD sampler compatibility.
+float getDisplacement(vec2 uv) {
 	float totalDisp = 0.0;
 
 	// Layer 0
-	if (textureLayerCount > 0 && layerData[0].hasDisplacementMap == 1 && layerData[0].displacementScale > 0.0) {
+	if (textureLayerCount > 0 && layerData[0].hasDisplacementMap == 1) {
 		float h = texture(layerDisplacementMaps[0], uv * layerData[0].tiling).r;
-		float w = getLayerWeight(0, localPos, normal);
-		totalDisp += h * layerData[0].displacementScale * w;
+		totalDisp += h * layerData[0].displacementScale;
 	}
 
 	// Layer 1
-	if (textureLayerCount > 1 && layerData[1].hasDisplacementMap == 1 && layerData[1].displacementScale > 0.0) {
+	if (textureLayerCount > 1 && layerData[1].hasDisplacementMap == 1) {
 		float h = texture(layerDisplacementMaps[1], uv * layerData[1].tiling).r;
-		float w = getLayerWeight(1, localPos, normal);
-		totalDisp += h * layerData[1].displacementScale * w;
+		totalDisp += h * layerData[1].displacementScale;
 	}
 
 	// Layer 2
-	if (textureLayerCount > 2 && layerData[2].hasDisplacementMap == 1 && layerData[2].displacementScale > 0.0) {
+	if (textureLayerCount > 2 && layerData[2].hasDisplacementMap == 1) {
 		float h = texture(layerDisplacementMaps[2], uv * layerData[2].tiling).r;
-		float w = getLayerWeight(2, localPos, normal);
-		totalDisp += h * layerData[2].displacementScale * w;
+		totalDisp += h * layerData[2].displacementScale;
 	}
 
 	// Layer 3
-	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1 && layerData[3].displacementScale > 0.0) {
+	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1) {
 		float h = texture(layerDisplacementMaps[3], uv * layerData[3].tiling).r;
-		float w = getLayerWeight(3, localPos, normal);
-		totalDisp += h * layerData[3].displacementScale * w;
+		totalDisp += h * layerData[3].displacementScale;
 	}
 
 	return totalDisp;
@@ -144,31 +114,34 @@ void main()
 	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
 
 	// ========== DISPLACEMENT ==========
-	float displacement = getDisplacement(TexCoord, LocalPos, Normal);
+	// Simple: sample all layers' displacement maps, no blend-mode gating
+	float displacement = getDisplacement(TexCoord);
 
 	// Displace along world Y
 	FragPos.y += displacement;
 	LocalPos.y += displacement;
 
 	// ========== NORMAL RECOMPUTATION ==========
-	// Finite differences on the displacement field
+	// Finite differences on the displacement field (like inspiration's computeNormal)
 	float eps = 0.3;
 	float edgeLen = length(FragPos_TCS[1] - FragPos_TCS[0]);
 	float uvLen = length(TexCoord_TCS[1] - TexCoord_TCS[0]);
 	float uvPerWorld = (uvLen > 0.001) ? (uvLen / edgeLen) : 0.001;
 	vec2 uvStep = vec2(eps * uvPerWorld);
 
-	float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0), LocalPos - vec3(eps, 0, 0), Normal);
-	float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0), LocalPos + vec3(eps, 0, 0), Normal);
-	float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y), LocalPos - vec3(0, 0, eps), Normal);
-	float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y), LocalPos + vec3(0, 0, eps), Normal);
+	float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0));
+	float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0));
+	float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y));
+	float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y));
 
 	vec3 computedNormal = normalize(vec3(hL - hR, 2.0 * eps, hD - hU));
 
+	// Blend with original normal — use computed normal where displacement is significant
 	float dispStrength = clamp(abs(displacement) * 5.0, 0.0, 1.0);
 	Normal = normalize(mix(normalize(Normal), computedNormal, dispStrength));
 	NormalWorld = Normal;
 
+	// Recompute TBN from new normal
 	TangentWorld = normalize(cross(Normal, vec3(0.0, 0.0, 1.0)));
 	if (length(TangentWorld) < 0.01) TangentWorld = normalize(cross(Normal, vec3(1.0, 0.0, 0.0)));
 	BitangentWorld = normalize(cross(TangentWorld, Normal));

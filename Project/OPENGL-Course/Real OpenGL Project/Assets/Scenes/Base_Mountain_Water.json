@@ -58,7 +58,7 @@
                 "start": 403
             }
         ],
-        "nextId": 468,
+        "nextId": 482,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -234,11 +234,18 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "textureLayers": [
                 {
                     "blendMode": 1,
                     "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
-                    "displacementScale": 0.05000000074505806,
+                    "displacementScale": 0.6700000166893005,
                     "heightMax": 100.0,
                     "heightMin": 0.0,
                     "invert": false,
@@ -290,6 +297,13 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "texturePath": "",
             "transform": {
                 "position": [
@@ -338,6 +352,13 @@
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "textureLayers": [
                 {
                     "blendMode": 0,
@@ -402,6 +423,13 @@
             "normalMapPath": "",
             "parent": "Tree (Root)",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "textureLayers": [
                 {
                     "blendMode": 0,
@@ -444,6 +472,13 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "texturePath": "",
             "transform": {
                 "position": [
@@ -494,6 +529,13 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "texturePath": "",
             "transform": {
                 "position": [
@@ -520,6 +562,13 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
             "texturePath": "",
             "transform": {
                 "position": [
