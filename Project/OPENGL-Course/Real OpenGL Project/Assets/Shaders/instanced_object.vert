@@ -24,7 +24,7 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 directionalLightTransform;
+uniform mat4 directionalLightTransform[4];
 uniform vec4 clipPlane;
 
 // Material struct (same as main shader for compatibility)

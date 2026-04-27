@@ -31,7 +31,7 @@ out float vFadeFactor;
 uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 directionalLightTransform;
+uniform mat4 directionalLightTransform[4];
 uniform int useInstancing;
 struct Material {
 	 float specularIntensity;

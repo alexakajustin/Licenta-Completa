@@ -82,8 +82,8 @@ uniform sampler2DArray directionalShadowMap;
 uniform sampler2DArray directionalShadowColorMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
-uniform mat4 dirLightMatrices[3];
-uniform float cascadeSplits[3];
+uniform mat4 directionalLightTransform[4];
+uniform float cascadeSplits[4];
 uniform mat4 viewMatrix; // We need this to get view-space depth
 
 uniform Material material;
@@ -282,7 +282,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	float offsetScale = 0.2 * (layer + 1); 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
-	vec4 fragPosLightSpace = dirLightMatrices[layer] * vec4(worldPosWithOffset, 1.0);
+	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
@@ -316,7 +316,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	shadow /= 16.0;
 
 	// Edge fade for the last cascade only
-	if (layer == 2) {
+	if (layer == 3) {
 		float fadeMargin = 0.1;
 		float edgeFade = 1.0;
 		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.x));
@@ -337,19 +337,19 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	vec3 lightDir = normalize(directionalLight.direction);
 
 	int layer = -1;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		if (depth < cascadeSplits[i]) {
 			layer = i;
 			break;
 		}
 	}
-	if (layer == -1) layer = 2;
+	if (layer == -1) layer = 3;
 
 	float shadow = GetShadowFactorAtLayer(layer, normal, lightDir);
 
 	// Cascade Blending: Smoothly blend between cascades at the split points
 	float blendThreshold = 5.0; // 5 meters before split
-	if (layer < 2) {
+	if (layer < 3) {
 		float splitDist = cascadeSplits[layer];
 		if (depth > splitDist - blendThreshold) {
 			float blendFactor = (depth - (splitDist - blendThreshold)) / blendThreshold;
@@ -450,7 +450,7 @@ vec3 CalcDirectionalLight(vec3 baseColor)
 	if (material.baseColor.a < 1.0) 
 	{
 		// For SSS, we use the first cascade (layer 0) as it's typically used for close-range detail.
-		vec4 fragPosLightSpaceSSS = dirLightMatrices[0] * vec4(FragPos, 1.0);
+		vec4 fragPosLightSpaceSSS = directionalLightTransform[0] * vec4(FragPos, 1.0);
 		vec3 projCoordsSSS = (fragPosLightSpaceSSS.xyz / fragPosLightSpaceSSS.w) * 0.5 + 0.5;
 		
 		// Sample depth from first cascade

@@ -336,7 +336,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					const auto& matrices = dLight->GetCascadedLightMatrices();
 					const auto& splits = dLight->GetCascadeSplitDistances();
 					if (!matrices.empty()) {
-						glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "dirLightMatrices"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
+						glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "directionalLightTransform"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
 						glUniform1fv(glGetUniformLocation(s->GetShaderID(), "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
 					}
 					// View matrix for depth calculation

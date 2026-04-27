@@ -21,7 +21,7 @@ DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
 	// Replace default ShadowMap with CascadedShadowMap
 	if (shadowMap) delete shadowMap;
 	shadowMap = new CascadedShadowMap();
-	((CascadedShadowMap*)shadowMap)->Init((GLuint)shadowWidth, (GLuint)shadowHeight, 3);
+	((CascadedShadowMap*)shadowMap)->Init((GLuint)shadowWidth, (GLuint)shadowHeight, 4);
 
 	direction = glm::vec3(xDirection, yDirection, zDirection);
 	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
@@ -64,7 +64,7 @@ glm::mat4 DirectionalLight::CalculateLightTransform(glm::vec3 target)
 
 void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far)
 {
-	const int cascadeCount = 3; // Fixed for now to match CascadedShadowMap
+	const int cascadeCount = 4; // Fixed for now to match CascadedShadowMap
 	cascadedLightMatrices.clear();
 	cascadeSplitDistances.clear();
 
