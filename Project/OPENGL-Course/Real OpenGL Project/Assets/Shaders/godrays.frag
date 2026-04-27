@@ -63,10 +63,23 @@ void main()
     // Use smoothstep for a softer transition
     float falloff = smoothstep(1.2, 0.0, dist);
 
-    // 5. Final color blending
-    // Add a clamp to prevent extreme brightness
-    vec3 finalColor = sunColor * visibility * exposure * falloff;
-    finalColor = clamp(finalColor, 0.0, 1.0);
+    // 5. Physical Sun Disk
+    float wdots = dot(normalize(WorldDir), sunDir);
+    float sunDisk = 0.0;
+    float sunThreshold = 0.9995; // Controls sun size
+    if (wdots > sunThreshold) {
+        float depth = texture(depthMap, TexCoord).r;
+        if (depth >= 0.9999) {
+             sunDisk = smoothstep(sunThreshold, 1.0, wdots) * 4.0;
+        }
+    }
+
+    // 6. Final color blending
+    vec3 godRayColor = sunColor * visibility * exposure * falloff;
+    vec3 sunDiskColor = sunColor * sunDisk;
+    
+    vec3 finalColor = godRayColor + sunDiskColor;
+    finalColor = clamp(finalColor, 0.0, 2.0); 
     
     FragColor = vec4(finalColor, 1.0);
 }
