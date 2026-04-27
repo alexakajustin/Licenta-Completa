@@ -380,7 +380,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// LAYER 0: Global Distance Culling (for performance/graphics settings)
 			// Reference distance: 2000.0f units
 			float distSq = glm::distance2(sphereCenter, cameraPos);
-			float maxDist = 2000.0f * renderDistanceMultiplier;
+			float multiplier = (overrideShader != nullptr) ? shadowDistanceMultiplier : renderDistanceMultiplier;
+			float maxDist = 2000.0f * multiplier;
 			if (distSq > maxDist * maxDist) continue;
 
 			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
