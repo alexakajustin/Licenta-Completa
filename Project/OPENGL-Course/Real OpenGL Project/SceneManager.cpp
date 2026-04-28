@@ -380,36 +380,43 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		// ===== MULTI-LAYER CULLING PIPELINE =====
 		if (frustum) {
-			glm::vec3 sphereCenter; float sphereRadius;
-			obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
-
-			// LAYER 0: Global Distance Culling (for performance/graphics settings)
-			float distSq = glm::distance2(sphereCenter, cameraPos);
-			
-			float maxDist = 2000.0f;
-			if (graphicsSettings) {
-				if (overrideShader) {
-					float finalShadowDist = graphicsSettings->shadowDistance;
-					glUniform1f(glGetUniformLocation(overrideShader->GetShaderID(), "shadowDistance"), finalShadowDist);
-					maxDist = finalShadowDist;
-				} else {
-					maxDist = graphicsSettings->renderDistance;
-				}
-			}
-			if (distSq > maxDist * maxDist) continue;
-
-			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
-			if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
-
-			// LAYER 2: Contribution culling — skip sub-pixel objects (camera pass only)
-			if (!overrideShader && screenHeight > 0.0f) {
-				if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 2.0f, projection, screenHeight, cameraPos)) continue;
-			}
-
-			// LAYER 3: AABB vs Frustum (precise p-vertex test)
 			glm::vec3 bmin, bmax;
 			obj->GetWorldBounds(bmin, bmax);
-			if (!frustum->IsBoxVisible(bmin, bmax)) continue;
+
+			// SAFETY CHECK: If the camera is horizontally inside the box, 
+			// skip ALL culling. This prevents large floors/terrains from 
+			// disappearing when the camera is at the edge but still on top.
+			bool cameraInside = (cameraPos.x >= bmin.x && cameraPos.x <= bmax.x && 
+								 cameraPos.z >= bmin.z && cameraPos.z <= bmax.z);
+
+			if (!cameraInside) 
+			{
+				// LAYER 0: Global Distance Culling (Accurate AABB distance)
+				float dx = glm::max(bmin.x - cameraPos.x, glm::max(0.0f, cameraPos.x - bmax.x));
+				float dy = glm::max(bmin.y - cameraPos.y, glm::max(0.0f, cameraPos.y - bmax.y));
+				float dz = glm::max(bmin.z - cameraPos.z, glm::max(0.0f, cameraPos.z - bmax.z));
+				float distSq = dx*dx + dy*dy + dz*dz;
+
+				float maxDist = 2000.0f;
+				if (graphicsSettings) {
+					maxDist = overrideShader ? graphicsSettings->shadowDistance : graphicsSettings->renderDistance;
+				}
+				if (distSq > maxDist * maxDist) continue;
+
+				glm::vec3 sphereCenter; float sphereRadius;
+				obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
+
+				// LAYER 1: Bounding Sphere vs Frustum
+				if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
+
+				// LAYER 2: Contribution culling
+				if (!overrideShader && screenHeight > 0.0f) {
+					if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 2.0f, projection, screenHeight, cameraPos)) continue;
+				}
+
+				// LAYER 3: AABB vs Frustum
+				if (!frustum->IsBoxVisible(bmin, bmax)) continue;
+			}
 		}
 
 		Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);
