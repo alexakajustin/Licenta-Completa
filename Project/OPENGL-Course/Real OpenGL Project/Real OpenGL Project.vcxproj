@@ -929,6 +929,7 @@
     <ClInclude Include="MergeMeshNode.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="MeshData.h" />
+    <ClInclude Include="MeshSimplifier.h" />
     <ClInclude Include="NodeBuilderUI.h" />
     <ClInclude Include="Operation.h" />
     <ClInclude Include="OperationRegistry.h" />
