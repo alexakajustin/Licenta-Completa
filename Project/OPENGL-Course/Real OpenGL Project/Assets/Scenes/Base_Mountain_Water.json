@@ -13,6 +13,13 @@
             "name": "Scatter_Instanced_399_Tree (Root)_1",
             "shadowDistance": 30.0,
             "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
+        },
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_399_grass_5.inst",
+            "maxDrawDistance": 250.0,
+            "name": "Scatter_Instanced_399_grass 5",
+            "shadowDistance": 30.0,
+            "sourceObjectName": "grass 5"
         }
     ],
     "lights": [
@@ -46,12 +53,12 @@
                 "start": 398
             },
             {
-                "end": 405,
-                "id": 411,
+                "end": 581,
+                "id": 586,
                 "start": 403
             }
         ],
-        "nextId": 566,
+        "nextId": 587,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -109,7 +116,7 @@
                 "outputPins": [
                     396
                 ],
-                "selectedName": "Plane",
+                "selectedName": "Terrain",
                 "title": "Scene Input"
             },
             {
@@ -196,24 +203,24 @@
                 "axis": 1,
                 "comparison": 1,
                 "editorPos": [
-                    500.0,
-                    150.0
+                    383.0,
+                    526.0
                 ],
-                "id": 404,
+                "id": 580,
                 "inputPins": [
-                    405,
-                    406
+                    581,
+                    582
                 ],
                 "normalAxis": 1,
                 "normalComparison": 1,
-                "normalThreshold": 0.8100000023841858,
+                "normalThreshold": 0.699999988079071,
                 "outputPins": [
-                    407,
-                    408
+                    583,
+                    584
                 ],
-                "threshold": 49.0,
+                "threshold": 50.0,
                 "title": "Filter Transforms",
-                "useNormalFilter": true,
+                "useNormalFilter": false,
                 "usePercentage": true
             }
         ]
@@ -550,39 +557,6 @@
         },
         {
             "inheritScale": true,
-            "modelPath": "",
-            "name": "Scatter_Group_399_grass 5",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "tessellation": {
-                "displacementBias": -0.5,
-                "displacementScale": 1.0,
-                "distance": 50.0,
-                "enabled": true,
-                "level": 8.0
-            },
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
             "material": {
                 "material.baseColor": [
                     1.0,
@@ -635,7 +609,7 @@
                 "shader_vert": "Assets/Shaders/water.vert"
             },
             "modelPath": "",
-            "name": "Plane 7",
+            "name": "Waterplane",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
@@ -655,6 +629,58 @@
                     1000.0,
                     1.0,
                     1000.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Plane 7",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    1069.2647705078125,
+                    447.0256652832031,
+                    -373.0372314453125
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_399_grass 5",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             }
         }
