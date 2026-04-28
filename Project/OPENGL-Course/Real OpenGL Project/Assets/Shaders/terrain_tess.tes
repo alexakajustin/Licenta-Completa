@@ -1,13 +1,9 @@
 #version 400 core
 
 // Tessellation Evaluation Shader
-// Uses the SAME texture layer system as shader.frag for displacement maps.
-// 
-// KEY DESIGN DECISION: Displacement is INDEPENDENT of layer blend mode.
-// Layer blend mode (Height/Slope/Normal) controls which COLOR TEXTURE shows where.
-// Displacement always applies everywhere a displacement map exists.
-// The per-layer Disp Scale controls intensity.
+// Performance-optimized: skips expensive normal recomputation at distance
 //
+// KEY DESIGN DECISION: Displacement is INDEPENDENT of layer blend mode.
 // Sampler arrays are unrolled with constant indices for AMD GPU compatibility.
 
 layout(triangles, equal_spacing, ccw) in;
@@ -34,6 +30,7 @@ out float vFadeFactor;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
+uniform vec3 eyePosition;
 
 // ========== Same texture layer uniforms as shader.frag ==========
 const int MAX_TEXTURE_LAYERS = 4;
@@ -65,8 +62,6 @@ vec3 interp3(vec3 a, vec3 b, vec3 c) {
 }
 
 // Sample displacement from ALL layers — NO blend mode filtering.
-// Displacement is independent of texture blending — it always applies.
-// Each layer's displacementScale controls how much geometry is displaced.
 // Unrolled for AMD sampler compatibility.
 float getDisplacement(vec2 uv) {
 	float totalDisp = 0.0;
@@ -114,7 +109,6 @@ void main()
 	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
 
 	// ========== DISPLACEMENT ==========
-	// Simple: sample all layers' displacement maps, no blend-mode gating
 	float displacement = getDisplacement(TexCoord);
 
 	// Displace along world Y
@@ -122,29 +116,36 @@ void main()
 	LocalPos.y += displacement;
 
 	// ========== NORMAL RECOMPUTATION ==========
-	// Finite differences on the displacement field (like inspiration's computeNormal)
-	float eps = 0.3;
-	float edgeLen = length(FragPos_TCS[1] - FragPos_TCS[0]);
-	float uvLen = length(TexCoord_TCS[1] - TexCoord_TCS[0]);
-	float uvPerWorld = (uvLen > 0.001) ? (uvLen / edgeLen) : 0.001;
-	vec2 uvStep = vec2(eps * uvPerWorld);
+	// Only do expensive finite-difference normals within 150m of camera
+	// Beyond that, the interpolated normal is good enough and saves 4 texture lookups
+	float cameraDist = distance(eyePosition, FragPos);
 
-	float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0));
-	float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0));
-	float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y));
-	float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y));
+	if (cameraDist < 150.0) {
+		float eps = 0.3;
+		float edgeLen = length(FragPos_TCS[1] - FragPos_TCS[0]);
+		float uvLen = length(TexCoord_TCS[1] - TexCoord_TCS[0]);
+		float uvPerWorld = (uvLen > 0.001) ? (uvLen / edgeLen) : 0.001;
+		vec2 uvStep = vec2(eps * uvPerWorld);
 
-	vec3 computedNormal = normalize(vec3(hL - hR, 2.0 * eps, hD - hU));
+		float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0));
+		float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0));
+		float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y));
+		float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y));
 
-	// Blend with original normal — use computed normal where displacement is significant
-	float dispStrength = clamp(abs(displacement) * 5.0, 0.0, 1.0);
-	Normal = normalize(mix(normalize(Normal), computedNormal, dispStrength));
-	NormalWorld = Normal;
+		vec3 computedNormal = normalize(vec3(hL - hR, 2.0 * eps, hD - hU));
 
-	// Recompute TBN from new normal
-	TangentWorld = normalize(cross(Normal, vec3(0.0, 0.0, 1.0)));
-	if (length(TangentWorld) < 0.01) TangentWorld = normalize(cross(Normal, vec3(1.0, 0.0, 0.0)));
-	BitangentWorld = normalize(cross(TangentWorld, Normal));
+		// Blend with original normal — use computed normal where displacement is significant
+		float dispStrength = clamp(abs(displacement) * 5.0, 0.0, 1.0);
+		// Fade the computed normal contribution based on distance for smooth transition
+		float normalBlend = 1.0 - smoothstep(100.0, 150.0, cameraDist);
+		Normal = normalize(mix(normalize(Normal), computedNormal, dispStrength * normalBlend));
+		NormalWorld = Normal;
+
+		// Recompute TBN from new normal
+		TangentWorld = normalize(cross(Normal, vec3(0.0, 0.0, 1.0)));
+		if (length(TangentWorld) < 0.01) TangentWorld = normalize(cross(Normal, vec3(1.0, 0.0, 0.0)));
+		BitangentWorld = normalize(cross(TangentWorld, Normal));
+	}
 
 	gl_Position = projection * view * vec4(FragPos, 1.0);
 }

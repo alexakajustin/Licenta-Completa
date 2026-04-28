@@ -1,5 +1,9 @@
 #version 400 core
 
+// Shadow pass tessellation control shader
+// Much more aggressive optimization — shadows only need correct silhouettes,
+// not fine detail, so we use very low tess levels.
+
 layout (vertices = 3) out;
 
 in vec2 TexCoord_VS[];
@@ -25,12 +29,12 @@ float GetTessLevel(float dist0, float dist1)
 {
 	float avgDist = (dist0 + dist1) / 2.0;
 	
-	// Base tessellation from tiling: more repetitions = more vertices needed
-	// Shadow max is capped at 16.0 for performance (64.0 is overkill for depth maps)
-	float baseTess = clamp(sqrt(maxLayerTiling) * 4.0, 2.0, 16.0);
+	// Shadow maps: cap at 8 — shadows don't need fine tessellation,
+	// they only need roughly correct geometry for depth
+	float baseTess = clamp(sqrt(maxLayerTiling) * 2.0, 2.0, 8.0);
 	
-	// Distance falloff: full detail within 30 units, fades to 1 at 200+ units
-	float distFactor = 1.0 - smoothstep(30.0, 200.0, avgDist);
+	// Faster falloff for shadows: full detail within 30 units, gone by 150
+	float distFactor = 1.0 - smoothstep(30.0, 150.0, avgDist);
 	
 	return max(1.0, baseTess * distFactor);
 }

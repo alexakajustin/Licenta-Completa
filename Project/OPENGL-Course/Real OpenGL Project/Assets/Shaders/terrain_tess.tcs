@@ -1,10 +1,7 @@
 #version 400 core
 
 // Tessellation Control Shader
-// Automatically sets tessellation level based on:
-// 1. Camera distance (close = more detail)
-// 2. Layer tiling (more repetitions = more subdivision needed)
-// No user-configurable tess level — it's all automatic.
+// Performance-optimized: frustum culling + aggressive distance falloff + sensible caps
 
 layout(vertices = 3) out;
 
@@ -26,17 +23,42 @@ out vec3 LocalPos_TCS[];
 
 uniform vec3 eyePosition;
 uniform float maxLayerTiling; // Auto-set: max tiling across all displacement layers
+uniform mat4 projection;
+uniform mat4 view;
+
+// Frustum culling: check if a sphere is outside the view frustum
+bool IsOutsideFrustum(vec3 center, float radius)
+{
+	mat4 vp = projection * view;
+	// Extract frustum planes from VP matrix (Gribb-Hartmann method)
+	for (int i = 0; i < 6; i++) {
+		vec4 plane;
+		if (i == 0) plane = vec4(vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0]); // Left
+		else if (i == 1) plane = vec4(vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0]); // Right
+		else if (i == 2) plane = vec4(vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1]); // Bottom
+		else if (i == 3) plane = vec4(vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1]); // Top
+		else if (i == 4) plane = vec4(vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2]); // Near
+		else             plane = vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]); // Far
+		
+		float len = length(plane.xyz);
+		if (len > 0.0) plane /= len;
+		
+		if (dot(plane.xyz, center) + plane.w < -radius)
+			return true;
+	}
+	return false;
+}
 
 float GetTessLevel(float dist0, float dist1)
 {
 	float avgDist = (dist0 + dist1) / 2.0;
 	
-	// Base tessellation from tiling: more repetitions = more vertices needed
-	// Scale: tiling 1 → 4 tess, tiling 10 → 16 tess, tiling 100+ → 64 tess
-	float baseTess = clamp(sqrt(maxLayerTiling) * 4.0, 2.0, 64.0);
+	// Cap at 16 — sweet spot for quality vs performance
+	// Higher values give diminishing visual returns but quadratic perf cost
+	float baseTess = clamp(sqrt(maxLayerTiling) * 3.0, 2.0, 16.0);
 	
-	// Distance falloff: full detail within 30 units, fades to 1 at 200+ units
-	float distFactor = 1.0 - smoothstep(30.0, 200.0, avgDist);
+	// Aggressive distance falloff: full detail within 50 units, 1.0 at 300+ units
+	float distFactor = 1.0 - smoothstep(50.0, 300.0, avgDist);
 	
 	return max(1.0, baseTess * distFactor);
 }
@@ -52,12 +74,32 @@ void main()
 	NormalWorld_TCS[gl_InvocationID]   = NormalWorld_VS[gl_InvocationID];
 	LocalPos_TCS[gl_InvocationID]      = LocalPos_VS[gl_InvocationID];
 
-	float d0 = distance(eyePosition, FragPos_VS[0]);
-	float d1 = distance(eyePosition, FragPos_VS[1]);
-	float d2 = distance(eyePosition, FragPos_VS[2]);
+	// Only compute tess levels once per patch (invocation 0)
+	if (gl_InvocationID == 0)
+	{
+		// Frustum cull: skip tessellation for off-screen patches
+		vec3 patchCenter = (FragPos_VS[0] + FragPos_VS[1] + FragPos_VS[2]) / 3.0;
+		float patchRadius = max(
+			max(distance(patchCenter, FragPos_VS[0]), distance(patchCenter, FragPos_VS[1])),
+			distance(patchCenter, FragPos_VS[2])
+		) + 5.0; // Extra margin for displacement
+		
+		if (IsOutsideFrustum(patchCenter, patchRadius)) {
+			// Cull: set all tess levels to 0 to discard the patch
+			gl_TessLevelOuter[0] = 0.0;
+			gl_TessLevelOuter[1] = 0.0;
+			gl_TessLevelOuter[2] = 0.0;
+			gl_TessLevelInner[0] = 0.0;
+			return;
+		}
 
-	gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
-	gl_TessLevelOuter[1] = GetTessLevel(d2, d0);
-	gl_TessLevelOuter[2] = GetTessLevel(d0, d1);
-	gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+		float d0 = distance(eyePosition, FragPos_VS[0]);
+		float d1 = distance(eyePosition, FragPos_VS[1]);
+		float d2 = distance(eyePosition, FragPos_VS[2]);
+
+		gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
+		gl_TessLevelOuter[1] = GetTessLevel(d2, d0);
+		gl_TessLevelOuter[2] = GetTessLevel(d0, d1);
+		gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+	}
 }
