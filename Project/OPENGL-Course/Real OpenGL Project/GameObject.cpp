@@ -185,6 +185,53 @@ void GameObject::RemoveChild(GameObject* child)
 	}
 }
 
+void GameObject::SetModel(Model* mdl)
+{
+	model = mdl;
+	if (!model) return;
+
+	// Automatically detect LOD meshes from the model if they follow naming conventions
+	// (LOD0, LOD1, LOD2)
+	size_t meshCount = model->GetMeshCount();
+	const auto& meshNames = model->GetMeshNames();
+
+	if (meshCount > 1) {
+		Mesh* foundLODs[3] = { nullptr, nullptr, nullptr };
+		int highestLOD = -1;
+
+		for (size_t i = 0; i < meshCount; i++) {
+			Mesh* msh = model->GetMesh(i);
+			if (!msh || i >= meshNames.size()) continue;
+
+			std::string mName = meshNames[i];
+			for (auto& c : mName) c = toupper(c);
+
+			if (mName.find("LOD0") != std::string::npos || mName.find("LOD_0") != std::string::npos) {
+				SetMesh(msh);
+			}
+			else if (mName.find("LOD1") != std::string::npos || mName.find("LOD_1") != std::string::npos) {
+				foundLODs[0] = msh;
+				if (highestLOD < 1) highestLOD = 1;
+			}
+			else if (mName.find("LOD2") != std::string::npos || mName.find("LOD_2") != std::string::npos) {
+				foundLODs[1] = msh;
+				if (highestLOD < 2) highestLOD = 2;
+			}
+			else if (mName.find("LOD3") != std::string::npos || mName.find("LOD_3") != std::string::npos) {
+				foundLODs[2] = msh;
+				if (highestLOD < 3) highestLOD = 3;
+			}
+		}
+
+		if (highestLOD >= 1) {
+			for (int i = 0; i < 3; i++) {
+				if (foundLODs[i]) SetLODMesh(i, foundLODs[i]);
+			}
+		}
+	}
+	SetDirty();
+}
+
 void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 	GLint uniformTiling, GLint uniformOffset,
 	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
@@ -220,6 +267,16 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 {
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+	// Calculate distance to camera for LOD
+	float dist = glm::distance(glm::vec3(modelMatrix[3]), cameraPos);
+
+	// Use global graphics settings for distances
+	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
+
 
 	// Reset texture flags to prevent stale state from previous object
 	if (uniformUseDiffuseTexture != -1) glUniform1i(uniformUseDiffuseTexture, 0);
@@ -369,92 +426,84 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		}
 	}
 
-	// Render the visual component
-	if (model && !hasCustomMesh)
-	{
-		bool hasOverrideTex = (texture != nullptr);
-		bool hasOverrideNorm = (normalMap != nullptr);
+	// Determine which mesh to render based on distance and available LODs
+	Mesh* meshToRender = mesh;
 
-		if (hasOverrideTex || hasOverrideNorm) {
-			if (hasOverrideTex) {
-				glUniform1i(uniformUseDiffuseTexture, 1);
-				glUniform1i(uniformDiffuseTexture, 0);
-				texture->UseTexture();
-			} else {
-				glUniform1i(uniformUseDiffuseTexture, 0);
-			}
-
-			if (hasOverrideNorm) {
-				glUniform1i(uniformUseNormalMap, 1);
-				glUniform1i(uniformNormalMap, 1);
-				normalMap->UseNormalMap();
-			} else {
-				glUniform1i(uniformUseNormalMap, 0);
-			}
-			model->RenderModelGeometryOnly();
-		} else {
-			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture, uniformNormalMap, uniformDiffuseTexture);
+	if (lodCount > 0) {
+		if (dist < finalLOD0 || lodCount == 1) {
+			meshToRender = mesh;
+		}
+		else if (dist < finalLOD1 || lodCount == 2) {
+			meshToRender = (lodMeshes[0] ? lodMeshes[0] : mesh);
+		}
+		else if (dist < finalLOD2 || lodCount == 3) {
+			meshToRender = (lodMeshes[1] ? lodMeshes[1] : (lodMeshes[0] ? lodMeshes[0] : mesh));
+		}
+		else {
+			meshToRender = (lodMeshes[2] ? lodMeshes[2] : (lodMeshes[1] ? lodMeshes[1] : (lodMeshes[0] ? lodMeshes[0] : mesh)));
 		}
 	}
-	else
-	{
-		// Calculate distance to camera for LOD
-		float dist = glm::distance(glm::vec3(modelMatrix[3]), cameraPos);
 
-		// Use global graphics settings for distances
-		float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
-		float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
-		float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
-		float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
+	// LOD Debug Coloring
+	if (gs && gs->debugLODColoring && meshToRender) {
+		GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+		if (debugLoc != -1) glUniform1i(debugLoc, 1);
+		
+		GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
+		if (lodColorLoc != -1) {
+			if (meshToRender == mesh) glUniform3f(lodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
+			else if (lodCount >= 1 && meshToRender == lodMeshes[0]) glUniform3f(lodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
+			else if (lodCount >= 2 && meshToRender == lodMeshes[1]) glUniform3f(lodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
+			else glUniform3f(lodColorLoc, 1.0f, 1.0f, 0.0f); // YELLOW = Other
+		}
+	} else {
+		GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+		if (debugLoc != -1) glUniform1i(debugLoc, 0);
+	}
 
-		Mesh* meshToRender = mesh;
-		if (lodCount > 0) {
-			if (dist < finalLOD0) meshToRender = mesh;
-			else if (dist < finalLOD1 && lodCount >= 2 && lodMeshes[0]) meshToRender = lodMeshes[0];
-			else if (dist < finalLOD2 && lodCount >= 3 && lodMeshes[1]) meshToRender = lodMeshes[1];
-			else if (lodCount >= 4 && lodMeshes[2]) meshToRender = lodMeshes[2];
+	if (meshToRender) {
+		if (texture) {
+			glUniform1i(uniformUseDiffuseTexture, 1);
+			glUniform1i(uniformDiffuseTexture, 0);
+			texture->UseTexture();
+		} else {
+			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
-		if (meshToRender) {
-			if (texture) {
-				glUniform1i(uniformUseDiffuseTexture, 1);
-				glUniform1i(uniformDiffuseTexture, 0);
-				texture->UseTexture();
-			} else {
-				glUniform1i(uniformUseDiffuseTexture, 0);
-			}
-
-			if (normalMap) {
-				glUniform1i(uniformUseNormalMap, 1);
-				glUniform1i(uniformNormalMap, 1);
-				normalMap->UseNormalMap();
-			} else {
-				glUniform1i(uniformUseNormalMap, 0);
-			}
-			// LOD Debug Coloring
-			if (gs && gs->debugLODColoring) {
-				GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
-				if (debugLoc != -1) glUniform1i(debugLoc, 1);
-				
-				GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
-				if (lodColorLoc != -1) {
-					if (meshToRender == mesh) glUniform3f(lodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
-					else if (lodCount >= 1 && meshToRender == lodMeshes[0]) glUniform3f(lodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
-					else if (lodCount >= 2 && meshToRender == lodMeshes[1]) glUniform3f(lodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
-					else glUniform3f(lodColorLoc, 1.0f, 1.0f, 0.0f); // YELLOW = Other
-				}
-			} else {
-				GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
-				if (debugLoc != -1) glUniform1i(debugLoc, 0);
-			}
-
-			// Render
-			if (useTessellation) {
-				meshToRender->RenderMeshTessellated();
-			} else {
-				meshToRender->RenderMesh();
-			}
+		if (normalMap) {
+			glUniform1i(uniformUseNormalMap, 1);
+			glUniform1i(uniformNormalMap, 1);
+			normalMap->UseNormalMap();
+		} else {
+			glUniform1i(uniformUseNormalMap, 0);
 		}
+
+		// Render
+		if (useTessellation) {
+			meshToRender->RenderMeshTessellated();
+		} else {
+			meshToRender->RenderMesh();
+		}
+	}
+	else if (model) {
+		// Fallback for models without detected LODs
+		if (texture) {
+			glUniform1i(uniformUseDiffuseTexture, 1);
+			glUniform1i(uniformDiffuseTexture, 0);
+			texture->UseTexture();
+		} else {
+			glUniform1i(uniformUseDiffuseTexture, 0);
+		}
+
+		if (normalMap) {
+			glUniform1i(uniformUseNormalMap, 1);
+			glUniform1i(uniformNormalMap, 1);
+			normalMap->UseNormalMap();
+		} else {
+			glUniform1i(uniformUseNormalMap, 0);
+		}
+
+		model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture, uniformNormalMap, uniformDiffuseTexture);
 	}
 }
 

@@ -257,28 +257,37 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
 	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
 	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
-	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
-
 	// LOD distance uniforms
-	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), lodCount);
+	static GLuint lastCullShader = 0;
+	static GLint uLodCount = -1, uMaxDist = -1, uMeshCenter = -1;
+	static GLint uLodDistances[3] = { -1, -1, -1 };
+
+	if (cullShaderID != lastCullShader) {
+		lastCullShader = cullShaderID;
+		uLodCount = glGetUniformLocation(cullShaderID, "lodCount");
+		uMaxDist = glGetUniformLocation(cullShaderID, "maxDrawDistance");
+		uMeshCenter = glGetUniformLocation(cullShaderID, "meshBoundsCenter");
+		for (int i = 0; i < 3; i++) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "lodDistances[%d]", i);
+			uLodDistances[i] = glGetUniformLocation(cullShaderID, buf);
+		}
+	}
+
+	if (uLodCount != -1) glUniform1i(uLodCount, lodCount);
+	glUniform3fv(uMeshCenter, 1, glm::value_ptr(meshBoundsCenter));
+
 	// Use global graphics settings for distances
 	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
 	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
 	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
 	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
 
-	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalMaxDist);
+	if (uMaxDist != -1) glUniform1f(uMaxDist, finalMaxDist);
 
-	for (int lod = 0; lod < MAX_LOD_LEVELS; lod++) {
-		char buf[64];
-		snprintf(buf, sizeof(buf), "lodDistances[%d]", lod);
-		
-		float dist = finalMaxDist;
-		if (lod == 0) dist = finalLOD0;
-		else if (lod == 1) dist = finalLOD1;
-		else if (lod == 2) dist = finalLOD2;
-
-		glUniform1f(glGetUniformLocation(cullShaderID, buf), dist);
+	float dvals[3] = { finalLOD0, finalLOD1, finalLOD2 };
+	for (int i = 0; i < 3; i++) {
+		if (uLodDistances[i] != -1) glUniform1f(uLodDistances[i], dvals[i]);
 	}
 
 	if (useChunking) {

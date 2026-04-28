@@ -33,7 +33,7 @@ public:
 
 	// Setters for components
 	void SetName(const std::string& newName) { name = newName; }
-	void SetModel(Model* mdl) { model = mdl; }
+	void SetModel(Model* mdl);
 	void SetMesh(Mesh* msh);
 	void SetTexture(Texture* tex) { texture = tex; }
 	void SetNormalMap(Texture* normal) { normalMap = normal; }
