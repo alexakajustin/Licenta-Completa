@@ -569,20 +569,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								group->SetLODMesh(2, meshCache[key2], 0.0f);
 							}
 
-							// Auto-generate LOD meshes if the model didn't provide them
-							if (group->GetLODCount() <= 1) {
-								MeshData lod1Data = MeshSimplifier::Simplify(meshDataList[m], 0.5f);
-								MeshData lod2Data = MeshSimplifier::Simplify(meshDataList[m], 0.25f);
-								if (!lod1Data.indices.empty()) {
-									Mesh* lod1Mesh = lod1Data.ToMesh(0);
-									if (lod1Mesh) group->SetLODMesh(1, lod1Mesh, 0.0f);
-								}
-								if (!lod2Data.indices.empty()) {
-									Mesh* lod2Mesh = lod2Data.ToMesh(0);
-									if (lod2Mesh) group->SetLODMesh(2, lod2Mesh, 0.0f);
-								}
-							}
-
 							scene.AddInstancedGroup(group);
 							scatterNode->AddCreatedGroupName(subGroupName);
 						}
@@ -646,20 +632,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
 							group->SetMaxDrawDistance(maxDist);
 							group->SetShadowDistance(shadowDist);
-
-							// Auto-generate LOD meshes via vertex clustering
-							if (group->GetLODCount() <= 1 && singleMesh.GetVertexCount() >= 8) {
-								MeshData lod1Data = MeshSimplifier::Simplify(singleMesh, 0.5f);
-								MeshData lod2Data = MeshSimplifier::Simplify(singleMesh, 0.25f);
-								if (!lod1Data.indices.empty()) {
-									Mesh* lod1Mesh = lod1Data.ToMesh(0);
-									if (lod1Mesh) group->SetLODMesh(1, lod1Mesh, 0.0f);
-								}
-								if (!lod2Data.indices.empty()) {
-									Mesh* lod2Mesh = lod2Data.ToMesh(0);
-									if (lod2Mesh) group->SetLODMesh(2, lod2Mesh, 0.0f);
-								}
-							}
 
 							scene.AddInstancedGroup(group);
 

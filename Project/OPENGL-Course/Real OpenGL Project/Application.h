@@ -10,11 +10,11 @@ struct GraphicsSettings {
 	int ssaoBlurSize = 4;      // 2, 4, 6, 8
 
 	// Culling & LOD Distances (Base values, before multipliers)
-	float lod0Distance = 50.0f;
-	float lod1Distance = 150.0f;
-	float lod2Distance = 400.0f;
+	float lod0Distance = 200.0f;
+	float lod1Distance = 400.0f;
+	float lod2Distance = 800.0f;
 	float renderDistance = 2000.0f; // Object cut-off (Trees/Grass)
-	float shadowDistance = 100.0f;
+	float shadowDistance = 200.0f;
 
 	// God Rays
 	bool godraysEnabled = true;
