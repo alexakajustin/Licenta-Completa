@@ -124,19 +124,25 @@ void main()
     // Near/Far planes
     if (clipPos.z < -radius || clipPos.z > absW) return;
 
-    // ------- LOD Classification -------
+    // ------- LOD Classification + Density-Based Culling -------
+    // For simple meshes (grass quads), LOD meshes are identical to LOD0.
+    // Density culling skips instances at far distances to reduce triangle count:
+    //   LOD 1: keep every 2nd instance (50% density)
+    //   LOD 2: keep every 4th instance (25% density)
     if (lodCount >= 3 && dist > lodDistances[1]) {
-        // LOD 2: Farthest
+        // LOD 2: Farthest — 25% density
+        if (id % 4u != 0u) return;
         uint idx = atomicAdd(instanceCountLOD2, 1);
         visibleLOD2[idx] = inst;
     }
     else if (lodCount >= 2 && dist > lodDistances[0]) {
-        // LOD 1: Medium distance
+        // LOD 1: Medium distance — 50% density
+        if (id % 2u != 0u) return;
         uint idx = atomicAdd(instanceCountLOD1, 1);
         visibleLOD1[idx] = inst;
     }
     else {
-        // LOD 0: Closest (full detail)
+        // LOD 0: Closest — full density, full detail
         uint idx = atomicAdd(instanceCountLOD0, 1);
         visibleLOD0[idx] = inst;
     }

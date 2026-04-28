@@ -56,10 +56,12 @@ void InstancedGroup::Setup(Mesh* mesh,
 	meshBoundRadius = glm::length(extents);
 	meshBoundsCenter = (minB + maxB) * 0.5f; // Center of AABB relative to mesh origin
 
-	// Initialize LOD 0 with the shared mesh
+	// Initialize all LOD levels — LOD1/LOD2 start as nullptr (fall back to sharedMesh)
+	// MeshSimplifier will override them with simplified meshes if the mesh is complex enough.
+	// For simple meshes (grass quads), density-based culling in the compute shader handles LOD.
 	lodLevels[0].mesh = sharedMesh;
 	lodLevels[0].maxDistance = defaultMaxDrawDistance;
-	lodCount = 1;
+	lodCount = 3;
 
 	// Decide whether to use chunking
 	const uint32_t CHUNK_THRESHOLD = 1000000; // 1M instances → enable chunking
