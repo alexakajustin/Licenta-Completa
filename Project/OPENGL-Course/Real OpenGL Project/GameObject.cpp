@@ -2,6 +2,7 @@
 #include "CommonValues.h"
 #include "Application.h"
 #include <glm/gtx/norm.hpp>
+#include "GraphicsSettings.h"
 
 GameObject::GameObject()
 	: name("GameObject"), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)

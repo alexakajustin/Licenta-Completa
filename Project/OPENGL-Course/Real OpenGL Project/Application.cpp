@@ -394,7 +394,7 @@ void Application::Run()
 			}
 
 			renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
-				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight);
+				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight, &graphicsSettings);
 		}
 		
 		// 2. Final Scene Render (Viewport FBO)
@@ -429,7 +429,7 @@ void Application::Run()
 		}
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, activeFrustum);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, activeFrustum, &graphicsSettings);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

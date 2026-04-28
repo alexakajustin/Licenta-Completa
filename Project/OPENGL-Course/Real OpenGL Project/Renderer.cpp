@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include "CascadedShadowMap.h"
+#include "GraphicsSettings.h"
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
@@ -157,8 +158,14 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  PointLight* pointLights, unsigned int pointLightCount,
 						  SpotLight* spotLights, unsigned int spotLightCount,
 						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture,
-						  const Frustum* debugFrustum)
+						  const Frustum* debugFrustum, const GraphicsSettings* gs)
 {
+	if (gs && gs->showWireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	} else {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -228,7 +235,10 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, activeFrustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1));
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, activeFrustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1), glm::mat4(1.0f), gs);
+
+	// Reset polygon mode after main render pass
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);
@@ -241,8 +251,14 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 							  DirectionalLight& mainLight,
 							  PointLight* pointLights, unsigned int pointLightCount,
 							  SpotLight* spotLights, unsigned int spotLightCount,
-							  int fbw, int fbh, float waterHeight)
+							  int fbw, int fbh, float waterHeight, const GraphicsSettings* gs)
 {
+	if (gs && gs->showWireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	} else {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -310,9 +326,10 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 
 	// Render opaque scene objects only (no transparent/water) with clip plane active
 	glm::vec4 reflectionClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
-	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0, 0, reflectionClipPlane);
+	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0, 0, reflectionClipPlane, glm::mat4(1.0f), gs);
 
 	// Restore state
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDisable(GL_CLIP_DISTANCE0);
 	glFrontFace(GL_CCW);
 	glDisable(GL_BLEND);

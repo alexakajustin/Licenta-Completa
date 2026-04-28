@@ -16,6 +16,7 @@
 #include "InstancedGroup.h"
 #include "Renderer.h"
 #include "UndoActions.h"
+#include "GraphicsSettings.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -278,7 +279,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
 	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, 
-	GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform)
+	GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -743,7 +744,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				cullShader->GetShaderID(),
 				*targetRenderShader,
 				projection, view, cameraPos,
-				graphicsSettings,
+				gs ? gs : graphicsSettings,
 				false
 			);
 		}

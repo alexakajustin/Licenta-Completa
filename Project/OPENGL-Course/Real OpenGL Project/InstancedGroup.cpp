@@ -3,6 +3,7 @@
 #include "Material.h"
 #include "Texture.h"
 #include "Shader.h"
+#include "GraphicsSettings.h"
 #include "Application.h"
 #include "DebugOverlay.h"
 #include "Frustum.h"

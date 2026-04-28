@@ -24,13 +24,13 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.6140000224113464,
+            "ambientIntensity": 0.2680000066757202,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.8759999871253967,
+            "diffuseIntensity": 0.7710000276565552,
             "direction": [
                 0.08127328008413315,
                 -0.9862856268882751,
@@ -58,7 +58,7 @@
                 "start": 659
             }
         ],
-        "nextId": 668,
+        "nextId": 682,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -244,31 +244,31 @@
             "textureLayers": [
                 {
                     "blendMode": 1,
-                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
-                    "displacementScale": 0.019999999552965164,
+                    "displacementMapPath": "Assets\\Textures\\terrain\\grass\\displacement.jpg",
+                    "displacementScale": 1.0,
                     "heightMax": 100.0,
-                    "heightMin": 0.0,
+                    "heightMin": 2.0,
                     "invert": false,
-                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "normalMapPath": "Assets\\Textures\\terrain\\grass\\normal.jpg",
                     "opacity": 1.0,
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
-                    "tiling": 50.0
+                    "texturePath": "Assets\\Textures\\terrain\\grass\\albedo.jpg",
+                    "tiling": 100.0
                 },
                 {
                     "blendMode": 1,
-                    "displacementMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_disp_1k.png",
-                    "displacementScale": 0.05000000074505806,
+                    "displacementMapPath": "Assets\\Textures\\terrain\\snow\\displacement.jpg",
+                    "displacementScale": 1.0,
                     "heightMax": 331.0,
                     "heightMin": 306.0,
                     "invert": false,
-                    "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                    "normalMapPath": "Assets\\Textures\\terrain\\snow\\normal.jpg",
                     "opacity": 1.0,
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
-                    "tiling": 1.0
+                    "texturePath": "Assets\\Textures\\terrain\\snow\\albedo.jpg",
+                    "tiling": 100.0
                 }
             ],
             "texturePath": "",
@@ -413,7 +413,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 polySurface1",
@@ -475,7 +477,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 g2 polySurface1",

@@ -61,7 +61,7 @@ public:
 		class SpotLight* spotLights, unsigned int spotLightCount,
 		float time = 0.0f, const Frustum* frustum = nullptr, Shader* overrideShader = nullptr,
 		float screenHeight = 0.0f, class Renderer* renderer = nullptr, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0, 
-		glm::vec4 clipPlane = glm::vec4(0, 0, 0, 1), glm::mat4 shadowTransform = glm::mat4(1.0f));
+		glm::vec4 clipPlane = glm::vec4(0, 0, 0, 1), glm::mat4 shadowTransform = glm::mat4(1.0f), const GraphicsSettings* gs = nullptr);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
 	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
