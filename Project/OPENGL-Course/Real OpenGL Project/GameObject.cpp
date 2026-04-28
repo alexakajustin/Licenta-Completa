@@ -1,13 +1,18 @@
 #include "GameObject.h"
+#include "CommonValues.h"
+#include "Application.h"
+#include <glm/gtx/norm.hpp>
 
 GameObject::GameObject()
 	: name("GameObject"), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
 {
+	for (int i = 0; i < 3; i++) lodMeshes[i] = nullptr;
 }
 
 GameObject::GameObject(const std::string& name)
 	: name(name), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
 {
+	for (int i = 0; i < 3; i++) lodMeshes[i] = nullptr;
 }
 
 GameObject* GameObject::Clone(const std::string& newName)
@@ -59,6 +64,12 @@ GameObject::~GameObject()
 	if (mesh) {
 		mesh->Release();
 		mesh = nullptr;
+	}
+	for (int i = 0; i < 3; i++) {
+		if (lodMeshes[i]) {
+			lodMeshes[i]->Release();
+			lodMeshes[i] = nullptr;
+		}
 	}
 
 	// Note: We don't delete children here because SceneManager owns them in the 'objects' list.
@@ -177,29 +188,36 @@ void GameObject::RemoveChild(GameObject* child)
 void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 	GLint uniformTiling, GLint uniformOffset,
 	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs,
 	const glm::mat4& parentMatrix, const Frustum* frustum)
 {
-	// NOTE: Frustum culling is handled by SceneManager's multi-layer pipeline.
-	// Removed redundant per-object check to avoid double-testing.
+	glm::mat4 modelMatrix = parentMatrix * GetWorldMatrix();
 
-	glm::mat4 modelMatrix = GetWorldMatrix();
-	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap);
+	// Frustum culling
+	if (frustum) {
+		glm::vec3 min, max;
+		GetWorldBounds(min, max);
+		if (!frustum->IsBoxVisible(min, max)) {
+			return; 
+		}
+	}
+
+	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, cameraPos, gs);
 
 	// Recursive render for children
 	for (auto* child : children)
 	{
 		child->Render(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, 
 			uniformTiling, uniformOffset,
-			uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, modelMatrix, frustum);
+			uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, cameraPos, gs, modelMatrix, frustum);
 	}
 }
 
 void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 	GLint uniformTiling, GLint uniformOffset, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs,
 	GLuint shaderID)
 {
-	if (!mesh && !model) return;
-
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
@@ -378,28 +396,64 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			model->RenderModel(uniformUseNormalMap, uniformUseDiffuseTexture, uniformNormalMap, uniformDiffuseTexture);
 		}
 	}
-	else if (mesh)
+	else
 	{
-		if (texture) {
-			glUniform1i(uniformUseDiffuseTexture, 1);
-			glUniform1i(uniformDiffuseTexture, 0);
-			texture->UseTexture();
-		} else {
-			glUniform1i(uniformUseDiffuseTexture, 0);
+		// Calculate distance to camera for LOD
+		float dist = glm::distance(glm::vec3(modelMatrix[3]), cameraPos);
+
+		// Use global graphics settings for distances
+		float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
+		float d0 = (gs ? gs->lod0Distance : 50.0f) * mult;
+		float d1 = (gs ? gs->lod1Distance : 150.0f) * mult;
+		float d2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+
+		Mesh* meshToRender = mesh;
+		if (lodCount > 0) {
+			if (dist < d0) meshToRender = mesh;
+			else if (dist < d1 && lodCount >= 2 && lodMeshes[0]) meshToRender = lodMeshes[0];
+			else if (dist < d2 && lodCount >= 3 && lodMeshes[1]) meshToRender = lodMeshes[1];
+			else if (lodCount >= 4 && lodMeshes[2]) meshToRender = lodMeshes[2];
 		}
 
-		if (normalMap) {
-			glUniform1i(uniformUseNormalMap, 1);
-			glUniform1i(uniformNormalMap, 1);
-			normalMap->UseNormalMap();
-		} else {
-			glUniform1i(uniformUseNormalMap, 0);
-		}
-		// GPU Tessellation: use GL_PATCHES when tessellation shader is active
-		if (useTessellation) {
-			mesh->RenderMeshTessellated();
-		} else {
-			mesh->RenderMesh();
+		if (meshToRender) {
+			if (texture) {
+				glUniform1i(uniformUseDiffuseTexture, 1);
+				glUniform1i(uniformDiffuseTexture, 0);
+				texture->UseTexture();
+			} else {
+				glUniform1i(uniformUseDiffuseTexture, 0);
+			}
+
+			if (normalMap) {
+				glUniform1i(uniformUseNormalMap, 1);
+				glUniform1i(uniformNormalMap, 1);
+				normalMap->UseNormalMap();
+			} else {
+				glUniform1i(uniformUseNormalMap, 0);
+			}
+			// LOD Debug Coloring
+			if (gs && gs->debugLODColoring) {
+				GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+				if (debugLoc != -1) glUniform1i(debugLoc, 1);
+				
+				GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
+				if (lodColorLoc != -1) {
+					if (meshToRender == mesh) glUniform3f(lodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
+					else if (lodCount >= 1 && meshToRender == lodMeshes[0]) glUniform3f(lodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
+					else if (lodCount >= 2 && meshToRender == lodMeshes[1]) glUniform3f(lodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
+					else glUniform3f(lodColorLoc, 1.0f, 1.0f, 0.0f); // YELLOW = Other
+				}
+			} else {
+				GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+				if (debugLoc != -1) glUniform1i(debugLoc, 0);
+			}
+
+			// Render
+			if (useTessellation) {
+				meshToRender->RenderMeshTessellated();
+			} else {
+				meshToRender->RenderMesh();
+			}
 		}
 	}
 }
@@ -420,6 +474,27 @@ void GameObject::SetMesh(Mesh* newMesh)
 		mesh->AddRef();
 	}
 	SetDirty();
+}
+
+void GameObject::SetLODMesh(int level, Mesh* newMesh)
+{
+	if (level < 0 || level >= 3) return;
+	if (lodMeshes[level] == newMesh) return;
+
+	if (lodMeshes[level]) lodMeshes[level]->Release();
+	lodMeshes[level] = newMesh;
+	if (lodMeshes[level]) lodMeshes[level]->AddRef();
+
+	// Update lodCount
+	int count = 1;
+	for (int i = 0; i < 3; i++) if (lodMeshes[i]) count = i + 2;
+	lodCount = count;
+}
+
+Mesh* GameObject::GetLODMesh(int level) const
+{
+	if (level < 0 || level >= 3) return nullptr;
+	return lodMeshes[level];
 }
 
 void GameObject::SetCPUMeshData(const MeshData& data)

@@ -1614,9 +1614,17 @@ void EditorUI::RenderGraphicsSettings()
 	{
 		if (ImGui::CollapsingHeader("Culling & Distance", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Text("Render Distances (Multiplier)");
-			ImGui::SliderFloat("Render Distance##GlobalDist", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
-			ImGui::SliderFloat("Shadow Distance##GlobalShadowDist", &graphicsSettingsPtr->shadowDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
+			ImGui::Text("Global Distances (Base)");
+			ImGui::DragFloat("LOD 0 -> 1", &graphicsSettingsPtr->lod0Distance, 1.0f, 1.0f, 1000.0f, "%.0f m");
+			ImGui::DragFloat("LOD 1 -> 2", &graphicsSettingsPtr->lod1Distance, 1.0f, 1.0f, 2000.0f, "%.0f m");
+			ImGui::DragFloat("LOD 2 -> Cull", &graphicsSettingsPtr->lod2Distance, 1.0f, 1.0f, 5000.0f, "%.0f m");
+			ImGui::DragFloat("Cull Distance", &graphicsSettingsPtr->cullDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
+			ImGui::DragFloat("Shadow Max Dist", &graphicsSettingsPtr->shadowDistance, 1.0f, 1.0f, 1000.0f, "%.0f m");
+
+			ImGui::Spacing();
+			ImGui::Text("Graphics Multipliers");
+			ImGui::SliderFloat("Render Distance (X)", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
+			ImGui::SliderFloat("Shadow Distance (X)", &graphicsSettingsPtr->shadowDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
 		}
 
 		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
@@ -1704,11 +1712,16 @@ void EditorUI::RenderGraphicsSettings()
 				ImGui::EndDisabled();
 				ImGui::PopStyleVar();
 			}
+		}
 
-			if (!graphicsSettingsPtr->godraysEnabled) {
-				ImGui::EndDisabled();
-				ImGui::PopStyleVar();
-			}
+		if (ImGui::CollapsingHeader("Debug Visualizers", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Checkbox("LOD Coloring (R=0, G=1, B=2)", &graphicsSettingsPtr->debugLODColoring);
+			ImGui::Checkbox("Show Bounding Spheres", &graphicsSettingsPtr->debugShowBounds);
+			ImGui::Checkbox("Freeze Culling Frustum", &graphicsSettingsPtr->debugFreezeCulling);
+			
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Freezes the frustum used for culling to current camera position, allowing you to fly 'outside' and see what is being culled.");
 		}
 	}
 	ImGui::End();

@@ -1,5 +1,11 @@
 #include <functional>
 #include "SceneManager.h"
+#include "CommonValues.h"
+#include "GameObject.h"
+#include "Material.h"
+#include "Texture.h"
+#include "Shader.h"
+#include "Application.h"
 #include "PrimitiveGenerator.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/norm.hpp>
@@ -378,10 +384,14 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
 
 			// LAYER 0: Global Distance Culling (for performance/graphics settings)
-			// Reference distance: 2000.0f units
 			float distSq = glm::distance2(sphereCenter, cameraPos);
-			float multiplier = (overrideShader != nullptr) ? shadowDistanceMultiplier : renderDistanceMultiplier;
-			float maxDist = 2000.0f * multiplier;
+			
+			float maxDist = 2000.0f;
+			if (graphicsSettings) {
+				float mult = (overrideShader != nullptr) ? graphicsSettings->shadowDistanceMultiplier : graphicsSettings->renderDistanceMultiplier;
+				maxDist = (overrideShader != nullptr) ? graphicsSettings->shadowDistance : graphicsSettings->cullDistance;
+				maxDist *= mult;
+			}
 			if (distSq > maxDist * maxDist) continue;
 
 			// LAYER 1: Bounding Sphere vs Frustum (cheapest — 6 dot products)
@@ -475,12 +485,6 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 
 			// Upload material alpha for shadow pass dithering
-			if (overrideShader) {
-				float alpha = (mat) ? mat->GetAlpha() : 1.0f;
-				GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
-				if (alphaLoc != -1) glUniform1f(alphaLoc, alpha);
-			}
-			
 			obj->RenderSingle(
 				targetShader->GetModelLocation(),
 				targetShader->GetSpecularIntensityLocation(),
@@ -492,6 +496,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
 				glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
 				glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
+				cameraPos,
+				graphicsSettings,
 				targetShader->GetShaderID()
 			);
 		}
@@ -722,7 +728,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				cullShader->GetShaderID(),
 				*targetRenderShader,
 				projection, view, cameraPos,
-				group->GetMaxDrawDistance() * renderDistanceMultiplier,
+				graphicsSettings,
 				false
 			);
 		}
@@ -737,37 +743,50 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// material or custom shader — no selectionTint uniform needed.
 	// ================================================================
 	if (!overrideShader && selectedObjs.size() > 1 && gizmoShader.GetShaderID()) {
-		// Save state
-		GLint oldPolygonMode[2];
-		glGetIntegerv(GL_POLYGON_MODE, oldPolygonMode);
-		GLboolean oldDepthTest = glIsEnabled(GL_DEPTH_TEST);
-		GLboolean oldCullFace = glIsEnabled(GL_CULL_FACE);
-
+		// ... (existing wireframe code)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glLineWidth(2.0f);
-		glDepthFunc(GL_LEQUAL); // Draw on top of existing geometry
+		glDepthFunc(GL_LEQUAL);
 		glDisable(GL_CULL_FACE);
-
 		gizmoShader.UseShader();
 		glUniformMatrix4fv(gizmoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
-
 		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
 		GLint modelLoc = gizmoShader.GetModelLocation();
-		glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f); // Bright orange
-
+		glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f);
 		for (auto* obj : selectedObjs) {
 			glm::mat4 modelMatrix = obj->GetWorldMatrix();
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 			if (obj->GetModel()) obj->GetModel()->RenderModel(-1, -1, -1, -1);
 			else if (obj->GetMesh()) obj->GetMesh()->RenderMesh();
 		}
+	}
 
-		// Restore state
-		glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
-		glDepthFunc(GL_LESS);
-		if (oldDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-		if (oldCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+	// Debug Bounds Visualization
+	if (!overrideShader && graphicsSettings && graphicsSettings->debugShowBounds && gizmoShader.GetShaderID()) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDisable(GL_CULL_FACE);
+		gizmoShader.UseShader();
+		glUniformMatrix4fv(gizmoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
+		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+		GLint modelLoc = gizmoShader.GetModelLocation();
+		glUniform3f(colorLoc, 0.0f, 1.0f, 1.0f); // Cyan for bounds
+
+		for (auto* obj : objects) {
+			glm::vec3 center; float radius;
+			obj->GetWorldBoundingSphere(center, radius);
+			
+			// Simple debug box if we don't have a sphere mesh handy
+			glm::mat4 boxMatrix = glm::translate(glm::mat4(1.0f), center);
+			boxMatrix = glm::scale(boxMatrix, glm::vec3(radius * 2.0f));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(boxMatrix));
+			
+			// Use iconMesh as a proxy for bounds (will show as a quad, but better than nothing)
+			if (iconMesh) iconMesh->RenderMesh();
+		}
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glEnable(GL_CULL_FACE);
 	}
 }
 

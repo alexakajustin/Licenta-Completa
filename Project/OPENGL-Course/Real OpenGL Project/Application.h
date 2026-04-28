@@ -9,7 +9,13 @@ struct GraphicsSettings {
 	int ssaoKernelSize = 64;   // 1-64
 	int ssaoBlurSize = 4;      // 2, 4, 6, 8
 
-	// Culling
+	// Culling & LOD Distances (Base values, before multipliers)
+	float lod0Distance = 50.0f;
+	float lod1Distance = 150.0f;
+	float lod2Distance = 400.0f;
+	float cullDistance = 2000.0f;
+	float shadowDistance = 100.0f;
+
 	float renderDistanceMultiplier = 1.0f;
 	float shadowDistanceMultiplier = 1.0f;
 
@@ -24,6 +30,11 @@ struct GraphicsSettings {
 	float cloudsDensity = 0.5f;
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
+	
+	// Debug Tools
+	bool debugLODColoring = false;
+	bool debugShowBounds = false;
+	bool debugFreezeCulling = false;
 };
 
 #include "Window.h"
@@ -141,4 +152,8 @@ private:
 
 	// Projection
 	glm::mat4 projection;
+	
+	// Debug Culling
+	struct Frustum* activeFrustum = nullptr;
+	struct Frustum frozenFrustum;
 };

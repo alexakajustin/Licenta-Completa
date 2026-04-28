@@ -13,6 +13,7 @@ class Material;
 class Texture;
 class Shader;
 struct Frustum;
+struct GraphicsSettings;
 
 // =====================================================================
 // InstancedGroup — GPU-Driven Instanced Rendering for Millions of Objects
@@ -34,6 +35,9 @@ struct Frustum;
 
 // Maximum LOD levels supported
 static const int MAX_LOD_LEVELS = 3;
+
+struct GraphicsSettings;
+struct Frustum;
 
 class InstancedGroup
 {
@@ -58,13 +62,13 @@ public:
 	// Per-frame: cull on GPU and draw visible instances (camera pass)
 	void CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, float maxDrawDistance,
+		const glm::vec3& cameraPos, const GraphicsSettings* gs,
 		bool isShadowPass = false);
 
 	// Per-frame: cull against light frustum and draw into shadow map
 	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
 		const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
-		float shadowDrawDistance, float time);
+		const GraphicsSettings* gs, float time);
 
 	// LOD configuration
 	void SetLODMesh(int level, Mesh* mesh, float maxDistance);
@@ -171,23 +175,20 @@ private:
 	void ReleaseShadowBuffers();
 	void ReleaseChunks();
 
-	// Helpers for chunked rendering
-	void CullAndDrawChunked(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, float maxDrawDistance,
-		bool isShadowPass);
+	void RenderLODs(Shader& renderShader, const glm::mat4& projection,
+		const glm::mat4& view, const glm::vec3& cameraPos,
+		const GraphicsSettings* gs, bool isShadowPass);
 	void CullAndDrawFlat(GLuint cullShaderID, Shader& renderShader,
 		const glm::mat4& projection, const glm::mat4& view,
 		const glm::vec3& cameraPos, float maxDrawDistance,
-		bool isShadowPass);
+		const GraphicsSettings* gs, bool isShadowPass);
+	void CullAndDrawChunked(GLuint cullShaderID, Shader& renderShader,
+		const glm::mat4& projection, const glm::mat4& view,
+		const glm::vec3& cameraPos, float maxDrawDistance,
+		const GraphicsSettings* gs, bool isShadowPass);
 
 	// Dispatch compute cull for a given SSBO of instances
 	void DispatchCull(GLuint cullShaderID, GLuint inputSSBO, uint32_t inputCount,
 		const glm::mat4& viewProj, const glm::vec3& cameraPos,
 		float maxDrawDistance);
-
-	// Render all LOD levels after culling
-	void RenderLODs(Shader& renderShader, const glm::mat4& projection,
-		const glm::mat4& view, const glm::vec3& cameraPos,
-		bool isShadowPass);
 };

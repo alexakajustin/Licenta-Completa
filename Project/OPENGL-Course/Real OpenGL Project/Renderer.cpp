@@ -76,7 +76,7 @@ void Renderer::CacheUniforms()
 	uniformUseInstancing = glGetUniformLocation(mainShader.GetShaderID(), "useInstancing");
 }
 
-void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far)
+void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far, const GraphicsSettings* gs)
 {
 	CascadedShadowMap* csm = (CascadedShadowMap*)light->GetShadowMap();
 	if (!csm) return;
@@ -116,7 +116,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 					instancedShadowShader,
 					lightProjView,
 					cameraPos,
-					group->GetShadowDistance() * scene.GetShadowDistanceMultiplier(),
+					gs,
 					time
 				);
 			}
@@ -156,7 +156,8 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  DirectionalLight& mainLight,
 						  PointLight* pointLights, unsigned int pointLightCount,
 						  SpotLight* spotLights, unsigned int spotLightCount,
-						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture)
+						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture,
+						  const Frustum* debugFrustum)
 {
 	glViewport(0, 0, fbw, fbh);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -214,14 +215,15 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	// mainShader.Validate(); 
 	
 	// Scene objects with Frustum Culling
-	Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
+	Frustum liveFrustum = Frustum::CreateFrustumFromMatrix(projection * view);
+	const Frustum* activeFrustum = debugFrustum ? debugFrustum : &liveFrustum;
 	float time = (float)glfwGetTime();
 
 	// Pass instanced shaders to scene manager for GPU-driven rendering
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1));
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, activeFrustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1));
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);

@@ -14,6 +14,7 @@
 #include "TextureLayer.h"
 
 struct Frustum;
+struct GraphicsSettings;
 
 class GameObject
 {
@@ -44,6 +45,11 @@ public:
 	Texture* GetTexture() const { return texture; }
 	Texture* GetNormalMap() const { return normalMap; }
 	Material* GetMaterial() const { return material; }
+	
+	// LOD Support
+	void SetLODMesh(int level, Mesh* msh);
+	Mesh* GetLODMesh(int level) const;
+	int GetLODCount() const { return lodCount; }
 
 	// Hierarchy
 	void SetParent(GameObject* newParent);
@@ -59,12 +65,16 @@ public:
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap, 
+		const glm::vec3& cameraPos,
+		const GraphicsSettings* gs = nullptr,
 		const glm::mat4& parentMatrix = glm::mat4(1.0f), const Frustum* frustum = nullptr);
 
 	// Separate render for a single object (used by SceneManager batching/loop)
 	void RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor,
 		GLint uniformTiling, GLint uniformOffset,
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+		const glm::vec3& cameraPos,
+		const GraphicsSettings* gs = nullptr,
 		GLuint shaderID = 0);
 
 	// Texture layers
@@ -112,7 +122,9 @@ private:
 	bool inheritScale = true;
 
 	Model* model;      // For loaded .obj models
-	Mesh* mesh;        // For primitive meshes
+	Mesh* mesh;        // For primitive meshes (LOD 0)
+	Mesh* lodMeshes[3] = { nullptr, nullptr, nullptr }; // Support for 3 LOD levels
+	int lodCount = 1;
 
 	// Appearance
 	Texture* texture;

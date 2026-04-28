@@ -3,6 +3,7 @@
 #include "Material.h"
 #include "Texture.h"
 #include "Shader.h"
+#include "Application.h"
 #include "DebugOverlay.h"
 #include "Frustum.h"
 #include "GameObject.h"
@@ -228,7 +229,7 @@ void InstancedGroup::SetLODMesh(int level, Mesh* mesh, float maxDistance)
 // =====================================================================
 void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	const glm::mat4& projection, const glm::mat4& view,
-	const glm::vec3& cameraPos, float maxDrawDistance,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs,
 	bool isShadowPass)
 {
 	if (totalCount == 0 || !sharedMesh) return;
@@ -255,23 +256,36 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	// Set uniforms
 	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
 	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
-	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), maxDrawDistance);
 	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
 	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
 
 	// LOD distance uniforms
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), lodCount);
-	for (int lod = 0; lod < lodCount; lod++) {
+	// Use global graphics settings for distances
+	float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
+	float finalMaxDist = (gs ? gs->cullDistance : 2000.0f) * mult;
+	float finalLOD0 = (gs ? gs->lod0Distance : 50.0f) * mult;
+	float finalLOD1 = (gs ? gs->lod1Distance : 150.0f) * mult;
+	float finalLOD2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalMaxDist);
+
+	for (int lod = 0; lod < MAX_LOD_LEVELS; lod++) {
 		char buf[64];
 		snprintf(buf, sizeof(buf), "lodDistances[%d]", lod);
-		float dist = lodLevels[lod].maxDistance > 0.0f ? lodLevels[lod].maxDistance : maxDrawDistance;
+		
+		float dist = finalMaxDist;
+		if (lod == 0) dist = finalLOD0;
+		else if (lod == 1) dist = finalLOD1;
+		else if (lod == 2) dist = finalLOD2;
+
 		glUniform1f(glGetUniformLocation(cullShaderID, buf), dist);
 	}
 
 	if (useChunking) {
-		CullAndDrawChunked(cullShaderID, renderShader, projection, view, cameraPos, maxDrawDistance, isShadowPass);
+		CullAndDrawChunked(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
 	} else {
-		CullAndDrawFlat(cullShaderID, renderShader, projection, view, cameraPos, maxDrawDistance, isShadowPass);
+		CullAndDrawFlat(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
 	}
 }
 
@@ -281,7 +295,7 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 void InstancedGroup::CullAndDrawFlat(GLuint cullShaderID, Shader& renderShader,
 	const glm::mat4& projection, const glm::mat4& view,
 	const glm::vec3& cameraPos, float maxDrawDistance,
-	bool isShadowPass)
+	const GraphicsSettings* gs, bool isShadowPass)
 {
 	// Bind input + output SSBOs
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
@@ -309,7 +323,7 @@ void InstancedGroup::CullAndDrawFlat(GLuint cullShaderID, Shader& renderShader,
 	// ================================================================
 	// PHASE 2: Render each LOD level
 	// ================================================================
-	RenderLODs(renderShader, projection, view, cameraPos, isShadowPass);
+	RenderLODs(renderShader, projection, view, cameraPos, gs, isShadowPass);
 }
 
 // =====================================================================
@@ -318,7 +332,7 @@ void InstancedGroup::CullAndDrawFlat(GLuint cullShaderID, Shader& renderShader,
 void InstancedGroup::CullAndDrawChunked(GLuint cullShaderID, Shader& renderShader,
 	const glm::mat4& projection, const glm::mat4& view,
 	const glm::vec3& cameraPos, float maxDrawDistance,
-	bool isShadowPass)
+	const GraphicsSettings* gs, bool isShadowPass)
 {
 	// Build camera frustum for chunk-level CPU pre-cull
 	glm::mat4 viewProj = projection * view;
@@ -366,7 +380,7 @@ void InstancedGroup::CullAndDrawChunked(GLuint cullShaderID, Shader& renderShade
 	}
 
 	// Render all LOD levels
-	RenderLODs(renderShader, projection, view, cameraPos, isShadowPass);
+	RenderLODs(renderShader, projection, view, cameraPos, gs, isShadowPass);
 }
 
 // =====================================================================
@@ -374,7 +388,7 @@ void InstancedGroup::CullAndDrawChunked(GLuint cullShaderID, Shader& renderShade
 // =====================================================================
 void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projection,
 	const glm::mat4& view, const glm::vec3& cameraPos,
-	bool isShadowPass)
+	const GraphicsSettings* gs, bool isShadowPass)
 {
 	renderShader.UseShader();
 	GLuint shaderID = renderShader.GetShaderID();
@@ -484,6 +498,22 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 	for (int lod = 0; lod < lodCount; lod++) {
 		Mesh* lodMesh = lodLevels[lod].mesh ? lodLevels[lod].mesh : sharedMesh;
 
+		if (gs && gs->debugLODColoring) {
+			GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+			if (debugLoc != -1) glUniform1i(debugLoc, 1);
+			
+			GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
+			if (lodColorLoc != -1) {
+				if (lod == 0) glUniform3f(lodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
+				else if (lod == 1) glUniform3f(lodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
+				else if (lod == 2) glUniform3f(lodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
+				else glUniform3f(lodColorLoc, 1.0f, 1.0f, 0.0f);
+			}
+		} else {
+			GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+			if (debugLoc != -1) glUniform1i(debugLoc, 0);
+		}
+
 		// Bind this LOD's visible SSBO for vertex shader to read
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[lod].visibleSSBO);
 
@@ -498,14 +528,18 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 // =====================================================================
 void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
 	const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
-	float shadowDist, float time)
+	const GraphicsSettings* gs, float time)
 {
 	if (totalCount == 0 || !sharedMesh) return;
+
+	float mult = gs ? gs->shadowDistanceMultiplier : 1.0f;
+	float finalShadowDist = (gs ? gs->shadowDistance : 100.0f) * mult;
 
 	// ================================================================
 	// PHASE 1: Cull against light frustum with tight distance limit
 	// ================================================================
 	glUseProgram(cullShaderID);
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalShadowDist);
 
 	// Reset shadow indirect buffer
 	DrawElementsIndirectCommand resetCmd = {};
@@ -519,13 +553,13 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	// Set cull uniforms — use LIGHT's VP for frustum culling
 	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(lightViewProj));
 	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
-	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), shadowDist);
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalShadowDist);
 	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
 	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
 
 	// Force LOD count to 1 for shadow pass (no LOD in shadows)
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), 1);
-	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), shadowDist);
+	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), finalShadowDist);
 
 	// Bind shadow output buffers
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
@@ -542,7 +576,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 			// Distance pre-cull: skip chunks far from camera (shadows only matter near player)
 			glm::vec3 chunkCenter = (chunk.boundsMin + chunk.boundsMax) * 0.5f;
 			float distToChunk = glm::length(chunkCenter - cameraPos);
-			if (distToChunk > shadowDist + chunkSize) continue;
+			if (distToChunk > finalShadowDist + chunkSize) continue;
 
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, chunk.ssbo);
 			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), chunk.instanceCount);

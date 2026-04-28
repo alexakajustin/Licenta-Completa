@@ -18,6 +18,8 @@
 #include "InstancedGroup.h"
 #include "UndoManager.h"
 
+struct GraphicsSettings;
+
 class SceneManager
 {
 public:
@@ -74,6 +76,8 @@ public:
 	void SetShadowDistanceMultiplier(float m) { shadowDistanceMultiplier = m; }
 	float GetRenderDistanceMultiplier() const { return renderDistanceMultiplier; }
 	float GetShadowDistanceMultiplier() const { return shadowDistanceMultiplier; }
+	
+	void SetGraphicsSettings(GraphicsSettings* gs) { graphicsSettings = gs; }
 
 	// ========== Picking & Gizmo ==========
 	void InitPicking(int width, int height);
@@ -217,4 +221,6 @@ private:
 
 	NodeGraph nodeGraph;
 	UndoManager undoManager;
+
+	GraphicsSettings* graphicsSettings = nullptr;
 };

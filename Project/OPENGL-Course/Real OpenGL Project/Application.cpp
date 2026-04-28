@@ -94,6 +94,7 @@ bool Application::Init()
 	// SSAO initialization
 	InitSSAO();
 	editorUI.SetGraphicsSettings(&graphicsSettings);
+	sceneManager.SetGraphicsSettings(&graphicsSettings);
 
 	// Enable VSync — caps FPS to monitor refresh rate, prevents GPU from running at 100%
 	glfwSwapInterval(1);
@@ -133,7 +134,10 @@ void Application::SetupScene()
 {
 	// Setup default scene: Directional Light + 100x1x100 Plane
 	
-	// Create Plane
+	sceneManager.SetGraphicsSettings(&graphicsSettings);
+	editorUI.SetGraphicsSettings(&graphicsSettings);
+	
+	// Create the main window
 	GameObject* plane = new GameObject("Plane");
 	plane->GetTransform().SetScale(glm::vec3(100.0f, 1.0f, 100.0f));
 	plane->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -156,9 +160,10 @@ void Application::SetupScene()
 
 void Application::UpdateProjection()
 {
+	float finalFarPlane = graphicsSettings.cullDistance * graphicsSettings.renderDistanceMultiplier;
 	projection = glm::perspective(glm::radians(60.0f),
 		(GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(),
-		0.1f, 1000.0f);
+		0.1f, finalFarPlane);
 }
 
 void Application::Run()
@@ -288,22 +293,22 @@ void Application::Run()
 
 		EditorUI::WindowState& uiState = editorUI.GetWindowState();
 
-		// ... (EditorUI handles its own windows)
-
 		// Update projection matrix based on FRESH viewport info
 		glm::vec2 vSize = editorUI.GetViewportSize();
 		int vWidth = (int)vSize.x;
 		int vHeight = (int)vSize.y;
-
-		// Minimal safety
 		if (vWidth < 1) vWidth = 1;
 		if (vHeight < 1) vHeight = 1;
 
-		ResizeViewportFBO(vWidth, vHeight);
-		ResizeReflectionFBO(vWidth / 2, vHeight / 2); // Half resolution for performance
-
 		float aspect = (float)vWidth / (float)vHeight;
-		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 2000.0f);
+		float finalFarPlane = graphicsSettings.cullDistance * graphicsSettings.renderDistanceMultiplier;
+		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, finalFarPlane);
+
+		if (vWidth != currentViewportWidth || vHeight != currentViewportHeight || vWidth == 0 || vHeight == 0)
+		{
+			ResizeViewportFBO(vWidth, vHeight);
+			ResizeReflectionFBO(vWidth / 2, vHeight / 2); // Half resolution for performance
+		}
 		glm::mat4 view = camera.calculateViewMatrix();
 
 		// Main render pass — clear backbuffer (the part around the UI)
@@ -315,9 +320,21 @@ void Application::Run()
 		sceneManager.SetRenderDistanceMultiplier(graphicsSettings.renderDistanceMultiplier);
 		sceneManager.SetShadowDistanceMultiplier(graphicsSettings.shadowDistanceMultiplier);
 
-		// Shadow passes (use main window resolution or fixed size for shadows)
-		float shadowFar = 2000.0f * graphicsSettings.shadowDistanceMultiplier;
-		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar);
+		// Update Frustum
+		Frustum currentFrustum = Frustum::CreateFrustumFromMatrix(projection * view);
+
+		if (graphicsSettings.debugFreezeCulling) {
+			if (activeFrustum != &frozenFrustum) {
+				frozenFrustum = currentFrustum;
+				activeFrustum = &frozenFrustum;
+			}
+		} else {
+			activeFrustum = nullptr; // Uses per-pass live frustum if null
+		}
+
+		// Shadow passes
+		float shadowFar = graphicsSettings.shadowDistance * graphicsSettings.shadowDistanceMultiplier;
+		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar, &graphicsSettings);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
 		for (unsigned int i = 0; i < spotLightCount; i++)
@@ -412,7 +429,7 @@ void Application::Run()
 		}
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, activeFrustum);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -561,8 +578,7 @@ void Application::Run()
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// Update projection for window resize
-		UpdateProjection();
+		// UpdateProjection() was removed here as it is now handled at the start of the loop with dynamic far planes
 
 		mainWindow.swapBuffers();
 
@@ -688,7 +704,7 @@ void Application::ResizeViewportFBO(int width, int height)
 	if (width < 1) width = 1;
 	if (height < 1) height = 1;
 
-	if (width == currentViewportWidth && height == currentViewportHeight) return;
+	if (width == currentViewportWidth && height == currentViewportHeight && viewportTexture != 0) return;
 
 	currentViewportWidth = width;
 	currentViewportHeight = height;

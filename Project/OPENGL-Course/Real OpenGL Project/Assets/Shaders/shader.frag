@@ -94,6 +94,10 @@ uniform vec3 eyePosition;
 // Selection highlight (0.0 = not selected, > 0 = selected)
 uniform float selectionTint;
 
+// Debug Visualizers
+uniform bool debugLODColoring;
+uniform vec3 lodDebugColor;
+
 // ========== Texture Layers ==========
 const int MAX_TEXTURE_LAYERS = 4;
 
@@ -675,6 +679,11 @@ void main()
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
 	if (selectedVal > 0.0) {
 		finalColor += vec3(0.35, 0.25, 0.0) * selectedVal;
+	}
+
+	// LOD debug coloring (tint 30% of original color)
+	if (debugLODColoring) {
+		finalColor = mix(finalColor, lodDebugColor, 0.3);
 	}
 
 	colour = vec4(finalColor, material.baseColor.a);

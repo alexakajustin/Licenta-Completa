@@ -455,98 +455,123 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						}
 					}
 
-					int instanceCount = (int)packedInstances.size();
-					float maxDist = instanceCount >= 5000000 ? 150.0f : (instanceCount >= 1000000 ? 200.0f : 250.0f);
-					float shadowDist = instanceCount >= 5000000 ? 20.0f : (instanceCount >= 1000000 ? 25.0f : 30.0f);
+					float maxDist = 2000.0f;
+					float shadowDist = 100.0f;
 
 					if (multiMeshModel && multiMeshModel->GetMeshCount() > 1 && sourceObj) {
 						// ============================================================
-						// MULTI-MESH PATH: One InstancedGroup per child/sub-mesh.
-						// Gets textures and materials from the CHILD GameObjects,
-						// not from the Model's material table.
+						// MULTI-MESH & LOD-AWARE PATH: Group LOD meshes by name.
+						// One InstancedGroup per UNIQUE base mesh.
 						// ============================================================
 						const auto& meshDataList = multiMeshModel->GetMeshDataList();
 						const auto& meshNames = multiMeshModel->GetMeshNames();
 						const auto& children = sourceObj->GetChildren();
 
+						struct MeshGroup {
+							size_t lod0Idx = -1;
+							size_t lod1Idx = -1;
+							size_t lod2Idx = -1;
+						};
+						std::map<std::string, MeshGroup> groupsByName;
+
 						for (size_t m = 0; m < multiMeshModel->GetMeshCount(); m++) {
-							// Get mesh data for this sub-mesh
+							std::string name = (m < meshNames.size()) ? meshNames[m] : ("Mesh_" + std::to_string(m));
+							
+							int level = 0;
+							std::string baseName = name;
+							std::string upperName = name;
+							for (auto& c : upperName) c = toupper(c);
+
+							size_t lodPos = upperName.find("LOD");
+							if (lodPos != std::string::npos) {
+								std::string suffix = upperName.substr(lodPos + 3);
+								if (!suffix.empty() && (suffix[0] == '_' || suffix[0] == ' ' || suffix[0] == '-'))
+									suffix = suffix.substr(1);
+								
+								if (!suffix.empty() && isdigit(suffix[0])) {
+									level = suffix[0] - '0';
+									size_t baseEnd = lodPos;
+									if (baseEnd > 0 && (name[baseEnd-1] == '_' || name[baseEnd-1] == ' ' || name[baseEnd-1] == '-'))
+										baseEnd--;
+									baseName = name.substr(0, baseEnd);
+								}
+							}
+
+							if (level == 0) groupsByName[baseName].lod0Idx = m;
+							else if (level == 1) groupsByName[baseName].lod1Idx = m;
+							else if (level == 2) groupsByName[baseName].lod2Idx = m;
+						}
+
+						for (auto const& [baseName, mg] : groupsByName) {
+							size_t m = mg.lod0Idx;
+							if (m == -1) continue; 
+
 							if (m >= meshDataList.size() || meshDataList[m].vertices.empty())
 								continue;
 
-							MeshData subMeshData = meshDataList[m];
-
-							// Create GPU mesh
-							size_t dataKey = (size_t)subMeshData.vertices.data() ^ subMeshData.vertices.size() ^ m;
-							if (meshCache.find(dataKey) == meshCache.end()) {
-								meshCache[dataKey] = subMeshData.ToMesh(0);
-							}
-
-							// Find the child GameObject that matches this sub-mesh
-							// (by mesh name or index)
 							GameObject* matchingChild = nullptr;
-							std::string subMeshName = (m < meshNames.size()) ? meshNames[m] : "";
-							
 							for (auto* child : children) {
 								std::string childName = child->GetName();
-								// Strip suffix like " (Foliage)" for matching
-								size_t suffixPos = childName.find(" (");
-								if (suffixPos != std::string::npos) childName = childName.substr(0, suffixPos);
+								
+								// Strip " (copy)" suffixes
+								size_t copyPos = childName.find(" (");
+								if (copyPos != std::string::npos) childName = childName.substr(0, copyPos);
+								
+								// Also strip "LOD" suffixes from child names to match baseName
+								// (e.g. "Tree_LOD0" should match baseName "Tree")
+								size_t lodPosChild = childName.find("_LOD");
+								if (lodPosChild == std::string::npos) lodPosChild = childName.find(" LOD");
+								if (lodPosChild == std::string::npos) lodPosChild = childName.find("-LOD");
+								if (lodPosChild != std::string::npos) childName = childName.substr(0, lodPosChild);
 
-								if (childName == subMeshName) {
-									matchingChild = child;
-									break;
-								}
+								if (childName == baseName) { matchingChild = child; break; }
 							}
-							// Fallback: match by index
-							if (!matchingChild && m < children.size())
-								matchingChild = children[m];
+							if (!matchingChild && m < children.size()) matchingChild = children[m];
 
-							// Pull texture/material from the matching child (or from model)
-							Texture* subTex = nullptr;
-							Texture* subNorm = nullptr;
-							Material* subMat = nullptr;
+							Texture* subTex = nullptr; Texture* subNorm = nullptr; Material* subMat = nullptr;
 							std::vector<TextureLayer> subLayers;
-
 							if (matchingChild) {
 								subTex = matchingChild->GetTexture();
 								subNorm = matchingChild->GetNormalMap();
 								subMat = matchingChild->GetMaterial();
 								subLayers = matchingChild->GetTextureLayers();
 							}
-
-							// Fallback to model's material table if child has no texture
 							if (!subTex) {
-								unsigned int matIdx = multiMeshModel->GetMaterialIndex(m);
+								unsigned int matIdx = multiMeshModel->GetMaterialIndex((unsigned int)m);
 								subTex = multiMeshModel->GetTexture(matIdx);
 								subNorm = multiMeshModel->GetNormalMap(matIdx);
 							}
+							if (!subMat) subMat = sourceObj->GetMaterial();
+							if (subLayers.empty()) subLayers = sourceObj->GetTextureLayers();
 
-							if (!subMat) {
-								subMat = sourceObj->GetMaterial();
-							}
-
-							if (subLayers.empty()) {
-								subLayers = sourceObj->GetTextureLayers();
-							}
-
-							// Unique group name per sub-mesh
-							std::string subGroupName = groupName + "_" + std::to_string(m);
+							std::string subGroupName = groupName + "_" + baseName;
 							scene.RemoveInstancedGroup(subGroupName);
 
 							InstancedGroup* group = new InstancedGroup(subGroupName);
 							if (matchingChild) group->SetSourceObjectName(matchingChild->GetName());
 							else group->SetSourceObjectName(objName);
-							group->Setup(meshCache[dataKey], packedInstances, subMat, subTex, subNorm, subLayers);
-							group->SetMaxDrawDistance(maxDist);
-							group->SetShadowDistance(shadowDist);
+
+							size_t key0 = (size_t)meshDataList[m].vertices.data() ^ meshDataList[m].vertices.size() ^ m;
+							if (meshCache.find(key0) == meshCache.end()) meshCache[key0] = meshDataList[m].ToMesh(0);
+							group->Setup(meshCache[key0], packedInstances, subMat, subTex, subNorm, subLayers);
+
+							if (mg.lod1Idx != -1) {
+								size_t m1 = mg.lod1Idx;
+								size_t key1 = (size_t)meshDataList[m1].vertices.data() ^ meshDataList[m1].vertices.size() ^ m1;
+								if (meshCache.find(key1) == meshCache.end()) meshCache[key1] = meshDataList[m1].ToMesh(0);
+								group->SetLODMesh(1, meshCache[key1], 0.0f);
+							}
+							if (mg.lod2Idx != -1) {
+								size_t m2 = mg.lod2Idx;
+								size_t key2 = (size_t)meshDataList[m2].vertices.data() ^ meshDataList[m2].vertices.size() ^ m2;
+								if (meshCache.find(key2) == meshCache.end()) meshCache[key2] = meshDataList[m2].ToMesh(0);
+								group->SetLODMesh(2, meshCache[key2], 0.0f);
+							}
 
 							scene.AddInstancedGroup(group);
 							scatterNode->AddCreatedGroupName(subGroupName);
 						}
-
-						printf("[NodeGraph] GPU-Driven: Created %d InstancedGroups for '%s' with %d instances each\n",
-							(int)multiMeshModel->GetMeshCount(), objName.c_str(), (int)packedInstances.size());
+						printf("[NodeGraph] GPU-Driven: Created %d LOD-aware Groups for '%s'\n", (int)groupsByName.size(), objName.c_str());
 					}
 					else {
 						// ============================================================
