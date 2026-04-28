@@ -725,7 +725,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				// Pass shadow distance to instanced shader for percentage-based fade
 				if (dLight) {
 					GLint sdLoc = glGetUniformLocation(sid, "shadowDistance");
-					if (sdLoc != -1) glUniform1f(sdLoc, dLight->GetShadowFrustumSize());
+					if (sdLoc != -1) {
+						const auto& splits = dLight->GetCascadeSplitDistances();
+						float shadowFar = splits.empty() ? dLight->GetShadowFrustumSize() : splits.back();
+						glUniform1f(sdLoc, shadowFar);
+					}
 					// Also pass shadow color map for instanced objects
 					dLight->GetShadowMap()->ReadColor(GL_TEXTURE20);
 					GLint scmLoc = glGetUniformLocation(sid, "directionalShadowColorMap");

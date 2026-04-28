@@ -209,8 +209,13 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetDirectionalShadowColorMap(20);
 
 	// Pass shadow distance to shader for percentage-based fade
+	// Use the actual cascade far distance, not the old pre-cascade frustum size
 	GLint sdLoc = glGetUniformLocation(mainShader.GetShaderID(), "shadowDistance");
-	if (sdLoc != -1) glUniform1f(sdLoc, mainLight.GetShadowFrustumSize());
+	if (sdLoc != -1) {
+		const auto& splits = mainLight.GetCascadeSplitDistances();
+		float shadowFar = splits.empty() ? mainLight.GetShadowFrustumSize() : splits.back();
+		glUniform1f(sdLoc, shadowFar);
+	}
 
 	// mainShader.Validate(); 
 	
