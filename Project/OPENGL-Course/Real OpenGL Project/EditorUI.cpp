@@ -1217,7 +1217,12 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
 			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
 			{
-				selected->SetName(nameBuf);
+				std::string oldName = selected->GetName();
+				std::string newName = nameBuf;
+				if (oldName != newName) {
+					selected->SetName(newName);
+					scene.GetNodeGraph().NotifyObjectRenamed(oldName, newName);
+				}
 			}
 			ImGui::PopItemWidth();
 			ImGui::Separator();

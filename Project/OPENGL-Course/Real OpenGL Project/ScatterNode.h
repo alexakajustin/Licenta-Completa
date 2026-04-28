@@ -54,6 +54,29 @@ public:
 	bool IsSpawnMode() const { return spawnAsObjects; }
 	int GetParentIndex() const { return targetParentIndex; }
 	std::string GetParentName() const { return targetParentName; }
+
+	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
+	{
+		// Update parent reference
+		if (targetParentName == oldName) targetParentName = newName;
+
+		// Update spawnedMap keys
+		if (spawnedMap.count(oldName)) {
+			spawnedMap[newName] = std::move(spawnedMap[oldName]);
+			spawnedMap.erase(oldName);
+		}
+
+		// Update createdGroupNames (they embed the object name in the string)
+		std::set<std::string> updatedNames;
+		for (const auto& gn : createdGroupNames) {
+			std::string updated = gn;
+			size_t pos = updated.find(oldName);
+			if (pos != std::string::npos)
+				updated.replace(pos, oldName.size(), newName);
+			updatedNames.insert(updated);
+		}
+		createdGroupNames = updatedNames;
+	}
 	
 	// Legacy tracking support
 	const std::vector<std::string>& GetSpawnedNames() const { return spawnedNames; }

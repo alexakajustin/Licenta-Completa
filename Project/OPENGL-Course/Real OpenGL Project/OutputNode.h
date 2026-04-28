@@ -28,6 +28,11 @@ public:
 
 	void SetSameAsInput(bool value) { sameAsInput = value; }
 
+	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
+	{
+		if (targetName == oldName) targetName = newName;
+	}
+
 	bool ShouldUpdateMesh() const { return updateMesh; }
 
 private:

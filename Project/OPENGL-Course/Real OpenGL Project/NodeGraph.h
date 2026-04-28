@@ -62,6 +62,9 @@ public:
 	// Called right before node is deleted from the graph
 	virtual void OnRemove(SceneManager& scene) {}
 
+	// Called when a scene object is renamed so nodes can update their stored references
+	virtual void OnObjectRenamed(const std::string& oldName, const std::string& newName) {}
+
 	// Find a pin by ID
 	Pin* FindPin(int pinId);
 	Pin* FindInputPin(int pinId);
@@ -110,6 +113,9 @@ public:
 	bool IsObjectGenerated(const std::string& name) const;
 	// Track dynamically modified objects (to avoid saving their huge generated meshes)
 	bool IsObjectMeshModified(const std::string& name) const;
+
+	// Notify all nodes that a scene object was renamed
+	void NotifyObjectRenamed(const std::string& oldName, const std::string& newName);
 
 	void Clear();
 

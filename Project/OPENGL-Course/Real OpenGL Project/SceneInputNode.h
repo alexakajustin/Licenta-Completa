@@ -22,6 +22,11 @@ public:
 	std::string GetSelectedName() const { return selectedName; }
 	int GetSelectedIndex() const { return selectedIndex; }
 
+	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
+	{
+		if (selectedName == oldName) selectedName = newName;
+	}
+
 	void SetSelection(int index, const std::string& name)
 	{
 		selectedIndex = index;

@@ -892,6 +892,12 @@ bool NodeGraph::IsObjectMeshModified(const std::string& name) const
 	return false;
 }
 
+void NodeGraph::NotifyObjectRenamed(const std::string& oldName, const std::string& newName)
+{
+	for (auto* node : nodes)
+		node->OnObjectRenamed(oldName, newName);
+}
+
 void NodeGraph::Clear()
 {
 	for (auto* n : nodes)
