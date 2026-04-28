@@ -388,9 +388,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			
 			float maxDist = 2000.0f;
 			if (graphicsSettings) {
-				float mult = (overrideShader != nullptr) ? graphicsSettings->shadowDistanceMultiplier : graphicsSettings->renderDistanceMultiplier;
-				maxDist = (overrideShader != nullptr) ? graphicsSettings->shadowDistance : graphicsSettings->cullDistance;
-				maxDist *= mult;
+				if (overrideShader) {
+					float finalShadowDist = graphicsSettings->shadowDistance;
+					glUniform1f(glGetUniformLocation(overrideShader->GetShaderID(), "shadowDistance"), finalShadowDist);
+					maxDist = finalShadowDist;
+				} else {
+					maxDist = graphicsSettings->renderDistance;
+				}
 			}
 			if (distSq > maxDist * maxDist) continue;
 

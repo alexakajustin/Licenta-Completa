@@ -108,7 +108,8 @@ struct Frustum {
     // =================================================================
     bool IsSphereVisible(const glm::vec3& center, float radius) const {
         for (int i = 0; i < 6; i++) {
-            if (planes[i].SignedDistance(center) < -radius) {
+            // Add a small epsilon to prevent precision-based popping
+            if (planes[i].SignedDistance(center) < -radius - 0.1f) {
                 return false; // Sphere is entirely behind this plane
             }
         }
@@ -154,7 +155,8 @@ struct Frustum {
             if (p.normal.y >= 0) pVertex.y = max.y;
             if (p.normal.z >= 0) pVertex.z = max.z;
 
-            if (p.SignedDistance(pVertex) < 0) {
+            // Add a small epsilon to prevent precision-based popping
+            if (p.SignedDistance(pVertex) < -0.1f) {
                 return false; // Box is entirely behind this plane
             }
         }

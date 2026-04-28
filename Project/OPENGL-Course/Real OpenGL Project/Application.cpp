@@ -160,7 +160,7 @@ void Application::SetupScene()
 
 void Application::UpdateProjection()
 {
-	float finalFarPlane = graphicsSettings.cullDistance * graphicsSettings.renderDistanceMultiplier;
+	float finalFarPlane = 20000.0f; // Stable 20km horizon
 	projection = glm::perspective(glm::radians(60.0f),
 		(GLfloat)mainWindow.getBufferWidth() / (GLfloat)mainWindow.getBufferHeight(),
 		0.1f, finalFarPlane);
@@ -301,7 +301,7 @@ void Application::Run()
 		if (vHeight < 1) vHeight = 1;
 
 		float aspect = (float)vWidth / (float)vHeight;
-		float finalFarPlane = graphicsSettings.cullDistance * graphicsSettings.renderDistanceMultiplier;
+		float finalFarPlane = 20000.0f; // Stable 20km horizon
 		projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, finalFarPlane);
 
 		if (vWidth != currentViewportWidth || vHeight != currentViewportHeight || vWidth == 0 || vHeight == 0)
@@ -317,8 +317,8 @@ void Application::Run()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Synchronize Graphics Settings
-		sceneManager.SetRenderDistanceMultiplier(graphicsSettings.renderDistanceMultiplier);
-		sceneManager.SetShadowDistanceMultiplier(graphicsSettings.shadowDistanceMultiplier);
+		sceneManager.SetRenderDistanceMultiplier(1.0f);
+		sceneManager.SetShadowDistanceMultiplier(1.0f);
 
 		// Update Frustum
 		Frustum currentFrustum = Frustum::CreateFrustumFromMatrix(projection * view);
@@ -333,7 +333,7 @@ void Application::Run()
 		}
 
 		// Shadow passes
-		float shadowFar = graphicsSettings.shadowDistance * graphicsSettings.shadowDistanceMultiplier;
+		float shadowFar = graphicsSettings.shadowDistance;
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar, &graphicsSettings);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);

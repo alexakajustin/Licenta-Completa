@@ -402,16 +402,16 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		float dist = glm::distance(glm::vec3(modelMatrix[3]), cameraPos);
 
 		// Use global graphics settings for distances
-		float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
-		float d0 = (gs ? gs->lod0Distance : 50.0f) * mult;
-		float d1 = (gs ? gs->lod1Distance : 150.0f) * mult;
-		float d2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+		float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+		float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+		float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+		float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
 
 		Mesh* meshToRender = mesh;
 		if (lodCount > 0) {
-			if (dist < d0) meshToRender = mesh;
-			else if (dist < d1 && lodCount >= 2 && lodMeshes[0]) meshToRender = lodMeshes[0];
-			else if (dist < d2 && lodCount >= 3 && lodMeshes[1]) meshToRender = lodMeshes[1];
+			if (dist < finalLOD0) meshToRender = mesh;
+			else if (dist < finalLOD1 && lodCount >= 2 && lodMeshes[0]) meshToRender = lodMeshes[0];
+			else if (dist < finalLOD2 && lodCount >= 3 && lodMeshes[1]) meshToRender = lodMeshes[1];
 			else if (lodCount >= 4 && lodMeshes[2]) meshToRender = lodMeshes[2];
 		}
 

@@ -262,11 +262,10 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	// LOD distance uniforms
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), lodCount);
 	// Use global graphics settings for distances
-	float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
-	float finalMaxDist = (gs ? gs->cullDistance : 2000.0f) * mult;
-	float finalLOD0 = (gs ? gs->lod0Distance : 50.0f) * mult;
-	float finalLOD1 = (gs ? gs->lod1Distance : 150.0f) * mult;
-	float finalLOD2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
 
 	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalMaxDist);
 
@@ -428,10 +427,9 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		texture->UseTexture();
 		
 		// Sync LOD distances for debug coloring in fragment shader
-		float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
-		float finalLOD0 = (gs ? gs->lod0Distance : 50.0f) * mult;
-		float finalLOD1 = (gs ? gs->lod1Distance : 150.0f) * mult;
-		float finalLOD2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+		float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+		float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+		float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
 
 		glUniform1f(glGetUniformLocation(shaderID, "lodDistances[0]"), finalLOD0);
 		glUniform1f(glGetUniformLocation(shaderID, "lodDistances[1]"), finalLOD1);
@@ -542,8 +540,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 {
 	if (totalCount == 0 || !sharedMesh) return;
 
-	float mult = gs ? gs->shadowDistanceMultiplier : 1.0f;
-	float finalShadowDist = (gs ? gs->shadowDistance : 100.0f) * mult;
+	float finalShadowDist = gs ? gs->shadowDistance : 100.0f;
 
 	// ================================================================
 	// PHASE 1: Cull against light frustum with tight distance limit

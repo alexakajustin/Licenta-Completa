@@ -1618,13 +1618,9 @@ void EditorUI::RenderGraphicsSettings()
 			ImGui::DragFloat("LOD 0 -> 1", &graphicsSettingsPtr->lod0Distance, 1.0f, 1.0f, 1000.0f, "%.0f m");
 			ImGui::DragFloat("LOD 1 -> 2", &graphicsSettingsPtr->lod1Distance, 1.0f, 1.0f, 2000.0f, "%.0f m");
 			ImGui::DragFloat("LOD 2 -> Cull", &graphicsSettingsPtr->lod2Distance, 1.0f, 1.0f, 5000.0f, "%.0f m");
-			ImGui::DragFloat("Cull Distance", &graphicsSettingsPtr->cullDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
-			ImGui::DragFloat("Shadow Max Dist", &graphicsSettingsPtr->shadowDistance, 1.0f, 1.0f, 1000.0f, "%.0f m");
-
 			ImGui::Spacing();
-			ImGui::Text("Graphics Multipliers");
-			ImGui::SliderFloat("Render Distance (X)", &graphicsSettingsPtr->renderDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
-			ImGui::SliderFloat("Shadow Distance (X)", &graphicsSettingsPtr->shadowDistanceMultiplier, 0.1f, 10.0f, "%.2fx");
+			ImGui::DragFloat("Render Distance", &graphicsSettingsPtr->renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
+			ImGui::DragFloat("Shadow Max Dist", &graphicsSettingsPtr->shadowDistance, 1.0f, 1.0f, 1000.0f, "%.0f m");
 		}
 
 		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
@@ -1659,8 +1655,6 @@ void EditorUI::RenderGraphicsSettings()
 				graphicsSettingsPtr->ssaoIntensity = 1.5f;
 				graphicsSettingsPtr->ssaoKernelSize = 64;
 				graphicsSettingsPtr->ssaoBlurSize = 4;
-				graphicsSettingsPtr->renderDistanceMultiplier = 1.0f;
-				graphicsSettingsPtr->shadowDistanceMultiplier = 1.0f;
 			}
 
 			if (!graphicsSettingsPtr->ssaoEnabled) {

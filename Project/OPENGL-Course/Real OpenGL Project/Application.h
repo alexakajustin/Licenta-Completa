@@ -13,11 +13,8 @@ struct GraphicsSettings {
 	float lod0Distance = 50.0f;
 	float lod1Distance = 150.0f;
 	float lod2Distance = 400.0f;
-	float cullDistance = 2000.0f;
+	float renderDistance = 2000.0f; // Object cut-off (Trees/Grass)
 	float shadowDistance = 100.0f;
-
-	float renderDistanceMultiplier = 1.0f;
-	float shadowDistanceMultiplier = 1.0f;
 
 	// God Rays
 	bool godraysEnabled = true;
@@ -30,7 +27,8 @@ struct GraphicsSettings {
 	float cloudsDensity = 0.5f;
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
-	
+
+
 	// Debug Tools
 	bool debugLODColoring = false;
 	bool debugShowBounds = false;
