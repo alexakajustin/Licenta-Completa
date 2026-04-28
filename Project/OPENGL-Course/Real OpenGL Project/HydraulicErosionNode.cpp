@@ -27,6 +27,7 @@ void HydraulicErosionNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Deposit (Kd)", &depositionConstant, 0.001f, 0.0f, 1.0f);
 	ImGui::DragFloat("Evaporate", &evaporationConstant, 0.00001f, 0.0f, 0.5f, "%.5f");
 	ImGui::DragFloat("Smooth Max D", &maxDelta, 0.1f, 0.0f, 10.0f);
+	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 20);
 	ImGui::PopItemWidth();
 }
 
@@ -40,19 +41,21 @@ json HydraulicErosionNode::Serialize() const
 	j["depositionConstant"] = depositionConstant;
 	j["evaporationConstant"] = evaporationConstant;
 	j["maxDelta"] = maxDelta;
+	j["smoothPasses"] = smoothPasses;
 	return j;
 }
 
 void HydraulicErosionNode::Deserialize(const json& j)
 {
 	GraphNode::Deserialize(j);
-	simulationSteps = j.value("simulationSteps", 100);
-	rainRate = j.value("rainRate", 0.05f);
-	sedimentCapacity = j.value("sedimentCapacity", 40.0f);
-	dissolvingConstant = j.value("dissolvingConstant", 0.08f);
-	depositionConstant = j.value("depositionConstant", 0.08f);
-	evaporationConstant = j.value("evaporationConstant", 0.0001f);
-	maxDelta = j.value("maxDelta", 2.0f);
+	simulationSteps = j.value("simulationSteps", 60);
+	rainRate = j.value("rainRate", 0.03f);
+	sedimentCapacity = j.value("sedimentCapacity", 30.0f);
+	dissolvingConstant = j.value("dissolvingConstant", 0.03f);
+	depositionConstant = j.value("depositionConstant", 0.02f);
+	evaporationConstant = j.value("evaporationConstant", 0.0002f);
+	maxDelta = j.value("maxDelta", 1.0f);
+	smoothPasses = j.value("smoothPasses", 3);
 }
 
 void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -117,6 +120,37 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 			{
 				int vIndex = (z * gridRes + x) * 14;
 				data.vertices[vIndex + 1] = sim.terrain(z, x);
+			}
+		}
+
+		// Post-erosion Gaussian smoothing — eliminates remaining jagged spikes
+		if (smoothPasses > 0)
+		{
+			std::vector<float> heightBuffer(gridRes * gridRes);
+			for (int pass = 0; pass < smoothPasses; pass++)
+			{
+				// Extract heights
+				for (int i = 0; i < gridRes * gridRes; i++)
+					heightBuffer[i] = data.vertices[i * 14 + 1];
+
+				// 3x3 Gaussian kernel (approximation: 1-2-1 / 4)
+				for (int z = 1; z < gridRes - 1; z++)
+				{
+					for (int x = 1; x < gridRes - 1; x++)
+					{
+						int idx = z * gridRes + x;
+						float center = heightBuffer[idx] * 4.0f;
+						float cross = heightBuffer[idx - 1] + heightBuffer[idx + 1]
+							+ heightBuffer[idx - gridRes] + heightBuffer[idx + gridRes];
+						float diag = heightBuffer[idx - gridRes - 1] + heightBuffer[idx - gridRes + 1]
+							+ heightBuffer[idx + gridRes - 1] + heightBuffer[idx + gridRes + 1];
+						data.vertices[idx * 14 + 1] = (center + cross * 2.0f + diag) / 16.0f;
+					}
+				}
+
+				if (progress) {
+					progress(100.0f, "Smoothing... Pass " + std::to_string(pass + 1) + "/" + std::to_string(smoothPasses));
+				}
 			}
 		}
 

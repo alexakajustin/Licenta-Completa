@@ -65,52 +65,76 @@ void FluidSimulation::smoothTerrain()
     uint w = terrain.width();
     uint h = terrain.height();
 
-    // Multithreaded smoothing computation
+    // Thermal erosion: move material from steep slopes to lower neighbors.
+    // This naturally rounds off sharp peaks and creates realistic slope angles.
+    // The talus angle threshold (maxDelta) controls how steep slopes can be.
+    float thermalRate = 0.5f; // How much material moves per step (0-1)
+
+    // Multithreaded thermal erosion computation
     unsigned int numThreads = std::thread::hardware_concurrency();
     if (numThreads == 0) numThreads = 4;
     if (numThreads > h) numThreads = h;
 
-    std::vector<std::thread> threads;
-    uint rowsPerThread = h / numThreads;
+    // Copy current terrain to tmpSediment
+    for (uint i = 0; i < terrain.size(); ++i)
+        tmpSediment(i) = terrain(i);
 
-    for (unsigned int t = 0; t < numThreads; t++)
     {
-        uint startY = t * rowsPerThread;
-        uint endY = (t == numThreads - 1) ? h : (t + 1) * rowsPerThread;
+        std::vector<std::thread> threads;
+        uint rowsPerThread = h / numThreads;
 
-        threads.emplace_back([this, w, startY, endY]() {
-            for (uint y = startY; y < endY; ++y)
-            {
-                for (uint x = 0; x < w; ++x)
+        for (unsigned int t = 0; t < numThreads; t++)
+        {
+            uint startY = t * rowsPerThread;
+            uint endY = (t == numThreads - 1) ? h : (t + 1) * rowsPerThread;
+
+            threads.emplace_back([this, w, startY, endY, thermalRate]() {
+                for (uint y = startY; y < endY; ++y)
                 {
-                    float hVal = getTerrain(y, x);
-                    float hl = getTerrain(y, x - 1);
-                    float hr = getTerrain(y, x + 1);
-                    float ht = getTerrain(y + 1, x);
-                    float hb = getTerrain(y - 1, x);
-
-                    float dl = hVal - hl;
-                    float dr = hVal - hr;
-                    float dt = hVal - ht;
-                    float db = hVal - hb;
-
-                    tmpSediment(y, x) = hVal;
-
-                    if ((std::abs(dl) > maxDelta || std::abs(dr) > maxDelta) && dr * dl > 0.0f)
+                    for (uint x = 0; x < w; ++x)
                     {
-                        tmpSediment(y, x) = (hVal + hl + hr + ht + hb) / 5.0f;
-                    }
-                    else if ((std::abs(dt) > maxDelta || std::abs(db) > maxDelta) && dt * db > 0.0f)
-                    {
-                        tmpSediment(y, x) = (hVal + hl + hr + ht + hb) / 5.0f;
+                        float hVal = terrain(y, x);
+
+                        // Get 4 neighbor heights (clamped at boundaries)
+                        float neighbors[4];
+                        neighbors[0] = (x > 0) ? terrain(y, x - 1) : hVal;         // left
+                        neighbors[1] = (x < w - 1) ? terrain(y, x + 1) : hVal;     // right
+                        neighbors[2] = (y > 0) ? terrain(y - 1, x) : hVal;         // bottom
+                        neighbors[3] = (y < terrain.height() - 1) ? terrain(y + 1, x) : hVal; // top
+
+                        // Find total height difference exceeding talus angle
+                        float totalExcess = 0.0f;
+                        float deltas[4];
+                        for (int n = 0; n < 4; n++)
+                        {
+                            deltas[n] = hVal - neighbors[n];
+                            if (deltas[n] > maxDelta)
+                                totalExcess += (deltas[n] - maxDelta);
+                        }
+
+                        // Redistribute excess material to lower neighbors
+                        if (totalExcess > 0.0f)
+                        {
+                            float moved = 0.0f;
+                            for (int n = 0; n < 4; n++)
+                            {
+                                if (deltas[n] > maxDelta)
+                                {
+                                    float fraction = (deltas[n] - maxDelta) / totalExcess;
+                                    float amount = thermalRate * totalExcess * fraction * 0.5f;
+                                    moved += amount;
+                                }
+                            }
+                            tmpSediment(y, x) = hVal - moved;
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
+        for (auto& th : threads) th.join();
     }
-    for (auto& th : threads) th.join();
 
-    for (uint i=0; i<terrain.size(); ++i)
+    for (uint i = 0; i < terrain.size(); ++i)
     {
         terrain(i) = tmpSediment(i);
     }
@@ -119,7 +143,7 @@ void FluidSimulation::smoothTerrain()
 void FluidSimulation::simulateFlow(double dt)
 {
     float l = 1.0f;
-    float A = 0.00005f;
+    float A = 0.0005f; // Pipe cross-section area (larger = faster flow, wider channels)
 
     const float dx = lX;
     const float dy = lY;

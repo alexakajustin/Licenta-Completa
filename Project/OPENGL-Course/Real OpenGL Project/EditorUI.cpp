@@ -697,11 +697,12 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				noise->SetOctaves(8);
 				
 				// Set erosion to deep carving defaults
-				erosion->SetSteps(10);
-				erosion->SetRainRate(0.1f);
-				erosion->SetKs(0.12f);
-				erosion->SetKd(0.12f);
-				erosion->SetMaxDelta(8.0f); // Allow very sharp ridges
+				erosion->SetSteps(150);
+				erosion->SetRainRate(0.04f);
+				erosion->SetKs(0.05f);
+				erosion->SetKd(0.02f);
+				erosion->SetMaxDelta(1.2f); // Realistic talus angle for cinematic slopes
+				erosion->SetSmoothPasses(5); // Clean up any remaining jagged edges
 
 				input->editorPos = glm::vec2(50, 150);
 				noise->editorPos = glm::vec2(250, 150);
