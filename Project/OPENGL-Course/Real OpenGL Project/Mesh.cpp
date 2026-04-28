@@ -64,10 +64,13 @@ void Mesh::CreateMesh(GLfloat* vertices, unsigned int* indices, unsigned int num
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 14, (void*)(sizeof(vertices[0]) * 11));
 	glEnableVertexAttribArray(4);
 
-	// unbinds
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind vbo 
-	glBindVertexArray(0); // unbind vao
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // unbind IBO
+	// unbinds — ORDER MATTERS!
+	// The GL_ELEMENT_ARRAY_BUFFER binding is part of VAO state.
+	// We must unbind the VAO FIRST, then unbind the IBO *after*.
+	// Unbinding IBO while VAO is still bound would detach it from the VAO on NVIDIA.
+	glBindBuffer(GL_ARRAY_BUFFER, 0);         // unbind VBO (not part of VAO state, safe anytime)
+	glBindVertexArray(0);                     // unbind VAO (this "locks in" the IBO association)
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // now safe to unbind IBO (no VAO is bound)
 }
 
 void Mesh::CreateInstancedMesh(GLfloat* vertices, unsigned int* indices, unsigned int numberOfVertices, unsigned int numberOfIndices, unsigned int maxInstances)

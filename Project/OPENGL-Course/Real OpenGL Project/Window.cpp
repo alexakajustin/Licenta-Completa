@@ -40,6 +40,14 @@ Window::~Window()
 	glfwTerminate();
 }
 
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM || type == GL_DEBUG_TYPE_ERROR) {
+		printf("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+			(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+	}
+}
+
 int Window::Initialise()
 {
 	// initialise GLFW
@@ -57,6 +65,7 @@ int Window::Initialise()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	// forward compatible
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE); // ENABLE DEBUG CONTEXT
 
 	// start window maximized
 	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
@@ -97,6 +106,10 @@ int Window::Initialise()
 		glfwTerminate();
 		return 1;
 	}
+
+	// glEnable(GL_DEBUG_OUTPUT);
+	// glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	// glDebugMessageCallback(MessageCallback, 0);
 
 	// set viewport size
 	glEnable(GL_DEPTH_TEST);

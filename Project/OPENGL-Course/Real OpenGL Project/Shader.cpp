@@ -362,6 +362,27 @@ void Shader::CompileProgram()
 		uniformOmniShadowMap[i].farPlane = glGetUniformLocation(shaderID, locBuff);
 	}
 
+	// --- PREVENT NVIDIA SAMPLER TYPE COLLISION ---
+	// Uninitialized samplers default to texture unit 0. 
+	// If a samplerCube (shadowMap) and a sampler2D (theTexture) both default to unit 0,
+	// NVIDIA drivers throw GL_INVALID_OPERATION and silently drop the entire draw call.
+	// We MUST initialize them to safe, unique texture units at compile time.
+	UseShader();
+	
+	if (uniformTexture != -1) glUniform1i(uniformTexture, 0);
+	if (uniformNormalMap != -1) glUniform1i(uniformNormalMap, 1);
+	if (uniformDirectionalShadowMap != -1) glUniform1i(uniformDirectionalShadowMap, 3);
+	if (uniformDirectionalShadowColorMap != -1) glUniform1i(uniformDirectionalShadowColorMap, 20);
+
+	for (size_t i = 0; i < MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS; i++)
+	{
+		if (uniformOmniShadowMap[i].shadowMap != -1) glUniform1i(uniformOmniShadowMap[i].shadowMap, 4 + (GLint)i);
+		if (uniformOmniShadowMap[i].shadowColorMap != -1) glUniform1i(uniformOmniShadowMap[i].shadowColorMap, 21 + (GLint)i);
+	}
+	
+	glUseProgram(0); // Unbind
+	// ---------------------------------------------
+
 	DiscoverUniforms();
 }
 

@@ -84,6 +84,7 @@ uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
 uniform mat4 directionalLightTransform[4];
 uniform float cascadeSplits[4];
+uniform float lodDistances[3];
 uniform mat4 viewMatrix; // We need this to get view-space depth
 
 uniform Material material;
@@ -293,7 +294,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	if(projCoords.z > 1.0) return 0.0;
 	
 	float current = projCoords.z;
-	float bias = max(0.0005 * (1.0 - dot(normal, -lightDir)), 0.0001);
+	float bias = max(0.002 * (1.0 - dot(normal, -lightDir)), 0.0005);
 	
 	float shadow = 0.0;
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
@@ -661,7 +662,7 @@ void main()
 		// Alpha discard for cutout transparency (e.g. foliage)
 		// Threshold increased to 0.5 to prevent white outlines/halo (mip bleed)
 		if (useDiffuseTexture == 1 && texColor.a < 0.5) {
-			discard;
+			discard; 
 		}
 		
 		baseColor = material.baseColor.rgb * texColor.rgb;
@@ -683,7 +684,12 @@ void main()
 
 	// LOD debug coloring (tint 30% of original color)
 	if (debugLODColoring) {
-		finalColor = mix(finalColor, lodDebugColor, 0.3);
+		float distToCam = distance(FragPos, eyePosition);
+		vec3 distColor = vec3(1.0, 0.2, 0.2); // Red (LOD 0)
+		if (distToCam > lodDistances[1]) distColor = vec3(0.2, 0.2, 1.0); // Blue (LOD 2)
+		else if (distToCam > lodDistances[0]) distColor = vec3(0.2, 1.0, 0.2); // Green (LOD 1)
+		
+		finalColor = mix(finalColor, distColor, 0.4);
 	}
 
 	colour = vec4(finalColor, material.baseColor.a);

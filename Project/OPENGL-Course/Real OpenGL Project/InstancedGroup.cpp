@@ -426,6 +426,16 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderID, "theTexture"), 0);
 		texture->UseTexture();
+		
+		// Sync LOD distances for debug coloring in fragment shader
+		float mult = gs ? gs->renderDistanceMultiplier : 1.0f;
+		float finalLOD0 = (gs ? gs->lod0Distance : 50.0f) * mult;
+		float finalLOD1 = (gs ? gs->lod1Distance : 150.0f) * mult;
+		float finalLOD2 = (gs ? gs->lod2Distance : 400.0f) * mult;
+
+		glUniform1f(glGetUniformLocation(shaderID, "lodDistances[0]"), finalLOD0);
+		glUniform1f(glGetUniformLocation(shaderID, "lodDistances[1]"), finalLOD1);
+		glUniform1f(glGetUniformLocation(shaderID, "lodDistances[2]"), finalLOD2);
 	}
 	else {
 		if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 0);

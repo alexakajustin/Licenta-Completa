@@ -50,7 +50,7 @@ void ScatterNode::Deserialize(const json& j)
 	randomRotation = j.value("randomRotation", true);
 	alignToNormal = j.value("alignToNormal", true);
 	seed = j.value("seed", 42);
-	spawnAsObjects = true; // Forced
+	spawnAsObjects = j.value("spawnAsObjects", false); // Default to high-performance instancing
 	targetParentName = j.value("targetParentName", "(none)");
 	targetParentIndex = -1; // Force re-resolution on first Execute
 
