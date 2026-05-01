@@ -58,7 +58,7 @@
                 "start": 659
             }
         ],
-        "nextId": 696,
+        "nextId": 710,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -85,11 +85,11 @@
                         "heightMax": 100.0,
                         "heightMin": 2.0,
                         "invert": false,
-                        "normalMapPath": "Assets\\Textures\\terrain\\grass\\normal.jpg",
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
                         "opacity": 1.0,
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
-                        "texturePath": "Assets\\Textures\\terrain\\grass\\albedo.jpg",
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
                         "tiling": 100.0
                     },
                     {
@@ -97,11 +97,11 @@
                         "heightMax": 331.0,
                         "heightMin": 306.0,
                         "invert": false,
-                        "normalMapPath": "Assets\\Textures\\terrain\\snow\\normal.jpg",
+                        "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
                         "opacity": 1.0,
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
-                        "texturePath": "Assets\\Textures\\terrain\\snow\\albedo.jpg",
+                        "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
                         "tiling": 100.0
                     }
                 ],
@@ -234,13 +234,6 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
-            "tessellation": {
-                "displacementBias": -0.5,
-                "displacementScale": 1.0,
-                "distance": 50.0,
-                "enabled": true,
-                "level": 8.0
-            },
             "textureLayers": [
                 {
                     "blendMode": 1,
