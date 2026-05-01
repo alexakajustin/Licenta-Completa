@@ -100,12 +100,12 @@
                 "title": "Scene Input"
             },
             {
-                "amplitude": 400.0,
+                "amplitude": 600.0,
                 "editorPos": [
                     250.0,
                     150.0
                 ],
-                "frequency": 0.03500000014901161,
+                "frequency": 0.020,
                 "id": 30,
                 "inputPins": [
                     31

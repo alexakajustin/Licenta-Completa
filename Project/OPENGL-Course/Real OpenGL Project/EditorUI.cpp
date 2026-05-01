@@ -692,8 +692,8 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 
 				// Boost parameters for cinematic rocky mountains
 				noise->SetRidged(true);
-				noise->SetAmplitude(400.0f);
-				noise->SetFrequency(0.035f);
+				noise->SetAmplitude(600.0f);
+				noise->SetFrequency(0.020f);
 				noise->SetOctaves(8);
 				
 				// Set erosion to deep carving defaults
