@@ -186,6 +186,7 @@
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGenerator.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="RiverNode.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="Shader.cpp" />
@@ -541,6 +542,7 @@
     <ClInclude Include="FluidSimulation.h" />
     <ClInclude Include="Grid2D.h" />
     <ClInclude Include="HydraulicErosionNode.h" />
+    <ClInclude Include="RiverNode.h" />
     <ClInclude Include="UndoManager.h" />
     <ClInclude Include="UndoActions.h" />
     <ClInclude Include="ConstantNode.h" />

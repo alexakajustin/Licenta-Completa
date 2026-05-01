@@ -17,6 +17,7 @@
 #include "MergeMeshNode.h"
 #include "OutputNode.h"
 #include "HydraulicErosionNode.h"
+#include "RiverNode.h"
 #include "SceneSerializer.h"
 #include "UndoActions.h"
 #include <filesystem>
@@ -687,6 +688,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				nodeGraph.Clear();
 				SceneInputNode* input = new SceneInputNode(nodeGraph);
 				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
+				RiverNode* river = new RiverNode(nodeGraph);
 				HydraulicErosionNode* erosion = new HydraulicErosionNode(nodeGraph);
 				OutputNode* output = new OutputNode(nodeGraph);
 
@@ -707,16 +709,19 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				input->editorPos = glm::vec2(50, 150);
 				noise->editorPos = glm::vec2(250, 150);
 				erosion->editorPos = glm::vec2(450, 150);
-				output->editorPos = glm::vec2(650, 150);
+				river->editorPos = glm::vec2(650, 150);
+				output->editorPos = glm::vec2(850, 150);
 
 				nodeGraph.AddNode(input);
 				nodeGraph.AddNode(noise);
+				nodeGraph.AddNode(river);
 				nodeGraph.AddNode(erosion);
 				nodeGraph.AddNode(output);
 
 				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
 				nodeGraph.AddLink(noise->outputs[0].id, erosion->inputs[0].id);
-				nodeGraph.AddLink(erosion->outputs[0].id, output->inputs[0].id);
+				nodeGraph.AddLink(erosion->outputs[0].id, river->inputs[0].id);
+				nodeGraph.AddLink(river->outputs[0].id, output->inputs[0].id);
 
 				// Auto-assign Plane and set good erosion defaults
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
