@@ -24,6 +24,7 @@ private:
 	float baseDepth = 4.0f;
 	float baseWidth = 5.0f;
 	float lakeSize = 4.0f;
+	float waterOffset = 0.5f;
 	int smoothPasses = 4;
 
 	// Internal helper for normal recomputation
