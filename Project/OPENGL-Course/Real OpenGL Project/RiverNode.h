@@ -21,9 +21,10 @@ private:
 	// Parameters
 	int springCount = 5;
 	int maxSteps = 500;
-	float baseDepth = 2.0f;
-	float baseWidth = 3.0f;
-	int smoothPasses = 3;
+	float baseDepth = 4.0f;
+	float baseWidth = 5.0f;
+	float lakeSize = 4.0f;
+	int smoothPasses = 4;
 
 	// Internal helper for normal recomputation
 	void RecomputeNormals(MeshData& data, int gridRes);
