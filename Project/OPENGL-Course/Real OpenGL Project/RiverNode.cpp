@@ -3,6 +3,7 @@
 #include "SceneManager.h"
 #include "GameObject.h"
 #include "Mesh.h"
+#include "Material.h"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -19,6 +20,14 @@ RiverNode::RiverNode(NodeGraph& graph)
 
 	Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
 	outputs.push_back(meshOut);
+
+	springCount = 5;
+	maxSteps = 500;
+	baseDepth = 4.0f;
+	baseWidth = 12.0f;
+	lakeSize = 6.0f;
+	waterOffset = 3.2f;
+	smoothPasses = 4;
 }
 
 json RiverNode::Serialize() const
@@ -40,9 +49,9 @@ void RiverNode::Deserialize(const json& j)
 	springCount = j.value("springCount", 5);
 	maxSteps = j.value("maxSteps", 500);
 	baseDepth = j.value("baseDepth", 4.0f);
-	baseWidth = j.value("baseWidth", 5.0f);
-	lakeSize = j.value("lakeSize", 4.0f);
-	waterOffset = j.value("waterOffset", 0.5f);
+	baseWidth = j.value("baseWidth", 12.0f);
+	lakeSize = j.value("lakeSize", 6.0f);
+	waterOffset = j.value("waterOffset", 3.2f);
 	smoothPasses = j.value("smoothPasses", 4);
 }
 
@@ -260,6 +269,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	// 6. Generate Water Mesh
 	MeshData waterMesh;
 	glm::vec3 up(0, 1, 0);
+	float waterMeshWidthMultiplier = 1.25f; // Bigger for clear visibility
 
 	for (const auto& path : riverPaths)
 	{
@@ -279,21 +289,20 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
 			
-			float worldWidth = baseWidth * std::sqrt((float)flowVolume[vz * gridRes + vx]);
+			float worldWidth = baseWidth * std::sqrt((float)flowVolume[vz * gridRes + vx]) * waterMeshWidthMultiplier;
 			float localWidth = worldWidth / terrainScale.x;
 
 			glm::vec3 pL = pos - right * localWidth + up * (waterOffset / terrainScale.y);
 			glm::vec3 pR = pos + right * localWidth + up * (waterOffset / terrainScale.y);
 
-			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, (float)i / path.size(), 0, 1, 0, 1, 0, 0, 0, 0, 1);
-			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, (float)i / path.size(), 0, 1, 0, 1, 0, 0, 0, 0, 1);
+			// TBN Generation: Tangent = Right, Bitangent = Forward (dir), Normal = Up
+			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, (float)i * 0.1f, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, (float)i * 0.1f, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
 
 			if (i > 0)
 			{
 				int currL = baseIdx + (int)i * 2; int currR = baseIdx + (int)i * 2 + 1;
 				int prevL = baseIdx + (int)(i - 1) * 2; int prevR = baseIdx + (int)(i - 1) * 2 + 1;
-				
-				// FIXED WINDING ORDER (CCW)
 				waterMesh.AddTriangle(prevL, currR, currL);
 				waterMesh.AddTriangle(prevL, prevR, currR);
 			}
@@ -302,7 +311,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	for (const auto& sink : sinks)
 	{
-		float worldRadius = lakeSize * std::sqrt(sink.volume);
+		float worldRadius = lakeSize * std::sqrt(sink.volume) * waterMeshWidthMultiplier;
 		float localRadius = worldRadius / terrainScale.x;
 		glm::vec3 center(data.vertices[(sink.z * gridRes + sink.x) * 14], 
 						 data.vertices[(sink.z * gridRes + sink.x) * 14 + 1] + (waterOffset / terrainScale.y) + 0.1f,
@@ -315,16 +324,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			float ang = (float)i / (float)segments * 2.0f * 3.14159f;
 			glm::vec3 p = center + glm::vec3(std::cos(ang), 0, std::sin(ang)) * localRadius;
 			waterMesh.AddVertex(p.x, p.y, p.z, (std::cos(ang) + 1.0f) * 0.5f, (std::sin(ang) + 1.0f) * 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-			
-			if (i > 0) 
-			{
-				// FIXED WINDING ORDER (CCW)
-				waterMesh.AddTriangle(baseIdx, baseIdx + i + 1, baseIdx + i);
-			}
+			if (i > 0) waterMesh.AddTriangle(baseIdx, baseIdx + i + 1, baseIdx + i);
 		}
 	}
 
-	// 7. Sync Transform
+	// 7. Sync Transform & Material
 	std::string waterName = "River_Water_" + std::to_string(id);
 	GameObject* waterObj = scene.FindObject(waterName);
 	if (!waterObj) { waterObj = new GameObject(waterName); scene.AddObject(waterObj); }
@@ -333,6 +337,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		waterObj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
 		waterObj->GetTransform().SetRotation(terrainObj->GetTransform().GetRotation());
 		waterObj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
+	}
+
+	if (!waterObj->GetMaterial())
+	{
+		Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
+		if (waterMat) waterObj->SetMaterial(waterMat);
 	}
 
 	if (!waterMesh.vertices.empty())

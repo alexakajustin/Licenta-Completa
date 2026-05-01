@@ -159,6 +159,8 @@ Material* Material::LoadFromFile(const std::string& path)
 
 	Material* mat = new Material();
 	std::string line;
+	std::string vPath, fPath;
+
 	while (std::getline(file, line))
 	{
 		if (line.empty()) continue;
@@ -169,11 +171,8 @@ Material* Material::LoadFromFile(const std::string& path)
 		std::string key = line.substr(0, eq);
 		std::string valStr = line.substr(eq + 1);
 
-		if (key == "shader_vert") {
-			// We can't easily load the shader here without a manager, 
-			// but we'll store the path or let the caller handle it.
-			// For now, these will be handled by the SceneSerializer
-		}
+		if (key == "shader_vert") vPath = valStr;
+		else if (key == "shader_frag") fPath = valStr;
 		else if (key.rfind("texture_", 0) == 0) {
 			// texture_XXX=path/to/file.png -> loads texture and stores as "material_XXX"
 			std::string uniformName = "material_" + key.substr(8); // strip "texture_" prefix
@@ -194,6 +193,14 @@ Material* Material::LoadFromFile(const std::string& path)
 			mat->SetFloat(key, std::stof(valStr));
 		}
 	}
+
+	if (!vPath.empty() && !fPath.empty())
+	{
+		Shader* s = new Shader();
+		s->CreateFromFiles(vPath.c_str(), fPath.c_str());
+		mat->SetShader(s);
+	}
+
 	return mat;
 }
 

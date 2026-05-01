@@ -22,9 +22,9 @@ private:
 	int springCount = 5;
 	int maxSteps = 500;
 	float baseDepth = 4.0f;
-	float baseWidth = 5.0f;
-	float lakeSize = 4.0f;
-	float waterOffset = 0.5f;
+	float baseWidth = 12.0f; // Increased for better visibility
+	float lakeSize = 6.0f;   // Increased
+	float waterOffset = 3.2f; // Increased to be closer to surface
 	int smoothPasses = 4;
 
 	// Internal helper for normal recomputation
