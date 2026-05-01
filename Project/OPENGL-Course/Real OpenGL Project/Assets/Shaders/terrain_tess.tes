@@ -109,43 +109,12 @@ void main()
 	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
 
 	// ========== DISPLACEMENT ==========
-	float displacement = getDisplacement(TexCoord);
-
-	// Displace along world Y
-	FragPos.y += displacement;
-	LocalPos.y += displacement;
+	// Physical vertex displacement has been disabled to allow Parallax Occlusion Mapping
+	// in the fragment shader, which provides per-pixel detail without requiring high poly density.
 
 	// ========== NORMAL RECOMPUTATION ==========
-	// Only do expensive finite-difference normals within 150m of camera
-	// Beyond that, the interpolated normal is good enough and saves 4 texture lookups
-	float cameraDist = distance(eyePosition, FragPos);
-
-	if (cameraDist < 150.0) {
-		float eps = 0.3;
-		float edgeLen = length(FragPos_TCS[1] - FragPos_TCS[0]);
-		float uvLen = length(TexCoord_TCS[1] - TexCoord_TCS[0]);
-		float uvPerWorld = (uvLen > 0.001) ? (uvLen / edgeLen) : 0.001;
-		vec2 uvStep = vec2(eps * uvPerWorld);
-
-		float hL = getDisplacement(TexCoord - vec2(uvStep.x, 0.0));
-		float hR = getDisplacement(TexCoord + vec2(uvStep.x, 0.0));
-		float hD = getDisplacement(TexCoord - vec2(0.0, uvStep.y));
-		float hU = getDisplacement(TexCoord + vec2(0.0, uvStep.y));
-
-		vec3 computedNormal = normalize(vec3(hL - hR, 2.0 * eps, hD - hU));
-
-		// Blend with original normal — use computed normal where displacement is significant
-		float dispStrength = clamp(abs(displacement) * 5.0, 0.0, 1.0);
-		// Fade the computed normal contribution based on distance for smooth transition
-		float normalBlend = 1.0 - smoothstep(100.0, 150.0, cameraDist);
-		Normal = normalize(mix(normalize(Normal), computedNormal, dispStrength * normalBlend));
-		NormalWorld = Normal;
-
-		// Recompute TBN from new normal
-		TangentWorld = normalize(cross(Normal, vec3(0.0, 0.0, 1.0)));
-		if (length(TangentWorld) < 0.01) TangentWorld = normalize(cross(Normal, vec3(1.0, 0.0, 0.0)));
-		BitangentWorld = normalize(cross(TangentWorld, Normal));
-	}
+	// Since physical displacement is disabled, we no longer need to recalculate normals.
+	// We simply rely on the interpolated Normal_TCS which is perfectly smooth.
 
 	gl_Position = projection * view * vec4(FragPos, 1.0);
 }

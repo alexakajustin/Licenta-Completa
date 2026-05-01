@@ -211,7 +211,7 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
 
     // Distance-based LOD: fade out POM beyond a threshold to prevent GPU overload
     float fragDist = length(eyePosition - FragPos);
-    float pomFade = 1.0 - smoothstep(15.0, 30.0, fragDist);
+    float pomFade = 1.0 - smoothstep(50.0, 150.0, fragDist);
     if (pomFade < 0.01) return texCoords;
 
     // Reduced layer counts: 8-32 instead of 32-128 (4x faster, still looks great)
@@ -578,15 +578,40 @@ void CalcLayeredSurface(out vec3 outColor)
             }
 		} else {
 			// Terrain/Structured modes: use Triplanar Mapping to fix "melting"
-			layerSample.rgb = SampleTriplanarDiffuse(textureLayers[i], LocalPos, triWeights, tiling);
+            vec3 samplePos = LocalPos;
+            
+            // To make "displacement maps work like normal maps per tile" for terrain,
+            // we apply Parallax Occlusion Mapping to the Triplanar sampling coordinates!
+            if (layerData[i].hasDisplacementMap == 1) {
+                vec3 viewDirWorld = normalize(eyePosition - FragPos);
+                
+                // Fast Triplanar POM: Apply POM to the most dominant plane to save performance
+                if (triWeights.y > triWeights.x && triWeights.y > triWeights.z) {
+                    // Y-plane dominant (Top-down, like terrain ground)
+                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.z, viewDirWorld.y);
+                    vec2 pomUV = CalcParallaxUVs(samplePos.xz * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+                    samplePos.xz = pomUV / tiling;
+                }
+                else if (triWeights.x > triWeights.y && triWeights.x > triWeights.z) {
+                    // X-plane dominant (Cliffs facing X)
+                    vec3 viewDirTangent = vec3(-viewDirWorld.z, viewDirWorld.y, viewDirWorld.x) * sign(geometryNormal.x);
+                    vec2 pomUV = CalcParallaxUVs(samplePos.zy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+                    samplePos.zy = pomUV / tiling;
+                }
+                else {
+                    // Z-plane dominant (Cliffs facing Z)
+                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.y, viewDirWorld.z) * sign(geometryNormal.z);
+                    vec2 pomUV = CalcParallaxUVs(samplePos.xy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+                    samplePos.xy = pomUV / tiling;
+                }
+            }
+
+			layerSample.rgb = SampleTriplanarDiffuse(textureLayers[i], samplePos, triWeights, tiling);
             layerSample.a = 1.0; // Assume opaque for triplanar layers
             
             if (layerData[i].hasNormalMap == 1) {
-                layerWorldNorm = SampleTriplanarNormal(layerNormalMaps[i], LocalPos, triWeights, tiling, geometryNormal);
+                layerWorldNorm = SampleTriplanarNormal(layerNormalMaps[i], samplePos, triWeights, tiling, geometryNormal);
             }
-            
-            // Note: POM is omitted for triplanar mapping as it's extremely expensive 
-            // and usually unnecessary when triplanar mapping is present.
 		}
 
 		// Compute blend weight
