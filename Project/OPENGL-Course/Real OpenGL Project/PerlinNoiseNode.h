@@ -111,6 +111,7 @@ public:
 	void SetFrequency(float f) { generator.SetFrequency(f); }
 	void SetRidged(bool r) { generator.SetRidged(r); }
 	void SetOctaves(int o) { generator.SetOctaves(o); }
+	void SetPersistence(float p) { generator.SetPersistence(p); }
 
 private:
 	PerlinNoiseGenerator generator;

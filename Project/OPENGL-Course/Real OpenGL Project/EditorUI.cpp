@@ -694,17 +694,18 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 
 				// Boost parameters for cinematic rocky mountains
 				noise->SetRidged(true);
-				noise->SetAmplitude(600.0f);
-				noise->SetFrequency(0.020f);
+				noise->SetAmplitude(400.0f); // 400m height on 1000m terrain gives realistic massive peaks
+				noise->SetFrequency(1.2f); // Spans ~2 massive peaks across the map
 				noise->SetOctaves(8);
+				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
 				
 				// Set erosion to deep carving defaults
-				erosion->SetSteps(150);
+				erosion->SetSteps(250); // More steps for deeper erosion channels
 				erosion->SetRainRate(0.04f);
 				erosion->SetKs(0.05f);
 				erosion->SetKd(0.02f);
 				erosion->SetMaxDelta(1.2f); // Realistic talus angle for cinematic slopes
-				erosion->SetSmoothPasses(5); // Clean up any remaining jagged edges
+				erosion->SetSmoothPasses(0); // Set to 0 to keep jagged, realistic peaks (removed artificial smoothing)
 
 				input->editorPos = glm::vec2(50, 150);
 				noise->editorPos = glm::vec2(250, 150);

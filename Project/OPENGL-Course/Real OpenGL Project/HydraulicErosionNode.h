@@ -32,7 +32,7 @@ private:
 	float depositionConstant = 0.02f;
 	float evaporationConstant = 0.0002f;
 	float maxDelta = 1.0f;
-	int smoothPasses = 3; // Post-erosion smoothing passes
+	int smoothPasses = 0; // Post-erosion smoothing passes
 
 	// Internal helper
 	void RecomputeNormals(MeshData& data, int resolutionX, int resolutionZ);

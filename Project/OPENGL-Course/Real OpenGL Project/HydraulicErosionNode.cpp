@@ -4,6 +4,7 @@
 #include <cmath>
 #include <thread>
 #include <vector>
+#include <random>
 
 HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
 {
@@ -55,7 +56,7 @@ void HydraulicErosionNode::Deserialize(const json& j)
 	depositionConstant = j.value("depositionConstant", 0.02f);
 	evaporationConstant = j.value("evaporationConstant", 0.0002f);
 	maxDelta = j.value("maxDelta", 1.0f);
-	smoothPasses = j.value("smoothPasses", 3);
+	smoothPasses = j.value("smoothPasses", 0);
 }
 
 void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -80,48 +81,124 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 			return;
 		}
 
-		FluidSimulation sim(gridRes, gridRes);
-
-		// Apply user settings
-		sim.rainRate = rainRate;
-		sim.sedimentCapacityConstant = sedimentCapacity;
-		sim.dissolvingConstant = dissolvingConstant;
-		sim.depositionConstant = depositionConstant;
-		sim.evaporationConstant = evaporationConstant;
-		sim.maxDelta = maxDelta;
-
-		// Extract Y coordinates to simulator terrain
+		// === DROPLET-BASED HYDRAULIC EROSION ===
+		// Extracted parameters
+		int numDrops = simulationSteps * 1000;
+		float dropEvap = evaporationConstant; 
+		float dropDeposition = depositionConstant; 
+		float dropErosion = dissolvingConstant; 
+		float dropCapacity = sedimentCapacity; 
+		int maxLifetime = 100;
+		
+		std::vector<float> hmap(gridRes * gridRes);
 		for (int z = 0; z < gridRes; z++)
-		{
 			for (int x = 0; x < gridRes; x++)
-			{
-				int vIndex = (z * gridRes + x) * 14;
-				sim.terrain(z, x) = data.vertices[vIndex + 1]; // Y
+				hmap[z * gridRes + x] = data.vertices[(z * gridRes + x) * 14 + 1];
+
+		auto GetHeight = [&](float x, float z) -> float {
+			int ix = (int)x;
+			int iz = (int)z;
+			float u = x - ix;
+			float v = z - iz;
+			int ix1 = std::min(ix + 1, gridRes - 1);
+			int iz1 = std::min(iz + 1, gridRes - 1);
+			float h00 = hmap[iz * gridRes + ix];
+			float h10 = hmap[iz * gridRes + ix1];
+			float h01 = hmap[iz1 * gridRes + ix];
+			float h11 = hmap[iz1 * gridRes + ix1];
+			float h0 = h00 * (1.0f - u) + h10 * u;
+			float h1 = h01 * (1.0f - u) + h11 * u;
+			return h0 * (1.0f - v) + h1 * v;
+		};
+
+		auto GetGradient = [&](float x, float z, float& gx, float& gz) {
+			int ix = (int)x;
+			int iz = (int)z;
+			float u = x - ix;
+			float v = z - iz;
+			int ix1 = std::min(ix + 1, gridRes - 1);
+			int iz1 = std::min(iz + 1, gridRes - 1);
+			float h00 = hmap[iz * gridRes + ix];
+			float h10 = hmap[iz * gridRes + ix1];
+			float h01 = hmap[iz1 * gridRes + ix];
+			float h11 = hmap[iz1 * gridRes + ix1];
+			gx = (h10 - h00) * (1.0f - v) + (h11 - h01) * v;
+			gz = (h01 - h00) * (1.0f - u) + (h11 - h10) * u;
+		};
+
+		std::mt19937 rng(42);
+		std::uniform_real_distribution<float> randX(0.0f, (float)(gridRes - 2));
+		
+		for (int d = 0; d < numDrops; d++) {
+			if (progress && (d % 10000 == 0 || d == numDrops - 1)) {
+				float pct = ((float)(d + 1) / numDrops) * 100.0f;
+				progress(pct, "Droplet Erosion... " + std::to_string(d + 1) + "/" + std::to_string(numDrops));
+			}
+
+			float posX = randX(rng);
+			float posZ = randX(rng);
+			float dirX = 0.0f;
+			float dirZ = 0.0f;
+			float speed = 1.0f;
+			float water = rainRate;
+			float sediment = 0.0f;
+
+			for (int step = 0; step < maxLifetime; step++) {
+				int ix = (int)posX;
+				int iz = (int)posZ;
+				float u = posX - ix;
+				float v = posZ - iz;
+				
+				float gx, gz;
+				GetGradient(posX, posZ, gx, gz);
+
+				dirX = (dirX * 0.1f - gx * 0.9f);
+				dirZ = (dirZ * 0.1f - gz * 0.9f);
+				
+				float len = std::sqrt(dirX * dirX + dirZ * dirZ);
+				if (len != 0.0f) {
+					dirX /= len;
+					dirZ /= len;
+				}
+				
+				posX += dirX;
+				posZ += dirZ;
+
+				if (posX < 0.0f || posX >= gridRes - 1 || posZ < 0.0f || posZ >= gridRes - 1)
+					break; 
+
+				float newH = GetHeight(posX, posZ);
+				float deltaH = newH - GetHeight(posX - dirX, posZ - dirZ);
+
+				float capacity = std::max(-deltaH, 0.01f) * speed * water * dropCapacity;
+
+				if (sediment > capacity || deltaH > 0.0f) {
+					float depositAmount = (deltaH > 0.0f) ? std::min(deltaH, sediment) : (sediment - capacity) * dropDeposition;
+					sediment -= depositAmount;
+					
+					hmap[iz * gridRes + ix] += depositAmount * (1.0f - u) * (1.0f - v);
+					hmap[iz * gridRes + ix + 1] += depositAmount * u * (1.0f - v);
+					hmap[(iz + 1) * gridRes + ix] += depositAmount * (1.0f - u) * v;
+					hmap[(iz + 1) * gridRes + ix + 1] += depositAmount * u * v;
+				} else {
+					float erodeAmount = std::min((capacity - sediment) * dropErosion, -deltaH);
+					sediment += erodeAmount;
+					
+					hmap[iz * gridRes + ix] -= erodeAmount * (1.0f - u) * (1.0f - v);
+					hmap[iz * gridRes + ix + 1] -= erodeAmount * u * (1.0f - v);
+					hmap[(iz + 1) * gridRes + ix] -= erodeAmount * (1.0f - u) * v;
+					hmap[(iz + 1) * gridRes + ix + 1] -= erodeAmount * u * v;
+				}
+
+				speed = std::sqrt(std::max(0.0f, speed * speed + deltaH * 1.0f));
+				water *= (1.0f - dropEvap);
+				if (water < 0.01f) break;
 			}
 		}
 
-		// Run Euler simulation
-		double dt = 0.016; // Fixed timestep approx 60fps
-		for (int i = 0; i < simulationSteps; i++)
-		{
-			sim.update(dt, true, false);
-
-			// Progress report every 10 steps to not throttle too hard
-			if (progress && (i % 10 == 0 || i == simulationSteps - 1)) {
-				float pct = ((float)(i + 1) / simulationSteps) * 100.0f;
-				progress(pct, "Simulating Erosion... Step " + std::to_string(i + 1) + "/" + std::to_string(simulationSteps));
-			}
-		}
-
-		// Push back Y coordinates
 		for (int z = 0; z < gridRes; z++)
-		{
 			for (int x = 0; x < gridRes; x++)
-			{
-				int vIndex = (z * gridRes + x) * 14;
-				data.vertices[vIndex + 1] = sim.terrain(z, x);
-			}
-		}
+				data.vertices[(z * gridRes + x) * 14 + 1] = hmap[z * gridRes + x];
 
 		// Post-erosion Gaussian smoothing — eliminates remaining jagged spikes
 		if (smoothPasses > 0)

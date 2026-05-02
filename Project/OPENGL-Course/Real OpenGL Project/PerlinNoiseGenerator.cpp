@@ -115,7 +115,7 @@ void PerlinNoiseGenerator::RenderUI()
 	ImGui::Checkbox("Use Normal Displacement", &useNormalDisplacement);
 	ImGui::Checkbox("Ridged Mode", &useRidged);
 	ImGui::DragFloat("Amplitude", &amplitude, 0.1f, 0.0f, 1000.0f);
-	ImGui::DragFloat("Frequency", &frequency, 0.0001f, 0.0001f, 1.0f);
+	ImGui::DragFloat("Frequency", &frequency, 0.01f, 0.0001f, 10.0f);
 	
 	ImGui::DragFloat2("Offset", &offsetX, 0.1f);
 
