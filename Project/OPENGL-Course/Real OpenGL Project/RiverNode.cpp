@@ -120,8 +120,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	// 2. Trace Paths
 	std::vector<int> flowVolume(totalVerts, 0);
-	struct Sink { int x, z; float volume; };
-	std::vector<Sink> sinks;
+	std::vector<bool> isSink(totalVerts, false);
+	std::vector<int> pathID(totalVerts, -1);
+	int currentPathID = 0;
+
 	struct PathStep { int x, z; };
 	std::vector<std::vector<PathStep>> riverPaths;
 
@@ -132,10 +134,22 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		std::vector<PathStep> path;
 
 		bool trapped = false;
+		bool merged = false;
+
 		for (int step = 0; step < maxSteps; step++)
 		{
-			flowVolume[currZ * gridRes + currX]++;
-			path.push_back({ currX, currZ });
+			int idx = currZ * gridRes + currX;
+			flowVolume[idx]++;
+			
+			if (pathID[idx] == -1 || pathID[idx] == currentPathID) {
+				pathID[idx] = currentPathID;
+				if (!merged) path.push_back({ currX, currZ });
+			} else {
+				if (!merged) {
+					path.push_back({ currX, currZ }); // Connect to the main river
+					merged = true;
+				}
+			}
 
 			int bestX = currX, bestZ = currZ;
 			float lowestH = data.vertices[(currZ * gridRes + currX) * 14 + 1];
@@ -156,12 +170,45 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				}
 			}
 
-			if (!foundLower) { sinks.push_back({ currX, currZ, (float)flowVolume[currZ * gridRes + currX] }); trapped = true; break; }
+			if (!foundLower) { 
+				// Puddle Jump: search up to radius 5 for a lower point to spill over
+				for (int r = 2; r <= 5 && !foundLower; r++) {
+					for (int dz = -r; dz <= r; dz++) {
+						for (int dx = -r; dx <= r; dx++) {
+							if (std::abs(dx) != r && std::abs(dz) != r) continue;
+							int nx = currX + dx;
+							int nz = currZ + dz;
+							if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+								float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
+								if (nh < lowestH) { lowestH = nh; bestX = nx; bestZ = nz; foundLower = true; }
+							}
+						}
+					}
+				}
+			}
+
+			if (!foundLower) { 
+				isSink[currZ * gridRes + currX] = true; 
+				trapped = true; 
+				break; 
+			}
 			currX = bestX;
 			currZ = bestZ;
 		}
-		if (!trapped) sinks.push_back({ currX, currZ, (float)flowVolume[currZ * gridRes + currX] });
+		
+		if (!trapped && !merged) {
+			isSink[currZ * gridRes + currX] = true;
+		}
 		riverPaths.push_back(path);
+		currentPathID++;
+	}
+
+	struct Sink { int x, z; float volume; };
+	std::vector<Sink> sinks;
+	for (int i = 0; i < totalVerts; i++) {
+		if (isSink[i]) {
+			sinks.push_back({ i % gridRes, i / gridRes, (float)flowVolume[i] });
+		}
 	}
 
 	if (progress) progress(30.0f, "Calculating Flow...");
@@ -218,12 +265,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Carve lake bed gently
+		// Carve lake bed
 		for (int idx : lakePixels) {
 			float terrainH = data.vertices[idx * 14 + 1];
-			float bedDepth = currentWaterLevel - (baseDepth * 0.5f);
+			// The bed is carved deeper exactly by waterOffset so the river mesh and lake mesh match perfectly at the joint
+			float bedDepth = currentWaterLevel - waterOffset;
 			if (terrainH > bedDepth) {
-				data.vertices[idx * 14 + 1] = glm::mix(terrainH, bedDepth, 0.5f);
+				data.vertices[idx * 14 + 1] = bedDepth; // Completely flatten lake bed
 			}
 		}
 
@@ -312,6 +360,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 
 		int baseIdx = waterMesh.GetVertexCount();
+		float lastH = 999999.0f; // Move outside the loop to fix the bug where paths started underground!
 		for (size_t i = 0; i < smoothPath.size(); i++)
 		{
 			float fx = smoothPath[i].x;
@@ -328,7 +377,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			float lerpH = glm::mix(glm::mix(h00, h10, tx), glm::mix(h01, h11, tx), tz);
 
 			// Enforce monotonically decreasing water surface to prevent rollercoaster rivers
-			static float lastH;
 			if (i == 0) lastH = lerpH;
 			else if (lerpH > lastH) lerpH = lastH;
 			lastH = lerpH;
@@ -378,7 +426,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		for (int idx : lake.pixels) {
 			float x_pos = data.vertices[idx * 14];
 			float z_pos = data.vertices[idx * 14 + 2];
-			float y_pos = lake.waterLevel + (waterOffset / terrainScale.y);
+			// Water level is already the correct absolute surface height from the flood-fill
+			float y_pos = lake.waterLevel - 0.05f; 
 			
 			waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
 			terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
