@@ -180,7 +180,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 							int nz = currZ + dz;
 							if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
 								float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
-								if (nh < lowestH) { lowestH = nh; bestX = nx; bestZ = nz; foundLower = true; }
+								if (nh < lowestH) { 
+									lowestH = nh; 
+									// Add a mid-point for the jump to keep the ribbon connected to the ground
+									path.push_back({ (currX + nx) / 2, (currZ + nz) / 2 });
+									bestX = nx; bestZ = nz; 
+									foundLower = true; 
+								}
 							}
 						}
 					}
@@ -214,31 +220,42 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	if (progress) progress(30.0f, "Calculating Flow...");
 
 	// 3. Hydrological Lake Filling (Flood-Fill)
+	std::vector<float> lakeWaterLevel(totalVerts, -1.0f);
 	std::vector<bool> lakeMask(totalVerts, false);
-	struct LakeData { std::vector<int> pixels; float waterLevel; int center_x; int center_z; };
-	std::vector<LakeData> lakes;
+	std::vector<bool> sinkHandled(totalVerts, false);
+
+	// Sort sinks by height to fill from the bottom up
+	std::sort(sinks.begin(), sinks.end(), [&](const Sink& a, const Sink& b) {
+		return data.vertices[(a.z * gridRes + a.x) * 14 + 1] < data.vertices[(b.z * gridRes + b.x) * 14 + 1];
+	});
 
 	for (const auto& sink : sinks)
 	{
+		int sinkIdx = sink.z * gridRes + sink.x;
+		if (sinkHandled[sinkIdx]) continue;
+
 		float targetVolume = sink.volume * baseWidth * 1.5f; 
 		float currentVolume = 0.0f;
-		float currentWaterLevel = data.vertices[(sink.z * gridRes + sink.x) * 14 + 1];
+		float currentWaterLevel = data.vertices[sinkIdx * 14 + 1];
 
 		std::vector<int> lakePixels;
 		std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<std::pair<float, int>>> pq;
 		
-		int startIdx = sink.z * gridRes + sink.x;
-		pq.push({currentWaterLevel, startIdx});
+		pq.push({currentWaterLevel, sinkIdx});
 		std::vector<bool> visited(totalVerts, false);
-		visited[startIdx] = true;
+		visited[sinkIdx] = true;
+		sinkHandled[sinkIdx] = true;
 
 		while (!pq.empty() && currentVolume < targetVolume)
 		{
 			auto [h, idx] = pq.top();
 			pq.pop();
 
-			int cx = idx % gridRes;
-			int cz = idx / gridRes;
+			// If we hit another sink during the fill, merge its volume into this basin
+			if (isSink[idx] && !sinkHandled[idx]) {
+				targetVolume += flowVolume[idx] * baseWidth * 1.5f;
+				sinkHandled[idx] = true;
+			}
 
 			if (h > currentWaterLevel) {
 				float diff = h - currentWaterLevel;
@@ -252,8 +269,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			for (int dz = -1; dz <= 1; dz++) {
 				for (int dx = -1; dx <= 1; dx++) {
 					if (dx == 0 && dz == 0) continue;
-					int nx = cx + dx;
-					int nz = cz + dz;
+					int nx = (idx % gridRes) + dx;
+					int nz = (idx / gridRes) + dz;
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
 						int nidx = nz * gridRes + nx;
 						if (!visited[nidx]) {
@@ -265,23 +282,20 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Carve lake bed
+		if (lakePixels.size() < 5) {
+			for (int idx : lakePixels) lakeMask[idx] = false;
+			continue;
+		}
+
+		// Store water level for this basin and flatten bed
 		for (int idx : lakePixels) {
+			lakeWaterLevel[idx] = currentWaterLevel;
 			float terrainH = data.vertices[idx * 14 + 1];
-			// The bed is carved deeper exactly by waterOffset so the river mesh and lake mesh match perfectly at the joint
 			float bedDepth = currentWaterLevel - waterOffset;
 			if (terrainH > bedDepth) {
-				data.vertices[idx * 14 + 1] = bedDepth; // Completely flatten lake bed
+				data.vertices[idx * 14 + 1] = bedDepth;
 			}
 		}
-
-		if (lakePixels.size() < 5) {
-			// Clean up lakeMask if we reject the lake
-			for (int idx : lakePixels) lakeMask[idx] = false;
-			continue; 
-		}
-
-		lakes.push_back({lakePixels, currentWaterLevel, sink.x, sink.z});
 	}
 
 	// 4. Natural River Carving (Cascading)
@@ -371,6 +385,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		{
 			float fx = smoothPath[i].x;
 			float fz = smoothPath[i].y;
+
+			// Stop the river ribbon as soon as it hits a lake to prevent "water under water" Z-fighting
+			int gx = (int)fx; int gz = (int)fz;
+			if (gx >= 0 && gx < gridRes && gz >= 0 && gz < gridRes) {
+				if (lakeMask[gz * gridRes + gx]) break;
+			}
 			
 			// Bilinear interpolation for height
 			int x0 = (int)std::floor(fx); int x1 = std::min(x0 + 1, gridRes - 1);
@@ -426,69 +446,69 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	for (const auto& lake : lakes)
-	{
-		// Expand the lake pixels by 1 to create a "skirt" that penetrates the terrain.
-		// The foam shader will then create a smooth, organic shoreline at the intersection.
-		std::vector<int> expandedPixels = lake.pixels;
-		std::vector<bool> isExpanded(totalVerts, false);
-		for (int idx : lake.pixels) isExpanded[idx] = true;
+	// Lakes (Global deduplicated mesh)
+	std::map<int, int> terrainToWaterIdx;
+	std::vector<int> lakePixelList;
+	for (int i = 0; i < totalVerts; i++) if (lakeWaterLevel[i] > -1.0f) lakePixelList.push_back(i);
 
-		for (int idx : lake.pixels) {
-			int cx = idx % gridRes;
-			int cz = idx / gridRes;
-			for (int dz = -1; dz <= 1; dz++) {
-				for (int dx = -1; dx <= 1; dx++) {
-					int nx = cx + dx;
-					int nz = cz + dz;
-					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
-						int nidx = nz * gridRes + nx;
-						if (!isExpanded[nidx]) {
-							expandedPixels.push_back(nidx);
-							isExpanded[nidx] = true;
-						}
-					}
+	// Expand for skirt
+	std::vector<int> expandedPixels = lakePixelList;
+	std::vector<bool> isExpanded(totalVerts, false);
+	for (int idx : lakePixelList) isExpanded[idx] = true;
+	for (int idx : lakePixelList) {
+		for (int dz = -1; dz <= 1; dz++) {
+			for (int dx = -1; dx <= 1; dx++) {
+				int nx = (idx % gridRes) + dx; int nz = (idx / gridRes) + dz;
+				if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+					int nidx = nz * gridRes + nx;
+					if (!isExpanded[nidx]) { expandedPixels.push_back(nidx); isExpanded[nidx] = true; }
 				}
 			}
 		}
+	}
 
-		std::map<int, int> terrainToWaterIdx;
-		for (int idx : expandedPixels) {
-			float x_pos = data.vertices[idx * 14];
-			float z_pos = data.vertices[idx * 14 + 2];
-			// Draw at exact flood level; foam shader handles the intersection
-			float y_pos = lake.waterLevel; 
-			
-			waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-			terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
-		}
-
-		for (int idx : expandedPixels) {
-			int cx = idx % gridRes;
-			int cz = idx / gridRes;
-			
-			int r_idx = cz * gridRes + (cx + 1);
-			int b_idx = (cz + 1) * gridRes + cx;
-			int br_idx = (cz + 1) * gridRes + (cx + 1);
-
-			if (cx < gridRes - 1 && cz < gridRes - 1) {
-				if (terrainToWaterIdx.count(idx) && terrainToWaterIdx.count(r_idx) && 
-					terrainToWaterIdx.count(b_idx) && terrainToWaterIdx.count(br_idx)) {
-					int v0 = terrainToWaterIdx[idx];
-					int v1 = terrainToWaterIdx[r_idx];
-					int v2 = terrainToWaterIdx[b_idx];
-					int v3 = terrainToWaterIdx[br_idx];
-					waterMesh.AddTriangle(v0, v2, v1);
-					waterMesh.AddTriangle(v1, v2, v3);
+	for (int idx : expandedPixels) {
+		float x_pos = data.vertices[idx * 14];
+		float z_pos = data.vertices[idx * 14 + 2];
+		float y_pos = -1.0f;
+		if (lakeWaterLevel[idx] > -1.0f) y_pos = lakeWaterLevel[idx];
+		else {
+			// Skirt vertex: find water level from nearest lake pixel
+			for (int dz = -1; dz <= 1 && y_pos < 0; dz++) {
+				for (int dx = -1; dx <= 1 && y_pos < 0; dx++) {
+					int nidx = (idx / gridRes + dz) * gridRes + (idx % gridRes + dx);
+					if (nidx >= 0 && nidx < totalVerts && lakeWaterLevel[nidx] > -1.0f) y_pos = lakeWaterLevel[nidx];
 				}
+			}
+		}
+		// TBN Generation for lakes
+		waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
+		terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
+	}
+
+	for (int idx : expandedPixels) {
+		int cx = idx % gridRes; int cz = idx / gridRes;
+		int r = cz * gridRes + (cx + 1); int b = (cz + 1) * gridRes + cx; int br = (cz + 1) * gridRes + (cx + 1);
+		if (cx < gridRes - 1 && cz < gridRes - 1) {
+			if (terrainToWaterIdx.count(idx) && terrainToWaterIdx.count(r) && terrainToWaterIdx.count(b) && terrainToWaterIdx.count(br)) {
+				waterMesh.AddTriangle(terrainToWaterIdx[idx], terrainToWaterIdx[b], terrainToWaterIdx[r]);
+				waterMesh.AddTriangle(terrainToWaterIdx[r], terrainToWaterIdx[b], terrainToWaterIdx[br]);
 			}
 		}
 	}
 
 	// 7. Sync Transform & Material
 	std::string waterName = "River_Water_" + std::to_string(id);
-	GameObject* waterObj = scene.FindObject(waterName);
-	if (!waterObj) { waterObj = new GameObject(waterName); scene.AddObject(waterObj); }
+	
+	// NUCLEAR CLEANUP: Explicitly find and delete ALL objects with this name to prevent "ghost" meshes
+	// from previous failed runs or duplicate nodes from causing Z-fighting/overlapping water.
+	while (scene.FindObject(waterName) != nullptr) {
+		scene.RemoveObject(waterName);
+	}
+
+	GameObject* waterObj = new GameObject(waterName);
+	scene.AddObject(waterObj);
+
 	if (terrainObj)
 	{
 		waterObj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
@@ -496,11 +516,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		waterObj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
 	}
 
-	if (!waterObj->GetMaterial())
-	{
-		Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
-		if (waterMat) waterObj->SetMaterial(waterMat);
-	}
+	Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
+	if (waterMat) waterObj->SetMaterial(waterMat);
 
 	if (!waterMesh.vertices.empty())
 	{
