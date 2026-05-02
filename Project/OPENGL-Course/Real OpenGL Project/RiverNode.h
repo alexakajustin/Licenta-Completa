@@ -23,7 +23,7 @@ private:
 	int maxSteps = 500;
 	float baseDepth = 0.08f;
 	float baseWidth = 15.0f;
-	float waterOffset = 0.002f; // Tiny z-fighting offset
+	float waterOffset = -0.005f; // Negative offset to hide jagged mesh edges inside the terrain bank
 	int smoothPasses = 8;
 
 

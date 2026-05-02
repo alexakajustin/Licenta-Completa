@@ -141,7 +141,7 @@ void Application::SetupScene()
 	GameObject* plane = new GameObject("Plane");
 	plane->GetTransform().SetScale(glm::vec3(100.0f, 1.0f, 100.0f));
 	plane->GetTransform().SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-	plane->SetMesh(PrimitiveGenerator::CreatePlane(200, 200));
+	plane->SetMesh(PrimitiveGenerator::CreatePlane(512, 512));
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
 

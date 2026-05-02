@@ -26,7 +26,7 @@ RiverNode::RiverNode(NodeGraph& graph)
 	maxSteps = 800;
 	baseDepth = 0.08f;
 	baseWidth = 15.0f;
-	waterOffset = 0.002f;
+	waterOffset = -0.005f;
 	smoothPasses = 8;
 }
 
@@ -49,7 +49,7 @@ void RiverNode::Deserialize(const json& j)
 	maxSteps = j.value("maxSteps", 500);
 	baseDepth = j.value("baseDepth", 0.08f);
 	baseWidth = j.value("baseWidth", 15.0f);
-	waterOffset = j.value("waterOffset", 0.002f);
+	waterOffset = j.value("waterOffset", -0.005f);
 	smoothPasses = j.value("smoothPasses", 8);
 }
 

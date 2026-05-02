@@ -210,7 +210,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			found = true;
 		}
 		// 2. If no custom mesh, check if it's a known primitive type and generate fresh data
-		else if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
+		else if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
 		else if (obj->GetPrimitiveType() == "Sphere") { data = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (obj->GetPrimitiveType() == "Cube") { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// 3. Extract from Model if available (for loaded assets)
@@ -269,7 +269,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	if (!found && selectedName != "(none)")
 	{
 		// Try resolving using cached info
-		if (cachedPrimitiveType == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(256, 256); found = true; }
+		if (cachedPrimitiveType == "Plane" || selectedName.find("Plane") != std::string::npos) { data = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
 		else if (cachedPrimitiveType == "Sphere" || selectedName.find("Sphere") != std::string::npos) { data = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (cachedPrimitiveType == "Cube" || selectedName.find("Cube") != std::string::npos) { data = PrimitiveGenerator::GetCubeData(); found = true; }
 		// Fallback to loaded asset
