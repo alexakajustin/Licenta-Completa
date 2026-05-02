@@ -695,7 +695,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				// Boost parameters for cinematic rocky mountains
 				noise->SetRidged(true);
 				noise->SetAmplitude(400.0f); // 400m height on 1000m terrain gives realistic massive peaks
-				noise->SetFrequency(1.2f); // Spans ~2 massive peaks across the map
+				noise->SetFrequency(0.5f); // Spans ~2 massive peaks across the map
 				noise->SetOctaves(8);
 				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
 				

@@ -24,7 +24,7 @@ RiverNode::RiverNode(NodeGraph& graph)
 	springCount = 8;
 	maxSteps = 800;
 	baseDepth = 5.0f;
-	baseWidth = 15.0f;
+	baseWidth = 2.0f;
 	waterOffset = 3.5f;
 	smoothPasses = 8;
 }
