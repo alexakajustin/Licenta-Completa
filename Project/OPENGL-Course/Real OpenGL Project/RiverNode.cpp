@@ -24,9 +24,9 @@ RiverNode::RiverNode(NodeGraph& graph)
 
 	springCount = 8;
 	maxSteps = 800;
-	baseDepth = 5.0f;
-	baseWidth = 40.0f;
-	waterOffset = 0.008f;
+	baseDepth = 0.08f;
+	baseWidth = 15.0f;
+	waterOffset = 0.002f;
 	smoothPasses = 8;
 }
 
@@ -47,9 +47,9 @@ void RiverNode::Deserialize(const json& j)
 	GraphNode::Deserialize(j);
 	springCount = j.value("springCount", 5);
 	maxSteps = j.value("maxSteps", 500);
-	baseDepth = j.value("baseDepth", 4.0f);
+	baseDepth = j.value("baseDepth", 0.08f);
 	baseWidth = j.value("baseWidth", 15.0f);
-	waterOffset = j.value("waterOffset", 0.003f);
+	waterOffset = j.value("waterOffset", 0.002f);
 	smoothPasses = j.value("smoothPasses", 8);
 }
 
@@ -309,7 +309,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		for (int idx : lakePixels) {
 			lakeWaterLevel[idx] = currentWaterLevel;
 			float terrainH = data.vertices[idx * 14 + 1];
-			float bedDepth = currentWaterLevel - waterOffset;
+			float bedDepth = currentWaterLevel - baseDepth;
 			if (terrainH > bedDepth) {
 				data.vertices[idx * 14 + 1] = bedDepth;
 			}
@@ -378,251 +378,124 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (progress) progress(80.0f, "Generating Water Meshes...");
 
-	// 6. Generate Water Mesh
+	// 6. Build Unified Water Height Map (rivers + lakes)
+	// Every cell with water gets a height; the terrain below was already carved
+	std::vector<float> waterHeight(totalVerts, -9999.0f);
+	std::vector<bool> waterMask(totalVerts, false);
+
+	// 6a. Lake water heights (already computed)
+	for (int i = 0; i < totalVerts; i++) {
+		if (lakeWaterLevel[i] > -1.0f) {
+			waterHeight[i] = lakeWaterLevel[i];
+			waterMask[i] = true;
+		}
+	}
+
+	// 6b. River water heights: use original (pre-carve) terrain height
+	// This makes water sit at bank level while carved terrain forms the riverbed below
+	for (int i = 0; i < totalVerts; i++) {
+		if (flowVolume[i] > 0 && !lakeMask[i]) {
+			waterHeight[i] = originalHeights[i];
+			waterMask[i] = true;
+		}
+	}
+
+	// 6c. Expand water mask by 2 cells for smooth shoreline blending
+	std::vector<bool> expandedWater(totalVerts, false);
+	for (int i = 0; i < totalVerts; i++) expandedWater[i] = waterMask[i];
+
+	for (int pass = 0; pass < 2; pass++) {
+		std::vector<bool> nextExpand = expandedWater;
+		for (int z = 0; z < gridRes; z++) {
+			for (int x = 0; x < gridRes; x++) {
+				int idx = z * gridRes + x;
+				if (!expandedWater[idx]) continue;
+				for (int dz = -1; dz <= 1; dz++) {
+					for (int dx = -1; dx <= 1; dx++) {
+						int nx = x + dx, nz = z + dz;
+						if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+							int nidx = nz * gridRes + nx;
+							if (!nextExpand[nidx]) {
+								nextExpand[nidx] = true;
+								// Skirt vertex: find nearest water height
+								float nearest = -9999.0f;
+								for (int sz = -1; sz <= 1; sz++) {
+									for (int sx = -1; sx <= 1; sx++) {
+										int snx = nx + sx, snz = nz + sz;
+										if (snx >= 0 && snx < gridRes && snz >= 0 && snz < gridRes) {
+											int snidx = snz * gridRes + snx;
+											if (waterMask[snidx] && waterHeight[snidx] > nearest) {
+												nearest = waterHeight[snidx];
+											}
+										}
+									}
+								}
+								waterHeight[nidx] = nearest;
+							}
+						}
+					}
+				}
+			}
+		}
+		expandedWater = nextExpand;
+	}
+
+	// 6d. Smooth water heights along rivers for butter-smooth surface
+	for (int pass = 0; pass < smoothPasses; pass++) {
+		std::vector<float> smoothed = waterHeight;
+		for (int z = 1; z < gridRes - 1; z++) {
+			for (int x = 1; x < gridRes - 1; x++) {
+				int idx = z * gridRes + x;
+				if (!waterMask[idx]) continue;
+				if (lakeMask[idx]) continue;
+
+				// Only average with neighbors that have valid water
+				float sum = waterHeight[idx] * 2.0f;
+				float weight = 2.0f;
+				int neighbors[] = { idx - 1, idx + 1, idx - gridRes, idx + gridRes };
+				for (int ni : neighbors) {
+					if (ni >= 0 && ni < totalVerts && waterHeight[ni] > -9000.0f) {
+						sum += waterHeight[ni];
+						weight += 1.0f;
+					}
+				}
+				smoothed[idx] = sum / weight;
+			}
+		}
+		waterHeight = smoothed;
+	}
+
+	// 6e. Generate unified grid-based water mesh
 	MeshData waterMesh;
-	glm::vec3 up(0, 1, 0);
-	float waterMeshWidthMultiplier = 1.25f;
-
-	// Helpers for bilinear terrain sampling
-	// Water Y is sampled from originalHeights (pre-carve) so it sits at bank level
-	// X/Z positions come from data (unchanged by carving)
-	auto clampGrid = [&](int v) { return std::max(0, std::min(v, gridRes - 1)); };
-	auto getOriginalH = [&](int x, int z) -> float {
-		return originalHeights[clampGrid(z) * gridRes + clampGrid(x)];
-	};
-	auto getTerrainPos = [&](float fx, float fz, float& outX, float& outY, float& outZ) {
-		int x0 = clampGrid((int)std::floor(fx));
-		int x1 = clampGrid(x0 + 1);
-		int z0 = clampGrid((int)std::floor(fz));
-		int z1 = clampGrid(z0 + 1);
-		float tx = fx - (float)x0; float tz = fz - (float)z0;
-		tx = glm::clamp(tx, 0.0f, 1.0f); tz = glm::clamp(tz, 0.0f, 1.0f);
-
-		float px0 = data.vertices[(z0 * gridRes + x0) * 14];
-		float px1 = data.vertices[(z0 * gridRes + x1) * 14];
-		float pz0 = data.vertices[(z0 * gridRes + x0) * 14 + 2];
-		float pz1 = data.vertices[(z1 * gridRes + x0) * 14 + 2];
-
-		outX = glm::mix(px0, px1, tx);
-		outZ = glm::mix(pz0, pz1, tz);
-		// Sample Y from ORIGINAL (pre-carve) heights so water sits at bank level
-		outY = glm::mix(
-			glm::mix(getOriginalH(x0, z0), getOriginalH(x1, z0), tx),
-			glm::mix(getOriginalH(x0, z1), getOriginalH(x1, z1), tx), tz);
-	};
-
-	// Catmull-Rom spline helper
-	auto catmullRom = [](glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, float t) -> glm::vec2 {
-		float t2 = t * t, t3 = t2 * t;
-		return 0.5f * ((2.0f * p1) +
-			(-p0 + p2) * t +
-			(2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
-			(-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
-	};
-
-	for (auto& path : riverPaths)
-	{
-		if (path.size() < 2) continue;
-
-		// Build coarse path points with flow volume for each
-		std::vector<glm::vec2> coarsePath;
-		std::vector<float> coarseVolume;
-		for (size_t pi = 0; pi < path.size(); pi++) {
-			coarsePath.push_back(glm::vec2((float)path[pi].x, (float)path[pi].z));
-			int idx = clampGrid(path[pi].z) * gridRes + clampGrid(path[pi].x);
-			coarseVolume.push_back((float)std::max(1, flowVolume[idx]));
-		}
-
-		// Laplacian smoothing on coarse path (10 passes for extra smoothness)
-		for (int s = 0; s < 10; s++) {
-			for (size_t i = 1; i < coarsePath.size() - 1; i++) {
-				coarsePath[i] = (coarsePath[i - 1] + coarsePath[i] + coarsePath[i + 1]) / 3.0f;
-			}
-		}
-
-		// Find where the river first hits a lake (if at all) and record the lake water level
-		int lakeHitIdx = -1;
-		float lakeLevel = 0.0f;
-		for (size_t i = 0; i < coarsePath.size(); i++) {
-			int gx = clampGrid((int)coarsePath[i].x);
-			int gz = clampGrid((int)coarsePath[i].y);
-			if (lakeMask[gz * gridRes + gx]) {
-				lakeHitIdx = (int)i;
-				lakeLevel = lakeWaterLevel[gz * gridRes + gx];
-				break;
-			}
-		}
-
-		// If path hits a lake, extend a few extra points INTO the lake for seamless blending
-		int extraLakeVerts = 6;
-		if (lakeHitIdx >= 0 && lakeHitIdx < (int)coarsePath.size()) {
-			// Keep path up to and including the lake hit point
-			coarsePath.resize(lakeHitIdx + 1);
-			coarseVolume.resize(lakeHitIdx + 1);
-			
-			// Extend the path into the lake along the last direction
-			glm::vec2 lastDir(0, 0);
-			if (coarsePath.size() >= 2) {
-				lastDir = glm::normalize(coarsePath.back() - coarsePath[coarsePath.size() - 2]);
-			}
-			for (int e = 1; e <= extraLakeVerts; e++) {
-				coarsePath.push_back(coarsePath[lakeHitIdx] + lastDir * (float)e);
-				coarseVolume.push_back(coarseVolume.back());
-			}
-		}
-
-		if (coarsePath.size() < 2) continue;
-
-		// Catmull-Rom subdivision: 4 sub-steps per segment for butter-smooth curves
-		const int subdivisions = 4;
-		std::vector<glm::vec2> finePath;
-		std::vector<float> fineVolume;
-
-		for (size_t seg = 0; seg < coarsePath.size() - 1; seg++) {
-			int i0 = (int)std::max((int)seg - 1, 0);
-			int i1 = (int)seg;
-			int i2 = (int)std::min(seg + 1, coarsePath.size() - 1);
-			int i3 = (int)std::min(seg + 2, coarsePath.size() - 1);
-
-			for (int sub = 0; sub < subdivisions; sub++) {
-				float t = (float)sub / (float)subdivisions;
-				glm::vec2 pt = catmullRom(coarsePath[i0], coarsePath[i1], coarsePath[i2], coarsePath[i3], t);
-				float vol = glm::mix(coarseVolume[i1], coarseVolume[i2], t);
-				finePath.push_back(pt);
-				fineVolume.push_back(vol);
-			}
-		}
-		// Add the last point
-		finePath.push_back(coarsePath.back());
-		fineVolume.push_back(coarseVolume.back());
-
-		if (finePath.size() < 2) continue;
-
-		// Build the ribbon mesh from the fine path
-		int baseIdx = waterMesh.GetVertexCount();
-		float lastH = 999999.0f;
-		int emittedVerts = 0;
-
-		for (size_t i = 0; i < finePath.size(); i++)
-		{
-			float fx = finePath[i].x;
-			float fz = finePath[i].y;
-
-			// Clamp to grid bounds
-			fx = glm::clamp(fx, 0.0f, (float)(gridRes - 1));
-			fz = glm::clamp(fz, 0.0f, (float)(gridRes - 1));
-
-			// Sample terrain height via bilinear interpolation
-			float posX, posY, posZ;
-			getTerrainPos(fx, fz, posX, posY, posZ);
-
-			// Check if this point is inside a lake
-			int gx = clampGrid((int)fx);
-			int gz = clampGrid((int)fz);
-			bool inLake = lakeMask[gz * gridRes + gx];
-
-			// If inside lake, blend height towards the lake water level
-			if (inLake && lakeHitIdx >= 0) {
-				posY = lakeLevel;
-			}
-
-			// Enforce monotonically decreasing water surface
-			if (emittedVerts == 0) lastH = posY;
-			else if (posY > lastH) posY = lastH;
-			lastH = posY;
-
-			// Compute tangent direction from neighbors
-			glm::vec3 dir;
-			if (i == 0) {
-				glm::vec2 d = finePath[i + 1] - finePath[i];
-				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
-			} else if (i == finePath.size() - 1) {
-				glm::vec2 d = finePath[i] - finePath[i - 1];
-				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
-			} else {
-				glm::vec2 d = finePath[i + 1] - finePath[i - 1];
-				float len = glm::length(d);
-				if (len > 0.0001f) dir = glm::normalize(glm::vec3(d.x, 0, d.y));
-				else dir = glm::vec3(1, 0, 0);
-			}
-
-			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-
-			// Width from interpolated flow volume
-			float vol = fineVolume[i];
-			float worldWidth = baseWidth * std::pow(vol, 0.35f) * waterMeshWidthMultiplier;
-			float localWidth = worldWidth / terrainScale.x;
-
-			float yOffset = waterOffset / terrainScale.y;
-			glm::vec3 center(posX, posY + yOffset, posZ);
-			glm::vec3 pL = center - right * localWidth;
-			glm::vec3 pR = center + right * localWidth;
-
-			float vCoord = (float)i * 0.025f; // Finer UV stepping for subdivided mesh
-
-			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-
-			if (emittedVerts > 0)
-			{
-				int currL = baseIdx + emittedVerts * 2;
-				int currR = baseIdx + emittedVerts * 2 + 1;
-				int prevL = baseIdx + (emittedVerts - 1) * 2;
-				int prevR = baseIdx + (emittedVerts - 1) * 2 + 1;
-				waterMesh.AddTriangle(prevL, currR, currL);
-				waterMesh.AddTriangle(prevL, prevR, currR);
-			}
-			emittedVerts++;
-		}
-	}
-
-	// Lakes (Global deduplicated mesh)
 	std::map<int, int> terrainToWaterIdx;
-	std::vector<int> lakePixelList;
-	for (int i = 0; i < totalVerts; i++) if (lakeWaterLevel[i] > -1.0f) lakePixelList.push_back(i);
 
-	// Expand for skirt
-	std::vector<int> expandedPixels = lakePixelList;
-	std::vector<bool> isExpanded(totalVerts, false);
-	for (int idx : lakePixelList) isExpanded[idx] = true;
-	for (int idx : lakePixelList) {
-		for (int dz = -1; dz <= 1; dz++) {
-			for (int dx = -1; dx <= 1; dx++) {
-				int nx = (idx % gridRes) + dx; int nz = (idx / gridRes) + dz;
-				if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
-					int nidx = nz * gridRes + nx;
-					if (!isExpanded[nidx]) { expandedPixels.push_back(nidx); isExpanded[nidx] = true; }
-				}
-			}
-		}
-	}
+	float yOffset = waterOffset / terrainScale.y;
 
-	for (int idx : expandedPixels) {
-		float x_pos = data.vertices[idx * 14];
-		float z_pos = data.vertices[idx * 14 + 2];
-		float y_pos = -1.0f;
-		if (lakeWaterLevel[idx] > -1.0f) y_pos = lakeWaterLevel[idx];
-		else {
-			// Skirt vertex: find water level from nearest lake pixel
-			for (int dz = -1; dz <= 1 && y_pos < 0; dz++) {
-				for (int dx = -1; dx <= 1 && y_pos < 0; dx++) {
-					int nidx = (idx / gridRes + dz) * gridRes + (idx % gridRes + dx);
-					if (nidx >= 0 && nidx < totalVerts && lakeWaterLevel[nidx] > -1.0f) y_pos = lakeWaterLevel[nidx];
-				}
-			}
-		}
-		// TBN Generation for lakes
+	for (int i = 0; i < totalVerts; i++) {
+		if (!expandedWater[i]) continue;
+		if (waterHeight[i] < -9000.0f) continue;
+
+		float x_pos = data.vertices[i * 14];
+		float z_pos = data.vertices[i * 14 + 2];
+		float y_pos = waterHeight[i] + yOffset;
+
+		// TBN: water surface faces up
 		waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-		terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
+		terrainToWaterIdx[i] = waterMesh.GetVertexCount() - 1;
 	}
 
-	for (int idx : expandedPixels) {
-		int cx = idx % gridRes; int cz = idx / gridRes;
-		int r = cz * gridRes + (cx + 1); int b = (cz + 1) * gridRes + cx; int br = (cz + 1) * gridRes + (cx + 1);
-		if (cx < gridRes - 1 && cz < gridRes - 1) {
-			if (terrainToWaterIdx.count(idx) && terrainToWaterIdx.count(r) && terrainToWaterIdx.count(b) && terrainToWaterIdx.count(br)) {
-				waterMesh.AddTriangle(terrainToWaterIdx[idx], terrainToWaterIdx[b], terrainToWaterIdx[r]);
-				waterMesh.AddTriangle(terrainToWaterIdx[r], terrainToWaterIdx[b], terrainToWaterIdx[br]);
+	// Triangulate: connect adjacent water cells
+	for (int z = 0; z < gridRes - 1; z++) {
+		for (int x = 0; x < gridRes - 1; x++) {
+			int tl = z * gridRes + x;
+			int tr = tl + 1;
+			int bl = (z + 1) * gridRes + x;
+			int br = bl + 1;
+
+			if (terrainToWaterIdx.count(tl) && terrainToWaterIdx.count(tr) &&
+				terrainToWaterIdx.count(bl) && terrainToWaterIdx.count(br)) {
+				waterMesh.AddTriangle(terrainToWaterIdx[tl], terrainToWaterIdx[bl], terrainToWaterIdx[tr]);
+				waterMesh.AddTriangle(terrainToWaterIdx[tr], terrainToWaterIdx[bl], terrainToWaterIdx[br]);
 			}
 		}
 	}

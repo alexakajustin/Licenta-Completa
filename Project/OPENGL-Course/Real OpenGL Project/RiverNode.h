@@ -21,9 +21,9 @@ private:
 	// Parameters
 	int springCount = 5;
 	int maxSteps = 500;
-	float baseDepth = 4.0f;
-	float baseWidth = 40.0f;
-	float waterOffset = 0.008f; // Tiny z-fighting offset, water sits at original terrain level
+	float baseDepth = 0.08f;
+	float baseWidth = 15.0f;
+	float waterOffset = 0.002f; // Tiny z-fighting offset
 	int smoothPasses = 8;
 
 
