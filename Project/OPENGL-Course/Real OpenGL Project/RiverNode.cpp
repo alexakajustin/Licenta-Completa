@@ -25,8 +25,8 @@ RiverNode::RiverNode(NodeGraph& graph)
 	springCount = 8;
 	maxSteps = 800;
 	baseDepth = 5.0f;
-	baseWidth = 2.0f;
-	waterOffset = 3.5f;
+	baseWidth = 40.0f;
+	waterOffset = 0.008f;
 	smoothPasses = 8;
 }
 
@@ -49,7 +49,7 @@ void RiverNode::Deserialize(const json& j)
 	maxSteps = j.value("maxSteps", 500);
 	baseDepth = j.value("baseDepth", 4.0f);
 	baseWidth = j.value("baseWidth", 15.0f);
-	waterOffset = j.value("waterOffset", 3.5f);
+	waterOffset = j.value("waterOffset", 0.003f);
 	smoothPasses = j.value("smoothPasses", 8);
 }
 
@@ -171,27 +171,38 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 
 			if (!foundLower) { 
-				// Puddle Jump: search up to radius 5 for a lower point to spill over
-				for (int r = 2; r <= 5 && !foundLower; r++) {
-					for (int dz = -r; dz <= r; dz++) {
-						for (int dx = -r; dx <= r; dx++) {
-							if (std::abs(dx) != r && std::abs(dz) != r) continue;
-							int nx = currX + dx;
-							int nz = currZ + dz;
-							if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
-								float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
-								if (nh < lowestH) { 
-									lowestH = nh; 
-									// Add a mid-point for the jump to keep the ribbon connected to the ground
-									path.push_back({ (currX + nx) / 2, (currZ + nz) / 2 });
-									bestX = nx; bestZ = nz; 
-									foundLower = true; 
-								}
+			// Puddle Jump: search up to radius 5 for a lower point to spill over
+			int jumpX = -1, jumpZ = -1;
+			for (int r = 2; r <= 5 && !foundLower; r++) {
+				for (int dz = -r; dz <= r; dz++) {
+					for (int dx = -r; dx <= r; dx++) {
+						if (std::abs(dx) != r && std::abs(dz) != r) continue;
+						int nx = currX + dx;
+						int nz = currZ + dz;
+						if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+							float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
+							if (nh < lowestH) { 
+								lowestH = nh; 
+								jumpX = nx; jumpZ = nz; 
+								foundLower = true; 
 							}
 						}
 					}
 				}
 			}
+			// Interpolate ALL intermediate cells to keep the path continuous
+			if (foundLower) {
+				int stepCount = std::max(std::abs(jumpX - currX), std::abs(jumpZ - currZ));
+				for (int s = 1; s < stepCount; s++) {
+					int mx = currX + (jumpX - currX) * s / stepCount;
+					int mz = currZ + (jumpZ - currZ) * s / stepCount;
+					mx = std::max(0, std::min(mx, gridRes - 1));
+					mz = std::max(0, std::min(mz, gridRes - 1));
+					path.push_back({ mx, mz });
+				}
+				bestX = jumpX; bestZ = jumpZ;
+			}
+		}
 
 			if (!foundLower) { 
 				isSink[currZ * gridRes + currX] = true; 
@@ -218,6 +229,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 
 	if (progress) progress(30.0f, "Calculating Flow...");
+
+	// Save original terrain heights BEFORE any carving
+	// Water surfaces will sample from this so they sit at bank level
+	std::vector<float> originalHeights(totalVerts);
+	for (int i = 0; i < totalVerts; i++) {
+		originalHeights[i] = data.vertices[i * 14 + 1];
+	}
 
 	// 3. Hydrological Lake Filling (Flood-Fill)
 	std::vector<float> lakeWaterLevel(totalVerts, -1.0f);
@@ -363,86 +381,198 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	// 6. Generate Water Mesh
 	MeshData waterMesh;
 	glm::vec3 up(0, 1, 0);
-	float waterMeshWidthMultiplier = 1.25f; // Bigger for clear visibility
+	float waterMeshWidthMultiplier = 1.25f;
+
+	// Helpers for bilinear terrain sampling
+	// Water Y is sampled from originalHeights (pre-carve) so it sits at bank level
+	// X/Z positions come from data (unchanged by carving)
+	auto clampGrid = [&](int v) { return std::max(0, std::min(v, gridRes - 1)); };
+	auto getOriginalH = [&](int x, int z) -> float {
+		return originalHeights[clampGrid(z) * gridRes + clampGrid(x)];
+	};
+	auto getTerrainPos = [&](float fx, float fz, float& outX, float& outY, float& outZ) {
+		int x0 = clampGrid((int)std::floor(fx));
+		int x1 = clampGrid(x0 + 1);
+		int z0 = clampGrid((int)std::floor(fz));
+		int z1 = clampGrid(z0 + 1);
+		float tx = fx - (float)x0; float tz = fz - (float)z0;
+		tx = glm::clamp(tx, 0.0f, 1.0f); tz = glm::clamp(tz, 0.0f, 1.0f);
+
+		float px0 = data.vertices[(z0 * gridRes + x0) * 14];
+		float px1 = data.vertices[(z0 * gridRes + x1) * 14];
+		float pz0 = data.vertices[(z0 * gridRes + x0) * 14 + 2];
+		float pz1 = data.vertices[(z1 * gridRes + x0) * 14 + 2];
+
+		outX = glm::mix(px0, px1, tx);
+		outZ = glm::mix(pz0, pz1, tz);
+		// Sample Y from ORIGINAL (pre-carve) heights so water sits at bank level
+		outY = glm::mix(
+			glm::mix(getOriginalH(x0, z0), getOriginalH(x1, z0), tx),
+			glm::mix(getOriginalH(x0, z1), getOriginalH(x1, z1), tx), tz);
+	};
+
+	// Catmull-Rom spline helper
+	auto catmullRom = [](glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, float t) -> glm::vec2 {
+		float t2 = t * t, t3 = t2 * t;
+		return 0.5f * ((2.0f * p1) +
+			(-p0 + p2) * t +
+			(2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
+			(-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+	};
 
 	for (auto& path : riverPaths)
 	{
 		if (path.size() < 2) continue;
 
-		// Smooth the river path for more natural curves (Laplacian smoothing)
-		std::vector<glm::vec2> smoothPath;
-		for (auto& p : path) smoothPath.push_back(glm::vec2((float)p.x, (float)p.z));
+		// Build coarse path points with flow volume for each
+		std::vector<glm::vec2> coarsePath;
+		std::vector<float> coarseVolume;
+		for (size_t pi = 0; pi < path.size(); pi++) {
+			coarsePath.push_back(glm::vec2((float)path[pi].x, (float)path[pi].z));
+			int idx = clampGrid(path[pi].z) * gridRes + clampGrid(path[pi].x);
+			coarseVolume.push_back((float)std::max(1, flowVolume[idx]));
+		}
 
-		for (int s = 0; s < 5; s++) { // 5 smoothing passes
-			for (size_t i = 1; i < smoothPath.size() - 1; i++) {
-				smoothPath[i] = (smoothPath[i - 1] + smoothPath[i] + smoothPath[i + 1]) / 3.0f;
+		// Laplacian smoothing on coarse path (10 passes for extra smoothness)
+		for (int s = 0; s < 10; s++) {
+			for (size_t i = 1; i < coarsePath.size() - 1; i++) {
+				coarsePath[i] = (coarsePath[i - 1] + coarsePath[i] + coarsePath[i + 1]) / 3.0f;
 			}
 		}
 
-		int baseIdx = waterMesh.GetVertexCount();
-		float lastH = 999999.0f; // Move outside the loop to fix the bug where paths started underground!
-		for (size_t i = 0; i < smoothPath.size(); i++)
-		{
-			float fx = smoothPath[i].x;
-			float fz = smoothPath[i].y;
-
-			// Stop the river ribbon as soon as it hits a lake to prevent "water under water" Z-fighting
-			int gx = (int)fx; int gz = (int)fz;
-			if (gx >= 0 && gx < gridRes && gz >= 0 && gz < gridRes) {
-				if (lakeMask[gz * gridRes + gx]) break;
+		// Find where the river first hits a lake (if at all) and record the lake water level
+		int lakeHitIdx = -1;
+		float lakeLevel = 0.0f;
+		for (size_t i = 0; i < coarsePath.size(); i++) {
+			int gx = clampGrid((int)coarsePath[i].x);
+			int gz = clampGrid((int)coarsePath[i].y);
+			if (lakeMask[gz * gridRes + gx]) {
+				lakeHitIdx = (int)i;
+				lakeLevel = lakeWaterLevel[gz * gridRes + gx];
+				break;
 			}
+		}
+
+		// If path hits a lake, extend a few extra points INTO the lake for seamless blending
+		int extraLakeVerts = 6;
+		if (lakeHitIdx >= 0 && lakeHitIdx < (int)coarsePath.size()) {
+			// Keep path up to and including the lake hit point
+			coarsePath.resize(lakeHitIdx + 1);
+			coarseVolume.resize(lakeHitIdx + 1);
 			
-			// Bilinear interpolation for height
-			int x0 = (int)std::floor(fx); int x1 = std::min(x0 + 1, gridRes - 1);
-			int z0 = (int)std::floor(fz); int z1 = std::min(z0 + 1, gridRes - 1);
-			float tx = fx - x0; float tz = fz - z0;
-			
-			auto getH = [&](int x, int z) { return data.vertices[(z * gridRes + x) * 14 + 1]; };
-			float h00 = getH(x0, z0); float h10 = getH(x1, z0);
-			float h01 = getH(x0, z1); float h11 = getH(x1, z1);
-			float lerpH = glm::mix(glm::mix(h00, h10, tx), glm::mix(h01, h11, tx), tz);
+			// Extend the path into the lake along the last direction
+			glm::vec2 lastDir(0, 0);
+			if (coarsePath.size() >= 2) {
+				lastDir = glm::normalize(coarsePath.back() - coarsePath[coarsePath.size() - 2]);
+			}
+			for (int e = 1; e <= extraLakeVerts; e++) {
+				coarsePath.push_back(coarsePath[lakeHitIdx] + lastDir * (float)e);
+				coarseVolume.push_back(coarseVolume.back());
+			}
+		}
 
-			// Enforce monotonically decreasing water surface to prevent rollercoaster rivers
-			if (i == 0) lastH = lerpH;
-			else if (lerpH > lastH) lerpH = lastH;
-			lastH = lerpH;
+		if (coarsePath.size() < 2) continue;
 
-			float x0_pos = data.vertices[(z0 * gridRes + x0) * 14];
-			float x1_pos = data.vertices[(z0 * gridRes + x1) * 14];
-			float z0_pos = data.vertices[(z0 * gridRes + x0) * 14 + 2];
-			float z1_pos = data.vertices[(z1 * gridRes + x0) * 14 + 2];
+		// Catmull-Rom subdivision: 4 sub-steps per segment for butter-smooth curves
+		const int subdivisions = 4;
+		std::vector<glm::vec2> finePath;
+		std::vector<float> fineVolume;
 
-			glm::vec3 pos(glm::mix(x0_pos, x1_pos, tx), 
-						  lerpH, 
-						  glm::mix(z0_pos, z1_pos, tz));
+		for (size_t seg = 0; seg < coarsePath.size() - 1; seg++) {
+			int i0 = (int)std::max((int)seg - 1, 0);
+			int i1 = (int)seg;
+			int i2 = (int)std::min(seg + 1, coarsePath.size() - 1);
+			int i3 = (int)std::min(seg + 2, coarsePath.size() - 1);
 
+			for (int sub = 0; sub < subdivisions; sub++) {
+				float t = (float)sub / (float)subdivisions;
+				glm::vec2 pt = catmullRom(coarsePath[i0], coarsePath[i1], coarsePath[i2], coarsePath[i3], t);
+				float vol = glm::mix(coarseVolume[i1], coarseVolume[i2], t);
+				finePath.push_back(pt);
+				fineVolume.push_back(vol);
+			}
+		}
+		// Add the last point
+		finePath.push_back(coarsePath.back());
+		fineVolume.push_back(coarseVolume.back());
 
+		if (finePath.size() < 2) continue;
+
+		// Build the ribbon mesh from the fine path
+		int baseIdx = waterMesh.GetVertexCount();
+		float lastH = 999999.0f;
+		int emittedVerts = 0;
+
+		for (size_t i = 0; i < finePath.size(); i++)
+		{
+			float fx = finePath[i].x;
+			float fz = finePath[i].y;
+
+			// Clamp to grid bounds
+			fx = glm::clamp(fx, 0.0f, (float)(gridRes - 1));
+			fz = glm::clamp(fz, 0.0f, (float)(gridRes - 1));
+
+			// Sample terrain height via bilinear interpolation
+			float posX, posY, posZ;
+			getTerrainPos(fx, fz, posX, posY, posZ);
+
+			// Check if this point is inside a lake
+			int gx = clampGrid((int)fx);
+			int gz = clampGrid((int)fz);
+			bool inLake = lakeMask[gz * gridRes + gx];
+
+			// If inside lake, blend height towards the lake water level
+			if (inLake && lakeHitIdx >= 0) {
+				posY = lakeLevel;
+			}
+
+			// Enforce monotonically decreasing water surface
+			if (emittedVerts == 0) lastH = posY;
+			else if (posY > lastH) posY = lastH;
+			lastH = posY;
+
+			// Compute tangent direction from neighbors
 			glm::vec3 dir;
-			if (i == 0) dir = glm::normalize(glm::vec3(smoothPath[i + 1].x - smoothPath[i].x, 0, smoothPath[i + 1].y - smoothPath[i].y));
-			else if (i == smoothPath.size() - 1) dir = glm::normalize(glm::vec3(smoothPath[i].x - smoothPath[i - 1].x, 0, smoothPath[i].y - smoothPath[i - 1].y));
-			else dir = glm::normalize(glm::vec3(smoothPath[i + 1].x - smoothPath[i - 1].x, 0, smoothPath[i + 1].y - smoothPath[i - 1].y));
+			if (i == 0) {
+				glm::vec2 d = finePath[i + 1] - finePath[i];
+				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
+			} else if (i == finePath.size() - 1) {
+				glm::vec2 d = finePath[i] - finePath[i - 1];
+				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
+			} else {
+				glm::vec2 d = finePath[i + 1] - finePath[i - 1];
+				float len = glm::length(d);
+				if (len > 0.0001f) dir = glm::normalize(glm::vec3(d.x, 0, d.y));
+				else dir = glm::vec3(1, 0, 0);
+			}
 
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-			
-			// Use original path volume to ensure consistent width during smoothing
-			float pathVolume = (float)flowVolume[path[i].z * gridRes + path[i].x];
-			float worldWidth = baseWidth * std::pow(pathVolume, 0.35f) * waterMeshWidthMultiplier;
+
+			// Width from interpolated flow volume
+			float vol = fineVolume[i];
+			float worldWidth = baseWidth * std::pow(vol, 0.35f) * waterMeshWidthMultiplier;
 			float localWidth = worldWidth / terrainScale.x;
 
-			glm::vec3 pL = pos - right * localWidth + up * (waterOffset / terrainScale.y);
-			glm::vec3 pR = pos + right * localWidth + up * (waterOffset / terrainScale.y);
+			float yOffset = waterOffset / terrainScale.y;
+			glm::vec3 center(posX, posY + yOffset, posZ);
+			glm::vec3 pL = center - right * localWidth;
+			glm::vec3 pR = center + right * localWidth;
 
-			// TBN Generation: Tangent = Right, Bitangent = Forward (dir), Normal = Up
-			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, (float)i * 0.1f, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, (float)i * 0.1f, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			float vCoord = (float)i * 0.025f; // Finer UV stepping for subdivided mesh
 
-			if (i > 0)
+			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+
+			if (emittedVerts > 0)
 			{
-				int currL = baseIdx + (int)i * 2; int currR = baseIdx + (int)i * 2 + 1;
-				int prevL = baseIdx + (int)(i - 1) * 2; int prevR = baseIdx + (int)(i - 1) * 2 + 1;
+				int currL = baseIdx + emittedVerts * 2;
+				int currR = baseIdx + emittedVerts * 2 + 1;
+				int prevL = baseIdx + (emittedVerts - 1) * 2;
+				int prevR = baseIdx + (emittedVerts - 1) * 2 + 1;
 				waterMesh.AddTriangle(prevL, currR, currL);
 				waterMesh.AddTriangle(prevL, prevR, currR);
 			}
+			emittedVerts++;
 		}
 	}
 

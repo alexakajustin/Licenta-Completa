@@ -22,8 +22,8 @@ private:
 	int springCount = 5;
 	int maxSteps = 500;
 	float baseDepth = 4.0f;
-	float baseWidth = 12.0f; // Increased for better visibility
-	float waterOffset = 3.2f; // Increased to be closer to surface
+	float baseWidth = 40.0f;
+	float waterOffset = 0.008f; // Tiny z-fighting offset, water sits at original terrain level
 	int smoothPasses = 8;
 
 
