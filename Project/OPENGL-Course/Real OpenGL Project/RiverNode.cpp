@@ -275,6 +275,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
+		if (lakePixels.size() < 5) {
+			// Clean up lakeMask if we reject the lake
+			for (int idx : lakePixels) lakeMask[idx] = false;
+			continue; 
+		}
+
 		lakes.push_back({lakePixels, currentWaterLevel, sink.x, sink.z});
 	}
 
@@ -422,18 +428,42 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	for (const auto& lake : lakes)
 	{
-		std::map<int, int> terrainToWaterIdx;
+		// Expand the lake pixels by 1 to create a "skirt" that penetrates the terrain.
+		// The foam shader will then create a smooth, organic shoreline at the intersection.
+		std::vector<int> expandedPixels = lake.pixels;
+		std::vector<bool> isExpanded(totalVerts, false);
+		for (int idx : lake.pixels) isExpanded[idx] = true;
+
 		for (int idx : lake.pixels) {
+			int cx = idx % gridRes;
+			int cz = idx / gridRes;
+			for (int dz = -1; dz <= 1; dz++) {
+				for (int dx = -1; dx <= 1; dx++) {
+					int nx = cx + dx;
+					int nz = cz + dz;
+					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+						int nidx = nz * gridRes + nx;
+						if (!isExpanded[nidx]) {
+							expandedPixels.push_back(nidx);
+							isExpanded[nidx] = true;
+						}
+					}
+				}
+			}
+		}
+
+		std::map<int, int> terrainToWaterIdx;
+		for (int idx : expandedPixels) {
 			float x_pos = data.vertices[idx * 14];
 			float z_pos = data.vertices[idx * 14 + 2];
-			// Water level is already the correct absolute surface height from the flood-fill
-			float y_pos = lake.waterLevel - 0.05f; 
+			// Draw at exact flood level; foam shader handles the intersection
+			float y_pos = lake.waterLevel; 
 			
 			waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
 			terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
 		}
 
-		for (int idx : lake.pixels) {
+		for (int idx : expandedPixels) {
 			int cx = idx % gridRes;
 			int cz = idx / gridRes;
 			
@@ -442,11 +472,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			int br_idx = (cz + 1) * gridRes + (cx + 1);
 
 			if (cx < gridRes - 1 && cz < gridRes - 1) {
-				bool r_in = terrainToWaterIdx.count(r_idx);
-				bool b_in = terrainToWaterIdx.count(b_idx);
-				bool br_in = terrainToWaterIdx.count(br_idx);
-
-				if (r_in && b_in && br_in) {
+				if (terrainToWaterIdx.count(idx) && terrainToWaterIdx.count(r_idx) && 
+					terrainToWaterIdx.count(b_idx) && terrainToWaterIdx.count(br_idx)) {
 					int v0 = terrainToWaterIdx[idx];
 					int v1 = terrainToWaterIdx[r_idx];
 					int v2 = terrainToWaterIdx[b_idx];
