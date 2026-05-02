@@ -408,73 +408,92 @@ void main()
     // ============================================================
     // Water color via Fresnel
     // ============================================================
-    vec4 deepColor = material_waterColorDeep == vec4(0.0) ? vec4(0.01, 0.15, 0.35, 0.95) : material_waterColorDeep;
-    vec4 shallowColor = material_waterColorShallow == vec4(0.0) ? vec4(0.05, 0.6, 0.75, 0.7) : material_waterColorShallow;
-    float fresnelPower = material_fresnelPower == 0.0 ? 4.0 : material_fresnelPower;
-
-    vec3 viewDir = normalize(eyePosition - FragPos);
-    vec3 effectiveNormal = GetEffectiveNormal();
-
-    // Fresnel: looking straight down = deep color, grazing angle = shallow/reflective
-    float fresnelFactor = max(dot(viewDir, effectiveNormal), 0.0);
-    fresnelFactor = pow(1.0 - fresnelFactor, fresnelPower);
-    fresnelFactor = clamp(fresnelFactor, 0.0, 1.0);
-    
     // ============================================================
-    // Planar Reflections
+    // Water color via Depth & Fresnel
     // ============================================================
-    vec2 ndc = (clipSpaceCoords.xy / clipSpaceCoords.w) / 2.0 + 0.5;
-    vec2 reflectTexCoords = vec2(ndc.x, ndc.y);
-    
-    // Distort reflection coordinates using DuDv distortion
-    vec2 distortion = GetDuDvDistortion(TexCoord);
-    reflectTexCoords += distortion;
-    reflectTexCoords = clamp(reflectTexCoords, 0.001, 0.999);
-    
-    vec3 reflectionColor = texture(reflectionMap, reflectTexCoords).rgb;
-    
-    // Blend deep/shallow color with reflection based on Fresnel
-    vec3 waterColor = mix(deepColor.rgb, reflectionColor, fresnelFactor);
-    // Also mix in some shallow color for tinted reflections at angles
-    waterColor = mix(waterColor, shallowColor.rgb, fresnelFactor * 0.5);
+    vec4 deepColor = material_waterColorDeep == vec4(0.0) ? vec4(0.01, 0.1, 0.25, 0.98) : material_waterColorDeep;
+    vec4 shallowColor = material_waterColorShallow == vec4(0.0) ? vec4(0.1, 0.5, 0.6, 0.6) : material_waterColorShallow;
+    float fresnelPower = material_fresnelPower == 0.0 ? 5.0 : material_fresnelPower;
 
-    vec4 finalBaseColor = vec4(waterColor, mix(deepColor.a, shallowColor.a, fresnelFactor));
-
-    // ============================================================
-    // Foam Intersection (depth-based, from our earlier work)
-    // ============================================================
     vec2 screenUV = gl_FragCoord.xy / screenSize;
     float backgroundDepth = texture(sceneDepthMap, screenUV).r;
     float linearBackgroundDepth = LinearizeDepth(backgroundDepth);
     float linearFragmentDepth = LinearizeDepth(gl_FragCoord.z);
+    float depthDiff = max(linearBackgroundDepth - linearFragmentDepth, 0.0);
+
+    vec3 viewDir = normalize(eyePosition - FragPos);
+    vec3 effectiveNormal = GetEffectiveNormal();
+
+    // Fresnel: glancing angles are more reflective
+    float fresnelFactor = max(dot(viewDir, effectiveNormal), 0.0);
+    fresnelFactor = pow(1.0 - fresnelFactor, fresnelPower);
+    fresnelFactor = clamp(fresnelFactor, 0.0, 1.0);
     
-    float depthDiff = linearBackgroundDepth - linearFragmentDepth;
+    // Depth-based color: shallow edges vs deep center
+    float depthColorScale = 8.0; // Fully deep at 8 units
+    float depthFactor = clamp(depthDiff / depthColorScale, 0.0, 1.0);
+    vec3 waterBaseColor = mix(shallowColor.rgb, deepColor.rgb, depthFactor);
+
+    // ============================================================
+    // Planar Reflections & Refraction Distortion
+    // ============================================================
+    vec2 ndc = (clipSpaceCoords.xy / clipSpaceCoords.w) / 2.0 + 0.5;
+    vec2 distortion = GetDuDvDistortion(TexCoord);
     
-    vec4 foamColor = material_foamColor == vec4(0.0) ? vec4(1.0, 1.0, 1.0, 0.9) : material_foamColor;
+    vec2 reflectTexCoords = ndc + distortion;
+    reflectTexCoords = clamp(reflectTexCoords, 0.001, 0.999);
+    vec3 reflectionColor = texture(reflectionMap, reflectTexCoords).rgb;
+    
+    // Blend base color with reflection
+    vec3 waterColor = mix(waterBaseColor, reflectionColor, fresnelFactor);
+    // Add a bit of the shallow/deep tint to the reflection for character
+    waterColor = mix(waterColor, mix(shallowColor.rgb, deepColor.rgb, 0.5), fresnelFactor * 0.2);
+
+    vec4 finalBaseColor = vec4(waterColor, mix(shallowColor.a, deepColor.a, depthFactor));
+
+    // ============================================================
+    // Foam Intersection (Animated & Layered)
+    // ============================================================
+    vec4 foamColor = material_foamColor == vec4(0.0) ? vec4(0.9, 0.95, 1.0, 0.9) : material_foamColor;
     float autoFoamScaleFactor = max(vObjectScale / 100.0, 0.01);
-    float foamDist = material_foamDistance == 0.0 ? 2.5 * autoFoamScaleFactor : material_foamDistance;
+    float foamDist = material_foamDistance == 0.0 ? 1.5 * autoFoamScaleFactor : material_foamDistance;
     
-    if (depthDiff > 0.0 && depthDiff < foamDist) {
+    if (depthDiff < foamDist) {
         float foamFactor = 1.0 - smoothstep(0.0, foamDist, depthDiff);
         
-        // Animated foam edge with noise
-        float foamNoise = random(FragPos * 3.0, int(time * 5.0)) * 0.3 + 0.7; 
-        foamFactor *= foamNoise;
+        // Dynamic foam noise
+        vec2 foamUV = TexCoord * 2.5 + vec2(time * 0.04, time * 0.015);
+        float noise1 = texture(material_dudvMap, foamUV).r;
+        float noise2 = texture(material_dudvMap, foamUV * 0.8 - time * 0.02).g;
+        float combinedNoise = (noise1 + noise2) * 0.5;
         
-        finalBaseColor.rgb = mix(finalBaseColor.rgb, foamColor.rgb, foamFactor * 0.8);
+        foamFactor *= (combinedNoise * 0.6 + 0.4);
+        // Soften the foam at the very edge
+        foamFactor *= smoothstep(0.0, 0.15, depthDiff / foamDist);
+        
+        finalBaseColor.rgb = mix(finalBaseColor.rgb, foamColor.rgb, foamFactor * 0.65);
+        finalBaseColor.a = max(finalBaseColor.a, foamFactor * 0.9);
     }
 
     // ============================================================
-    // Lighting
+    // Lighting & Specular Shimmer
     // ============================================================
 	vec3 finalLight = CalcDirectionalLight(finalBaseColor.rgb);
 	finalLight += CalcPointLights(finalBaseColor.rgb);
 	finalLight += CalcSpotLights(finalBaseColor.rgb);
 
+    // Add tiny sparkles (shimmer) in the direction of the light
+    vec3 lightDir = normalize(directionalLight.direction);
+    float shimmerFactor = max(dot(effectiveNormal, normalize(viewDir - lightDir)), 0.0);
+    shimmerFactor = pow(shimmerFactor, 512.0); // Very tight spots
+    float sparkle = random(FragPos + vec3(time * 0.1), 0) * shimmerFactor * 1.5;
+    finalLight += vec3(1.0) * sparkle;
+
 	vec3 finalColor = finalLight;
 
     // Edge alpha fade (water becomes transparent at shallow edges)
-    float edgeAlpha = clamp(depthDiff / 1.5, 0.0, 1.0);
+    float edgeAlpha = clamp(depthDiff / 1.2, 0.0, 1.0);
+    edgeAlpha = pow(edgeAlpha, 0.7); // Ultra-smooth transparency transition
     float finalAlpha = finalBaseColor.a * edgeAlpha;
 
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

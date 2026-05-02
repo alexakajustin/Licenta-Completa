@@ -21,13 +21,12 @@ RiverNode::RiverNode(NodeGraph& graph)
 	Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
 	outputs.push_back(meshOut);
 
-	springCount = 5;
-	maxSteps = 500;
-	baseDepth = 4.0f;
-	baseWidth = 12.0f;
-	lakeSize = 6.0f;
-	waterOffset = 3.2f;
-	smoothPasses = 4;
+	springCount = 8;
+	maxSteps = 800;
+	baseDepth = 5.0f;
+	baseWidth = 15.0f;
+	waterOffset = 3.5f;
+	smoothPasses = 8;
 }
 
 json RiverNode::Serialize() const
@@ -37,7 +36,6 @@ json RiverNode::Serialize() const
 	j["maxSteps"] = maxSteps;
 	j["baseDepth"] = baseDepth;
 	j["baseWidth"] = baseWidth;
-	j["lakeSize"] = lakeSize;
 	j["waterOffset"] = waterOffset;
 	j["smoothPasses"] = smoothPasses;
 	return j;
@@ -49,10 +47,9 @@ void RiverNode::Deserialize(const json& j)
 	springCount = j.value("springCount", 5);
 	maxSteps = j.value("maxSteps", 500);
 	baseDepth = j.value("baseDepth", 4.0f);
-	baseWidth = j.value("baseWidth", 12.0f);
-	lakeSize = j.value("lakeSize", 6.0f);
-	waterOffset = j.value("waterOffset", 3.2f);
-	smoothPasses = j.value("smoothPasses", 4);
+	baseWidth = j.value("baseWidth", 15.0f);
+	waterOffset = j.value("waterOffset", 3.5f);
+	smoothPasses = j.value("smoothPasses", 8);
 }
 
 void RiverNode::RenderContent(SceneManager* scene)
@@ -60,10 +57,9 @@ void RiverNode::RenderContent(SceneManager* scene)
 	ImGui::DragInt("Springs", &springCount, 1, 1, 50);
 	ImGui::DragInt("Max Length", &maxSteps, 10, 10, 2000);
 	ImGui::DragFloat("Base Depth", &baseDepth, 0.1f, 0.0f, 50.0f);
-	ImGui::DragFloat("Base Width", &baseWidth, 0.1f, 0.1f, 50.0f);
-	ImGui::DragFloat("Lake Size", &lakeSize, 0.1f, 0.0f, 100.0f);
+	ImGui::DragFloat("Base Width", &baseWidth, 0.1f, 0.1f, 100.0f);
 	ImGui::DragFloat("Water Offset", &waterOffset, 0.1f, -10.0f, 10.0f);
-	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 20);
+	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 30);
 }
 
 void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -169,28 +165,48 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (progress) progress(30.0f, "Calculating Flow...");
 
-	// 3. Carve Rivers
+	// 3. Pre-calculate Lake Zones to prevent double-carving
+	struct LakeZone { int sx, sz; float radius; };
+	std::vector<LakeZone> lakeZones;
+	for (const auto& sink : sinks) {
+		lakeZones.push_back({ sink.x, sink.z, 20.0f * (float)std::sqrt(sink.volume) });
+	}
+
+	// 4. Carve Rivers
 	for (int i = 0; i < totalVerts; i++)
 	{
 		if (flowVolume[i] > 0)
 		{
 			int cz = i / gridRes;
 			int cx = i % gridRes;
-			float volume = (float)flowVolume[i];
-			float currentDepth = baseDepth * std::sqrt(volume);
-			float currentWidth = baseWidth * std::sqrt(volume);
+			
+			// Skip river carving if we are deep inside a lake zone
+			bool inLake = false;
+			float gridUnitSize = terrainScale.x / gridRes;
+			for (const auto& zone : lakeZones) {
+				float dx = (float)(cx - zone.sx);
+				float dz = (float)(cz - zone.sz);
+				if (std::sqrt(dx * dx + dz * dz) * gridUnitSize < zone.radius * 0.4f) {
+					inLake = true; break;
+				}
+			}
+			if (inLake) continue;
 
-			int radius = (int)std::ceil(currentWidth);
-			for (int rz = -radius; rz <= radius; rz++)
+			float volume = (float)flowVolume[i];
+			float currentDepth = baseDepth * std::pow(volume, 0.35f);
+			float currentWidth = 8.0f * std::pow(volume, 0.35f);
+
+			int gridRadius = (int)std::ceil(currentWidth / gridUnitSize);
+
+			for (int rz = -gridRadius; rz <= gridRadius; rz++)
 			{
-				for (int rx = -radius; rx <= radius; rx++)
+				for (int rx = -gridRadius; rx <= gridRadius; rx++)
 				{
 					int nx = cx + rx;
 					int nz = cz + rz;
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes)
 					{
 						float dist = std::sqrt((float)(rx * rx + rz * rz));
-						float gridUnitSize = terrainScale.x / gridRes;
 						float worldDist = dist * gridUnitSize;
 
 						if (worldDist <= currentWidth)
@@ -204,35 +220,51 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	// 4. Carve Lake Basins
-	if (lakeSize > 0)
-	{
-		for (const auto& sink : sinks)
-		{
-			float worldRadius = lakeSize * std::sqrt(sink.volume);
-			float targetH = data.vertices[(sink.z * gridRes + sink.x) * 14 + 1] - 2.0f;
-			float gridUnitSize = terrainScale.x / gridRes;
-			int gridRadius = (int)std::ceil(worldRadius / gridUnitSize);
+	// 5. Carve Lake Basins (Automated Organic Shapes)
+	auto getLakeJitter = [&](float angle, int sx, int sz) {
+		return std::sin(angle * 4.0f + (float)sx) * 0.4f + std::sin(angle * 9.0f - (float)sz) * 0.15f;
+	};
 
-			for (int rz = -gridRadius * 2; rz <= gridRadius * 2; rz++)
+	std::vector<bool> lakeMask(totalVerts, false);
+
+	for (const auto& zone : lakeZones)
+	{
+		float baseRadius = zone.radius;
+		float targetDepth = baseDepth * 2.0f; 
+		float targetH = data.vertices[(zone.sz * gridRes + zone.sx) * 14 + 1] - targetDepth;
+		
+		float gridUnitSize = terrainScale.x / gridRes;
+		float lakeNoise = 0.25f; 
+		int gridSearchRadius = (int)std::ceil((baseRadius * (1.0f + lakeNoise) * 2.0f) / gridUnitSize) + 4;
+
+		for (int rz = -gridSearchRadius; rz <= gridSearchRadius; rz++)
+		{
+			for (int rx = -gridSearchRadius; rx <= gridSearchRadius; rx++)
 			{
-				for (int rx = -gridRadius * 2; rx <= gridRadius * 2; rx++)
+				int nx = zone.sx + rx;
+				int nz = zone.sz + rz;
+				if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes)
 				{
-					int nx = sink.x + rx;
-					int nz = sink.z + rz;
-					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes)
+					float dx = (float)rx;
+					float dz = (float)rz;
+					float dist = std::sqrt(dx * dx + dz * dz) * gridUnitSize;
+					float angle = std::atan2(dz, dx);
+					
+					float noise = getLakeJitter(angle, zone.sx, zone.sz);
+					float jitteredRadius = baseRadius * (1.0f + noise * lakeNoise);
+					float totalRadius = jitteredRadius * 1.5f; 
+
+					if (dist <= totalRadius)
 					{
-						float dist = std::sqrt((float)(rx * rx + rz * rz));
-						float worldDist = dist * gridUnitSize;
-						if (worldDist <= worldRadius)
-						{
-							data.vertices[(nz * gridRes + nx) * 14 + 1] = targetH;
-						}
-						else if (worldDist <= worldRadius * 1.5f)
-						{
-							float t = (worldDist - worldRadius) / (worldRadius * 0.5f);
-							float currentH = data.vertices[(nz * gridRes + nx) * 14 + 1];
-							data.vertices[(nz * gridRes + nx) * 14 + 1] = targetH + t * (currentH - targetH);
+						float t = dist / totalRadius;
+						float bowlT = std::pow(t, 2.5f); 
+						
+						float currentH = data.vertices[(nz * gridRes + nx) * 14 + 1];
+						float lakeH = targetH + bowlT * (currentH - targetH);
+						
+						if (lakeH < currentH) {
+							data.vertices[(nz * gridRes + nx) * 14 + 1] = lakeH;
+							lakeMask[nz * gridRes + nx] = true;
 						}
 					}
 				}
@@ -252,10 +284,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				for (int x = 1; x < gridRes - 1; x++)
 				{
 					int idx = z * gridRes + x;
-					if (flowVolume[idx] > 0)
+					if (flowVolume[idx] > 0 || lakeMask[idx])
 					{
-						float avg = (heightBuffer[idx] + heightBuffer[idx-1] + heightBuffer[idx+1] + 
-									 heightBuffer[idx-gridRes] + heightBuffer[idx+gridRes]) / 5.0f;
+						float avg = (heightBuffer[idx] + heightBuffer[idx - 1] + heightBuffer[idx + 1] +
+							heightBuffer[idx - gridRes] + heightBuffer[idx + gridRes]) / 5.0f;
 						data.vertices[idx * 14 + 1] = avg;
 					}
 				}
@@ -271,25 +303,56 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.25f; // Bigger for clear visibility
 
-	for (const auto& path : riverPaths)
+	for (auto& path : riverPaths)
 	{
 		if (path.size() < 2) continue;
+
+		// Smooth the river path for more natural curves (Laplacian smoothing)
+		std::vector<glm::vec2> smoothPath;
+		for (auto& p : path) smoothPath.push_back(glm::vec2((float)p.x, (float)p.z));
+
+		for (int s = 0; s < 5; s++) { // 5 smoothing passes
+			for (size_t i = 1; i < smoothPath.size() - 1; i++) {
+				smoothPath[i] = (smoothPath[i - 1] + smoothPath[i] + smoothPath[i + 1]) / 3.0f;
+			}
+		}
+
 		int baseIdx = waterMesh.GetVertexCount();
-		for (size_t i = 0; i < path.size(); i++)
+		for (size_t i = 0; i < smoothPath.size(); i++)
 		{
-			int vx = path[i].x; int vz = path[i].z;
-			glm::vec3 pos(data.vertices[(vz * gridRes + vx) * 14],
-						  data.vertices[(vz * gridRes + vx) * 14 + 1],
-						  data.vertices[(vz * gridRes + vx) * 14 + 2]);
+			float fx = smoothPath[i].x;
+			float fz = smoothPath[i].y;
+			
+			// Bilinear interpolation for height
+			int x0 = (int)std::floor(fx); int x1 = std::min(x0 + 1, gridRes - 1);
+			int z0 = (int)std::floor(fz); int z1 = std::min(z0 + 1, gridRes - 1);
+			float tx = fx - x0; float tz = fz - z0;
+			
+			auto getH = [&](int x, int z) { return data.vertices[(z * gridRes + x) * 14 + 1]; };
+			float h00 = getH(x0, z0); float h10 = getH(x1, z0);
+			float h01 = getH(x0, z1); float h11 = getH(x1, z1);
+			float lerpH = glm::mix(glm::mix(h00, h10, tx), glm::mix(h01, h11, tx), tz);
+
+			float x0_pos = data.vertices[(z0 * gridRes + x0) * 14];
+			float x1_pos = data.vertices[(z0 * gridRes + x1) * 14];
+			float z0_pos = data.vertices[(z0 * gridRes + x0) * 14 + 2];
+			float z1_pos = data.vertices[(z1 * gridRes + x0) * 14 + 2];
+
+			glm::vec3 pos(glm::mix(x0_pos, x1_pos, tx), 
+						  lerpH, 
+						  glm::mix(z0_pos, z1_pos, tz));
+
 
 			glm::vec3 dir;
-			if (i == 0) dir = glm::normalize(glm::vec3(path[i+1].x - path[i].x, 0, path[i+1].z - path[i].z));
-			else if (i == path.size() - 1) dir = glm::normalize(glm::vec3(path[i].x - path[i-1].x, 0, path[i].z - path[i-1].z));
-			else dir = glm::normalize(glm::vec3(path[i+1].x - path[i-1].x, 0, path[i+1].z - path[i-1].z));
+			if (i == 0) dir = glm::normalize(glm::vec3(smoothPath[i + 1].x - smoothPath[i].x, 0, smoothPath[i + 1].y - smoothPath[i].y));
+			else if (i == smoothPath.size() - 1) dir = glm::normalize(glm::vec3(smoothPath[i].x - smoothPath[i - 1].x, 0, smoothPath[i].y - smoothPath[i - 1].y));
+			else dir = glm::normalize(glm::vec3(smoothPath[i + 1].x - smoothPath[i - 1].x, 0, smoothPath[i + 1].y - smoothPath[i - 1].y));
 
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
 			
-			float worldWidth = baseWidth * std::sqrt((float)flowVolume[vz * gridRes + vx]) * waterMeshWidthMultiplier;
+			// Use original path volume to ensure consistent width during smoothing
+			float pathVolume = (float)flowVolume[path[i].z * gridRes + path[i].x];
+			float worldWidth = 8.0f * std::pow(pathVolume, 0.35f) * waterMeshWidthMultiplier;
 			float localWidth = worldWidth / terrainScale.x;
 
 			glm::vec3 pL = pos - right * localWidth + up * (waterOffset / terrainScale.y);
@@ -311,20 +374,59 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	for (const auto& sink : sinks)
 	{
-		float worldRadius = lakeSize * std::sqrt(sink.volume) * waterMeshWidthMultiplier;
-		float localRadius = worldRadius / terrainScale.x;
+		float baseRadius = 20.0f * std::sqrt(sink.volume);
+		float localRadius = baseRadius / terrainScale.x;
 		glm::vec3 center(data.vertices[(sink.z * gridRes + sink.x) * 14], 
-						 data.vertices[(sink.z * gridRes + sink.x) * 14 + 1] + (waterOffset / terrainScale.y) + 0.1f,
+						 data.vertices[(sink.z * gridRes + sink.x) * 14 + 1] + (waterOffset / terrainScale.y),
 						 data.vertices[(sink.z * gridRes + sink.x) * 14 + 2]);
 
-		int segments = 32; int baseIdx = waterMesh.GetVertexCount();
+		int rings = 12; 
+		int segments = 64; 
+		int startIdx = waterMesh.GetVertexCount();
+		float lakeNoise = 0.25f;
+		
 		waterMesh.AddVertex(center.x, center.y, center.z, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-		for (int i = 0; i <= segments; i++)
+
+		for (int r = 1; r <= rings; r++)
 		{
-			float ang = (float)i / (float)segments * 2.0f * 3.14159f;
-			glm::vec3 p = center + glm::vec3(std::cos(ang), 0, std::sin(ang)) * localRadius;
-			waterMesh.AddVertex(p.x, p.y, p.z, (std::cos(ang) + 1.0f) * 0.5f, (std::sin(ang) + 1.0f) * 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-			if (i > 0) waterMesh.AddTriangle(baseIdx, baseIdx + i + 1, baseIdx + i);
+			float rFactor = (float)r / (float)rings;
+			for (int s = 0; s < segments; s++)
+			{
+				float ang = (float)s / (float)segments * 2.0f * 3.14159f;
+				float noise = getLakeJitter(ang, sink.x, sink.z);
+				
+				float meshRadius = localRadius * (1.0f + noise * lakeNoise) * 1.05f; 
+				float currentRadius = meshRadius * rFactor;
+
+				glm::vec3 p = center + glm::vec3(std::cos(ang), 0, std::sin(ang)) * currentRadius;
+				float u = (std::cos(ang) * rFactor + 1.0f) * 0.5f;
+				float v = (std::sin(ang) * rFactor + 1.0f) * 0.5f;
+				waterMesh.AddVertex(p.x, p.y, p.z, u, v, 0, 1, 0, 1, 0, 0, 0, 0, 1);
+			}
+		}
+
+		// 3. Add triangles for the inner circle (center to first ring)
+		for (int s = 0; s < segments; s++)
+		{
+			int nextS = (s + 1) % segments;
+			waterMesh.AddTriangle(startIdx, startIdx + 1 + nextS, startIdx + 1 + s);
+		}
+
+		// 4. Add triangles for subsequent rings
+		for (int r = 1; r < rings; r++)
+		{
+			int innerRingStart = startIdx + 1 + (r - 1) * segments;
+			int outerRingStart = startIdx + 1 + r * segments;
+			for (int s = 0; s < segments; s++)
+			{
+				int nextS = (s + 1) % segments;
+				int iL = innerRingStart + s;
+				int iR = innerRingStart + nextS;
+				int oL = outerRingStart + s;
+				int oR = outerRingStart + nextS;
+				waterMesh.AddTriangle(iL, oR, oL);
+				waterMesh.AddTriangle(iL, iR, oR);
+			}
 		}
 	}
 
