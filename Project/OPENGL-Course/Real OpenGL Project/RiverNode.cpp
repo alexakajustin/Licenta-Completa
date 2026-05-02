@@ -169,7 +169,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	struct LakeZone { int sx, sz; float radius; };
 	std::vector<LakeZone> lakeZones;
 	for (const auto& sink : sinks) {
-		lakeZones.push_back({ sink.x, sink.z, 20.0f * (float)std::sqrt(sink.volume) });
+		lakeZones.push_back({ sink.x, sink.z, (baseWidth * 2.5f) * (float)std::sqrt(sink.volume) });
 	}
 
 	// 4. Carve Rivers
@@ -194,7 +194,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 			float volume = (float)flowVolume[i];
 			float currentDepth = baseDepth * std::pow(volume, 0.35f);
-			float currentWidth = 8.0f * std::pow(volume, 0.35f);
+			float currentWidth = baseWidth * std::pow(volume, 0.35f);
 
 			int gridRadius = (int)std::ceil(currentWidth / gridUnitSize);
 
@@ -333,6 +333,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			float h01 = getH(x0, z1); float h11 = getH(x1, z1);
 			float lerpH = glm::mix(glm::mix(h00, h10, tx), glm::mix(h01, h11, tx), tz);
 
+			// Enforce monotonically decreasing water surface to prevent rollercoaster rivers
+			static float lastH;
+			if (i == 0) lastH = lerpH;
+			else if (lerpH > lastH) lerpH = lastH;
+			lastH = lerpH;
+
 			float x0_pos = data.vertices[(z0 * gridRes + x0) * 14];
 			float x1_pos = data.vertices[(z0 * gridRes + x1) * 14];
 			float z0_pos = data.vertices[(z0 * gridRes + x0) * 14 + 2];
@@ -352,7 +358,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			
 			// Use original path volume to ensure consistent width during smoothing
 			float pathVolume = (float)flowVolume[path[i].z * gridRes + path[i].x];
-			float worldWidth = 8.0f * std::pow(pathVolume, 0.35f) * waterMeshWidthMultiplier;
+			float worldWidth = baseWidth * std::pow(pathVolume, 0.35f) * waterMeshWidthMultiplier;
 			float localWidth = worldWidth / terrainScale.x;
 
 			glm::vec3 pL = pos - right * localWidth + up * (waterOffset / terrainScale.y);
@@ -374,7 +380,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	for (const auto& sink : sinks)
 	{
-		float baseRadius = 20.0f * std::sqrt(sink.volume);
+		float baseRadius = (baseWidth * 2.5f) * std::sqrt(sink.volume);
 		float localRadius = baseRadius / terrainScale.x;
 		glm::vec3 center(data.vertices[(sink.z * gridRes + sink.x) * 14], 
 						 data.vertices[(sink.z * gridRes + sink.x) * 14 + 1] + (waterOffset / terrainScale.y),
