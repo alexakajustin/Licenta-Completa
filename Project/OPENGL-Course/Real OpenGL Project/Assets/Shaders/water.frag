@@ -128,8 +128,8 @@ void main() {
     float depthScale = material_waterDepthScale == 0.0 ? 0.15 : material_waterDepthScale;
     float depthFactor = exp(-depthDiff * depthScale);
     
-    vec3 deepCol = material_waterColorDeep == vec4(0.0) ? vec3(0.01, 0.1, 0.2) : material_waterColorDeep.rgb;
-    vec3 shallowCol = material_waterColorShallow == vec4(0.0) ? vec3(0.2, 0.6, 0.7) : material_waterColorShallow.rgb;
+    vec3 deepCol = material_waterColorDeep == vec4(0.0) ? vec3(0.02, 0.1, 0.2) : material_waterColorDeep.rgb;
+    vec3 shallowCol = material_waterColorShallow == vec4(0.0) ? vec3(0.4, 0.8, 0.7) : material_waterColorShallow.rgb;
     vec3 waterTint = mix(deepCol, shallowCol, depthFactor);
 
     // Refraction & Reflection
