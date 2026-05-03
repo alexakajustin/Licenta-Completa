@@ -24,10 +24,10 @@ RiverNode::RiverNode(NodeGraph& graph)
 
 	springCount = 8;
 	maxSteps = 800;
-	baseDepth = 1.0f;
-	baseWidth = 8.0f;
-	waterOffset = 3.0f;
-	smoothPasses = 8;
+	baseDepth = 4.0f;
+	baseWidth = 12.0f;
+	waterOffset = -0.5f;
+	smoothPasses = 12;
 }
 
 json RiverNode::Serialize() const
@@ -445,7 +445,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 						if (worldDist <= currentWidth) {
 							float t = glm::clamp(worldDist / currentWidth, 0.0f, 1.0f);
-							t = t * t * (3.0f - 2.0f * t); // Smoothstep
+							// Parabolic profile: steeper at edges, flatter at bottom
+							t = t * t; 
 							
 							float bankHeight = originalHeights[nz * gridRes + nx];
 							float riverBedHeight = pt.height - currentDepth;
@@ -518,7 +519,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 			float currentDepth = baseDepth * std::pow(finePath[i].volume, 0.35f);
 			if (finePath[i].lakeLevel > -1.0f) posY = finePath[i].lakeLevel;
-			else posY = finePath[i].height - (currentDepth * 0.5f);
+			else posY = finePath[i].height - (currentDepth * 0.85f); // Sink it deep into the channel
 
 			glm::vec3 dir;
 			if (i == 0) {
