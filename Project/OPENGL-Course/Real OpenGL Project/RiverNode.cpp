@@ -28,6 +28,7 @@ RiverNode::RiverNode(NodeGraph& graph)
 	baseWidth = 8.0f;
 	waterOffset = 0.005f;
 	smoothPasses = 8;
+	lakeVolumeMultiplier = 500.0f;
 }
 
 json RiverNode::Serialize() const
@@ -41,6 +42,7 @@ json RiverNode::Serialize() const
 	j["smoothPasses"] = smoothPasses;
 	j["textureTiling"] = textureTiling;
 	j["flowSpeed"] = flowSpeed;
+	j["lakeVolumeMultiplier"] = lakeVolumeMultiplier;
 	return j;
 }
 
@@ -55,6 +57,7 @@ void RiverNode::Deserialize(const json& j)
 	smoothPasses = j.value("smoothPasses", 8);
 	textureTiling = j.value("textureTiling", 6.0f);
 	flowSpeed = j.value("flowSpeed", 0.12f);
+	lakeVolumeMultiplier = j.value("lakeVolumeMultiplier", 500.0f);
 }
 
 void RiverNode::RenderContent(SceneManager* scene)
@@ -69,6 +72,7 @@ void RiverNode::RenderContent(SceneManager* scene)
 	ImGui::Text("Appearance");
 	ImGui::SliderFloat("Texture Tiling", &textureTiling, 0.1f, 50.0f);
 	ImGui::SliderFloat("Flow Speed", &flowSpeed, 0.0f, 2.0f);
+	ImGui::SliderFloat("Lake Volume", &lakeVolumeMultiplier, 10.0f, 5000.0f);
 }
 
 void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -253,8 +257,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		int sinkIdx = sink.z * gridRes + sink.x;
 		if (sinkHandled[sinkIdx]) continue;
 
-		// Massive 10x volume boost for realistic, large-scale lakes
-		float targetVolume = sink.volume * baseWidth * 150.0f; 
+		// Use the user-defined multiplier for lake capacity
+		float targetVolume = sink.volume * baseWidth * lakeVolumeMultiplier; 
 		float currentVolume = 0.0f;
 		float sinkHeight = data.vertices[sinkIdx * 14 + 1];
 		float currentWaterLevel = sinkHeight;
@@ -271,13 +275,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		{
 			auto [h, idx] = pq.top();
 			
-			// Relaxed fill condition to allow basins to fill deeper
-			if (currentVolume >= targetVolume && h > sinkHeight + (baseDepth * 3.0f)) break;
+			// UNLIMITED fill depth: Fill until the target volume or spill point is reached
+			if (currentVolume >= targetVolume) break;
 			
 			pq.pop();
 
 			if (isSink[idx] && !sinkHandled[idx]) {
-				targetVolume += flowVolume[idx] * baseWidth * 150.0f;
+				targetVolume += flowVolume[idx] * baseWidth * lakeVolumeMultiplier;
 				sinkHandled[idx] = true;
 			}
 
