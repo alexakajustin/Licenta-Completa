@@ -540,6 +540,7 @@
     <ClInclude Include="DebugOverlay.h" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="FluidSimulation.h" />
+    <ClInclude Include="GraphicsSettings.h" />
     <ClInclude Include="Grid2D.h" />
     <ClInclude Include="HydraulicErosionNode.h" />
     <ClInclude Include="RiverNode.h" />

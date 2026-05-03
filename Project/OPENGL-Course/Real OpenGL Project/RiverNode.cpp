@@ -481,47 +481,22 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	if (progress) progress(80.0f, "Generating Water Meshes...");
 
 	// 6. Generate Smooth Water Meshes
-	MeshData waterMesh;
+	MeshData riverMesh;
+	MeshData lakeMesh;
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.25f;
 	float yOffset = waterOffset / terrainScale.y;
 
-	auto getOriginalH = [&](int x, int z) -> float {
-		return originalHeights[clampGrid(z) * gridRes + clampGrid(x)];
-	};
-	auto getTerrainPos = [&](float fx, float fz, float& outX, float& outY, float& outZ) {
-		int x0 = clampGrid((int)std::floor(fx));
-		int x1 = clampGrid(x0 + 1);
-		int z0 = clampGrid((int)std::floor(fz));
-		int z1 = clampGrid(z0 + 1);
-		float tx = fx - (float)x0; float tz = fz - (float)z0;
-		tx = glm::clamp(tx, 0.0f, 1.0f); tz = glm::clamp(tz, 0.0f, 1.0f);
-
-		float px0 = data.vertices[(z0 * gridRes + x0) * 14];
-		float px1 = data.vertices[(z0 * gridRes + x1) * 14];
-		float pz0 = data.vertices[(z0 * gridRes + x0) * 14 + 2];
-		float pz1 = data.vertices[(z1 * gridRes + x0) * 14 + 2];
-
-		outX = glm::mix(px0, px1, tx);
-		outZ = glm::mix(pz0, pz1, tz);
-		// Sample Y from ORIGINAL (pre-carve) heights so water sits at bank level
-		outY = glm::mix(
-			glm::mix(getOriginalH(x0, z0), getOriginalH(x1, z0), tx),
-			glm::mix(getOriginalH(x0, z1), getOriginalH(x1, z1), tx), tz);
-	};
-
-	// 6a. River Ribbon Meshes
+	// 6a. River Ribbon Meshes (Flowing)
 	for (const auto& finePath : fineRivers)
 	{
-		int baseIdx = waterMesh.GetVertexCount();
-		float lastH = 999999.0f;
+		int baseIdx = riverMesh.GetVertexCount();
 		int emittedVerts = 0;
 
 		for (size_t i = 0; i < finePath.size(); i++)
 		{
 			float fx = finePath[i].pos.x;
 			float fz = finePath[i].pos.y;
-
 			fx = glm::clamp(fx, 0.0f, (float)(gridRes - 1));
 			fz = glm::clamp(fz, 0.0f, (float)(gridRes - 1));
 
@@ -535,13 +510,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
 			float currentDepth = baseDepth * std::pow(finePath[i].volume, 0.35f);
-			
-			if (finePath[i].lakeLevel > -1.0f) {
-				posY = finePath[i].lakeLevel;
-			} else {
-				// Use the mathematically smoothed 1D river height!
-				posY = finePath[i].height - (currentDepth * 0.5f);
-			}
+			if (finePath[i].lakeLevel > -1.0f) posY = finePath[i].lakeLevel;
+			else posY = finePath[i].height - (currentDepth * 0.5f);
 
 			glm::vec3 dir;
 			if (i == 0) {
@@ -558,7 +528,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-			
 			float worldWidth = baseWidth * std::pow(finePath[i].volume, 0.35f) * waterMeshWidthMultiplier;
 			float localWidth = worldWidth / terrainScale.x;
 
@@ -566,34 +535,27 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			glm::vec3 pL = center - right * localWidth;
 			glm::vec3 pR = center + right * localWidth;
 
-			float vCoord = (float)i * 0.025f;
-
-			waterMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-			waterMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			float vCoord = (float)i * 0.025f; // V texture coordinate for river flow direction
+			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			riverMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
 
 			if (emittedVerts > 0)
 			{
-				int currL = baseIdx + emittedVerts * 2;
-				int currR = baseIdx + emittedVerts * 2 + 1;
-				int prevL = baseIdx + (emittedVerts - 1) * 2;
-				int prevR = baseIdx + (emittedVerts - 1) * 2 + 1;
-				waterMesh.AddTriangle(prevL, currR, currL);
-				waterMesh.AddTriangle(prevL, prevR, currR);
+				int currL = baseIdx + emittedVerts * 2; int currR = baseIdx + emittedVerts * 2 + 1;
+				int prevL = baseIdx + (emittedVerts - 1) * 2; int prevR = baseIdx + (emittedVerts - 1) * 2 + 1;
+				riverMesh.AddTriangle(prevL, currR, currL);
+				riverMesh.AddTriangle(prevL, prevR, currR);
 			}
 			emittedVerts++;
 		}
 	}
 
-	// 6b. Lake Meshes (Expanded Flat Planes)
+	// 6b. Lake Meshes (Static)
 	std::vector<int> lakePixelList;
 	for (int i = 0; i < totalVerts; i++) if (lakeWaterLevel[i] > -1.0f) lakePixelList.push_back(i);
-
 	std::vector<int> expandedPixels = lakePixelList;
 	std::vector<bool> isExpanded(totalVerts, false);
 	for (int idx : lakePixelList) isExpanded[idx] = true;
-	
-	// Expand skirt by 16 cells so it penetrates the terrain deeply (critical for high-res 512x512 grids)
-	// and gives a smooth curve intersection instead of a jagged, square boundary
 	for(int pass=0; pass<16; pass++) {
 		std::vector<int> currentPass = expandedPixels;
 		for (int idx : currentPass) {
@@ -603,66 +565,56 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
 						int nidx = nz * gridRes + nx;
 						if (!isExpanded[nidx]) { 
-							expandedPixels.push_back(nidx); 
-							isExpanded[nidx] = true; 
-							// Skirt inherits lake water level from neighbor
-							if (lakeWaterLevel[nidx] < 0) {
-								lakeWaterLevel[nidx] = lakeWaterLevel[idx];
-							}
+							expandedPixels.push_back(nidx); isExpanded[nidx] = true; 
+							if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = lakeWaterLevel[idx];
 						}
 					}
 				}
 			}
 		}
 	}
-
 	std::map<int, int> terrainToWaterIdx;
 	for (int idx : expandedPixels) {
-		float x_pos = data.vertices[idx * 14];
-		float z_pos = data.vertices[idx * 14 + 2];
+		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
 		float y_pos = lakeWaterLevel[idx] + yOffset;
-		waterMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
-		terrainToWaterIdx[idx] = waterMesh.GetVertexCount() - 1;
+		lakeMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
+		terrainToWaterIdx[idx] = lakeMesh.GetVertexCount() - 1;
 	}
-
 	for (int idx : expandedPixels) {
 		int cx = idx % gridRes; int cz = idx / gridRes;
 		int r = cz * gridRes + (cx + 1); int b = (cz + 1) * gridRes + cx; int br = (cz + 1) * gridRes + (cx + 1);
 		if (cx < gridRes - 1 && cz < gridRes - 1) {
 			if (terrainToWaterIdx.count(idx) && terrainToWaterIdx.count(r) && terrainToWaterIdx.count(b) && terrainToWaterIdx.count(br)) {
-				waterMesh.AddTriangle(terrainToWaterIdx[idx], terrainToWaterIdx[b], terrainToWaterIdx[r]);
-				waterMesh.AddTriangle(terrainToWaterIdx[r], terrainToWaterIdx[b], terrainToWaterIdx[br]);
+				lakeMesh.AddTriangle(terrainToWaterIdx[idx], terrainToWaterIdx[b], terrainToWaterIdx[r]);
+				lakeMesh.AddTriangle(terrainToWaterIdx[r], terrainToWaterIdx[b], terrainToWaterIdx[br]);
 			}
 		}
 	}
 
-	// 7. Sync Transform & Material
-	std::string waterName = "River_Water_" + std::to_string(id);
-	
-	GameObject* waterObj = scene.FindObject(waterName);
-	if (!waterObj) {
-		waterObj = new GameObject(waterName);
-		scene.AddObject(waterObj);
-	}
+	// 7. Sync Objects & Materials
+	auto syncWaterObject = [&](const std::string& name, MeshData& meshData, const std::string& matPath) {
+		GameObject* obj = scene.FindObject(name);
+		if (!obj) {
+			obj = new GameObject(name);
+			scene.AddObject(obj);
+		}
+		if (terrainObj) {
+			obj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
+			obj->GetTransform().SetRotation(terrainObj->GetTransform().GetRotation());
+			obj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
+		}
+		if (!obj->GetMaterial()) {
+			Material* mat = Material::LoadFromFile(matPath);
+			if (mat) obj->SetMaterial(mat);
+		}
+		if (!meshData.vertices.empty()) {
+			obj->SetMesh(meshData.ToMesh());
+			obj->SetCPUMeshData(meshData);
+		}
+	};
 
-	if (terrainObj)
-	{
-		waterObj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
-		waterObj->GetTransform().SetRotation(terrainObj->GetTransform().GetRotation());
-		waterObj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
-	}
-
-	if (!waterObj->GetMaterial()) {
-		Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
-		if (waterMat) waterObj->SetMaterial(waterMat);
-	}
-
-	if (!waterMesh.vertices.empty())
-	{
-		Mesh* m = waterMesh.ToMesh();
-		waterObj->SetMesh(m);
-		waterObj->SetCPUMeshData(waterMesh);
-	}
+	syncWaterObject("River_Water_" + std::to_string(id), riverMesh, "Assets/Materials/River.mat");
+	syncWaterObject("Lake_Water_" + std::to_string(id), lakeMesh, "Assets/Materials/Water.mat");
 
 	if (progress) progress(100.0f, "Done!");
 	outputs[0].data = inputs[0].data;

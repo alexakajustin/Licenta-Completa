@@ -359,11 +359,14 @@ void Application::Run()
 
 			for (auto* obj : sceneManager.GetObjects()) {
 				Material* mat = obj->GetMaterial();
-				if (mat && mat->GetShader() && (mat->GetShader()->GetVertexPath().find("water.vert") != std::string::npos)) {
-					float dist = glm::distance(obj->GetTransform().GetPosition(), camPos);
-					if (dist < minCamDist) {
-						minCamDist = dist;
-						bestWater = obj;
+				if (mat && mat->GetShader()) {
+					std::string vPath = mat->GetShader()->GetVertexPath();
+					if (vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos) {
+						float dist = glm::distance(obj->GetTransform().GetPosition(), camPos);
+						if (dist < minCamDist) {
+							minCamDist = dist;
+							bestWater = obj;
+						}
 					}
 				}
 			}
