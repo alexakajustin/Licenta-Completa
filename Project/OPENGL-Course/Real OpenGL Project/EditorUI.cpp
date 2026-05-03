@@ -18,6 +18,8 @@
 #include "OutputNode.h"
 #include "HydraulicErosionNode.h"
 #include "RiverNode.h"
+#include "CityGridNode.h"
+#include "BuildingGenNode.h"
 #include "SceneSerializer.h"
 #include "UndoActions.h"
 #include <filesystem>
@@ -736,6 +738,62 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
 						break;
 					}
+				}
+			}
+
+			if (ImGui::MenuItem("Procedural City"))
+			{
+				// Clear the scene
+				nodeGraph.Clear();
+
+			// Create ground plane if none exists
+				if (!scene.FindObject("City_Ground")) {
+					scene.CreateGameObject("Plane", glm::vec3(0.0f));
+					// Rename the last-added Plane to City_Ground
+					auto& objs = scene.GetObjects();
+					for (int i = (int)objs.size() - 1; i >= 0; i--) {
+						if (objs[i]->GetName().find("Plane") != std::string::npos) {
+							objs[i]->SetName("City_Ground");
+							objs[i]->GetTransform().SetScale(glm::vec3(120.0f, 1.0f, 120.0f));
+							break;
+						}
+					}
+				}
+
+				// Create nodes
+				SceneInputNode* input = new SceneInputNode(nodeGraph);
+				CityGridNode* city = new CityGridNode(nodeGraph);
+				OutputNode* output = new OutputNode(nodeGraph);
+				BuildingGenNode* buildings = new BuildingGenNode(nodeGraph);
+
+				// Layout positions
+				input->editorPos = glm::vec2(50, 150);
+				city->editorPos = glm::vec2(300, 150);
+				output->editorPos = glm::vec2(550, 100);
+				buildings->editorPos = glm::vec2(550, 350);
+
+				nodeGraph.AddNode(input);
+				nodeGraph.AddNode(city);
+				nodeGraph.AddNode(output);
+				nodeGraph.AddNode(buildings);
+
+				// Wire: SceneInput -> CityGrid -> Output (roads pin)
+				nodeGraph.AddLink(input->outputs[0].id, city->inputs[0].id);
+				nodeGraph.AddLink(city->outputs[0].id, output->inputs[0].id);
+				// Wire: CityGrid (plots) -> BuildingGen
+				nodeGraph.AddLink(city->outputs[1].id, buildings->inputs[0].id);
+
+				// Auto-select City_Ground for the SceneInput
+				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
+					if (scene.GetObjects()[i]->GetName() == "City_Ground") {
+						input->SetSelection(i, "City_Ground");
+						break;
+					}
+				}
+
+				// Position camera for city overview
+				if (camera) {
+					camera->SetPositionAndLookAt(glm::vec3(0.0f, 0.0f, 0.0f), 85.0f);
 				}
 			}
 			ImGui::EndMenu();

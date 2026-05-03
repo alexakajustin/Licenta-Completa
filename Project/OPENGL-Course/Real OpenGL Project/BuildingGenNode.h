@@ -7,11 +7,12 @@
 #include <vector>
 
 // =====================================================================
-// BuildingGenNode — Procedural Building Generator
+// BuildingGenNode — Procedural Building Generator (3DWorld-inspired)
 //
-// Consumes a TransformList of plot positions (from CityGridNode) and
-// generates procedural box buildings with randomized heights, textures,
-// and roof styles.
+// Generates multi-part buildings with varied shapes:
+//   - Base section (full footprint)
+//   - Optional upper section (narrower, offset)
+//   - Peaked gable roof (residential) or flat roof (commercial)
 //
 // Inputs:
 //   [0] Plots (TransformList) — building positions + sizes from CityGridNode
@@ -33,15 +34,17 @@ public:
 
 private:
 	// Generation parameters
-	float minHeight = 5.0f;           // Minimum building height
-	float maxHeight = 30.0f;          // Maximum building height
-	float floorHeight = 3.0f;         // Height per floor (for texture tiling)
-	float wallInset = 0.5f;           // Shrink from plot edge
-	float roofOverhang = 0.2f;        // Roof extends beyond walls
-	float roofThickness = 0.3f;       // Flat roof slab thickness
-	int seed = 42;                    // Random seed
+	float minHeight = 5.0f;
+	float maxHeight = 25.0f;
+	float floorHeight = 3.0f;
+	float wallInset = 0.5f;
+	float roofOverhang = 0.3f;
+	float upperSectionProb = 0.5f;    // Probability of a second section
+	float upperSectionScale = 0.65f;  // How much smaller the upper section is
+	int seed = 42;
 
-	// Mesh generation
-	void BuildBoxMesh(MeshData& mesh, glm::vec3 center, glm::vec3 halfExtents, float texTilingU, float texTilingV);
-	void BuildRoofMesh(MeshData& mesh, glm::vec3 center, glm::vec3 halfExtents);
+	// Mesh helpers — uses engine cube primitive
+	MeshData MakeCubePart(glm::vec3 center, glm::vec3 halfExtents);
+	void AddPeakedRoof(MeshData& mesh, glm::vec3 center, float halfW, float halfD, float peakH, bool dimX);
+	void AddFlatRoof(MeshData& mesh, glm::vec3 base, float halfW, float halfD, float thickness);
 };
