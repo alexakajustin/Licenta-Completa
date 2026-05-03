@@ -700,12 +700,17 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
 				
 				// Set erosion to deep carving defaults
-				erosion->SetSteps(250); // More steps for deeper erosion channels
-				erosion->SetRainRate(0.04f);
-				erosion->SetKs(0.05f);
+				erosion->SetSteps(60); 
+				erosion->SetRainRate(1.0f);
+				erosion->SetKs(0.9f);
 				erosion->SetKd(0.02f);
-				erosion->SetMaxDelta(1.2f); // Realistic talus angle for cinematic slopes
-				erosion->SetSmoothPasses(0); // Set to 0 to keep jagged, realistic peaks (removed artificial smoothing)
+				erosion->SetMaxDelta(1.0f); 
+				erosion->SetSmoothPasses(0); 
+
+				// Original River parameters
+				river->SetBaseDepth(1.0f);
+				river->SetBaseWidth(15.0f);
+				river->SetSmoothPasses(8);
 
 				input->editorPos = glm::vec2(50, 150);
 				noise->editorPos = glm::vec2(250, 150);

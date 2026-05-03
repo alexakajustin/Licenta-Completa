@@ -17,6 +17,10 @@ public:
 	void RenderContent(SceneManager* scene) override;
 	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
 
+	void SetBaseDepth(float d) { baseDepth = d; }
+	void SetBaseWidth(float w) { baseWidth = w; }
+	void SetSmoothPasses(int p) { smoothPasses = p; }
+
 private:
 	// Parameters
 	int springCount = 5;
