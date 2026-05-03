@@ -153,8 +153,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				pathID[idx] = currentPathID;
 				if (!merged) path.push_back({ currX, currZ });
 			} else {
-				// We hit another river! For rendering, stop the spline path here.
-				// BUT for hydrology (finding sinks/lakes), let the droplet continue to flow!
 				if (!merged) {
 					path.push_back({ currX, currZ }); 
 					merged = true;
@@ -181,7 +179,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 
 			if (!foundLower) { 
-				// Puddle Jump: search up to radius 12 for a lower point
 				int jumpX = -1, jumpZ = -1;
 				for (int r = 2; r <= 12 && !foundLower; r++) {
 					for (int dz = -r; dz <= r; dz++) {
@@ -201,7 +198,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					}
 				}
 				if (foundLower) {
-					// Interpolate intermediate cells for the spline if not yet merged
 					if (!merged) {
 						int stepCount = std::max(std::abs(jumpX - currX), std::abs(jumpZ - currZ));
 						for (int s = 1; s < stepCount; s++) {
@@ -239,19 +235,15 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (progress) progress(30.0f, "Calculating Flow...");
 
-	// Save original terrain heights BEFORE any carving
-	// Water surfaces will sample from this so they sit at bank level
 	std::vector<float> originalHeights(totalVerts);
 	for (int i = 0; i < totalVerts; i++) {
 		originalHeights[i] = data.vertices[i * 14 + 1];
 	}
 
-	// 3. Hydrological Lake Filling (Flood-Fill)
 	std::vector<float> lakeWaterLevel(totalVerts, -1.0f);
 	std::vector<bool> lakeMask(totalVerts, false);
 	std::vector<bool> sinkHandled(totalVerts, false);
 
-	// Sort sinks by height to fill from the bottom up
 	std::sort(sinks.begin(), sinks.end(), [&](const Sink& a, const Sink& b) {
 		return data.vertices[(a.z * gridRes + a.x) * 14 + 1] < data.vertices[(b.z * gridRes + b.x) * 14 + 1];
 	});
@@ -261,7 +253,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		int sinkIdx = sink.z * gridRes + sink.x;
 		if (sinkHandled[sinkIdx]) continue;
 
-		// Boost target volume significantly to ensure lakes fill their basins
 		float targetVolume = sink.volume * baseWidth * 15.0f; 
 		float currentVolume = 0.0f;
 		float sinkHeight = data.vertices[sinkIdx * 14 + 1];
@@ -279,12 +270,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		{
 			auto [h, idx] = pq.top();
 			
-			// Stop if we've filled the target volume AND we've reached a decent depth relative to the sink
 			if (currentVolume >= targetVolume && h > sinkHeight + baseDepth) break;
 			
 			pq.pop();
 
-			// If we hit another sink during the fill, merge its volume into this basin
 			if (isSink[idx] && !sinkHandled[idx]) {
 				targetVolume += flowVolume[idx] * baseWidth * 15.0f;
 				sinkHandled[idx] = true;
@@ -315,13 +304,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Minimum size for a realistic lake
 		if (lakePixels.size() < 10) {
 			for (int idx : lakePixels) lakeMask[idx] = false;
 			continue;
 		}
 
-		// Store water level for this basin and flatten bed
 		for (int idx : lakePixels) {
 			lakeWaterLevel[idx] = currentWaterLevel;
 			float terrainH = data.vertices[idx * 14 + 1];
@@ -332,7 +319,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	// --- PRE-COMPUTE SMOOTH SPLINES FOR CARVING AND MESHES ---
 	struct SplinePoint { glm::vec2 pos; float volume; float lakeLevel; float height; };
 	struct RiverData { std::vector<SplinePoint> path; bool isMerged; };
 	std::vector<RiverData> fineRivers;
@@ -352,7 +338,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			int idx = clampGrid(path[pi].z) * gridRes + clampGrid(path[pi].x);
 			coarseVolume.push_back((float)std::max(1, flowVolume[idx]));
 		}
-		for (int s = 0; s < 10; s++) { // Laplacian smooth
+		for (int s = 0; s < 10; s++) { 
 			for (size_t i = 1; i < coarsePath.size() - 1; i++) coarsePath[i] = (coarsePath[i - 1] + coarsePath[i] + coarsePath[i + 1]) / 3.0f;
 		}
 
@@ -366,7 +352,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			coarsePath.resize(lakeHitIdx + 1); coarseVolume.resize(lakeHitIdx + 1);
 			glm::vec2 lastDir(0, 0);
 			if (coarsePath.size() >= 2) lastDir = glm::normalize(coarsePath.back() - coarsePath[coarsePath.size() - 2]);
-			for (int e = 1; e <= 8; e++) { // Push deep into lake to guarantee seamless join
+			for (int e = 1; e <= 8; e++) { 
 				coarsePath.push_back(coarsePath[lakeHitIdx] + lastDir * (float)e);
 				coarseVolume.push_back(coarseVolume.back());
 			}
@@ -374,7 +360,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 		if (coarsePath.size() < 2) continue;
 
-		const int subdivisions = 4;
+		const int subdivisions = 12;
 		std::vector<SplinePoint> finePath;
 		for (size_t seg = 0; seg < coarsePath.size() - 1; seg++) {
 			int i0 = (int)std::max((int)seg - 1, 0); int i1 = (int)seg;
@@ -395,7 +381,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		float lvl = -1.0f; if (lakeHitIdx >= 0 && lakeMask[gz * gridRes + gx]) lvl = lakeLevel;
 		finePath.push_back({ pt, coarseVolume.back(), lvl, 0.0f });
 
-		// --- HEIGHT SMOOTHING AND MONOTONIC DESCENT ---
 		auto getOriginalH = [&](int x, int z) -> float { return originalHeights[clampGrid(z) * gridRes + clampGrid(x)]; };
 		for (auto& fp : finePath) {
 			int x0 = clampGrid((int)std::floor(fp.pos.x)); int x1 = clampGrid(x0 + 1);
@@ -414,7 +399,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		float lastH = finePath[0].height;
+		// --- EXTREME SOURCE SINK ---
+		// Sink the first point 25 meters deep to guarantee it starts INSIDE the mountain.
+		float lastH = finePath[0].height - (25.0f / terrainScale.y); 
+		finePath[0].height = lastH;
+
 		for (size_t i = 1; i < finePath.size(); i++) {
 			if (finePath[i].lakeLevel > -1.0f) {
 				finePath[i].height = finePath[i].lakeLevel;
@@ -433,10 +422,9 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		currentPathID++;
 	}
 
-	// 4. Spline-Based Terrain Carving (Butter Smooth)
 	for (const auto& riverData : fineRivers) {
 		for (const auto& pt : riverData.path) {
-			if (pt.lakeLevel > -1.0f) continue; // Don't carve rivers inside lakes
+			if (pt.lakeLevel > -1.0f) continue;
 
 			float volume = pt.volume;
 			float currentDepth = baseDepth * std::pow(volume, 0.35f);
@@ -451,7 +439,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					int nx = cx + rx;
 					int nz = cz + rz;
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes && !lakeMask[nz * gridRes + nx]) {
-						// True distance from grid point to exact float spline point!
 						float dx = (float)nx - pt.pos.x;
 						float dz = (float)nz - pt.pos.y;
 						float dist = std::sqrt(dx * dx + dz * dz);
@@ -459,7 +446,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 						if (worldDist <= currentWidth) {
 							float t = glm::clamp(worldDist / currentWidth, 0.0f, 1.0f);
-							t = t * t * (3.0f - 2.0f * t); // Smoothstep
+							t = t * t * (3.0f - 2.0f * t);
 							
 							float bankHeight = originalHeights[nz * gridRes + nx];
 							float riverBedHeight = pt.height - currentDepth;
@@ -475,7 +462,6 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	// 5. Smoothing
 	if (smoothPasses > 0)
 	{
 		std::vector<float> heightBuffer(totalVerts);
@@ -501,14 +487,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (progress) progress(80.0f, "Generating Water Meshes...");
 
-	// 6. Generate Smooth Water Meshes
 	MeshData riverMesh;
 	MeshData lakeMesh;
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.25f;
 	float yOffset = waterOffset / terrainScale.y;
 
-	// 6a. River Ribbon Meshes (Flowing)
 	for (const auto& riverData : fineRivers)
 	{
 		int baseIdx = riverMesh.GetVertexCount();
@@ -549,18 +533,37 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 			
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-
 			glm::vec3 center(posX, posY + yOffset, posZ);
 			
-			float worldWidth = baseWidth * std::pow(riverData.path[i].volume, 0.35f) * waterMeshWidthMultiplier;
+			// --- TERRAIN-AWARE MESH BURIAL ---
+			// Push segments backward and RE-SAMPLE terrain height at the new position.
+			// This ensures the buried part of the mesh follows the topography behind the source.
+			if (i < 8 && riverData.path.size() >= 2) {
+				float pushDist = (20.0f / terrainScale.x) * (1.0f - (float)i / 8.0f);
+				center -= dir * pushDist;
+				
+				// Sample terrain at the new "inside" position
+				int gx = std::max(0, std::min((int)center.x, gridRes - 1));
+				int gz = std::max(0, std::min((int)center.z, gridRes - 1));
+				float h = originalHeights[gz * gridRes + gx];
+				center.y = h + yOffset - (2.0f / terrainScale.y); // Sink it 2m deep!
+			}
+
+			float volume = riverData.path[i].volume;
+			float currentWidth = baseWidth * std::pow(volume, 0.35f);
 			
-			// Taper width at the end if this river merged into another
-			if (riverData.isMerged && i > riverData.path.size() - 5) {
-				float taper = (float)(riverData.path.size() - 1 - i) / 4.0f;
-				worldWidth *= taper;
+			if (i < 8) {
+				float t = (float)i / 8.0f;
+				float smoothT = t * t * (3.0f - 2.0f * t);
+				currentWidth *= smoothT;
 			}
 			
-			float localWidth = worldWidth / terrainScale.x;
+			if (riverData.isMerged && i > riverData.path.size() - 6) {
+				float t = (float)(riverData.path.size() - 1 - i) / 5.0f;
+				currentWidth *= t;
+			}
+			
+			float localWidth = (currentWidth * waterMeshWidthMultiplier) / terrainScale.x;
 			glm::vec3 pL = center - right * localWidth;
 			glm::vec3 pR = center + right * localWidth;
 
