@@ -1,5 +1,9 @@
 #include "CityGridNode.h"
 #include "PrimitiveGenerator.h"
+#include "GameObject.h"
+#include "Mesh.h"
+#include "Material.h"
+#include "Texture.h"
 #include <cmath>
 #include <random>
 #include <algorithm>
@@ -123,18 +127,18 @@ void CityGridNode::GenerateGrid()
 		roadPosZ.push_back(z);
 	}
 
-	// Create road segments between intersections
+	// Create road segments between intersections — full span, no gaps
 	// X-direction roads (run along X, at each Z position)
 	for (size_t iz = 0; iz < roadPosZ.size(); iz++)
 	{
 		for (size_t ix = 0; ix + 1 < roadPosX.size(); ix++)
 		{
 			RoadSegment seg;
-			seg.start = glm::vec3(roadPosX[ix] + halfRoad, roadHeight, roadPosZ[iz]);
-			seg.end = glm::vec3(roadPosX[ix + 1] - halfRoad, roadHeight, roadPosZ[iz]);
+			seg.start = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz]);
+			seg.end = glm::vec3(roadPosX[ix + 1], roadHeight, roadPosZ[iz]);
 			seg.width = roadWidth;
 			seg.dimX = true;
-			if (seg.end.x > seg.start.x) // Only add if segment has positive length
+			if (seg.end.x > seg.start.x)
 				roadSegs.push_back(seg);
 		}
 	}
@@ -145,8 +149,8 @@ void CityGridNode::GenerateGrid()
 		for (size_t iz = 0; iz + 1 < roadPosZ.size(); iz++)
 		{
 			RoadSegment seg;
-			seg.start = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz] + halfRoad);
-			seg.end = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz + 1] - halfRoad);
+			seg.start = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz]);
+			seg.end = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz + 1]);
 			seg.width = roadWidth;
 			seg.dimX = false;
 			if (seg.end.z > seg.start.z)
@@ -342,59 +346,39 @@ void CityGridNode::BuildRoadMesh(MeshData& output)
 		}
 	}
 
-	// 2. Intersections
-	for (const auto& isec : intersections)
-	{
-		BuildIntersectionQuad(output, isec);
+	// Roads now fully overlap at intersections, no separate intersection quads needed
 
-		// Sidewalk corners at intersections
-		if (sidewalkWidth > 0.01f)
-		{
-			float half = isec.size * 0.5f;
-			float sw = sidewalkWidth;
-			float y = isec.center.y + 0.03f; // Sidewalk raised
+	printf("[CityGridNode] Built road mesh: %d vertices, %d triangles\n",
+		output.GetVertexCount(), output.GetTriangleCount());
+}
 
-			// Four corner sidewalk pads (one per corner of the intersection)
-			// These fill in the gaps where road sidewalks don't reach
-			glm::vec3 corners[4] = {
-				glm::vec3(isec.center.x - half - sw, y, isec.center.z - half - sw), // -X, -Z
-				glm::vec3(isec.center.x + half,      y, isec.center.z - half - sw), // +X, -Z
-				glm::vec3(isec.center.x + half,      y, isec.center.z + half),      // +X, +Z
-				glm::vec3(isec.center.x - half - sw, y, isec.center.z + half),      // -X, +Z
-			};
+// =====================================================================
+// Build Plot Ground Mesh (separate from roads for different texture)
+// =====================================================================
 
-			for (int c = 0; c < 4; c++)
-			{
-				glm::vec3 cp0 = corners[c];
-				glm::vec3 cp1 = cp0 + glm::vec3(sw, 0, 0);
-				glm::vec3 cp2 = cp0 + glm::vec3(sw, 0, sw);
-				glm::vec3 cp3 = cp0 + glm::vec3(0, 0, sw);
-				AddRoadQuad(output, cp0, cp1, cp2, cp3, 0.0f, 1.0f, 0.0f, 1.0f);
-			}
-		}
-	}
+void CityGridNode::BuildPlotMesh(MeshData& output)
+{
+	output.Clear();
+	float halfRoad = roadWidth * 0.5f;
 
-	// 3. Plot ground quads (grass/concrete fill for the blocks between roads)
 	for (const auto& plot : plots)
 	{
 		float halfW = plot.size.x * 0.5f;
 		float halfD = plot.size.y * 0.5f;
 		float y = plot.center.y - 0.01f; // Slightly below road level
 
-		// Shrink by sidewalk width to not overlap
-		float shrink = sidewalkWidth;
-		glm::vec3 p0(plot.center.x - halfW + shrink, y, plot.center.z - halfD + shrink);
-		glm::vec3 p1(plot.center.x + halfW - shrink, y, plot.center.z - halfD + shrink);
-		glm::vec3 p2(plot.center.x + halfW - shrink, y, plot.center.z + halfD - shrink);
-		glm::vec3 p3(plot.center.x - halfW + shrink, y, plot.center.z + halfD - shrink);
+		// Extend plots slightly under roads to eliminate gaps
+		float overlapX = roadWidth * 0.5f;
+		float overlapZ = roadWidth * 0.5f;
+		glm::vec3 p0(plot.center.x - halfW - overlapX, y, plot.center.z - halfD - overlapZ);
+		glm::vec3 p1(plot.center.x - halfW - overlapX, y, plot.center.z + halfD + overlapZ);
+		glm::vec3 p2(plot.center.x + halfW + overlapX, y, plot.center.z + halfD + overlapZ);
+		glm::vec3 p3(plot.center.x + halfW + overlapX, y, plot.center.z - halfD - overlapZ);
 
-		float texU = (halfW * 2 - shrink * 2) * 0.2f; // Grass texture tiling
-		float texV = (halfD * 2 - shrink * 2) * 0.2f;
+		float texU = plot.size.x * 0.15f;
+		float texV = plot.size.y * 0.15f;
 		AddRoadQuad(output, p0, p1, p2, p3, 0.0f, texU, 0.0f, texV);
 	}
-
-	printf("[CityGridNode] Built road mesh: %d vertices, %d triangles\n",
-		output.GetVertexCount(), output.GetTriangleCount());
 }
 
 // =====================================================================
@@ -455,7 +439,7 @@ float CityGridNode::SampleTerrainHeight(const MeshData& terrain, float x, float 
 }
 
 // =====================================================================
-// Execute
+// Execute — spawns road GameObjects directly into the scene
 // =====================================================================
 
 void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -471,24 +455,66 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	MeshData roadMesh;
 	BuildRoadMesh(roadMesh);
 
-	// 3. If we have a terrain input, offset road height to match
+	// 2b. Build plot ground mesh (separate for green texture)
+	MeshData plotMesh;
+	BuildPlotMesh(plotMesh);
+
+	// 3. If we have a terrain input, offset all geometry to match
+	float terrainOffset = 0.0f;
 	if (!inputs[0].data.meshData.vertices.empty())
 	{
 		const MeshData& terrain = inputs[0].data.meshData;
-		float avgHeight = SampleTerrainHeight(terrain, 0.0f, 0.0f);
+		terrainOffset = SampleTerrainHeight(terrain, 0.0f, 0.0f);
 
-		// Offset all road vertices by terrain center height
-		int vertCount = roadMesh.GetVertexCount();
-		for (int i = 0; i < vertCount; i++)
-		{
-			int base = i * 14;
-			roadMesh.vertices[base + 1] += avgHeight; // Y offset
+		for (int i = 0; i < roadMesh.GetVertexCount(); i++)
+			roadMesh.vertices[i * 14 + 1] += terrainOffset;
+		for (int i = 0; i < plotMesh.GetVertexCount(); i++)
+			plotMesh.vertices[i * 14 + 1] += terrainOffset;
+
+		for (auto& plot : plots)
+			plot.center.y += terrainOffset;
+	}
+
+	if (progress) progress(50.0f, "Spawning city objects...");
+
+	// ---- Helper: find-or-create a GameObject and assign mesh + texture ----
+	std::string idStr = std::to_string(id);
+
+	auto syncCityObject = [&](const std::string& name, MeshData& meshData, const std::string& texPath, float tiling) {
+		GameObject* obj = scene.FindObject(name);
+		if (!obj) {
+			obj = new GameObject(name);
+			scene.AddObject(obj);
+		}
+		obj->GetTransform().SetPosition(glm::vec3(0.0f));
+		obj->GetTransform().SetRotation(glm::vec3(0.0f));
+		obj->GetTransform().SetScale(glm::vec3(1.0f));
+
+		if (!meshData.vertices.empty()) {
+			obj->SetMesh(meshData.ToMesh());
+			obj->SetCPUMeshData(meshData);
 		}
 
-		// Also offset plot centers
-		for (auto& plot : plots)
-			plot.center.y += avgHeight;
-	}
+		// Set up diffuse texture via TextureLayer system
+		if (!texPath.empty()) {
+			// Clear old layers
+			while (obj->GetTextureLayers().size() > 0)
+				obj->RemoveTextureLayer(0);
+
+			TextureLayer layer;
+			layer.texturePath = texPath;
+			layer.texture = new Texture(texPath.c_str());
+			layer.texture->LoadTexture();
+			layer.blendMode = LayerBlendMode::Normal;
+			layer.opacity = 1.0f;
+			layer.tiling = tiling;
+			obj->AddTextureLayer(layer);
+		}
+	};
+
+	// Spawn roads and plots as separate GameObjects with diffuse layers
+	syncCityObject("City_Roads_" + idStr, roadMesh, "Assets/Textures/roads/asphalt.jpg", 4.0f);
+	syncCityObject("City_Plots_" + idStr, plotMesh, "Assets/Textures/roads/grass_park.jpg", 2.0f);
 
 	if (progress) progress(70.0f, "Building plot data...");
 
@@ -496,15 +522,19 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	TransformList plotTransforms;
 	BuildPlotTransforms(plotTransforms);
 
-	// 5. Set output pins
-	outputs[0].data.type = PinDataType::Mesh;
-	outputs[0].data.meshData = std::move(roadMesh);
+	// 5. Pass-through terrain mesh on output
+	if (!inputs[0].data.meshData.vertices.empty()) {
+		outputs[0].data = inputs[0].data;
+	} else {
+		outputs[0].data.type = PinDataType::Mesh;
+		outputs[0].data.meshData = roadMesh;
+	}
 
 	outputs[1].data.type = PinDataType::TransformList;
 	outputs[1].data.transforms = std::move(plotTransforms);
 
 	if (progress) progress(100.0f, "City grid complete!");
 
-	printf("[CityGridNode] Execution complete: %d plots available for building placement\n",
-		(int)plotTransforms.size());
+	printf("[CityGridNode] Spawned roads + plots. %d building plots available.\n",
+		(int)outputs[1].data.transforms.size());
 }

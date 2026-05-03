@@ -88,6 +88,7 @@ private:
 	void AddSidewalkStrip(MeshData& mesh, glm::vec3 roadEdgeStart, glm::vec3 roadEdgeEnd,
 		float width, bool side, float texScale);
 	void BuildIntersectionQuad(MeshData& mesh, const RoadIntersection& isec);
+	void BuildPlotMesh(MeshData& output);
 	void BuildPlotTransforms(TransformList& output);
 
 	// Terrain height sampling (if surface mesh provided)

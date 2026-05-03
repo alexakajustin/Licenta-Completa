@@ -1,0 +1,174 @@
+{
+    "camera": {
+        "front": [
+            -0.5735764503479004,
+            -0.4226182699203491,
+            -0.7009093165397644
+        ],
+        "pitch": -25.0,
+        "position": [
+            85.0,
+            45.0,
+            75.0
+        ],
+        "yaw": -129.25
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.44999998807907104,
+            "color": [
+                1.0,
+                0.9599999785423279,
+                0.8799999952316284
+            ],
+            "diffuseIntensity": 0.699999988079071,
+            "direction": [
+                -15.0,
+                -8.0,
+                5.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 4,
+                "id": 10,
+                "start": 2
+            },
+            {
+                "end": 7,
+                "id": 11,
+                "start": 5
+            }
+        ],
+        "nextId": 12,
+        "nodes": [
+            {
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    120.0,
+                    1.0,
+                    120.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    150.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 1,
+                "inputPins": [],
+                "outputPins": [
+                    2
+                ],
+                "selectedName": "City_Ground",
+                "title": "Scene Input"
+            },
+            {
+                "citySize": 100.0,
+                "roadWidth": 2.0,
+                "roadSpacingX": 20.0,
+                "roadSpacingZ": 20.0,
+                "sidewalkWidth": 0.4,
+                "roadHeight": 0.02,
+                "buildingSetback": 1.0,
+                "residentialProbability": 0.5,
+                "parkRate": 8,
+                "seed": 42,
+                "editorPos": [
+                    300.0,
+                    150.0
+                ],
+                "id": 3,
+                "inputPins": [
+                    4
+                ],
+                "outputPins": [
+                    5,
+                    6
+                ],
+                "title": "City Grid"
+            },
+            {
+                "editorPos": [
+                    550.0,
+                    150.0
+                ],
+                "id": 8,
+                "inputPins": [
+                    7
+                ],
+                "outputPins": [],
+                "sameAsInput": true,
+                "targetName": "(none)",
+                "title": "Output",
+                "updateMesh": true
+            }
+        ]
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "City_Ground",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "Assets/Textures/roads/asphalt.jpg",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    120.0,
+                    1.0,
+                    120.0
+                ]
+            },
+            "material": {
+                "material.baseColor": [
+                    0.8500000238418579,
+                    0.8500000238418579,
+                    0.8500000238418579,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 16.0,
+                "material.specularIntensity": 0.30000001192092896,
+                "material.tiling": [
+                    8.0,
+                    8.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}
