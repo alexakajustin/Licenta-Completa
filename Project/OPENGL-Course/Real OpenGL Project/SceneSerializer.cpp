@@ -155,27 +155,24 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			for (auto const& [name, path] : mat->GetTexturePaths()) objJson["material"][name] = path;
 		}
 
-		// SMART FILTER: We no longer save custom vertex/index data to the JSON file.
-		// Doing so creates massive file bloat (saving millions of generated vertices)
-		// and introduces the risk of double-processing on load. The graph recalculates this anyway!
-		// INSTEAD: if the object has a custom mesh AND it's not being actively managed by the graph,
-		// we save a fast binary sidecar file (.mesh) so multi-pass graphs can persist between sessions!
+		// SAVE CUSTOM MESH CACHE (.mesh binary sidecar)
+		// We save custom vertex data to a separate binary file to avoid JSON bloat.
+		// This acts as a 'visual cache' so the scene loads instantly with correct meshes,
+		// even before the procedural graph finishes its re-execution.
 		if (obj->HasCustomMesh())
 		{
-			if (!scene.GetNodeGraph().IsObjectMeshModified(obj->GetName()))
-			{
-				std::filesystem::path scenePath(filePath);
-				std::string sceneStem = scenePath.stem().string();
-				std::string objName = obj->GetName();
-				// Sanitize object name for filesystem
-				for (char& c : objName) if (c == ' ' || c == '\\' || c == '/' || c == ':' || c == '<' || c == '>' || c == '|' || c == '*' || c == '?') c = '_';
-				
-				std::string meshFileName = sceneStem + "_" + objName + ".mesh";
-				std::string meshFilePath = (scenePath.parent_path() / meshFileName).string();
-				
-				if (obj->GetCPUMeshData().SaveToBinary(meshFilePath)) {
-					objJson["customMeshPath"] = meshFileName;
-				}
+			std::filesystem::path scenePath(filePath);
+			std::string sceneStem = scenePath.stem().string();
+			std::string objName = obj->GetName();
+			
+			// Sanitize object name for filesystem
+			for (char& c : objName) if (c == ' ' || c == '\\' || c == '/' || c == ':' || c == '<' || c == '>' || c == '|' || c == '*' || c == '?') c = '_';
+			
+			std::string meshFileName = sceneStem + "_" + objName + ".mesh";
+			std::string meshFilePath = (scenePath.parent_path() / meshFileName).string();
+			
+			if (obj->GetCPUMeshData().SaveToBinary(meshFilePath)) {
+				objJson["customMeshPath"] = meshFileName;
 			}
 		}
 

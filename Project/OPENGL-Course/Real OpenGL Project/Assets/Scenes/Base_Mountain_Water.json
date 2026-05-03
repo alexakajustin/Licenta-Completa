@@ -1,19 +1,41 @@
 {
     "camera": {
         "front": [
-            0.9988867044448853,
-            -0.026176953688263893,
-            -0.03924625739455223
+            0.6985138654708862,
+            -0.3786486089229584,
+            0.6072096824645996
         ],
-        "pitch": -1.5,
+        "pitch": -22.25,
         "position": [
-            523.4955444335938,
-            412.5354919433594,
-            581.911376953125
+            233.60537719726563,
+            267.1573181152344,
+            49.198768615722656
         ],
-        "yaw": -722.25
+        "yaw": -1039.0
     },
-    "instancedGroups": [],
+    "instancedGroups": [
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_83_Tree_(Root)_Tree_polySurface1_g1_g2_polySurface1.inst",
+            "maxDrawDistance": 1000.0,
+            "name": "Scatter_Instanced_83_Tree (Root)_Tree_polySurface1 g1 g2 polySurface1",
+            "shadowDistance": 800.0,
+            "sourceObjectName": "Tree_polySurface1 g1 g2 polySurface1"
+        },
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_83_Tree_(Root)_Tree_polySurface1_g1_polySurface1.inst",
+            "maxDrawDistance": 1000.0,
+            "name": "Scatter_Instanced_83_Tree (Root)_Tree_polySurface1 g1 polySurface1",
+            "shadowDistance": 800.0,
+            "sourceObjectName": "Tree_polySurface1 g1 polySurface1"
+        },
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_83_grass_6.inst",
+            "maxDrawDistance": 2000.0,
+            "name": "Scatter_Instanced_83_grass 6",
+            "shadowDistance": 100.0,
+            "sourceObjectName": "grass 6"
+        }
+    ],
     "lights": [
         {
             "ambientIntensity": 0.4000000059604645,
@@ -35,29 +57,39 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 4,
-                "id": 14,
-                "start": 2
+                "end": 84,
+                "id": 93,
+                "start": 80
             },
             {
-                "end": 10,
-                "id": 15,
-                "start": 5
+                "end": 85,
+                "id": 94,
+                "start": 82
             },
             {
-                "end": 7,
-                "id": 16,
-                "start": 11
-            },
-            {
-                "end": 13,
-                "id": 17,
-                "start": 8
+                "end": 106,
+                "id": 110,
+                "start": 87
             }
         ],
-        "nextId": 18,
+        "nextId": 139,
         "nodes": [
             {
+                "cachedMatColor": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.019999999552965164,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
                 "cachedModelPath": "",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
@@ -80,95 +112,122 @@
                 "cachedTexturePath": "",
                 "editorPos": [
                     50.0,
-                    150.0
+                    50.0
                 ],
-                "forceOriginalPrimitive": true,
-                "hasCachedMaterial": false,
-                "id": 1,
+                "forceOriginalPrimitive": false,
+                "hasCachedMaterial": true,
+                "id": 79,
                 "inputPins": [],
                 "outputPins": [
-                    2
+                    80
                 ],
                 "selectedName": "Plane",
                 "title": "Scene Input"
             },
             {
-                "amplitude": 400.0,
+                "cachedMatColor": [
+                    0.003964745905250311,
+                    0.3003300428390503,
+                    0.07438816130161285
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 32.0,
+                "cachedMatSpecular": 0.5,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\grass.obj",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    537.44287109375,
+                    409.8543701171875,
+                    583.0824584960938
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    10.0,
+                    10.0,
+                    10.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    250.0
+                ],
+                "forceOriginalPrimitive": false,
+                "hasCachedMaterial": true,
+                "id": 81,
+                "inputPins": [],
+                "outputPins": [
+                    82
+                ],
+                "selectedName": "grass 6",
+                "title": "Scene Input"
+            },
+            {
+                "alignToNormal": false,
+                "count": 1000000,
+                "createdGroupNames": [
+                    "Scatter_Instanced_83_Tree (Root)",
+                    "Scatter_Instanced_83_Tree (Root)_Tree_polySurface1 g1 g2 polySurface1",
+                    "Scatter_Instanced_83_Tree (Root)_Tree_polySurface1 g1 polySurface1",
+                    "Scatter_Instanced_83_grass 6"
+                ],
                 "editorPos": [
                     250.0,
                     150.0
                 ],
-                "frequency": 0.5,
-                "id": 3,
+                "id": 83,
                 "inputPins": [
-                    4
+                    84,
+                    85
                 ],
-                "octaves": 8,
-                "offsetX": 0.0,
-                "offsetZ": 0.0,
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
                 "outputPins": [
-                    5
+                    86,
+                    87
                 ],
-                "persistence": 0.44999998807907104,
-                "ridged": true,
-                "seed": 42,
-                "title": "Perlin Noise",
-                "useNormalDisplacement": false
+                "randomRotation": true,
+                "seed": 18467,
+                "spawnAsObjects": true,
+                "spawnedMap": {},
+                "targetParentName": "(none)",
+                "title": "Scatter"
             },
             {
-                "baseDepth": 1.0,
-                "baseWidth": 15.0,
+                "axis": 1,
+                "comparison": 1,
                 "editorPos": [
-                    650.0,
-                    150.0
+                    550.0,
+                    441.0
                 ],
-                "id": 6,
+                "id": 105,
                 "inputPins": [
-                    7
+                    106,
+                    107
                 ],
-                "lakeVolumeMultiplier": 1017.5960083007813,
-                "maxSteps": 1500,
+                "normalAxis": 1,
+                "normalComparison": 1,
+                "normalThreshold": 0.699999988079071,
                 "outputPins": [
-                    8
+                    108,
+                    109
                 ],
-                "smoothPasses": 8,
-                "springCount": 8,
-                "title": "River",
-                "waterOffset": 0.004999999888241291
-            },
-            {
-                "depositionConstant": 0.019999999552965164,
-                "dissolvingConstant": 0.8999999761581421,
-                "editorPos": [
-                    450.0,
-                    150.0
-                ],
-                "id": 9,
-                "inputPins": [
-                    10
-                ],
-                "outputPins": [
-                    11
-                ],
-                "rainRate": 1.0,
-                "simulationSteps": 60,
-                "smoothPasses": 2,
-                "title": "Hydraulic Erosion"
-            },
-            {
-                "editorPos": [
-                    850.0,
-                    150.0
-                ],
-                "id": 12,
-                "inputPins": [
-                    13
-                ],
-                "outputPins": [],
-                "sameAsInput": true,
-                "targetName": "(none)",
-                "title": "Output",
-                "updateMesh": true
+                "threshold": 22.100000381469727,
+                "title": "Filter Transforms",
+                "useNormalFilter": false,
+                "usePercentage": true
             }
         ]
     },
@@ -203,6 +262,36 @@
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                    "tiling": 25.0
+                },
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 332.0,
+                    "heightMin": 275.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -419,13 +508,15 @@
                     0.0
                 ],
                 "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.004999999888241291,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 polySurface1",
@@ -471,9 +562,9 @@
             "inheritScale": true,
             "material": {
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.933993399143219,
+                    0.933993399143219,
+                    0.933993399143219,
                     1.0
                 ],
                 "material.offset": [
@@ -481,13 +572,15 @@
                     0.0
                 ],
                 "material.shininess": 32.0,
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.004999999888241291,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Tree_polySurface1 g1 g2 polySurface1",
@@ -576,6 +669,331 @@
                     10.0,
                     10.0,
                     10.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Base_Mountain_Water_River_Water_67.mesh",
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 256.0,
+                "material.specularIntensity": 3.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 512.0,
+                "material_specularIntensityOverride": 5.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 1.0,
+                "material_waveStrength": 5.0,
+                "shader_frag": "Assets/Shaders/river.frag",
+                "shader_vert": "Assets/Shaders/river.vert"
+            },
+            "modelPath": "",
+            "name": "River_Water_67",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Base_Mountain_Water_Lake_Water_67.mesh",
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 128.0,
+                "material.specularIntensity": 2.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 256.0,
+                "material_specularIntensityOverride": 3.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterDepthScale": 0.30000001192092896,
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.009999999776482582,
+                "material_waveStrength": 0.10000000149011612,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
+            },
+            "modelPath": "",
+            "name": "Lake_Water_67",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_83_Tree (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_83_grass 6",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    0.933993399143219,
+                    0.933993399143219,
+                    0.933993399143219,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.004999999888241291,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Extracted Scatter_Instanced_83_Tree (Root)_Tree_polySurface1 g1 g2 polySurface1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    833.2508544921875,
+                    173.26385498046875,
+                    183.5460968017578
+                ],
+                "rotation": [
+                    0.0,
+                    352.7253112792969,
+                    0.0
+                ],
+                "scale": [
+                    5.73500394821167,
+                    5.73500394821167,
+                    5.73500394821167
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    0.003964745905250311,
+                    0.3003300428390503,
+                    0.07438816130161285,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/grass.frag",
+                "shader_vert": "Assets/Shaders/grass.vert",
+                "windSpeed": 1.0,
+                "windStrength": 0.004999999888241291
+            },
+            "modelPath": "",
+            "name": "Extracted Scatter_Instanced_83_grass 6",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    800.4030151367188,
+                    185.015869140625,
+                    177.113037109375
+                ],
+                "rotation": [
+                    0.0,
+                    152.5405731201172,
+                    0.0
+                ],
+                "scale": [
+                    11.223411560058594,
+                    11.223411560058594,
+                    11.223411560058594
                 ]
             }
         }

@@ -1,0 +1,364 @@
+{
+    "camera": {
+        "front": [
+            -0.7111057043075562,
+            -0.2164396196603775,
+            -0.6689413785934448
+        ],
+        "pitch": -12.5,
+        "position": [
+            931.1219482421875,
+            176.66375732421875,
+            229.24237060546875
+        ],
+        "yaw": -136.75
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 4,
+                "id": 14,
+                "start": 2
+            },
+            {
+                "end": 10,
+                "id": 15,
+                "start": 5
+            },
+            {
+                "end": 7,
+                "id": 16,
+                "start": 11
+            },
+            {
+                "end": 13,
+                "id": 17,
+                "start": 8
+            }
+        ],
+        "nextId": 18,
+        "nodes": [
+            {
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    150.0
+                ],
+                "forceOriginalPrimitive": false,
+                "hasCachedMaterial": false,
+                "id": 1,
+                "inputPins": [],
+                "outputPins": [
+                    2
+                ],
+                "selectedName": "Plane",
+                "title": "Scene Input"
+            },
+            {
+                "amplitude": 400.0,
+                "editorPos": [
+                    250.0,
+                    150.0
+                ],
+                "frequency": 0.5,
+                "id": 3,
+                "inputPins": [
+                    4
+                ],
+                "octaves": 8,
+                "offsetX": 0.0,
+                "offsetZ": 0.0,
+                "outputPins": [
+                    5
+                ],
+                "persistence": 0.44999998807907104,
+                "ridged": true,
+                "seed": 42,
+                "title": "Perlin Noise",
+                "useNormalDisplacement": false
+            },
+            {
+                "baseDepth": 1.0,
+                "baseWidth": 15.0,
+                "editorPos": [
+                    650.0,
+                    150.0
+                ],
+                "id": 6,
+                "inputPins": [
+                    7
+                ],
+                "lakeVolumeMultiplier": 500.0,
+                "maxSteps": 1500,
+                "outputPins": [
+                    8
+                ],
+                "smoothPasses": 8,
+                "springCount": 8,
+                "title": "River",
+                "waterOffset": 0.004999999888241291
+            },
+            {
+                "depositionConstant": 0.019999999552965164,
+                "dissolvingConstant": 0.8999999761581421,
+                "editorPos": [
+                    450.0,
+                    150.0
+                ],
+                "id": 9,
+                "inputPins": [
+                    10
+                ],
+                "outputPins": [
+                    11
+                ],
+                "rainRate": 1.0,
+                "simulationSteps": 60,
+                "smoothPasses": 0,
+                "title": "Hydraulic Erosion"
+            },
+            {
+                "editorPos": [
+                    850.0,
+                    150.0
+                ],
+                "id": 12,
+                "inputPins": [
+                    13
+                ],
+                "outputPins": [],
+                "sameAsInput": true,
+                "targetName": "(none)",
+                "title": "Output",
+                "updateMesh": true
+            }
+        ]
+    },
+    "objects": [
+        {
+            "customMeshPath": "Cinematic_Mountains_Plane.mesh",
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Cinematic_Mountains_River_Water_6.mesh",
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 256.0,
+                "material.specularIntensity": 3.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 512.0,
+                "material_specularIntensityOverride": 5.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 1.0,
+                "material_waveStrength": 5.0,
+                "shader_frag": "Assets/Shaders/river.frag",
+                "shader_vert": "Assets/Shaders/river.vert"
+            },
+            "modelPath": "",
+            "name": "River_Water_6",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Cinematic_Mountains_Lake_Water_6.mesh",
+            "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 128.0,
+                "material.specularIntensity": 2.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 256.0,
+                "material_specularIntensityOverride": 3.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterDepthScale": 0.30000001192092896,
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.009999999776482582,
+                "material_waveStrength": 0.10000000149011612,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
+            },
+            "modelPath": "",
+            "name": "Lake_Water_6",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}
