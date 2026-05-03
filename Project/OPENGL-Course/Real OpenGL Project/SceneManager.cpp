@@ -278,7 +278,7 @@ GameObject* SceneManager::FindObject(const std::string& name)
 void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
-	float time, const Frustum* frustum, Shader* overrideShader, float screenHeight, class Renderer* renderer, 
+	float time, const Frustum* frustum, Shader* overrideShader, float screenWidth, float screenHeight, class Renderer* renderer, 
 	GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
 {
 	struct Batch {
@@ -329,7 +329,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 			// Screen size is required for depth sampling via gl_FragCoord
 			GLint screenSizeLoc = glGetUniformLocation(s->GetShaderID(), "screenSize");
-			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1]/projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
+			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenWidth > 0.0f ? screenWidth : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
 			if (dLight) s->SetDirectionalLight(dLight);
 			if (pLights) s->SetPointLights(pLights, pCount, 4, 0);

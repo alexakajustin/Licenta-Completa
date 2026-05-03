@@ -234,8 +234,8 @@
                     0.7020000219345093
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 20.0,
-                "material_waveSpeed": 0.10000000149011612,
+                "material_waveScale": 30.0,
+                "material_waveSpeed": 0.3799999952316284,
                 "material_waveStrength": 2.0,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
@@ -274,9 +274,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    247.6329345703125,
-                    253.43222045898438,
-                    273.0041809082031
+                    125.24913024902344,
+                    295.9587097167969,
+                    369.6600646972656
                 ],
                 "rotation": [
                     0.0,

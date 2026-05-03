@@ -104,7 +104,9 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 		Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
 
 		// Render regular objects
-		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, 0.0f, this, 0, 0, glm::vec4(0.0f), lightProjView);
+		float sw = (float)light->GetShadowMap()->GetShadowWidth();
+		float sh = (float)light->GetShadowMap()->GetShadowHeight();
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, sw, sh, this, 0, 0, glm::vec4(0.0f), lightProjView);
 
 		// GPU-Driven Instanced Groups
 		float time = (float)glfwGetTime();
@@ -147,7 +149,9 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 
 	omniShadowShader.Validate();
 
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, 0.0f, this);
+	float sw = (float)light->GetShadowMap()->GetShadowWidth();
+	float sh = (float)light->GetShadowMap()->GetShadowHeight();
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -235,7 +239,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	scene.SetCullShader(&instancedCullShader);
 	scene.SetInstancedRenderShader(&instancedRenderShader);
 
-	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, activeFrustum, nullptr, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1), glm::mat4(1.0f), gs);
+	scene.RenderAll(projection, view, cameraPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, activeFrustum, nullptr, (float)fbw, (float)fbh, this, sceneDepthTexture, reflectionTexture, glm::vec4(0, 0, 0, 1), glm::mat4(1.0f), gs);
 
 	// Reset polygon mode after main render pass
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -300,7 +304,7 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	// Set clip plane: render only stuff ABOVE water (y > waterHeight)
 	// Clip plane equation: 0*x + 1*y + 0*z + (-waterHeight) > 0
 	GLint clipPlaneLoc = glGetUniformLocation(mainShader.GetShaderID(), "clipPlane");
-	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
+	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 1.0f, 0.0f, -waterHeight + 0.01f);
 
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
@@ -325,8 +329,8 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	float time = (float)glfwGetTime();
 
 	// Render opaque scene objects only (no transparent/water) with clip plane active
-	glm::vec4 reflectionClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
-	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbh, this, 0, 0, reflectionClipPlane, glm::mat4(1.0f), gs);
+	glm::vec4 reflectionClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -waterHeight + 0.01f);
+	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbw, (float)fbh, this, 0, 0, reflectionClipPlane, glm::mat4(1.0f), gs);
 
 	// Restore state
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

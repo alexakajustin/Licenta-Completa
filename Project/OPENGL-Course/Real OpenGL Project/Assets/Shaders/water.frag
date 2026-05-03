@@ -457,17 +457,22 @@ void main()
     // ============================================================
     // Planar Reflections & Refraction Distortion
     // ============================================================
-    vec2 ndc = (clipSpaceCoords.xy / clipSpaceCoords.w) / 2.0 + 0.5;
-    vec2 distortion = GetDuDvDistortion(TexCoord);
+    // High-fidelity distortion: Use the actual per-pixel normal to offset the reflection
+    // This makes the reflection "bend" and "warp" organically around the waves.
+    vec3 waterNormal = GetWaterNormal(TexCoord);
+    vec2 reflectionDistortion = waterNormal.xz * (material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength);
     
-    vec2 reflectTexCoords = ndc + distortion;
+    vec2 reflectTexCoords = screenUV + reflectionDistortion;
     reflectTexCoords = clamp(reflectTexCoords, 0.001, 0.999);
     vec3 reflectionColor = texture(reflectionMap, reflectTexCoords).rgb;
     
+    // Shoreline Fade: Reflections should fade out near the edges of the water for natural blending
+    float reflectionShorelineFade = clamp(depthDiff * 10.0, 0.0, 1.0);
+    
     // Blend base color with reflection
-    vec3 waterColor = mix(waterBaseColor, reflectionColor, fresnelFactor);
+    vec3 waterColor = mix(waterBaseColor, reflectionColor, fresnelFactor * reflectionShorelineFade);
     // Add a bit of the shallow/deep tint to the reflection for character
-    waterColor = mix(waterColor, mix(shallowColor.rgb, deepColor.rgb, 0.5), fresnelFactor * 0.2);
+    waterColor = mix(waterColor, mix(shallowColor.rgb, deepColor.rgb, 0.5), fresnelFactor * 0.1);
 
     vec4 finalBaseColor = vec4(waterColor, waterAlpha);
 

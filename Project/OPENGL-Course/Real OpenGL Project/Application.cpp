@@ -353,13 +353,52 @@ void Application::Run()
 		}
 
 		if (hasWater) {
+			float minCamDist = 1e10f;
+			GameObject* bestWater = nullptr;
+			glm::vec3 camPos = camera.getCameraPosition();
+
 			for (auto* obj : sceneManager.GetObjects()) {
 				Material* mat = obj->GetMaterial();
 				if (mat && mat->GetShader() && (mat->GetShader()->GetVertexPath().find("water.vert") != std::string::npos)) {
+					float dist = glm::distance(obj->GetTransform().GetPosition(), camPos);
+					if (dist < minCamDist) {
+						minCamDist = dist;
+						bestWater = obj;
+					}
+				}
+			}
+
+			if (bestWater) {
+				const MeshData& md = bestWater->GetCPUMeshData();
+				if (md.GetVertexCount() > 0) {
+					// For flat lakes, any vertex works. For sloped rivers, we find the height 
+					// at the local XZ point closest to the camera to get the most relevant reflection plane.
+					glm::mat4 invModel = glm::inverse(bestWater->GetWorldMatrix());
+					glm::vec3 localCam = glm::vec3(invModel * glm::vec4(camPos, 1.0f));
+					
+					float closestDistSq = 1e10f;
+					float localY = md.vertices[1];
+					
+					// Optimization: sample every Nth vertex for large river meshes
+					int vCount = md.GetVertexCount();
+					int step = vCount > 2000 ? vCount / 500 : 1; 
+					for (int i = 0; i < vCount; i += step) {
+						int base = i * 14;
+						float dx = md.vertices[base] - localCam.x;
+						float dz = md.vertices[base + 2] - localCam.z;
+						float d2 = dx*dx + dz*dz;
+						if (d2 < closestDistSq) {
+							closestDistSq = d2;
+							localY = md.vertices[base + 1];
+						}
+					}
+					// Transform local height back to world space
+					glm::vec4 worldHeightPos = bestWater->GetWorldMatrix() * glm::vec4(0.0f, localY, 0.0f, 1.0f);
+					waterHeight = worldHeightPos.y;
+				} else {
 					glm::vec3 bmin, bmax;
-					obj->GetWorldBounds(bmin, bmax);
-					waterHeight = bmax.y; // The top of the procedural water mesh is our reflection plane
-					break;
+					bestWater->GetWorldBounds(bmin, bmax);
+					waterHeight = bmax.y;
 				}
 			}
 
