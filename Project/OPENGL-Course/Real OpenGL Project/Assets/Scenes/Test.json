@@ -41,7 +41,7 @@
                 "start": 8
             }
         ],
-        "nextId": 44,
+        "nextId": 18,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -200,8 +200,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 128.0,
-                "material.specularIntensity": 2.0,
+                "material.shininess": 256.0,
+                "material.specularIntensity": 3.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
@@ -210,17 +210,17 @@
                 ],
                 "material_dudvMap": "Assets/Textures/Water/dudv.png",
                 "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 0.0,
+                "material_dudvTiling": 0.15000000596046448,
                 "material_foamColor": [
                     1.0,
                     1.0,
-                    0.9020000100135803,
+                    1.0,
                     1.0
                 ],
-                "material_foamDistance": 10.0,
-                "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
-                "material_specularIntensityOverride": 3.0,
+                "material_foamDistance": 3.0,
+                "material_fresnelPower": 9.640000343322754,
+                "material_shininessOverride": 512.0,
+                "material_specularIntensityOverride": 5.0,
                 "material_waterColorDeep": [
                     0.012000000104308128,
                     0.14900000393390656,
@@ -234,9 +234,9 @@
                     0.7020000219345093
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 30.0,
-                "material_waveSpeed": 0.3799999952316284,
-                "material_waveStrength": 2.0,
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.07999999821186066,
+                "material_waveStrength": 5.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
             },
@@ -261,32 +261,6 @@
                     1000.0,
                     1.0,
                     1000.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "modelPath": "Assets\\Models\\statue.obj",
-            "name": "statue 2",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    125.24913024902344,
-                    295.9587097167969,
-                    369.6600646972656
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    50.0,
-                    50.0,
-                    50.0
                 ]
             }
         },
@@ -321,9 +295,9 @@
                     0.9020000100135803,
                     1.0
                 ],
-                "material_foamDistance": 10.0,
-                "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
+                "material_foamDistance": 7.460000038146973,
+                "material_fresnelPower": 4.059999942779541,
+                "material_shininessOverride": 1.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
                     0.012000000104308128,
