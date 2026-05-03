@@ -308,9 +308,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Increase minimum lake size heavily so small river depressions aren't classified as lakes.
-		// A threshold of 5 pixels on a 512 grid creates thousands of tiny jagged puddle meshes!
-		if (lakePixels.size() < 150) {
+		// Reduced threshold: allow smaller puddles to be visible even at low erosion steps
+		if (lakePixels.size() < 10) {
 			for (int idx : lakePixels) lakeMask[idx] = false;
 			continue;
 		}
