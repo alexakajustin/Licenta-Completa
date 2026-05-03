@@ -253,7 +253,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		int sinkIdx = sink.z * gridRes + sink.x;
 		if (sinkHandled[sinkIdx]) continue;
 
-		float targetVolume = sink.volume * baseWidth * 15.0f; 
+		// Massive 10x volume boost for realistic, large-scale lakes
+		float targetVolume = sink.volume * baseWidth * 150.0f; 
 		float currentVolume = 0.0f;
 		float sinkHeight = data.vertices[sinkIdx * 14 + 1];
 		float currentWaterLevel = sinkHeight;
@@ -270,12 +271,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		{
 			auto [h, idx] = pq.top();
 			
-			if (currentVolume >= targetVolume && h > sinkHeight + baseDepth) break;
+			// Relaxed fill condition to allow basins to fill deeper
+			if (currentVolume >= targetVolume && h > sinkHeight + (baseDepth * 3.0f)) break;
 			
 			pq.pop();
 
 			if (isSink[idx] && !sinkHandled[idx]) {
-				targetVolume += flowVolume[idx] * baseWidth * 15.0f;
+				targetVolume += flowVolume[idx] * baseWidth * 150.0f;
 				sinkHandled[idx] = true;
 			}
 
@@ -304,7 +306,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		if (lakePixels.size() < 10) {
+		// Minimum size for a realistic lake (Increased for realism)
+		if (lakePixels.size() < 50) {
 			for (int idx : lakePixels) lakeMask[idx] = false;
 			continue;
 		}
