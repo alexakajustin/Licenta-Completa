@@ -23,7 +23,7 @@ RiverNode::RiverNode(NodeGraph& graph)
 	outputs.push_back(meshOut);
 
 	springCount = 8;
-	maxSteps = 800;
+	maxSteps = 1500;
 	baseDepth = 1.0f;
 	baseWidth = 8.0f;
 	waterOffset = 0.005f;
@@ -151,12 +151,14 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			
 			if (pathID[idx] == -1 || pathID[idx] == currentPathID) {
 				pathID[idx] = currentPathID;
-				path.push_back({ currX, currZ });
+				if (!merged) path.push_back({ currX, currZ });
 			} else {
-				// We hit another river! Stop tracing the spline here to prevent overlap.
-				path.push_back({ currX, currZ }); // One final point for a clean join
-				merged = true;
-				break; 
+				// We hit another river! For rendering, stop the spline path here.
+				// BUT for hydrology (finding sinks/lakes), let the droplet continue to flow!
+				if (!merged) {
+					path.push_back({ currX, currZ }); 
+					merged = true;
+				}
 			}
 
 			int bestX = currX, bestZ = currZ;
@@ -179,38 +181,36 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 
 			if (!foundLower) { 
-			// Puddle Jump: search up to radius 5 for a lower point to spill over
-			int jumpX = -1, jumpZ = -1;
-			for (int r = 2; r <= 5 && !foundLower; r++) {
-				for (int dz = -r; dz <= r; dz++) {
-					for (int dx = -r; dx <= r; dx++) {
-						if (std::abs(dx) != r && std::abs(dz) != r) continue;
-						int nx = currX + dx;
-						int nz = currZ + dz;
-						if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
-							float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
-							if (nh < lowestH) { 
-								lowestH = nh; 
-								jumpX = nx; jumpZ = nz; 
-								foundLower = true; 
+				// Puddle Jump: search up to radius 12 for a lower point
+				int jumpX = -1, jumpZ = -1;
+				for (int r = 2; r <= 12 && !foundLower; r++) {
+					for (int dz = -r; dz <= r; dz++) {
+						for (int dx = -r; dx <= r; dx++) {
+							if (std::abs(dx) != r && std::abs(dz) != r) continue;
+							int nx = currX + dx;
+							int nz = currZ + dz;
+							if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+								float nh = data.vertices[(nz * gridRes + nx) * 14 + 1];
+								if (nh < lowestH) { 
+									lowestH = nh; 
+									jumpX = nx; jumpZ = nz; 
+									foundLower = true; 
+								}
 							}
 						}
 					}
 				}
-			}
-			// Interpolate ALL intermediate cells to keep the path continuous
-			if (foundLower) {
-				int stepCount = std::max(std::abs(jumpX - currX), std::abs(jumpZ - currZ));
-				for (int s = 1; s < stepCount; s++) {
-					int mx = currX + (jumpX - currX) * s / stepCount;
-					int mz = currZ + (jumpZ - currZ) * s / stepCount;
-					mx = std::max(0, std::min(mx, gridRes - 1));
-					mz = std::max(0, std::min(mz, gridRes - 1));
-					path.push_back({ mx, mz });
+				if (foundLower) {
+					// Interpolate intermediate cells for the spline if not yet merged
+					if (!merged) {
+						int stepCount = std::max(std::abs(jumpX - currX), std::abs(jumpZ - currZ));
+						for (int s = 1; s < stepCount; s++) {
+							path.push_back({ currX + (jumpX - currX) * s / stepCount, currZ + (jumpZ - currZ) * s / stepCount });
+						}
+					}
+					bestX = jumpX; bestZ = jumpZ;
 				}
-				bestX = jumpX; bestZ = jumpZ;
 			}
-		}
 
 			if (!foundLower) { 
 				isSink[currZ * gridRes + currX] = true; 
@@ -221,9 +221,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			currZ = bestZ;
 		}
 		
-		if (!trapped && !merged) {
+		if (!trapped) {
 			isSink[currZ * gridRes + currX] = true;
 		}
+		
 		riverPaths.push_back(path);
 		currentPathID++;
 	}
@@ -260,9 +261,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		int sinkIdx = sink.z * gridRes + sink.x;
 		if (sinkHandled[sinkIdx]) continue;
 
-		float targetVolume = sink.volume * baseWidth * 1.5f; 
+		// Boost target volume significantly to ensure lakes fill their basins
+		float targetVolume = sink.volume * baseWidth * 15.0f; 
 		float currentVolume = 0.0f;
-		float currentWaterLevel = data.vertices[sinkIdx * 14 + 1];
+		float sinkHeight = data.vertices[sinkIdx * 14 + 1];
+		float currentWaterLevel = sinkHeight;
 
 		std::vector<int> lakePixels;
 		std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<std::pair<float, int>>> pq;
@@ -272,20 +275,24 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		visited[sinkIdx] = true;
 		sinkHandled[sinkIdx] = true;
 
-		while (!pq.empty() && currentVolume < targetVolume)
+		while (!pq.empty())
 		{
 			auto [h, idx] = pq.top();
+			
+			// Stop if we've filled the target volume AND we've reached a decent depth relative to the sink
+			if (currentVolume >= targetVolume && h > sinkHeight + baseDepth) break;
+			
 			pq.pop();
 
 			// If we hit another sink during the fill, merge its volume into this basin
 			if (isSink[idx] && !sinkHandled[idx]) {
-				targetVolume += flowVolume[idx] * baseWidth * 1.5f;
+				targetVolume += flowVolume[idx] * baseWidth * 15.0f;
 				sinkHandled[idx] = true;
 			}
 
 			if (h > currentWaterLevel) {
 				float diff = h - currentWaterLevel;
-				currentVolume += diff * lakePixels.size();
+				currentVolume += diff * (float)lakePixels.size();
 				currentWaterLevel = h;
 			}
 
@@ -308,7 +315,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Reduced threshold: allow smaller puddles to be visible even at low erosion steps
+		// Minimum size for a realistic lake
 		if (lakePixels.size() < 10) {
 			for (int idx : lakePixels) lakeMask[idx] = false;
 			continue;
@@ -578,7 +585,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	std::vector<int> expandedPixels = lakePixelList;
 	std::vector<bool> isExpanded(totalVerts, false);
 	for (int idx : lakePixelList) isExpanded[idx] = true;
-	for(int pass=0; pass<16; pass++) {
+	for(int pass=0; pass<5; pass++) {
 		std::vector<int> currentPass = expandedPixels;
 		for (int idx : currentPass) {
 			for (int dz = -1; dz <= 1; dz++) {
@@ -587,8 +594,14 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
 						int nidx = nz * gridRes + nx;
 						if (!isExpanded[nidx]) { 
-							expandedPixels.push_back(nidx); isExpanded[nidx] = true; 
-							if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = lakeWaterLevel[idx];
+							float terrainH = originalHeights[nidx];
+							float waterLevel = lakeWaterLevel[idx];
+							// Correct Expansion: Only expand into terrain that is BELOW or at the water level
+							// This allows lakes to fill deep basins while preventing "Staircases" in the air
+							if (terrainH < waterLevel + 0.5f) {
+								expandedPixels.push_back(nidx); isExpanded[nidx] = true; 
+								if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = waterLevel;
+							}
 						}
 					}
 				}

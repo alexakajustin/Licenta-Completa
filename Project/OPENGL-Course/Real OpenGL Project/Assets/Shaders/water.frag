@@ -156,14 +156,22 @@ void main() {
     vec3 foamCol = material_foamColor == vec4(0.0) ? vec3(1.0) : material_foamColor.rgb;
     baseWater = mix(baseWater, foamCol, foamAlpha * 0.7);
 
-    // Final Lighting
+    // 6. Final Lighting & Transparency (Finished Look)
     vec3 lighting = CalcLight(directionalLight.base, directionalLight.direction, worldNormal, viewDir);
+    
+    // Subsurface Scattering (Sun bleed)
+    float sss = pow(max(0.0, dot(viewDir, -directionalLight.direction)), 12.0) * depthFactor;
+    lighting += material_waterColorShallow.rgb * sss * 0.4;
+
     for(int i=0; i<pointLightCount; i++) lighting += CalcLight(pointLights[i].base, normalize(pointLights[i].position - FragPos), worldNormal, viewDir);
     
-    vec3 finalColor = baseWater + lighting * 0.2;
+    // 7. Shoreline Softening (Increased for smooth grid transitions)
+    float edgeSoftening = smoothstep(0.0, 0.4, depthDiff);
+    
+    vec3 finalColor = baseWater + lighting * 0.18;
     
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
     finalColor += vec3(0.4, 0.3, 0.0) * selected;
 
-    colour = vec4(finalColor, 1.0);
+    colour = vec4(finalColor, edgeSoftening);
 }

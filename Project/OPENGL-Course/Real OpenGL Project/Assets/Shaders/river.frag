@@ -165,10 +165,10 @@ void main() {
 
     for(int i=0; i<pointLightCount; i++) lighting += CalcLight(pointLights[i].base, normalize(pointLights[i].position - FragPos), worldNormal, viewDir);
     
-    // 7. Transparency (Shoreline Softening)
-    float edgeSoftening = smoothstep(0.0, 0.1, depthDiff); // Fade to 0 alpha at very shallow depths
+    // 7. Shoreline Softening (Ensures smooth, non-jagged edges)
+    float edgeSoftening = smoothstep(0.0, 0.15, depthDiff);
     
-    vec3 finalColor = baseWater + lighting * 0.15;
+    vec3 finalColor = baseWater + lighting * 0.18;
     
     // Selection highlight
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
