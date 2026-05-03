@@ -31,6 +31,9 @@ public:
 		j["persistence"] = generator.GetPersistence();
 		j["seed"] = generator.GetSeed();
 		j["ridged"] = generator.GetRidged();
+		j["useNormalDisplacement"] = generator.GetUseNormalDisplacement();
+		j["offsetX"] = generator.GetOffsetX();
+		j["offsetZ"] = generator.GetOffsetZ();
 		return j;
 	}
 
@@ -43,6 +46,8 @@ public:
 		generator.SetPersistence(j.value("persistence", 0.5f));
 		generator.SetSeed(j.value("seed", 42));
 		generator.SetRidged(j.value("ridged", false));
+		generator.SetUseNormalDisplacement(j.value("useNormalDisplacement", false));
+		generator.SetOffset(j.value("offsetX", 0.0f), j.value("offsetZ", 0.0f));
 	}
 
 	void RenderContent(SceneManager* scene) override

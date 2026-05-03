@@ -200,20 +200,14 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		outputs[0].data.sourceObject = obj;
 		outputs[0].data.sourceObjectName = selectedName;
 		
-		// 1. Always prefer existing procedural/modified mesh data from the scene object.
-		//    This ensures that if a Perlin noise or erosion pass already modified the mesh,
-		//    subsequent pipeline executions (like Scatter) pick up the modified mesh,
-		//    NOT a fresh flat primitive.
-		if (obj->HasCustomMesh())
-		{
-			data = obj->GetCPUMeshData();
-			found = true;
-		}
-		// 2. If no custom mesh, check if it's a known primitive type and generate fresh data
-		else if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
+		// 1. Always prefer clean base geometry (Primitive or Model) so that the graph 
+		//    evaluates deterministically from scratch. This prevents an infinite feedback loop
+		//    where modifying nodes (like Perlin Noise) keep adding height to the already 
+		//    deformed mesh on every execution!
+		if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
 		else if (obj->GetPrimitiveType() == "Sphere") { data = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (obj->GetPrimitiveType() == "Cube") { data = PrimitiveGenerator::GetCubeData(); found = true; }
-		// 3. Extract from Model if available (for loaded assets)
+		// 2. Extract from Model if available (clean asset geometry)
 		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
 		{
 			const auto& meshes = obj->GetModel()->GetMeshDataList();
@@ -227,6 +221,12 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				}
 			}
 			if (!data.vertices.empty()) found = true;
+		}
+		// 3. Fallback to existing procedural/custom mesh data ONLY if no clean base exists.
+		else if (obj->HasCustomMesh())
+		{
+			data = obj->GetCPUMeshData();
+			found = true;
 		}
 
 		// Even if no mesh was found (empty container), we still "found" the object itself 

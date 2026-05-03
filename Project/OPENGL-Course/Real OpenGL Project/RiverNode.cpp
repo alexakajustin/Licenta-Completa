@@ -592,8 +592,9 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	std::vector<bool> isExpanded(totalVerts, false);
 	for (int idx : lakePixelList) isExpanded[idx] = true;
 	
-	// Expand skirt by 4 cells so it penetrates the terrain deeply and gives a smooth curve intersection
-	for(int pass=0; pass<4; pass++) {
+	// Expand skirt by 16 cells so it penetrates the terrain deeply (critical for high-res 512x512 grids)
+	// and gives a smooth curve intersection instead of a jagged, square boundary
+	for(int pass=0; pass<16; pass++) {
 		std::vector<int> currentPass = expandedPixels;
 		for (int idx : currentPass) {
 			for (int dz = -1; dz <= 1; dz++) {

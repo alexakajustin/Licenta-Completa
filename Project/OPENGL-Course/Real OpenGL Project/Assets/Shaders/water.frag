@@ -140,30 +140,48 @@ float random(vec3 seed, int i){
 // ============================================================
 vec3 GetWaterNormal(vec2 uv) {
     float scaleFactor = max(vObjectScale / 100.0, 0.01);
-    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 * scaleFactor : material_dudvTiling;
+    // Increase default tiling massively so ripples are crisp and small instead of huge and blurry
+    float dudvTiling = material_dudvTiling == 0.0 ? 60.0 * scaleFactor : material_dudvTiling;
     float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
-    float moveFactor = time * moveSpeed * 0.03;
     
-    // Two-pass distortion from the reference repo
-    vec2 distortedTexCoords = texture(material_dudvMap, vec2(uv.x + moveFactor, uv.y) * dudvTiling).rg * 0.1;
-    distortedTexCoords = uv * dudvTiling + vec2(distortedTexCoords.x, distortedTexCoords.y + moveFactor);
+    // Layer 1: Fast, small ripples
+    vec2 uv1 = uv * dudvTiling;
+    vec2 move1 = vec2(time * moveSpeed * 0.03, time * moveSpeed * 0.015);
+    vec2 dist1 = texture(material_dudvMap, uv1 + move1).rg * 0.1;
+    vec2 finalUV1 = uv1 + dist1 + vec2(dist1.x, dist1.y + move1.y);
+    vec4 n1Col = texture(material_waterNormalMap, finalUV1);
+    vec3 normal1 = vec3(n1Col.r * 2.0 - 1.0, n1Col.b * 3.0, n1Col.g * 2.0 - 1.0);
     
-    // Sample normal from the water normal map with the distorted coords
-    vec4 normalMapColor = texture(material_waterNormalMap, distortedTexCoords);
-    vec3 rippleNormal = vec3(normalMapColor.r * 2.0 - 1.0, normalMapColor.b * 3.0, normalMapColor.g * 2.0 - 1.0);
-    return normalize(rippleNormal);
+    // Layer 2: Slow, large waves panning opposite direction
+    vec2 uv2 = uv * dudvTiling * 0.5;
+    vec2 move2 = vec2(-time * moveSpeed * 0.015, -time * moveSpeed * 0.02);
+    vec2 dist2 = texture(material_dudvMap, uv2 + move2).rg * 0.1;
+    vec2 finalUV2 = uv2 + dist2 + vec2(dist2.x, dist2.y + move2.y);
+    vec4 n2Col = texture(material_waterNormalMap, finalUV2);
+    vec3 normal2 = vec3(n2Col.r * 2.0 - 1.0, n2Col.b * 3.0, n2Col.g * 2.0 - 1.0);
+    
+    // Blend normals for dual-layer butter smooth look
+    vec3 rippleNormal = normalize(normal1 + normal2);
+    return rippleNormal;
 }
 
 vec2 GetDuDvDistortion(vec2 uv) {
     float scaleFactor = max(vObjectScale / 100.0, 0.01);
-    float dudvTiling = material_dudvTiling == 0.0 ? 6.0 * scaleFactor : material_dudvTiling;
+    float dudvTiling = material_dudvTiling == 0.0 ? 60.0 * scaleFactor : material_dudvTiling;
     float dudvStrength = material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength;
     float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
     float moveFactor = time * moveSpeed * 0.03;
     
-    vec2 distortedTexCoords = texture(material_dudvMap, vec2(uv.x + moveFactor, uv.y) * dudvTiling).rg * 0.1;
-    distortedTexCoords = uv * dudvTiling + vec2(distortedTexCoords.x, distortedTexCoords.y + moveFactor);
-    vec2 totalDistortion = (texture(material_dudvMap, distortedTexCoords).rg * 2.0 - 1.0) * dudvStrength;
+    // Dual layer distortion
+    vec2 uv1 = uv * dudvTiling;
+    vec2 dist1 = texture(material_dudvMap, vec2(uv1.x + moveFactor, uv1.y)).rg * 0.1;
+    vec2 finalUV1 = uv1 + vec2(dist1.x, dist1.y + moveFactor);
+    vec2 totalDistortion = (texture(material_dudvMap, finalUV1).rg * 2.0 - 1.0) * dudvStrength;
+    
+    vec2 uv2 = uv * dudvTiling * 0.5;
+    vec2 finalUV2 = uv2 + vec2(-moveFactor * 0.5, -moveFactor * 0.6);
+    totalDistortion += (texture(material_dudvMap, finalUV2).rg * 2.0 - 1.0) * dudvStrength * 0.5;
+    
     return totalDistortion;
 }
 
@@ -429,10 +447,12 @@ void main()
     fresnelFactor = pow(1.0 - fresnelFactor, fresnelPower);
     fresnelFactor = clamp(fresnelFactor, 0.0, 1.0);
     
-    // Depth-based color: shallow edges vs deep center
-    float depthColorScale = 8.0; // Fully deep at 8 units
-    float depthFactor = clamp(depthDiff / depthColorScale, 0.0, 1.0);
-    vec3 waterBaseColor = mix(shallowColor.rgb, deepColor.rgb, depthFactor);
+    // Beer's Law for natural exponential depth absorption
+    float depthColorScale = 0.15; // Extinction coefficient
+    float depthFactor = exp(-max(depthDiff, 0.0) * depthColorScale);
+    // depthFactor is 1.0 at surface (shallow), approaching 0.0 at depth
+    vec3 waterBaseColor = mix(deepColor.rgb, shallowColor.rgb, depthFactor);
+    float waterAlpha = mix(deepColor.a, shallowColor.a, depthFactor);
 
     // ============================================================
     // Planar Reflections & Refraction Distortion
@@ -449,7 +469,7 @@ void main()
     // Add a bit of the shallow/deep tint to the reflection for character
     waterColor = mix(waterColor, mix(shallowColor.rgb, deepColor.rgb, 0.5), fresnelFactor * 0.2);
 
-    vec4 finalBaseColor = vec4(waterColor, mix(shallowColor.a, deepColor.a, depthFactor));
+    vec4 finalBaseColor = vec4(waterColor, waterAlpha);
 
     // ============================================================
     // Foam Intersection (Animated & Layered)
@@ -459,20 +479,23 @@ void main()
     float foamDist = material_foamDistance == 0.0 ? 1.5 * autoFoamScaleFactor : material_foamDistance;
     
     if (depthDiff < foamDist) {
-        float foamFactor = 1.0 - smoothstep(0.0, foamDist, depthDiff);
+        float foamFade = smoothstep(0.0, foamDist, depthDiff);
+        float foamFactor = 1.0 - foamFade;
         
-        // Dynamic foam noise
-        vec2 foamUV = TexCoord * 2.5 + vec2(time * 0.04, time * 0.015);
-        float noise1 = texture(material_dudvMap, foamUV).r;
-        float noise2 = texture(material_dudvMap, foamUV * 0.8 - time * 0.02).g;
-        float combinedNoise = (noise1 + noise2) * 0.5;
-        
-        foamFactor *= (combinedNoise * 0.6 + 0.4);
-        // Soften the foam at the very edge
-        foamFactor *= smoothstep(0.0, 0.15, depthDiff / foamDist);
-        
-        finalBaseColor.rgb = mix(finalBaseColor.rgb, foamColor.rgb, foamFactor * 0.65);
-        finalBaseColor.a = max(finalBaseColor.a, foamFactor * 0.9);
+        if (foamFactor > 0.0) {
+            // Dynamic foam noise
+            vec2 foamUV1 = TexCoord * 3.0 + vec2(time * 0.03, time * 0.015);
+            vec2 foamUV2 = TexCoord * 2.0 + vec2(-time * 0.02, time * 0.01);
+            float noise1 = texture(material_dudvMap, foamUV1).r;
+            float noise2 = texture(material_dudvMap, foamUV2).g;
+            float combinedNoise = (noise1 + noise2) * 0.5;
+            
+            // Organic cutoff for foam instead of linear fade
+            float foamMask = smoothstep(0.3, 0.7, foamFactor * combinedNoise);
+            
+            finalBaseColor.rgb = mix(finalBaseColor.rgb, foamColor.rgb, foamMask * 0.85);
+            finalBaseColor.a = max(finalBaseColor.a, foamMask * 0.95);
+        }
     }
 
     // ============================================================
@@ -482,18 +505,29 @@ void main()
 	finalLight += CalcPointLights(finalBaseColor.rgb);
 	finalLight += CalcSpotLights(finalBaseColor.rgb);
 
-    // Add tiny sparkles (shimmer) in the direction of the light
+    // GGX-style multi-lobe specular shimmer
     vec3 lightDir = normalize(directionalLight.direction);
-    float shimmerFactor = max(dot(effectiveNormal, normalize(viewDir - lightDir)), 0.0);
-    shimmerFactor = pow(shimmerFactor, 512.0); // Very tight spots
-    float sparkle = random(FragPos + vec3(time * 0.1), 0) * shimmerFactor * 1.5;
-    finalLight += vec3(1.0) * sparkle;
+    vec3 halfVector = normalize(viewDir - lightDir);
+    float NdotH = max(dot(effectiveNormal, halfVector), 0.0);
+    
+    // Core highlight
+    float specCore = pow(NdotH, 1024.0);
+    // Wide dispersion
+    float specWide = pow(NdotH, 128.0) * 0.25;
+    
+    float shimmerFactor = specCore + specWide;
+    
+    // Dynamic sub-pixel sparkle
+    float sparkleNoise = random(FragPos * 10.0 + vec3(time * 0.1), 0);
+    float sparkle = smoothstep(0.8, 1.0, sparkleNoise) * shimmerFactor * 2.0;
+    
+    finalLight += directionalLight.base.colour * (shimmerFactor + sparkle);
 
 	vec3 finalColor = finalLight;
 
-    // Edge alpha fade (water becomes transparent at shallow edges)
-    float edgeAlpha = clamp(depthDiff / 1.2, 0.0, 1.0);
-    edgeAlpha = pow(edgeAlpha, 0.7); // Ultra-smooth transparency transition
+    // Edge alpha fade - Very tight fade to fix river merging
+    // River surfaces are very close to lake surfaces, so we only fade the extreme edge (0.15 units)
+    float edgeAlpha = smoothstep(0.0, 0.15, depthDiff);
     float finalAlpha = finalBaseColor.a * edgeAlpha;
 
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

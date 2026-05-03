@@ -42,6 +42,12 @@ public:
 	void SetRidged(bool r) { useRidged = r; }
 	bool GetRidged() const { return useRidged; }
 
+	// Offsets and Displacement mode
+	float GetOffsetX() const { return offsetX; }
+	float GetOffsetZ() const { return offsetZ; }
+	bool GetUseNormalDisplacement() const { return useNormalDisplacement; }
+	void SetUseNormalDisplacement(bool u) { useNormalDisplacement = u; }
+
 private:
 	// Configurable parameters
 	int gridSize;         // Grid resolution (gridSize x gridSize quads)
