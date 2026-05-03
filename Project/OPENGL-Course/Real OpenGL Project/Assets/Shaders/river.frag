@@ -159,8 +159,8 @@ void main() {
     if (LinearizeDepth(texture(sceneDepthMap, refractUV).r) < LinearizeDepth(gl_FragCoord.z)) refractUV = screenUV;
     vec3 refractedColor = texture(refractionMap, refractUV).rgb;
     
-    // 3. Fresnel & Reflection
-    float fresnel = pow(1.0 - max(dot(worldNormal, viewDir), 0.0), 5.0);
+    // Fresnel (Schlick's approximation with boosted base for visibility)
+    float fresnel = 0.15 + 0.85 * pow(1.0 - max(dot(worldNormal, viewDir), 0.0), 3.0);
     vec2 reflectUV = screenUV + worldNormal.xz * 0.02;
     vec3 reflectedColor = texture(reflectionMap, reflectUV).rgb;
     
