@@ -396,6 +396,52 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 					GameObject* sourceObj = instancesPin.data.sourceObject;
 
+					// --- FIX FOR GENERATED TERRAINS (NO SURFACE TRANSFORM) ---
+					bool hasSurfaceTransform = !node->inputs[0].data.transforms.empty();
+					glm::mat4 targetMatrix = glm::mat4(1.0f);
+					glm::mat3 normalMatrix = glm::mat3(1.0f);
+					float targetScaleAvg = 1.0f;
+
+					if (!hasSurfaceTransform) {
+						// Traverse graph downstream from Combined pin to find an OutputNode
+						int currentPinId = node->outputs[0].id;
+						bool foundTarget = false;
+						int sanityGuard = 0;
+						while (!foundTarget && sanityGuard++ < 50) {
+							bool moved = false;
+							for (auto& link : links) {
+								if (link.startPinId == currentPinId) {
+									GraphNode* nextNode = FindNodeByPinId(link.endPinId);
+									if (nextNode) {
+										if (nextNode->title == "Output") {
+											OutputNode* outNode = static_cast<OutputNode*>(nextNode);
+											if (outNode->GetTargetIndex() != -1 && outNode->GetTargetIndex() < (int)objects.size()) {
+												GameObject* target = objects[outNode->GetTargetIndex()];
+												if (target) {
+													targetMatrix = target->GetWorldMatrix();
+													normalMatrix = glm::transpose(glm::inverse(glm::mat3(targetMatrix)));
+													glm::vec3 s = target->GetTransform().GetScale();
+													targetScaleAvg = (s.x + s.y + s.z) / 3.0f;
+													foundTarget = true;
+												}
+											}
+											break; // Found Output
+										} else {
+											// Move to next node's output pin 0
+											if (!nextNode->outputs.empty()) {
+												currentPinId = nextNode->outputs[0].id;
+												moved = true;
+												break;
+											}
+										}
+									}
+								}
+							}
+							if (!moved) break;
+						}
+					}
+					// ---------------------------------------------------------
+
 					// Build packed instance data MULTI-THREADED (shared by all sub-meshes)
 					std::vector<InstancedGroup::PackedInstance> packedInstances(finalTransforms->size());
 					int packCount = (int)finalTransforms->size();
@@ -412,19 +458,31 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						int startIdx = tIdx * packPerThread;
 						int endIdx = (tIdx == packThreads - 1) ? packCount : (tIdx + 1) * packPerThread;
 
-						packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm]() {
+						packFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, alignToNorm, hasSurfaceTransform, targetMatrix, normalMatrix, targetScaleAvg]() {
 							for (int i = startIdx; i < endIdx; i++) {
 								const auto& t = (*finalTransforms)[i];
 								InstancedGroup::PackedInstance packed;
-								float avgScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
-								packed.positionAndScale = glm::vec4(t.position, avgScale);
+								
+								glm::vec3 finalPos = t.position;
+								glm::vec3 finalNormal = t.normal;
+								float finalScale = (t.scale.x + t.scale.y + t.scale.z) / 3.0f;
+
+								if (!hasSurfaceTransform) {
+									finalPos = glm::vec3(targetMatrix * glm::vec4(t.position, 1.0f));
+									finalScale *= targetScaleAvg;
+									if (glm::length(t.normal) > 0.001f) {
+										finalNormal = glm::normalize(normalMatrix * t.normal);
+									}
+								}
+
+								packed.positionAndScale = glm::vec4(finalPos, finalScale);
 
 								glm::vec3 euler = t.rotation;
-								if (alignToNorm && glm::length(t.normal) > 0.001f) {
+								if (alignToNorm && glm::length(finalNormal) > 0.001f) {
 									glm::vec3 up(0, 1, 0);
-									if (glm::abs(glm::dot(up, t.normal)) < 0.999f) {
-										glm::vec3 axis = glm::normalize(glm::cross(up, t.normal));
-										float angle = acos(glm::clamp(glm::dot(up, t.normal), -1.0f, 1.0f));
+									if (glm::abs(glm::dot(up, finalNormal)) < 0.999f) {
+										glm::vec3 axis = glm::normalize(glm::cross(up, finalNormal));
+										float angle = acos(glm::clamp(glm::dot(up, finalNormal), -1.0f, 1.0f));
 										euler.x += glm::degrees(angle * axis.x);
 										euler.z += glm::degrees(angle * axis.z);
 									}
