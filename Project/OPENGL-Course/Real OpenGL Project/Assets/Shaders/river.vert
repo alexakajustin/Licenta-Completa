@@ -59,6 +59,7 @@ void main()
     float objectScale = max(scaleX, scaleZ);
     
     vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+
 	
 	// TBN in world space (Purely from mesh data, no waves!)
 	vec3 tangentW = normalize((modelMatrix * vec4(tangent, 0.0)).xyz);

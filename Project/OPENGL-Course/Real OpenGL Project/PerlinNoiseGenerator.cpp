@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <thread>
 #include <vector>
+#include <random>
 
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 	: gridSize(128), scale(1.0f), amplitude(15.0f),
@@ -16,14 +17,15 @@ PerlinNoiseGenerator::PerlinNoiseGenerator()
 void PerlinNoiseGenerator::InitPermutation()
 {
 	// Standard Perlin permutation table seeded with our seed
-	std::srand(seed);
+	std::mt19937 rng(seed);
 	for (int i = 0; i < 256; i++)
 		permutation[i] = i;
 
 	// Fisher-Yates shuffle
 	for (int i = 255; i > 0; i--)
 	{
-		int j = std::rand() % (i + 1);
+		std::uniform_int_distribution<int> dist(0, i);
+		int j = dist(rng);
 		std::swap(permutation[i], permutation[j]);
 	}
 	// Duplicate for overflow

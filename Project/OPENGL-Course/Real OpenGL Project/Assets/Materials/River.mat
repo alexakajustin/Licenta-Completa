@@ -17,3 +17,4 @@ material_specularIntensityOverride=5.0
 material_shininessOverride=512.0
 texture_dudvMap=Assets/Textures/Water/dudv.png
 texture_waterNormalMap=Assets/Textures/Water/normal.png
+texture_causticsMap=Assets/Textures/Water/caustics.png

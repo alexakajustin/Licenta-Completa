@@ -50,12 +50,17 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 		}
 		ImGui::EndCombo();
 	}
+
+	ImGui::Checkbox("Force Fresh Primitive", &forceOriginalPrimitive);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("If enabled, always generates fresh mesh data for Planes/Cubes/Spheres,\nignoring previous graph modifications to prevent feedback loops.");
 }
 
 json SceneInputNode::Serialize() const
 {
 	json j = GraphNode::Serialize();
 	j["selectedName"] = selectedName;
+	j["forceOriginalPrimitive"] = forceOriginalPrimitive;
 	
 	// Cache properties
 	j["cachedPrimitiveType"] = cachedPrimitiveType;
@@ -104,6 +109,7 @@ void SceneInputNode::Deserialize(const json& j)
 	GraphNode::Deserialize(j);
 	selectedName = j.value("selectedName", "(none)");
 	selectedIndex = -1; // Force re-resolution on first Execute
+	forceOriginalPrimitive = j.value("forceOriginalPrimitive", true);
 
 	cachedPrimitiveType = j.value("cachedPrimitiveType", "");
 	cachedModelPath = j.value("cachedModelPath", "");
@@ -201,7 +207,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		outputs[0].data.sourceObjectName = selectedName;
 		
 		// 1. ALWAYS prefer the displaced/custom mesh if the object has one
-		if (obj->HasCustomMesh())
+		if (obj->HasCustomMesh() && !forceOriginalPrimitive)
 		{
 			data = obj->GetCPUMeshData();
 			found = true;

@@ -31,7 +31,7 @@ public:
 	void OmniShadowMapPass(PointLight* light, SceneManager& scene);
 	void RenderPass(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, SceneManager& scene, 
 		DirectionalLight& mainLight, PointLight* pointLights, unsigned int pointLightCount,
-		SpotLight* spotLights, unsigned int spotLightCount, int fbw, int fbh, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0,
+		SpotLight* spotLights, unsigned int spotLightCount, int fbw, int fbh, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0, GLuint refractionTexture = 0,
 		const struct Frustum* debugFrustum = nullptr, const GraphicsSettings* gs = nullptr);
 
 	void ReflectionPass(const glm::mat4& projection, const glm::mat4& view,

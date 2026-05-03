@@ -308,6 +308,7 @@ void Application::Run()
 		{
 			ResizeViewportFBO(vWidth, vHeight);
 			ResizeReflectionFBO(vWidth / 2, vHeight / 2); // Half resolution for performance
+			ResizeRefractionFBO(vWidth, vHeight); // Full resolution for crisp refraction
 		}
 		glm::mat4 view = camera.calculateViewMatrix();
 
@@ -481,7 +482,7 @@ void Application::Run()
 		}
 
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
-			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, activeFrustum, &graphicsSettings);
+			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -643,7 +644,7 @@ void Application::Run()
 		{
 			if (sceneAction == EditorUI::SceneAction::Save)
 			{
-				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager);
+				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager, &camera);
 			}
 			else if (sceneAction == EditorUI::SceneAction::Load)
 			{
@@ -651,7 +652,7 @@ void Application::Run()
 				sceneManager.GetNodeGraph().Clear();
 				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
 					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
-					&plainTexture, &plainMaterial, progressCallback);
+					&plainTexture, &plainMaterial, &camera, progressCallback);
 			}
 			else if (sceneAction == EditorUI::SceneAction::New)
 			{
@@ -706,6 +707,8 @@ void Application::InitViewportFBO()
 		printf("Viewport Framebuffer not complete!\n");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	InitRefractionFBO();
 }
 
 void Application::InitReflectionFBO()
@@ -734,6 +737,33 @@ void Application::InitReflectionFBO()
 		printf("Reflection Framebuffer not complete!\n");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::InitRefractionFBO()
+{
+	glGenTextures(1, &refractionTexture);
+	glBindTexture(GL_TEXTURE_2D, refractionTexture);
+	
+	refractionWidth = 1920; 
+	refractionHeight = 1080;
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, refractionWidth, refractionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+void Application::ResizeRefractionFBO(int width, int height)
+{
+	if (refractionTexture == 0 || width <= 0 || height <= 0) return;
+	if (width == refractionWidth && height == refractionHeight) return;
+
+	refractionWidth = width;
+	refractionHeight = height;
+
+	glBindTexture(GL_TEXTURE_2D, refractionTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, refractionWidth, refractionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 }
 
 void Application::ResizeReflectionFBO(int width, int height)
@@ -959,6 +989,7 @@ void Application::Shutdown()
 	if (viewportFBO) glDeleteFramebuffers(1, &viewportFBO);
 	if (viewportTexture) glDeleteTextures(1, &viewportTexture);
 	if (viewportDepth) glDeleteTextures(1, &viewportDepth);
+	if (refractionTexture) glDeleteTextures(1, &refractionTexture);
 
 	if (ssaoFBO) glDeleteFramebuffers(1, &ssaoFBO);
 	if (ssaoBlurFBO) glDeleteFramebuffers(1, &ssaoBlurFBO);

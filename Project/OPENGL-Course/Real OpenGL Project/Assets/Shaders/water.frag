@@ -104,6 +104,8 @@ uniform float material_waveSpeed;
 // Foam
 uniform sampler2D sceneDepthMap;
 uniform sampler2D reflectionMap;
+uniform sampler2D refractionMap;
+uniform sampler2D material_causticsMap;
 uniform vec2 screenSize;
 uniform vec4 material_foamColor;
 uniform float material_foamDistance;
@@ -452,15 +454,30 @@ void main()
     float depthColorScale = material_waterDepthScale == 0.0 ? 0.15 : material_waterDepthScale;
     float depthFactor = exp(-max(depthDiff, 0.0) * depthColorScale);
     // depthFactor is 1.0 at surface (shallow), approaching 0.0 at depth
-    vec3 waterBaseColor = mix(deepColor.rgb, shallowColor.rgb, depthFactor);
-    float waterAlpha = mix(deepColor.a, shallowColor.a, depthFactor);
+    // mix(deepColor.rgb, shallowColor.rgb, depthFactor);
+    // float waterAlpha = mix(deepColor.a, shallowColor.a, depthFactor);
+
+    vec3 waterNormal = GetWaterNormal(TexCoord);
+
+    // 1. Refraction with distortion
+    vec2 refractionDistort = waterNormal.xz * 0.015;
+    vec2 refractionUV = screenUV + refractionDistort;
+    // Check if the distorted sample is actually BEHIND the water surface
+    float refractedDepth = texture(sceneDepthMap, refractionUV).r;
+    if (LinearizeDepth(refractedDepth) < linearFragmentDepth) {
+        refractionUV = screenUV; // Fallback to avoid sampling foreground objects
+    }
+    vec3 refractedColor = texture(refractionMap, refractionUV).rgb;
+
+    // 2. Beer's Law for volumetric absorption
+    vec3 refractionFinal = mix(deepColor.rgb, refractedColor * shallowColor.rgb * 1.5, depthFactor);
+    float waterAlpha = mix(deepColor.a, 0.4, depthFactor);
 
     // ============================================================
     // Planar Reflections & Refraction Distortion
     // ============================================================
     // High-fidelity distortion: Use the actual per-pixel normal to offset the reflection
     // This makes the reflection "bend" and "warp" organically around the waves.
-    vec3 waterNormal = GetWaterNormal(TexCoord);
     vec2 reflectionDistortion = waterNormal.xz * (material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength);
     
     vec2 reflectTexCoords = screenUV + reflectionDistortion;
@@ -471,7 +488,13 @@ void main()
     float reflectionShorelineFade = clamp(depthDiff * 10.0, 0.0, 1.0);
     
     // Blend base color with reflection
-    vec3 waterColor = mix(waterBaseColor, reflectionColor, fresnelFactor * reflectionShorelineFade);
+    vec3 waterColor = mix(refractionFinal, reflectionColor, fresnelFactor * reflectionShorelineFade);
+
+    // 3. World-space Caustics
+    vec2 causticUV = FragPos.xz * 0.1 + vec2(time * 0.05, time * 0.02);
+    vec3 causticCol = texture(material_causticsMap, causticUV).rgb;
+    causticCol += texture(material_causticsMap, causticUV * 0.8 + vec2(0.1, 0.1)).rgb;
+    waterColor += causticCol * 0.15;
     // Add a bit of the shallow/deep tint to the reflection for character
     waterColor = mix(waterColor, mix(shallowColor.rgb, deepColor.rgb, 0.5), fresnelFactor * 0.1);
 

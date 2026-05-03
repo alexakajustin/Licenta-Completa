@@ -82,6 +82,15 @@ private:
 	int reflectionWidth = 0;
 	int reflectionHeight = 0;
 
+	// Water Refraction FBO
+	void InitRefractionFBO();
+	void ResizeRefractionFBO(int width, int height);
+	GLuint refractionFBO = 0;
+	GLuint refractionTexture = 0;
+	GLuint refractionDepth = 0;
+	int refractionWidth = 0;
+	int refractionHeight = 0;
+
 	// SSAO
 	void InitSSAO();
 	void RenderQuad();

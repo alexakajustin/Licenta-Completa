@@ -279,7 +279,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
 	float time, const Frustum* frustum, Shader* overrideShader, float screenWidth, float screenHeight, class Renderer* renderer, 
-	GLuint sceneDepthTexture, GLuint reflectionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
+	GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
 {
 	struct Batch {
 		Mesh* mesh;
@@ -325,6 +325,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glActiveTexture(GL_TEXTURE15);
 				glBindTexture(GL_TEXTURE_2D, reflectionTexture);
 				glUniform1i(reflectionMapLoc, 15); // Binding 15
+			}
+
+			GLint refractionMapLoc = glGetUniformLocation(s->GetShaderID(), "refractionMap");
+			if (refractionMapLoc != -1) {
+				glActiveTexture(GL_TEXTURE16);
+				glBindTexture(GL_TEXTURE_2D, refractionTexture);
+				glUniform1i(refractionMapLoc, 16); // Binding 16
 			}
 
 			// Screen size is required for depth sampling via gl_FragCoord
@@ -630,6 +637,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 	// 1. Render all opaque objects normally (writes depth)
 	RenderQueue(opaqueObjects);
+
+	// 1.5 Capture Refraction Texture (Copy opaque results to refraction texture)
+	if (refractionTexture > 0 && !overrideShader) {
+		glBindTexture(GL_TEXTURE_2D, refractionTexture);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)screenWidth, (GLsizei)screenHeight);
+	}
 
 	// 2. Sort and Render transparent objects
 	if (!transparentObjects.empty() && !overrideShader) {

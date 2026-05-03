@@ -1,4 +1,5 @@
 #include "SceneSerializer.h"
+#include "Camera.h"
 #include "SceneManager.h"
 #include "GameObject.h"
 #include "LightObject.h"
@@ -86,10 +87,21 @@ static std::string GetTexturePath(Texture* tex)
 // Save Scene
 // =====================================================================
 
-bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene)
+bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene, Camera* camera)
 {
 	json j;
 	j["version"] = 1;
+
+	// ========== Serialize Camera ==========
+	if (camera)
+	{
+		json cam;
+		cam["position"] = { camera->getCameraPosition().x, camera->getCameraPosition().y, camera->getCameraPosition().z };
+		cam["yaw"] = camera->getYaw();
+		cam["pitch"] = camera->getPitch();
+		cam["front"] = { camera->getCameraDirection().x, camera->getCameraDirection().y, camera->getCameraDirection().z };
+		j["camera"] = cam;
+	}
 
 	// ========== Serialize Node Graph (The "Recipe") ==========
 	json graphJson = scene.GetNodeGraph().Serialize();
@@ -310,6 +322,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	PointLight* pointLights, unsigned int& pointLightCount,
 	SpotLight* spotLights, unsigned int& spotLightCount,
 	Texture* defaultTexture, Material* defaultMaterial,
+	Camera* camera,
 	SceneProgressCallback progressCallback)
 {
 	if (progressCallback) progressCallback(5.0f, 0.0f, "Opening Scene File...");
@@ -334,6 +347,22 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		return false;
 	}
 	file.close();
+
+	// ========== Load Camera ==========
+	if (camera && j.contains("camera"))
+	{
+		auto& cam = j["camera"];
+		if (cam.contains("position"))
+		{
+			auto& p = cam["position"];
+			camera->setCameraPosition(glm::vec3(p[0].get<float>(), p[1].get<float>(), p[2].get<float>()));
+		}
+		if (cam.contains("yaw")) camera->setYaw(cam["yaw"].get<float>());
+		if (cam.contains("pitch")) camera->setPitch(cam["pitch"].get<float>());
+		
+		// Re-calculate front vector if possible (assuming Camera has a method or handles it via yaw/pitch)
+		camera->update(); 
+	}
 
 	if (progressCallback) progressCallback(15.0f, 0.0f, "Clearing Current Scene...");
 

@@ -97,13 +97,15 @@ uniform float material_shininessOverride;
 // DuDv distortion (from reference repo)
 uniform sampler2D material_dudvMap;
 uniform sampler2D material_waterNormalMap;
+uniform sampler2D material_causticsMap;
 uniform float material_dudvTiling;
 uniform float material_dudvStrength;
 uniform float material_waveSpeed;
 
-// Foam
+// Foam & Refraction
 uniform sampler2D sceneDepthMap;
 uniform sampler2D reflectionMap;
+uniform sampler2D refractionMap;
 uniform vec2 screenSize;
 uniform vec4 material_foamColor;
 uniform float material_foamDistance;
@@ -141,17 +143,14 @@ float random(vec3 seed, int i){
 // By blending between them, we avoid 'texture stretching' and 'straight lines'.
 vec3 GetWaterNormal(vec2 uv) {
     float scaleFactor = max(vObjectScale / 100.0, 0.01);
-    float dudvTiling = material_dudvTiling == 0.0 ? 40.0 * scaleFactor : material_dudvTiling;
+    float dudvTiling = material_dudvTiling == 0.0 ? 25.0 * scaleFactor : material_dudvTiling;
     float moveSpeed = material_waveSpeed == 0.0 ? 0.08 : material_waveSpeed;
     
-    // 1. Procedural Flow Vector (UV.y is forward)
-    // We add a bit of 'wobble' to the flow direction using a noise texture
-    vec2 noiseUV = uv * (dudvTiling * 0.1) + vec2(time * 0.02, time * 0.01);
-    vec2 flowDrift = (texture(material_dudvMap, noiseUV).rg * 2.0 - 1.0) * 0.15;
-    vec2 flowVector = vec2(flowDrift.x, 1.0 + flowDrift.y); // Mostly forward (+V)
+    // 1. Strict Flow Vector (UV.y is forward along the river ribbon)
+    vec2 flowVector = vec2(0.0, -1.0); 
     
-    // 2. Dual-Layer Ping-Ponging
-    float cycleTime = 2.0; // Time for one full reset
+    // 2. Dual-Layer Ping-Ponging (Valve style flow)
+    float cycleTime = 1.0; 
     float t = time * moveSpeed;
     
     float phase0 = fract(t / cycleTime);
@@ -161,20 +160,20 @@ vec3 GetWaterNormal(vec2 uv) {
     float lerpFactor = abs((phase0 - 0.5) * 2.0); 
     
     // Layer 0
-    vec2 uv0 = uv * dudvTiling + (flowVector * phase0 * 0.5);
+    vec2 uv0 = uv * dudvTiling + (flowVector * phase0);
     vec4 n0 = texture(material_waterNormalMap, uv0);
     vec3 normal0 = vec3(n0.r * 2.0 - 1.0, n0.b * 3.0, n0.g * 2.0 - 1.0);
     
     // Layer 1 (Offset phase)
-    vec2 uv1 = uv * dudvTiling + (flowVector * phase1 * 0.5);
+    vec2 uv1 = uv * dudvTiling + (flowVector * phase1);
     vec4 n1 = texture(material_waterNormalMap, uv1);
     vec3 normal1 = vec3(n1.r * 2.0 - 1.0, n1.b * 3.0, n1.g * 2.0 - 1.0);
     
     // Blend the two layers using the oscillating factor
     vec3 rippleNormal = normalize(mix(normal0, normal1, lerpFactor));
     
-    // Add a third layer of micro-ripples that pans constantly to break up patterns
-    vec2 microUV = uv * dudvTiling * 2.5 + vec2(time * 0.05, -time * 0.2);
+    // Add micro-ripples that strictly pan ALONG the flow (no X drift)
+    vec2 microUV = uv * dudvTiling * 2.5 + vec2(0.0, -time * 0.15);
     vec4 nMicro = texture(material_waterNormalMap, microUV);
     vec3 normalMicro = vec3(nMicro.r * 2.0 - 1.0, nMicro.b * 2.0, nMicro.g * 2.0 - 1.0) * 0.4;
     
@@ -427,12 +426,11 @@ void main()
 	}
 
     // ============================================================
-    // Water color via Depth & Fresnel
+    // Refraction & Volumetric Depth (Beer's Law)
     // ============================================================
     vec4 deepColor = material_waterColorDeep == vec4(0.0) ? vec4(0.01, 0.1, 0.25, 0.98) : material_waterColorDeep;
     vec4 shallowColor = material_waterColorShallow == vec4(0.0) ? vec4(0.1, 0.5, 0.6, 0.6) : material_waterColorShallow;
-    float fresnelPower = material_fresnelPower == 0.0 ? 4.0 : material_fresnelPower;
-
+    
     vec2 screenUV = gl_FragCoord.xy / screenSize;
     float backgroundDepth = texture(sceneDepthMap, screenUV).r;
     float linearBackgroundDepth = LinearizeDepth(backgroundDepth);
@@ -441,84 +439,84 @@ void main()
 
     vec3 viewDir = normalize(eyePosition - FragPos);
     vec3 effectiveNormal = GetEffectiveNormal();
+    vec3 waterNormal = GetWaterNormal(TexCoord); // Detailed ripples
 
-    // Fresnel: glancing angles are more reflective, but we keep it subtle for cinematic rivers
-    float fresnelFactor = max(dot(viewDir, effectiveNormal), 0.0);
-    fresnelFactor = pow(1.0 - fresnelFactor, 4.0); // Softer fresnel
-    fresnelFactor = clamp(fresnelFactor, 0.0, 0.7); // Cap it to avoid over-exposure
-    
-    // Beer's Law for natural volumetric depth absorption
+    // 1. Refraction with distortion
+    vec2 refractionDistort = waterNormal.xz * 0.015;
+    vec2 refractionUV = screenUV + refractionDistort;
+    // Check if the distorted sample is actually BEHIND the water surface
+    float refractedDepth = texture(sceneDepthMap, refractionUV).r;
+    if (LinearizeDepth(refractedDepth) < linearFragmentDepth) {
+        refractionUV = screenUV; // Fallback to avoid sampling foreground objects
+    }
+    vec3 refractedColor = texture(refractionMap, refractionUV).rgb;
+
+    // 2. Beer's Law for volumetric absorption
     float depthColorScale = material_waterDepthScale == 0.0 ? 0.35 : material_waterDepthScale;
     float depthFactor = exp(-max(depthDiff, 0.0) * depthColorScale);
-    vec3 waterBaseColor = mix(deepColor.rgb, shallowColor.rgb, depthFactor);
-    float waterAlpha = mix(deepColor.a, 0.4, depthFactor); // More transparent in shallow areas
+    
+    // Mix refracted scene with water tint
+    vec3 refractionFinal = mix(deepColor.rgb, refractedColor * shallowColor.rgb * 1.5, depthFactor);
+    float waterAlpha = mix(deepColor.a, 0.4, depthFactor);
 
     // ============================================================
-    // Cinematic Smooth Flow & "Milky" Aeration
+    // Soft Shoreline & Flow-based Foam
     // ============================================================
-    // Slow, organic movement
     float moveSpeed = material_waveSpeed == 0.0 ? 0.12 : material_waveSpeed;
     float flowTime = time * moveSpeed;
-    
-    // 1. Local ripples (Panned on Y axis to fix "sideways" scrolling)
     float tiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
-    vec2 uv1 = TexCoord * tiling + vec2(0.0, -flowTime);
-    vec2 uv2 = TexCoord * (tiling * 0.75) + vec2(0.1, -flowTime * 0.8);
-    float r1 = texture(material_dudvMap, uv1).r;
-    float r2 = texture(material_dudvMap, uv2).g;
-    float rippleChurn = smoothstep(0.5, 0.85, (r1 + r2) * 0.5);
 
-    // 2. Large-scale world-space aeration (Panned on World-Z to match river orientation)
-    vec2 worldUV = FragPos.xz * (tiling * 0.006) + vec2(0.0, -flowTime * 0.5);
-    float w1 = texture(material_dudvMap, worldUV).r;
-    float w2 = texture(material_dudvMap, worldUV * 0.5 + vec2(0.2)).g;
-    float worldChurn = smoothstep(0.4, 0.7, (w1 + w2) * 0.5);
+    // Local scrolling foam (Bitangent/V-axis)
+    vec2 foamUV = TexCoord * tiling + vec2(0.0, -flowTime * 1.5);
+    float foamNoise = texture(material_dudvMap, foamUV).r;
     
-    // Combine detail and large-scale milkiness
-    float churn = max(rippleChurn * 0.6, worldChurn);
-    churn *= smoothstep(0.0, 0.8, depthDiff); // Soft fade at shorelines
+    // Shoreline "Lapping" Foam
+    float shorelineFactor = 1.0 - smoothstep(0.0, 0.4, depthDiff);
+    float foamShore = smoothstep(0.4, 0.7, foamNoise * shorelineFactor);
     
-    vec3 foamCol = material_foamColor == vec4(0.0) ? vec3(0.92, 0.96, 1.0) : material_foamColor.rgb;
-    float foamOpacity = material_foamOpacity == 0.0 ? 0.5 : material_foamOpacity;
-    vec4 finalBaseColor = vec4(mix(waterBaseColor, foamCol, churn * foamOpacity), max(waterAlpha, churn * (foamOpacity + 0.1)));
+    // High-velocity/Slope Churn (using bitangent Y component for "white water" on rapids)
+    float rapidFactor = clamp(abs(BitangentWorld.y) * 2.0, 0.0, 1.0);
+    float foamRapids = smoothstep(0.3, 0.6, foamNoise * rapidFactor);
+    
+    float totalFoam = clamp(foamShore + foamRapids, 0.0, 1.0);
+    vec3 foamCol = material_foamColor == vec4(0.0) ? vec3(0.95, 0.98, 1.0) : material_foamColor.rgb;
+    
+    vec3 waterBaseColor = mix(refractionFinal, foamCol, totalFoam * 0.8);
 
-    // ============================================================
-    // Soft Planar Reflections
-    // ============================================================
-    vec3 waterNormal = GetWaterNormal(TexCoord);
-    vec2 reflectionDistortion = waterNormal.xz * 0.015; // Subtle distortion
-    
-    vec2 reflectTexCoords = screenUV + reflectionDistortion;
-    reflectTexCoords = clamp(reflectTexCoords, 0.001, 0.999);
-    vec3 reflectionColor = texture(reflectionMap, reflectTexCoords).rgb;
-    
-    // Mix reflection with base color using soft fresnel
-    float reflectionStrength = fresnelFactor * 0.5; // Cap reflection impact
-    vec3 waterColor = mix(finalBaseColor.rgb, reflectionColor, reflectionStrength);
+    // 3. World-space Caustics (Projected on terrain/river bed)
+    vec2 causticUV = FragPos.xz * 0.1 + vec2(0.0, -flowTime * 0.2);
+    vec3 causticCol = texture(material_causticsMap, causticUV).rgb;
+    causticCol += texture(material_causticsMap, causticUV * 0.8 + vec2(0.1, 0.1)).rgb;
+    waterBaseColor += causticCol * 0.15 * (1.0 - totalFoam); // Fades under foam
+
+    float finalAlpha = max(waterAlpha, totalFoam * 0.9) * smoothstep(0.0, 0.05, depthDiff);
 
     // ============================================================
-    // Smooth Lighting & Subdued Specular
+    // Soft Planar Reflections (Fresnel)
     // ============================================================
-	vec3 finalLight = CalcDirectionalLight(waterColor);
-	finalLight += CalcPointLights(waterColor);
-	finalLight += CalcSpotLights(waterColor);
+    float fresnelFactor = max(dot(viewDir, effectiveNormal), 0.0);
+    fresnelFactor = pow(1.0 - fresnelFactor, 4.0);
+    fresnelFactor = clamp(fresnelFactor, 0.0, 0.6);
+    
+    vec2 reflectUV = clamp(screenUV + waterNormal.xz * 0.01, 0.001, 0.999);
+    vec3 reflectionColor = texture(reflectionMap, reflectUV).rgb;
+    vec3 finalWaterColor = mix(waterBaseColor, reflectionColor, fresnelFactor);
 
-    // Soft specular glint (Cinematic sheen instead of sharp glints)
+    // ============================================================
+    // Lighting & Cinematic Specular
+    // ============================================================
+	vec3 finalLight = CalcDirectionalLight(finalWaterColor);
+	finalLight += CalcPointLights(finalWaterColor);
+	finalLight += CalcSpotLights(finalWaterColor);
+
+    // Sun Highlight
     vec3 lightDir = normalize(directionalLight.direction);
     vec3 halfVector = normalize(viewDir - lightDir);
     float NdotH = max(dot(effectiveNormal, halfVector), 0.0);
-    
-    float specularSheen = pow(NdotH, 64.0) * 0.5; // Soft lobe
-    finalLight += directionalLight.base.colour * specularSheen;
-
-	vec3 finalColor = finalLight;
-
-    // Edge alpha fade for seamless shoreline integration
-    float edgeAlpha = smoothstep(0.0, 0.05, depthDiff);
-    float finalAlpha = finalBaseColor.a * edgeAlpha;
+    finalLight += directionalLight.base.colour * pow(NdotH, 128.0) * 0.5;
 
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
-	if (selectedVal > 0.0) finalColor += vec3(0.35, 0.25, 0.0) * selectedVal;
+	if (selectedVal > 0.0) finalLight += vec3(0.35, 0.25, 0.0) * selectedVal;
 
-	colour = vec4(finalColor, finalAlpha);
+	colour = vec4(finalLight, finalAlpha);
 }

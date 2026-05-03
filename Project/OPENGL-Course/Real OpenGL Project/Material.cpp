@@ -47,31 +47,7 @@ void Material::SetShader(Shader* shader)
 	uniformLocations.clear();
 
 	if (shader) {
-		std::string vPath = shader->GetVertexPath();
-		std::string fPath = shader->GetFragmentPath();
-		
-		if (vPath.find("water.vert") != std::string::npos || fPath.find("water.frag") != std::string::npos) {
-			auto SetIfMissingF = [&](const std::string& n, float v) { if (floats.find(n) == floats.end()) floats[n] = v; };
-			auto SetIfMissingV4 = [&](const std::string& n, glm::vec4 v) { if (vec4s.find(n) == vec4s.end()) vec4s[n] = v; };
-
-			SetIfMissingF("material_waveSpeed", 0.01f);
-			SetIfMissingF("material_waveStrength", 0.1f);
-			SetIfMissingF("material_waveScale", 1.0f);
-			SetIfMissingF("material_fresnelPower", 4.0f);
-			SetIfMissingF("material_foamDistance", 10.0f);
-			SetIfMissingF("material_dudvTiling", 0.0f);
-			SetIfMissingF("material_dudvStrength", 0.02f);
-			SetIfMissingF("material_specularIntensityOverride", 3.0f);
-			SetIfMissingF("material_shininessOverride", 256.0f);
-			
-			SetIfMissingV4("material_waterColorDeep", glm::vec4(0.012f, 0.149f, 0.349f, 0.949f));
-			SetIfMissingV4("material_waterColorShallow", glm::vec4(0.051f, 0.6f, 0.749f, 0.702f));
-			SetIfMissingV4("material_foamColor", glm::vec4(1.0f, 1.0f, 0.902f, 1.0f));
-			SetIfMissingV4("material.baseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.85f));
-
-			if (texturePaths.find("material_dudvMap") == texturePaths.end()) SetTextureParam("material_dudvMap", "Assets/Textures/Water/dudv.png");
-			if (texturePaths.find("material_waterNormalMap") == texturePaths.end()) SetTextureParam("material_waterNormalMap", "Assets/Textures/Water/normal.png");
-		}
+		// No hardcoded defaults here anymore.
 	}
 }
 

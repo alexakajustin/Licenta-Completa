@@ -39,6 +39,8 @@ json RiverNode::Serialize() const
 	j["baseWidth"] = baseWidth;
 	j["waterOffset"] = waterOffset;
 	j["smoothPasses"] = smoothPasses;
+	j["textureTiling"] = textureTiling;
+	j["flowSpeed"] = flowSpeed;
 	return j;
 }
 
@@ -51,6 +53,8 @@ void RiverNode::Deserialize(const json& j)
 	baseWidth = j.value("baseWidth", 15.0f);
 	waterOffset = j.value("waterOffset", -0.005f);
 	smoothPasses = j.value("smoothPasses", 8);
+	textureTiling = j.value("textureTiling", 6.0f);
+	flowSpeed = j.value("flowSpeed", 0.12f);
 }
 
 void RiverNode::RenderContent(SceneManager* scene)
@@ -61,6 +65,10 @@ void RiverNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Base Width", &baseWidth, 0.1f, 0.1f, 100.0f);
 	ImGui::DragFloat("Water Offset", &waterOffset, 0.1f, -10.0f, 10.0f);
 	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 30);
+	ImGui::Separator();
+	ImGui::Text("Appearance");
+	ImGui::SliderFloat("Texture Tiling", &textureTiling, 0.1f, 50.0f);
+	ImGui::SliderFloat("Flow Speed", &flowSpeed, 0.0f, 2.0f);
 }
 
 void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -606,6 +614,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		if (!obj->GetMaterial()) {
 			Material* mat = Material::LoadFromFile(matPath);
 			if (mat) obj->SetMaterial(mat);
+		}
+		if (obj->GetMaterial()) {
+			obj->GetMaterial()->SetFloat("material_dudvTiling", textureTiling);
+			obj->GetMaterial()->SetFloat("material_waveSpeed", flowSpeed);
 		}
 		if (!meshData.vertices.empty()) {
 			obj->SetMesh(meshData.ToMesh());

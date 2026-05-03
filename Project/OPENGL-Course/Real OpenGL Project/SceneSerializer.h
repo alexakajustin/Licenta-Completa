@@ -9,19 +9,21 @@ class PointLight;
 class SpotLight;
 class Texture;
 class Material;
+class Camera;
 
 using SceneProgressCallback = std::function<void(float, float, const std::string&)>;
 
 class SceneSerializer
 {
 public:
-	static bool SaveScene(const std::string& filePath, SceneManager& scene);
+	static bool SaveScene(const std::string& filePath, SceneManager& scene, Camera* camera = nullptr);
 
 	static bool LoadScene(const std::string& filePath, SceneManager& scene,
 		DirectionalLight& mainLight,
 		PointLight* pointLights, unsigned int& pointLightCount,
 		SpotLight* spotLights, unsigned int& spotLightCount,
 		Texture* defaultTexture, Material* defaultMaterial,
+		Camera* camera = nullptr,
 		SceneProgressCallback progressCallback = nullptr);
 
 	// Native Win32 file dialogs

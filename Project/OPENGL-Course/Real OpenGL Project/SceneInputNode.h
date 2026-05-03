@@ -33,11 +33,15 @@ public:
 		selectedName = name;
 	}
 
+	void SetForceOriginalPrimitive(bool force) { forceOriginalPrimitive = force; }
+
 private:
 	int selectedIndex = -1;
 	std::string selectedName = "(none)";
 
-	// Fallback Cache (Protects against user deleting the base object)
+	bool forceOriginalPrimitive = true; // If true, generates fresh primitive mesh instead of reading modified one
+
+	// Fallback Cache (Protects against vuser deleting the base object)
 	std::string cachedPrimitiveType = "";
 	std::string cachedModelPath = "";
 	glm::vec3 cachedPosition = glm::vec3(0.0f);

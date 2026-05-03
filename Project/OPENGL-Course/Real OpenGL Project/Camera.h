@@ -23,9 +23,18 @@ public:
 
 	glm::vec3 getCameraPosition();
 	glm::vec3 getCameraDirection();
+	
+	GLfloat getYaw() const { return yaw; }
+	GLfloat getPitch() const { return pitch; }
+	
+	void setCameraPosition(glm::vec3 pos) { position = pos; }
+	void setYaw(GLfloat y) { yaw = y; }
+	void setPitch(GLfloat p) { pitch = p; }
 
 	glm::mat4 calculateViewMatrix();
 	void SetPositionAndLookAt(glm::vec3 targetPos, float distance = 5.0f);
+	
+	void update(); // Made public for serialization
 private:
 	glm::vec3 position;
 	glm::vec3 front;
@@ -42,6 +51,5 @@ private:
 	GLfloat turnSpeed;
 	GLfloat startMoveSpeed;
 
-	void update();
+	// void update(); // Moved to public
 };
-
