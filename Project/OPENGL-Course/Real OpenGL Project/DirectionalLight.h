@@ -23,7 +23,8 @@ public:
 	const std::vector<glm::mat4>& GetCascadedLightMatrices() const { return cascadedLightMatrices; }
 	const std::vector<float>& GetCascadeSplitDistances() const { return cascadeSplitDistances; }
 
-	// Getter for editing
+	// Setters/Getters
+	void SetDirection(const glm::vec3& dir);
 	glm::vec3* GetDirectionPtr() { return &direction; }
 	float* GetPitchPtr() { return &pitch; }
 	float* GetYawPtr() { return &yaw; }

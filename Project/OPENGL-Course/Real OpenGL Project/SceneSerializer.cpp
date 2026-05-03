@@ -697,7 +697,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				*mainLight.GetColourPtr() = color;
 				*mainLight.GetAmbientIntensityPtr() = ambient;
 				*mainLight.GetDiffuseIntensityPtr() = diffuse;
-				*mainLight.GetDirectionPtr() = dir;
+				mainLight.SetDirection(dir);
 
 				// Recreate the wrapper
 				LightObject* lightObj = new LightObject(name, &mainLight);

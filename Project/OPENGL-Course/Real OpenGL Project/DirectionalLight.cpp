@@ -10,7 +10,8 @@ DirectionalLight::DirectionalLight() : Light()
 	lightProj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 200.0f);
 	
 	// Initial pitch/yaw from default direction
-	pitch = glm::degrees(asin(glm::clamp(direction.y, -1.0f, 1.0f)));
+	direction = glm::normalize(direction);
+	pitch = glm::degrees(asin(glm::clamp(-direction.y, -1.0f, 1.0f)));
 	yaw = glm::degrees(atan2(direction.z, direction.x));
 }
 
@@ -23,10 +24,10 @@ DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
 	shadowMap = new CascadedShadowMap();
 	((CascadedShadowMap*)shadowMap)->Init((GLuint)shadowWidth, (GLuint)shadowHeight, 4);
 
-	direction = glm::vec3(xDirection, yDirection, zDirection);
+	direction = glm::normalize(glm::vec3(xDirection, yDirection, zDirection));
 	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
 
-	pitch = glm::degrees(asin(glm::clamp(direction.y, -1.0f, 1.0f)));
+	pitch = glm::degrees(asin(glm::clamp(-direction.y, -1.0f, 1.0f)));
 	yaw = glm::degrees(atan2(direction.z, direction.x));
 }
 
@@ -35,8 +36,16 @@ void DirectionalLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientC
 	glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
 	glUniform1f(ambientIntensityLocation, ambientIntensity);
 	
-	glUniform3f(directionLocation, direction.x, direction.y, direction.z);
+	glm::vec3 normalizedDir = glm::normalize(direction);
+	glUniform3f(directionLocation, normalizedDir.x, normalizedDir.y, normalizedDir.z);
 	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
+}
+
+void DirectionalLight::SetDirection(const glm::vec3& dir)
+{
+	direction = glm::normalize(dir);
+	pitch = glm::degrees(asin(glm::clamp(-direction.y, -1.0f, 1.0f)));
+	yaw = glm::degrees(atan2(direction.z, direction.x));
 }
 
 void DirectionalLight::SetShadowFrustum(float size, float near, float far)
@@ -50,7 +59,7 @@ void DirectionalLight::UpdateDirectionFromEuler()
 	float p = glm::radians(pitch);
 	float y = glm::radians(yaw);
 	direction.x = cos(p) * cos(y);
-	direction.y = sin(p);
+	direction.y = -sin(p); // pitch 90 = zenith (traveling down)
 	direction.z = cos(p) * sin(y);
 	direction = glm::normalize(direction);
 }
