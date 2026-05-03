@@ -10,9 +10,9 @@
             ],
             "diffuseIntensity": 0.6000000238418579,
             "direction": [
-                -20.0,
-                -5.0,
-                7.0
+                -0.3847155272960663,
+                -0.30070582032203674,
+                -0.8726798892021179
             ],
             "name": "Sun",
             "type": "Directional"
@@ -41,14 +41,14 @@
                 "start": 8
             }
         ],
-        "nextId": 18,
+        "nextId": 57,
         "nodes": [
             {
                 "cachedModelPath": "",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
                     0.0,
-                    0.0,
+                    1.403594970703125,
                     0.0
                 ],
                 "cachedPrimitiveType": "Plane",
@@ -138,7 +138,7 @@
                 ],
                 "rainRate": 0.03999999910593033,
                 "sedimentCapacity": 30.0,
-                "simulationSteps": 250,
+                "simulationSteps": 100,
                 "smoothPasses": 0,
                 "title": "Hydraulic Erosion"
             },
@@ -163,6 +163,28 @@
         {
             "customMeshPath": "Test_Plane.mesh",
             "inheritScale": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 16.0,
+                "material.specularIntensity": 0.009999999776482582,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
@@ -172,7 +194,7 @@
             "transform": {
                 "position": [
                     0.0,
-                    0.0,
+                    1.403594970703125,
                     0.0
                 ],
                 "rotation": [
@@ -210,7 +232,7 @@
                 ],
                 "material_dudvMap": "Assets/Textures/Water/dudv.png",
                 "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 0.15000000596046448,
+                "material_dudvTiling": 0.5,
                 "material_foamColor": [
                     1.0,
                     1.0,
@@ -218,9 +240,10 @@
                     1.0
                 ],
                 "material_foamDistance": 3.0,
-                "material_fresnelPower": 9.640000343322754,
-                "material_shininessOverride": 512.0,
-                "material_specularIntensityOverride": 5.0,
+                "material_foamOpacity": 0.10000000149011612,
+                "material_fresnelPower": 1.0,
+                "material_shininessOverride": 16.0,
+                "material_specularIntensityOverride": 0.10000000149011612,
                 "material_waterColorDeep": [
                     0.012000000104308128,
                     0.14900000393390656,
@@ -228,14 +251,15 @@
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
+                    0.0,
+                    0.7865333557128906,
+                    1.0,
                     0.7020000219345093
                 ],
+                "material_waterDepthScale": 1.0,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 0.07999999821186066,
+                "material_waveSpeed": 0.10000000149011612,
                 "material_waveStrength": 5.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
@@ -249,7 +273,7 @@
             "transform": {
                 "position": [
                     0.0,
-                    0.0,
+                    1.403594970703125,
                     0.0
                 ],
                 "rotation": [
@@ -295,10 +319,10 @@
                     0.9020000100135803,
                     1.0
                 ],
-                "material_foamDistance": 7.460000038146973,
-                "material_fresnelPower": 4.059999942779541,
-                "material_shininessOverride": 1.0,
-                "material_specularIntensityOverride": 3.0,
+                "material_foamDistance": 10.0,
+                "material_fresnelPower": 1.0,
+                "material_shininessOverride": 32.0,
+                "material_specularIntensityOverride": 1.0,
                 "material_waterColorDeep": [
                     0.012000000104308128,
                     0.14900000393390656,
@@ -312,9 +336,9 @@
                     0.7020000219345093
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 0.009999999776482582,
-                "material_waveStrength": 0.10000000149011612,
+                "material_waveScale": 20.0,
+                "material_waveSpeed": 0.05000000074505806,
+                "material_waveStrength": 1.3200000524520874,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
             },
@@ -327,7 +351,7 @@
             "transform": {
                 "position": [
                     0.0,
-                    0.0,
+                    1.403594970703125,
                     0.0
                 ],
                 "rotation": [

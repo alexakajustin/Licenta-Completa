@@ -352,6 +352,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					// Bind shadow maps for main pass shaders
 					s->SetDirectionalShadowMap(3);
 					s->SetDirectionalShadowColorMap(20);
+				} else {
+					// For override shaders (like shadow pass), we need to upload the single shadow transform
+					GLint lightTransLoc = glGetUniformLocation(s->GetShaderID(), "directionalLightTransform");
+					if (lightTransLoc != -1) {
+						glUniformMatrix4fv(lightTransLoc, 1, GL_FALSE, glm::value_ptr(shadowTransform));
+					}
 				}
 			}
 		}
@@ -526,7 +532,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 
 
-		if (!overrideShader && b.material) {
+		if (b.material) {
 			b.material->UseMaterial(
 				targetShader->GetSpecularIntensityLocation(),
 				targetShader->GetShininessLocation(),
@@ -534,19 +540,26 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				targetShader->GetTilingLocation(),
 				targetShader->GetOffsetLocation()
 			);
-			b.material->Bind();
-		} else if (!overrideShader && !b.material) {
+			b.material->Bind(targetShader->GetShaderID());
+
+			// Shadow shaders use materialAlpha for transparency color mapping
+			GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+			if (alphaLoc != -1) glUniform1f(alphaLoc, b.material->GetAlpha());
+		} else {
 			glUniform1f(targetShader->GetSpecularIntensityLocation(), 0.0f);
 			glUniform1f(targetShader->GetShininessLocation(), 1.0f);
 			glUniform4f(glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
 			glUniform2f(targetShader->GetTilingLocation(), 1.0f, 1.0f);
 			glUniform2f(targetShader->GetOffsetLocation(), 0.0f, 0.0f);
+
+			GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+			if (alphaLoc != -1) glUniform1f(alphaLoc, 1.0f);
 		}
 
-		// Apply texture overrides
+		// Apply texture overrides (Required for alpha testing in shadow pass!)
 		GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
 		GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
-		if (!overrideShader && b.texture) {
+		if (b.texture) {
 			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
 			if (texLoc != -1) glUniform1i(texLoc, 0);
 			b.texture->UseTexture();
@@ -689,7 +702,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					const auto& matrices = dLight->GetCascadedLightMatrices();
 					const auto& splits = dLight->GetCascadeSplitDistances();
 					if (!matrices.empty()) {
-						glUniformMatrix4fv(glGetUniformLocation(sid, "dirLightMatrices"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
+						glUniformMatrix4fv(glGetUniformLocation(sid, "directionalLightTransform"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
 						glUniform1fv(glGetUniformLocation(sid, "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
 					}
 					glUniformMatrix4fv(glGetUniformLocation(sid, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));

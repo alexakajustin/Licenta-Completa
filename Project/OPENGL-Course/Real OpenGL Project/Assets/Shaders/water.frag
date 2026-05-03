@@ -77,7 +77,7 @@ uniform sampler2DArray directionalShadowMap;
 uniform sampler2DArray directionalShadowColorMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
-uniform mat4 dirLightMatrices[3];
+uniform mat4 directionalLightTransform[4];
 uniform float cascadeSplits[3];
 uniform mat4 viewMatrix;
 
@@ -107,6 +107,7 @@ uniform sampler2D reflectionMap;
 uniform vec2 screenSize;
 uniform vec4 material_foamColor;
 uniform float material_foamDistance;
+uniform float material_waterDepthScale;
 
 vec3 sampleOffsetDirections[20] = vec3[]
 (
@@ -214,7 +215,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	float offsetScale = 0.2 * (layer + 1); 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
-	vec4 fragPosLightSpace = dirLightMatrices[layer] * vec4(worldPosWithOffset, 1.0);
+	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
@@ -448,7 +449,7 @@ void main()
     fresnelFactor = clamp(fresnelFactor, 0.0, 1.0);
     
     // Beer's Law for natural exponential depth absorption
-    float depthColorScale = 0.15; // Extinction coefficient
+    float depthColorScale = material_waterDepthScale == 0.0 ? 0.15 : material_waterDepthScale;
     float depthFactor = exp(-max(depthDiff, 0.0) * depthColorScale);
     // depthFactor is 1.0 at surface (shallow), approaching 0.0 at depth
     vec3 waterBaseColor = mix(deepColor.rgb, shallowColor.rgb, depthFactor);
@@ -522,11 +523,11 @@ void main()
     
     float shimmerFactor = specCore + specWide;
     
-    // Dynamic sub-pixel sparkle
-    float sparkleNoise = random(FragPos * 10.0 + vec3(time * 0.1), 0);
-    float sparkle = smoothstep(0.8, 1.0, sparkleNoise) * shimmerFactor * 2.0;
+    // Dynamic sub-pixel sparkle (Removed to fix "white dots" issue)
+    // float sparkleNoise = random(FragPos * 10.0 + vec3(time * 0.1), 0);
+    // float sparkle = smoothstep(0.8, 1.0, sparkleNoise) * shimmerFactor * 2.0;
     
-    finalLight += directionalLight.base.colour * (shimmerFactor + sparkle);
+    finalLight += directionalLight.base.colour * (shimmerFactor); // Removed sparkle term
 
 	vec3 finalColor = finalLight;
 

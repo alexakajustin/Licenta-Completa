@@ -288,6 +288,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	{
 		material->UseMaterial(uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset);
 		material->Bind(shaderID); // IMPORTANT: This uploads all shader-specific properties (baseColor, windSpeed, etc.) using the correct shader program
+		
+		// Shadow shaders use materialAlpha for transparency color mapping
+		GLint alphaLoc = glGetUniformLocation(shaderID, "materialAlpha");
+		if (alphaLoc != -1) glUniform1f(alphaLoc, material->GetAlpha());
 	}
 	else
 	{
@@ -296,6 +300,9 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		glUniform4f(uniformMaterialColor, 1.0f, 1.0f, 1.0f, 1.0f);
 		glUniform2f(uniformTiling, 1.0f, 1.0f);
 		glUniform2f(uniformOffset, 0.0f, 0.0f);
+
+		GLint alphaLoc = glGetUniformLocation(shaderID, "materialAlpha");
+		if (alphaLoc != -1) glUniform1f(alphaLoc, 1.0f);
 	}
 
 	// ========== Texture Layers Configuration (Must happen BEFORE draw calls) ==========

@@ -77,7 +77,7 @@ uniform sampler2DArray directionalShadowMap;
 uniform sampler2DArray directionalShadowColorMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
-uniform mat4 dirLightMatrices[3];
+uniform mat4 directionalLightTransform[4];
 uniform float cascadeSplits[3];
 uniform mat4 viewMatrix;
 
@@ -107,6 +107,8 @@ uniform sampler2D reflectionMap;
 uniform vec2 screenSize;
 uniform vec4 material_foamColor;
 uniform float material_foamDistance;
+uniform float material_foamOpacity;
+uniform float material_waterDepthScale;
 
 vec3 sampleOffsetDirections[20] = vec3[]
 (
@@ -215,7 +217,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	float offsetScale = 0.2 * (layer + 1); 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
-	vec4 fragPosLightSpace = dirLightMatrices[layer] * vec4(worldPosWithOffset, 1.0);
+	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
@@ -446,7 +448,7 @@ void main()
     fresnelFactor = clamp(fresnelFactor, 0.0, 0.7); // Cap it to avoid over-exposure
     
     // Beer's Law for natural volumetric depth absorption
-    float depthColorScale = 0.35; // Higher extinction for "heavier" water
+    float depthColorScale = material_waterDepthScale == 0.0 ? 0.35 : material_waterDepthScale;
     float depthFactor = exp(-max(depthDiff, 0.0) * depthColorScale);
     vec3 waterBaseColor = mix(deepColor.rgb, shallowColor.rgb, depthFactor);
     float waterAlpha = mix(deepColor.a, 0.4, depthFactor); // More transparent in shallow areas
@@ -455,17 +457,19 @@ void main()
     // Cinematic Smooth Flow & "Milky" Aeration
     // ============================================================
     // Slow, organic movement
-    float flowTime = time * 0.12;
+    float moveSpeed = material_waveSpeed == 0.0 ? 0.12 : material_waveSpeed;
+    float flowTime = time * moveSpeed;
     
-    // 1. Local ripples (Panned on X axis to fix "sideways" scrolling)
-    vec2 uv1 = TexCoord * 6.0 + vec2(-flowTime, 0.0);
-    vec2 uv2 = TexCoord * 4.5 + vec2(-flowTime * 0.8, 0.1);
+    // 1. Local ripples (Panned on Y axis to fix "sideways" scrolling)
+    float tiling = material_dudvTiling == 0.0 ? 6.0 : material_dudvTiling;
+    vec2 uv1 = TexCoord * tiling + vec2(0.0, -flowTime);
+    vec2 uv2 = TexCoord * (tiling * 0.75) + vec2(0.1, -flowTime * 0.8);
     float r1 = texture(material_dudvMap, uv1).r;
     float r2 = texture(material_dudvMap, uv2).g;
     float rippleChurn = smoothstep(0.5, 0.85, (r1 + r2) * 0.5);
 
-    // 2. Large-scale world-space aeration (Panned on World-X to match river orientation)
-    vec2 worldUV = FragPos.xz * 0.04 + vec2(-flowTime * 0.5, 0.0);
+    // 2. Large-scale world-space aeration (Panned on World-Z to match river orientation)
+    vec2 worldUV = FragPos.xz * (tiling * 0.006) + vec2(0.0, -flowTime * 0.5);
     float w1 = texture(material_dudvMap, worldUV).r;
     float w2 = texture(material_dudvMap, worldUV * 0.5 + vec2(0.2)).g;
     float worldChurn = smoothstep(0.4, 0.7, (w1 + w2) * 0.5);
@@ -474,8 +478,9 @@ void main()
     float churn = max(rippleChurn * 0.6, worldChurn);
     churn *= smoothstep(0.0, 0.8, depthDiff); // Soft fade at shorelines
     
-    vec3 foamColor = vec3(0.92, 0.96, 1.0);
-    vec4 finalBaseColor = vec4(mix(waterBaseColor, foamColor, churn * 0.5), max(waterAlpha, churn * 0.6));
+    vec3 foamCol = material_foamColor == vec4(0.0) ? vec3(0.92, 0.96, 1.0) : material_foamColor.rgb;
+    float foamOpacity = material_foamOpacity == 0.0 ? 0.5 : material_foamOpacity;
+    vec4 finalBaseColor = vec4(mix(waterBaseColor, foamCol, churn * foamOpacity), max(waterAlpha, churn * (foamOpacity + 0.1)));
 
     // ============================================================
     // Soft Planar Reflections

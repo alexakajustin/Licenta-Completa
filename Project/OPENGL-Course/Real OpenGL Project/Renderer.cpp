@@ -207,7 +207,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
 	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
 	if (!cascadedMatrices.empty()) {
-		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "dirLightMatrices"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
+		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "directionalLightTransform"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
 		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
 	}
 	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
@@ -313,7 +313,7 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
 	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
 	if (!cascadedMatrices.empty()) {
-		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "dirLightMatrices"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
+		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "directionalLightTransform"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
 		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
 	}
 	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(reflectedView));

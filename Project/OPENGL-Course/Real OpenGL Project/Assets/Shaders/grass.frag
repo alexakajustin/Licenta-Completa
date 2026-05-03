@@ -60,7 +60,7 @@ uniform int spotLightCount;
 
 uniform sampler2DArray directionalShadowMap;
 uniform sampler2DArray directionalShadowColorMap;
-uniform mat4 dirLightMatrices[4];
+uniform mat4 directionalLightTransform[4];
 uniform float cascadeSplits[4];
 uniform mat4 viewMatrix;
 uniform float shadowDistance;
@@ -141,7 +141,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	float offsetScale = 0.2 * (layer + 1); 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
-	vec4 fragPosLightSpace = dirLightMatrices[layer] * vec4(worldPosWithOffset, 1.0);
+	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = (projCoords * 0.5) + 0.5;
 	
