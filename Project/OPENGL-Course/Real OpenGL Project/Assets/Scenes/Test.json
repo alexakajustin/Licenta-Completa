@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.685038685798645,
-            -0.6819983720779419,
-            0.25612545013427734
+            0.8035288453102112,
+            -0.5591928958892822,
+            0.2040703296661377
         ],
-        "pitch": -43.0,
+        "pitch": -34.0,
         "position": [
-            193.843017578125,
-            382.3551025390625,
-            127.03010559082031
+            -36.230037689208984,
+            343.0666809082031,
+            90.5461654663086
         ],
-        "yaw": -200.5
+        "yaw": 14.25
     },
     "instancedGroups": [],
     "lights": [
@@ -55,7 +55,7 @@
                 "start": 8
             }
         ],
-        "nextId": 31,
+        "nextId": 18,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -240,20 +240,20 @@
                 "material_shininessOverride": 512.0,
                 "material_specularIntensityOverride": 5.0,
                 "material_waterColorDeep": [
-                    0.012000000104308128,
-                    0.14900000393390656,
-                    0.3490000069141388,
+                    1.0,
+                    1.0,
+                    1.0,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
-                    0.7020000219345093
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.9921568632125854
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 10.0,
+                "material_waveSpeed": 0.11999999731779099,
                 "material_waveStrength": 5.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
@@ -283,7 +283,6 @@
             }
         },
         {
-            "customMeshPath": "Test_Lake_Water_6.mesh",
             "inheritScale": true,
             "material": {
                 "material.baseColor": [
@@ -319,15 +318,15 @@
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
-                    0.012000000104308128,
-                    0.14900000393390656,
-                    0.3490000069141388,
+                    1.0,
+                    1.0,
+                    1.0,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
+                    1.0,
+                    1.0,
+                    1.0,
                     0.7020000219345093
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",

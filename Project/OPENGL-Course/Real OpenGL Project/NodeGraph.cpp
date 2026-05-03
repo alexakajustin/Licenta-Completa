@@ -918,7 +918,10 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 	// Also check child objects of generated groups
 	// (ScatterNode uses 'Instance_X_Y' or 'Instance_X_Name_Y' patterns)
 	if (name.find("Instance_") != std::string::npos || 
-		name.find("Scatter_Instanced_") != std::string::npos)
+		name.find("Scatter_Instanced_") != std::string::npos ||
+		name.find("Scatter_Group_") != std::string::npos ||
+		name.find("River_Water_") != std::string::npos ||
+		name.find("Lake_Water_") != std::string::npos)
 		return true;
 
 	return false;
@@ -927,6 +930,7 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 bool NodeGraph::IsObjectMeshModified(const std::string& name) const
 {
 	if (name == "(none)") return false;
+	if (IsObjectGenerated(name)) return true;
 
 	for (auto* node : nodes)
 	{
@@ -947,11 +951,6 @@ bool NodeGraph::IsObjectMeshModified(const std::string& name) const
 					return true;
 				}
 			}
-		}
-		else if (node->title == "River")
-		{
-			std::string waterName = "River_Water_" + std::to_string(node->id);
-			if (name == waterName) return true;
 		}
 	}
 	return false;

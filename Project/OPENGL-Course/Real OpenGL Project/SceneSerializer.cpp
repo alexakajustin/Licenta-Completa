@@ -111,14 +111,13 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 	json objectsArray = json::array();
 	for (auto* obj : scene.GetObjects())
 	{
-		// SMART FILTER: Skip objects managed by the Node Graph.
-		// We check the ROOT of the hierarchy because if the parent is generated, 
-		// the whole tree is generated and should not be saved to JSON.
+		// SMART FILTER: Previously we skipped objects managed by the Node Graph entirely.
+		// However, users may want to tweak material parameters or visual properties of 
+		// spawned objects (like Rivers) in the Inspector. We now save these objects to JSON,
+		// but we still skip saving their massive binary mesh data (see below) because
+		// the graph will regenerate the geometry on load anyway.
 		GameObject* root = obj;
 		while (root->GetParent()) root = root->GetParent();
-
-		if (scene.GetNodeGraph().IsObjectGenerated(root->GetName()))
-			continue;
 
 		json objJson;
 		objJson["name"] = obj->GetName();
