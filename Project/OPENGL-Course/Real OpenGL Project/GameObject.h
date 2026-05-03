@@ -108,6 +108,9 @@ public:
 	void SetModelSourcePath(const std::string& path) { modelSourcePath = path; }
 	const std::string& GetModelSourcePath() const { return modelSourcePath; }
 
+	void SetSaveInScene(bool save) { saveInScene = save; }
+	bool GetSaveInScene() const { return saveInScene; }
+
 	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
 	void GetWorldBoundingSphere(glm::vec3& center, float& radius);
 	
@@ -150,6 +153,8 @@ private:
 	// Serialization: track creation source
 	std::string primitiveType;    // "Plane", "Cube", "Sphere", "Empty", or ""
 	std::string modelSourcePath;  // File path for model-based objects
+	
+	bool saveInScene = true;
 
 	// CPU Caching for Performance
 	glm::mat4 cachedWorldMatrix = glm::mat4(1.0f);

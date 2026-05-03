@@ -295,6 +295,18 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	int builtCount = 0;
 
+	// Root node for all buildings
+	std::string rootName = "City_Buildings_" + std::to_string(id);
+	GameObject* cityRoot = scene.FindObject(rootName);
+	if (!cityRoot) {
+		cityRoot = new GameObject(rootName);
+		cityRoot->SetSaveInScene(false); // Do not save the generated city in JSON, the graph will recreate it
+		scene.AddObject(cityRoot);
+	}
+	cityRoot->GetTransform().SetPosition(glm::vec3(0.0f));
+	cityRoot->GetTransform().SetRotation(glm::vec3(0.0f));
+	cityRoot->GetTransform().SetScale(glm::vec3(1.0f));
+
 	for (size_t i = 0; i < plots.size(); i++)
 	{
 		const TransformData& plot = plots[i];
@@ -395,6 +407,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		obj->GetTransform().SetPosition(glm::vec3(0.0f));
 		obj->GetTransform().SetRotation(glm::vec3(0.0f));
 		obj->GetTransform().SetScale(glm::vec3(1.0f));
+		obj->SetParent(cityRoot);
 		obj->SetMesh(buildingMesh.ToMesh());
 		obj->SetCPUMeshData(buildingMesh);
 
@@ -409,6 +422,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		roofObj->GetTransform().SetPosition(glm::vec3(0.0f));
 		roofObj->GetTransform().SetRotation(glm::vec3(0.0f));
 		roofObj->GetTransform().SetScale(glm::vec3(1.0f));
+		roofObj->SetParent(obj);
 		roofObj->SetMesh(roofMesh.ToMesh());
 		roofObj->SetCPUMeshData(roofMesh);
 
@@ -519,6 +533,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			}
 			fenceObj->GetTransform().SetPosition(glm::vec3(0.0f));
 			fenceObj->GetTransform().SetScale(glm::vec3(1.0f));
+			fenceObj->SetParent(obj);
 			fenceObj->SetMesh(fenceMesh.ToMesh());
 			fenceObj->SetCPUMeshData(fenceMesh);
 
@@ -549,6 +564,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			}
 			parkingObj->GetTransform().SetPosition(glm::vec3(0.0f));
 			parkingObj->GetTransform().SetScale(glm::vec3(1.0f));
+			parkingObj->SetParent(obj);
 			parkingObj->SetMesh(parkingMesh.ToMesh());
 			parkingObj->SetCPUMeshData(parkingMesh);
 

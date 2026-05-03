@@ -118,6 +118,8 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		// the graph will regenerate the geometry on load anyway.
 		GameObject* root = obj;
 		while (root->GetParent()) root = root->GetParent();
+		if (!root->GetSaveInScene()) continue; // Skip massive procedural hierarchies
+		if (!obj->GetSaveInScene()) continue;
 
 		json objJson;
 		objJson["name"] = obj->GetName();
