@@ -97,6 +97,37 @@ MeshData BuildingGenNode::MakeCubePart(glm::vec3 center, glm::vec3 halfExtents)
 	// Get the engine's unit cube (correct UVs on all 6 faces)
 	MeshData cube = PrimitiveGenerator::GetCubeData();
 
+	float sizeX = halfExtents.x * 2.0f;
+	float sizeY = halfExtents.y * 2.0f;
+	float sizeZ = halfExtents.z * 2.0f;
+
+	// Scale UVs so that texture doesn't stretch on large buildings.
+	// We map 1 unit of UV to 'floorHeight' world units to keep windows perfectly square.
+	float uvScale = 1.0f / floorHeight;
+
+	for (int i = 0; i < cube.GetVertexCount(); i++) {
+		// vertex layout: x, y, z, u, v, nx, ny, nz
+		float nx = cube.vertices[i * 14 + 5];
+		float ny = cube.vertices[i * 14 + 6];
+		float nz = cube.vertices[i * 14 + 7];
+
+		if (std::abs(nx) > 0.5f) {
+			// Left/Right faces (+X / -X). Horizontal is Z, Vertical is Y
+			cube.vertices[i * 14 + 3] *= sizeZ * uvScale;
+			cube.vertices[i * 14 + 4] *= sizeY * uvScale;
+		}
+		else if (std::abs(nz) > 0.5f) {
+			// Front/Back faces (+Z / -Z). Horizontal is X, Vertical is Y
+			cube.vertices[i * 14 + 3] *= sizeX * uvScale;
+			cube.vertices[i * 14 + 4] *= sizeY * uvScale;
+		}
+		else if (std::abs(ny) > 0.5f) {
+			// Top/Bottom faces (+Y / -Y). Horizontal is X, Vertical is Z
+			cube.vertices[i * 14 + 3] *= sizeX * uvScale;
+			cube.vertices[i * 14 + 4] *= sizeZ * uvScale;
+		}
+	}
+
 	// The engine cube goes from [-0.5, 0.5] on each axis (half-extent = 0.5).
 	// Scale by 2*halfExtents to get the correct building dimensions,
 	// then translate to center position.
@@ -143,18 +174,20 @@ void BuildingGenNode::AddPeakedRoof(MeshData& mesh, glm::vec3 base, float halfW,
 	}
 
 	// Helper to add a quad (4 verts, 2 triangles) with outward normal
-	auto addQuad = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d,
-		float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3) {
+	auto addQuad = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d) {
 		glm::vec3 edge1 = b - a, edge2 = c - a;
 		glm::vec3 n = glm::normalize(glm::cross(edge1, edge2));
 		glm::vec3 t = glm::normalize(edge1);
 		glm::vec3 bt = glm::normalize(glm::cross(n, t));
 
+		float w = glm::length(b - a) * 0.25f; // Scale UVs by physical distance
+		float h = glm::length(d - a) * 0.25f;
+
 		unsigned int base = mesh.GetVertexCount();
-		mesh.AddVertex(a.x, a.y, a.z, u0, v0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
-		mesh.AddVertex(b.x, b.y, b.z, u1, v1, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
-		mesh.AddVertex(c.x, c.y, c.z, u2, v2, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
-		mesh.AddVertex(d.x, d.y, d.z, u3, v3, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(a.x, a.y, a.z, 0, 0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(b.x, b.y, b.z, w, 0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(c.x, c.y, c.z, w, h, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(d.x, d.y, d.z, 0, h, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
 		mesh.AddTriangle(base, base + 1, base + 2);
 		mesh.AddTriangle(base, base + 2, base + 3);
 	};
@@ -166,33 +199,34 @@ void BuildingGenNode::AddPeakedRoof(MeshData& mesh, glm::vec3 base, float halfW,
 		glm::vec3 t = glm::normalize(edge1);
 		glm::vec3 bt = glm::normalize(glm::cross(n, t));
 
+		float w = glm::length(b - a) * 0.25f;
+		float h = glm::length(c - (a + b) * 0.5f) * 0.25f;
+
 		unsigned int base = mesh.GetVertexCount();
 		mesh.AddVertex(a.x, a.y, a.z, 0, 0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
-		mesh.AddVertex(b.x, b.y, b.z, 1, 0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
-		mesh.AddVertex(c.x, c.y, c.z, 0.5f, 1, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(b.x, b.y, b.z, w, 0, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
+		mesh.AddVertex(c.x, c.y, c.z, w * 0.5f, h, n.x, n.y, n.z, t.x, t.y, t.z, bt.x, bt.y, bt.z);
 		mesh.AddTriangle(base, base + 1, base + 2);
 	};
 
 	if (dimX) {
-		// Two sloped panels
-		// Front slope: eave[0], eave[1], ridge1, ridge0
-		addQuad(eave[0], eave[1], ridge1, ridge0,  0,0, 1,0, 1,1, 0,1);
-		// Back slope: eave[3], eave[2], ridge1, ridge0 (reversed)
-		addQuad(eave[2], eave[3], ridge0, ridge1,  0,0, 1,0, 1,1, 0,1);
-		// Gable ends (triangles)
-		// Left gable
-		addTri(eave[0], eave[3], ridge0);
-		// Right gable
-		addTri(eave[1], eave[2], ridge1);
-	} else {
-		// Two sloped panels
-		// Left slope: eave[0], eave[1], ridge1, ridge0
-		addQuad(eave[0], eave[1], ridge1, ridge0,  0,0, 1,0, 1,1, 0,1);
-		// Right slope: eave[3], eave[2], ridge1, ridge0 (reversed)
-		addQuad(eave[3], eave[2], ridge1, ridge0,  0,0, 1,0, 1,1, 0,1);
-		// Gable ends (triangles)
-		addTri(eave[0], eave[3], ridge0);
+		// Front slope (+Z side)
+		addQuad(eave[3], eave[2], ridge1, ridge0);
+		// Back slope (-Z side)
+		addQuad(eave[1], eave[0], ridge0, ridge1);
+		// Right gable (+X side)
 		addTri(eave[2], eave[1], ridge1);
+		// Left gable (-X side)
+		addTri(eave[0], eave[3], ridge0);
+	} else {
+		// Right slope (+X side)
+		addQuad(eave[2], eave[3], ridge0, ridge1);
+		// Left slope (-X side)
+		addQuad(eave[0], eave[1], ridge1, ridge0);
+		// Front gable (+Z side)
+		addTri(eave[1], eave[2], ridge1);
+		// Back gable (-Z side)
+		addTri(eave[3], eave[0], ridge0);
 	}
 }
 
@@ -314,19 +348,21 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		}
 
 		// ---- Roof ----
+		MeshData roofMesh;
 		glm::vec3 roofBase(roofCenterX, topY, roofCenterZ);
 
-		if (!isCommercial && floors <= 4) {
+		bool isPeaked = (!isCommercial && floors <= 4);
+		if (isPeaked) {
 			// Residential: peaked gable roof
 			bool ridgeDimX = (roofW > roofD); // Ridge runs along longer axis
 			float peakH = std::min(roofW, roofD) * 0.6f; // Roof pitch ~60% of narrow side
-			AddPeakedRoof(buildingMesh, roofBase, roofW, roofD, peakH, ridgeDimX);
+			AddPeakedRoof(roofMesh, roofBase, roofW, roofD, peakH, ridgeDimX);
 		} else {
 			// Commercial: flat roof slab
-			AddFlatRoof(buildingMesh, roofBase, roofW, roofD, 0.3f);
+			AddFlatRoof(roofMesh, roofBase, roofW, roofD, 0.3f);
 		}
 
-		// ---- Spawn as GameObject ----
+		// ---- Spawn Base/Upper GameObject ----
 		std::string objName = prefix + std::to_string(i);
 		GameObject* obj = scene.FindObject(objName);
 		if (!obj) {
@@ -337,13 +373,26 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		obj->GetTransform().SetPosition(glm::vec3(0.0f));
 		obj->GetTransform().SetRotation(glm::vec3(0.0f));
 		obj->GetTransform().SetScale(glm::vec3(1.0f));
-
 		obj->SetMesh(buildingMesh.ToMesh());
 		obj->SetCPUMeshData(buildingMesh);
 
-		// Texture layers
-		while (obj->GetTextureLayers().size() > 0)
-			obj->RemoveTextureLayer(0);
+		// ---- Spawn Roof GameObject ----
+		std::string roofName = objName + "_Roof";
+		GameObject* roofObj = scene.FindObject(roofName);
+		if (!roofObj) {
+			roofObj = new GameObject(roofName);
+			scene.AddObject(roofObj);
+		}
+		
+		roofObj->GetTransform().SetPosition(glm::vec3(0.0f));
+		roofObj->GetTransform().SetRotation(glm::vec3(0.0f));
+		roofObj->GetTransform().SetScale(glm::vec3(1.0f));
+		roofObj->SetMesh(roofMesh.ToMesh());
+		roofObj->SetCPUMeshData(roofMesh);
+
+		// Texture layers (Clear old)
+		while (obj->GetTextureLayers().size() > 0) obj->RemoveTextureLayer(0);
+		while (roofObj->GetTextureLayers().size() > 0) roofObj->RemoveTextureLayer(0);
 
 		// Pick wall texture
 		int texIdx = texDist(rng);
@@ -355,16 +404,29 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			texCache[texIdx]->LoadTexture();
 		}
 
-		// Calculate wall tiling based on floor count
-		float wallTiling = std::max(1.0f, (float)floors * 0.5f);
-
 		TextureLayer wallLayer;
 		wallLayer.texturePath = WALL_TEXTURES[texIdx];
 		wallLayer.texture = texCache[texIdx];
 		wallLayer.blendMode = LayerBlendMode::Normal;
 		wallLayer.opacity = 1.0f;
-		wallLayer.tiling = wallTiling;
+		wallLayer.tiling = 1.0f; // Tiling baked directly into mesh UVs
 		obj->AddTextureLayer(wallLayer);
+
+		// Pick roof texture
+		int roofTexIdx = isPeaked ? 100 : 101;
+		const char* roofTexPath = isPeaked ? "Assets/Textures/buildings/roof_shingles.jpg" : "Assets/Textures/buildings/concrete.jpg";
+		if (texCache.find(roofTexIdx) == texCache.end()) {
+			texCache[roofTexIdx] = new Texture(roofTexPath);
+			texCache[roofTexIdx]->LoadTexture();
+		}
+
+		TextureLayer roofLayer;
+		roofLayer.texturePath = roofTexPath;
+		roofLayer.texture = texCache[roofTexIdx];
+		roofLayer.blendMode = LayerBlendMode::Normal;
+		roofLayer.opacity = 1.0f;
+		roofLayer.tiling = 1.0f; // Tiling baked directly into mesh UVs for both peaked and flat roofs 
+		roofObj->AddTextureLayer(roofLayer);
 
 		builtCount++;
 
