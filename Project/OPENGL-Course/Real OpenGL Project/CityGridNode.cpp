@@ -1,0 +1,510 @@
+#include "CityGridNode.h"
+#include "PrimitiveGenerator.h"
+#include <cmath>
+#include <random>
+#include <algorithm>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// =====================================================================
+// Construction
+// =====================================================================
+
+CityGridNode::CityGridNode(NodeGraph& graph)
+{
+	id = graph.NextNodeId();
+	title = "City Grid";
+
+	// Inputs
+	Pin surfaceIn(graph.NextPinId(), PinDataType::Mesh, "Surface");
+	inputs.push_back(surfaceIn);
+
+	// Outputs
+	Pin roadsOut(graph.NextPinId(), PinDataType::Mesh, "Roads");
+	Pin plotsOut(graph.NextPinId(), PinDataType::TransformList, "Plots");
+	outputs.push_back(roadsOut);
+	outputs.push_back(plotsOut);
+}
+
+// =====================================================================
+// UI
+// =====================================================================
+
+void CityGridNode::RenderContent(SceneManager* scene)
+{
+	ImGui::Text("City Layout");
+	ImGui::Separator();
+
+	ImGui::DragFloat("City Size", &citySize, 1.0f, 20.0f, 2000.0f, "%.0f");
+	ImGui::DragFloat("Road Width", &roadWidth, 0.1f, 0.5f, 10.0f, "%.1f");
+	ImGui::DragFloat("Spacing X", &roadSpacingX, 0.5f, 5.0f, 100.0f, "%.1f");
+	ImGui::DragFloat("Spacing Z", &roadSpacingZ, 0.5f, 5.0f, 100.0f, "%.1f");
+	ImGui::DragFloat("Sidewalk W", &sidewalkWidth, 0.05f, 0.0f, 2.0f, "%.2f");
+	ImGui::DragFloat("Road Height", &roadHeight, 0.005f, 0.0f, 0.5f, "%.3f");
+	ImGui::DragFloat("Setback", &buildingSetback, 0.1f, 0.0f, 10.0f, "%.1f");
+	ImGui::SliderFloat("Residential", &residentialProbability, 0.0f, 1.0f, "%.2f");
+	ImGui::DragInt("Park Rate", &parkRate, 1, 0, 20);
+	ImGui::DragInt("Seed", &seed, 1, 0, 9999);
+}
+
+// =====================================================================
+// Serialization
+// =====================================================================
+
+json CityGridNode::Serialize() const
+{
+	json j = GraphNode::Serialize();
+	j["citySize"] = citySize;
+	j["roadWidth"] = roadWidth;
+	j["roadSpacingX"] = roadSpacingX;
+	j["roadSpacingZ"] = roadSpacingZ;
+	j["sidewalkWidth"] = sidewalkWidth;
+	j["roadHeight"] = roadHeight;
+	j["buildingSetback"] = buildingSetback;
+	j["residentialProbability"] = residentialProbability;
+	j["parkRate"] = parkRate;
+	j["seed"] = seed;
+	return j;
+}
+
+void CityGridNode::Deserialize(const json& j)
+{
+	GraphNode::Deserialize(j);
+	citySize = j.value("citySize", 100.0f);
+	roadWidth = j.value("roadWidth", 2.0f);
+	roadSpacingX = j.value("roadSpacingX", 20.0f);
+	roadSpacingZ = j.value("roadSpacingZ", 20.0f);
+	sidewalkWidth = j.value("sidewalkWidth", 0.4f);
+	roadHeight = j.value("roadHeight", 0.02f);
+	buildingSetback = j.value("buildingSetback", 1.0f);
+	residentialProbability = j.value("residentialProbability", 0.5f);
+	parkRate = j.value("parkRate", 8);
+	seed = j.value("seed", 42);
+}
+
+// =====================================================================
+// Grid Generation (Algorithm inspired by 3DWorld city_gen.cpp)
+// =====================================================================
+
+void CityGridNode::GenerateGrid()
+{
+	plots.clear();
+	roadSegs.clear();
+	intersections.clear();
+
+	float halfCity = citySize * 0.5f;
+	float halfRoad = roadWidth * 0.5f;
+
+	// Calculate road positions
+	// Roads are placed at regular intervals spanning the city
+	float roadPitchX = roadWidth + roadSpacingX;
+	float roadPitchZ = roadWidth + roadSpacingZ;
+
+	// Number of roads in each direction
+	int numRoadsX = std::max(2, (int)(citySize / roadPitchX));
+	int numRoadsZ = std::max(2, (int)(citySize / roadPitchZ));
+
+	// Recalculate pitch to fit evenly
+	roadPitchX = citySize / (float)numRoadsX;
+	roadPitchZ = citySize / (float)numRoadsZ;
+
+	// Generate road center positions
+	std::vector<float> roadPosX, roadPosZ;
+	for (int i = 0; i <= numRoadsX; i++)
+	{
+		float x = -halfCity + i * roadPitchX;
+		roadPosX.push_back(x);
+	}
+	for (int i = 0; i <= numRoadsZ; i++)
+	{
+		float z = -halfCity + i * roadPitchZ;
+		roadPosZ.push_back(z);
+	}
+
+	// Create road segments between intersections
+	// X-direction roads (run along X, at each Z position)
+	for (size_t iz = 0; iz < roadPosZ.size(); iz++)
+	{
+		for (size_t ix = 0; ix + 1 < roadPosX.size(); ix++)
+		{
+			RoadSegment seg;
+			seg.start = glm::vec3(roadPosX[ix] + halfRoad, roadHeight, roadPosZ[iz]);
+			seg.end = glm::vec3(roadPosX[ix + 1] - halfRoad, roadHeight, roadPosZ[iz]);
+			seg.width = roadWidth;
+			seg.dimX = true;
+			if (seg.end.x > seg.start.x) // Only add if segment has positive length
+				roadSegs.push_back(seg);
+		}
+	}
+
+	// Z-direction roads (run along Z, at each X position)
+	for (size_t ix = 0; ix < roadPosX.size(); ix++)
+	{
+		for (size_t iz = 0; iz + 1 < roadPosZ.size(); iz++)
+		{
+			RoadSegment seg;
+			seg.start = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz] + halfRoad);
+			seg.end = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz + 1] - halfRoad);
+			seg.width = roadWidth;
+			seg.dimX = false;
+			if (seg.end.z > seg.start.z)
+				roadSegs.push_back(seg);
+		}
+	}
+
+	// Create intersections at every road crossing
+	for (size_t ix = 0; ix < roadPosX.size(); ix++)
+	{
+		for (size_t iz = 0; iz < roadPosZ.size(); iz++)
+		{
+			bool hasLeft = (ix > 0);
+			bool hasRight = (ix + 1 < roadPosX.size());
+			bool hasFront = (iz > 0);
+			bool hasBack = (iz + 1 < roadPosZ.size());
+
+			uint8_t conn = 0;
+			if (hasLeft) conn |= 1;   // -X
+			if (hasRight) conn |= 2;  // +X
+			if (hasFront) conn |= 4;  // -Z
+			if (hasBack) conn |= 8;   // +Z
+
+			int numConn = ((conn & 1) ? 1 : 0) + ((conn & 2) ? 1 : 0) +
+				((conn & 4) ? 1 : 0) + ((conn & 8) ? 1 : 0);
+
+			if (numConn >= 2) // At least a 2-way
+			{
+				RoadIntersection isec;
+				isec.center = glm::vec3(roadPosX[ix], roadHeight, roadPosZ[iz]);
+				isec.size = roadWidth;
+				isec.numConnections = numConn;
+				isec.connectionMask = conn;
+				intersections.push_back(isec);
+			}
+		}
+	}
+
+	// Create plots (land parcels between roads)
+	std::mt19937 rng(seed);
+	std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+	for (size_t ix = 0; ix + 1 < roadPosX.size(); ix++)
+	{
+		for (size_t iz = 0; iz + 1 < roadPosZ.size(); iz++)
+		{
+			float x1 = roadPosX[ix] + halfRoad;
+			float x2 = roadPosX[ix + 1] - halfRoad;
+			float z1 = roadPosZ[iz] + halfRoad;
+			float z2 = roadPosZ[iz + 1] - halfRoad;
+
+			if (x2 <= x1 || z2 <= z1) continue; // Degenerate plot
+
+			CityPlot plot;
+			plot.center = glm::vec3((x1 + x2) * 0.5f, roadHeight, (z1 + z2) * 0.5f);
+			plot.size = glm::vec2(x2 - x1, z2 - z1);
+			plot.gridX = (int)ix;
+			plot.gridY = (int)iz;
+			plot.isResidential = (dist01(rng) < residentialProbability);
+			plot.isPark = (parkRate > 0 && (rng() % parkRate) == 0);
+
+			plots.push_back(plot);
+		}
+	}
+
+	printf("[CityGridNode] Generated %d road segments, %d intersections, %d plots\n",
+		(int)roadSegs.size(), (int)intersections.size(), (int)plots.size());
+}
+
+// =====================================================================
+// Mesh Building — Road Quads
+// =====================================================================
+
+void CityGridNode::AddRoadQuad(MeshData& mesh, glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3,
+	float uMin, float uMax, float vMin, float vMax)
+{
+	// Normal: up (roads are flat)
+	glm::vec3 normal(0.0f, 1.0f, 0.0f);
+
+	// Tangent: along the road direction (p1 - p0 roughly)
+	glm::vec3 edge1 = glm::normalize(p1 - p0);
+	glm::vec3 tangent = edge1;
+	glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
+
+	unsigned int base = mesh.GetVertexCount();
+
+	// Vertex layout: pos(3) + uv(2) + normal(3) + tangent(3) + bitangent(3) = 14 floats
+	mesh.AddVertex(p0.x, p0.y, p0.z, uMin, vMin, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
+	mesh.AddVertex(p1.x, p1.y, p1.z, uMax, vMin, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
+	mesh.AddVertex(p2.x, p2.y, p2.z, uMax, vMax, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
+	mesh.AddVertex(p3.x, p3.y, p3.z, uMin, vMax, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
+
+	// Two triangles: 0-1-2, 0-2-3
+	mesh.AddTriangle(base, base + 1, base + 2);
+	mesh.AddTriangle(base, base + 2, base + 3);
+}
+
+void CityGridNode::AddSidewalkStrip(MeshData& mesh, glm::vec3 roadEdgeStart, glm::vec3 roadEdgeEnd,
+	float width, bool side, float texScale)
+{
+	// Sidewalk runs parallel to the road edge, offset by 'width' to one side
+	glm::vec3 dir = glm::normalize(roadEdgeEnd - roadEdgeStart);
+	glm::vec3 up(0.0f, 1.0f, 0.0f);
+	glm::vec3 right = glm::normalize(glm::cross(dir, up));
+
+	float offset = side ? width : -width;
+	float sidewalkHeight = 0.03f; // Slightly raised above road
+
+	glm::vec3 p0 = roadEdgeStart + glm::vec3(0, sidewalkHeight, 0);
+	glm::vec3 p1 = roadEdgeEnd + glm::vec3(0, sidewalkHeight, 0);
+	glm::vec3 p2 = roadEdgeEnd + right * offset + glm::vec3(0, sidewalkHeight, 0);
+	glm::vec3 p3 = roadEdgeStart + right * offset + glm::vec3(0, sidewalkHeight, 0);
+
+	float len = glm::length(roadEdgeEnd - roadEdgeStart);
+	AddRoadQuad(mesh, p0, p1, p2, p3, 0.0f, len * texScale, 0.0f, width * texScale);
+}
+
+void CityGridNode::BuildIntersectionQuad(MeshData& mesh, const RoadIntersection& isec)
+{
+	float half = isec.size * 0.5f;
+	float y = isec.center.y;
+
+	glm::vec3 p0(isec.center.x - half, y, isec.center.z - half);
+	glm::vec3 p1(isec.center.x + half, y, isec.center.z - half);
+	glm::vec3 p2(isec.center.x + half, y, isec.center.z + half);
+	glm::vec3 p3(isec.center.x - half, y, isec.center.z + half);
+
+	AddRoadQuad(mesh, p0, p1, p2, p3, 0.0f, 1.0f, 0.0f, 1.0f);
+}
+
+// =====================================================================
+// Build Complete Road Mesh
+// =====================================================================
+
+void CityGridNode::BuildRoadMesh(MeshData& output)
+{
+	output.Clear();
+
+	float halfRoad = roadWidth * 0.5f;
+
+	// 1. Road Segments
+	for (const auto& seg : roadSegs)
+	{
+		float len = 0.0f;
+		glm::vec3 p0, p1, p2, p3;
+
+		if (seg.dimX)
+		{
+			// Road runs along X
+			len = seg.end.x - seg.start.x;
+			p0 = glm::vec3(seg.start.x, seg.start.y, seg.start.z - halfRoad);
+			p1 = glm::vec3(seg.end.x, seg.end.y, seg.end.z - halfRoad);
+			p2 = glm::vec3(seg.end.x, seg.end.y, seg.end.z + halfRoad);
+			p3 = glm::vec3(seg.start.x, seg.start.y, seg.start.z + halfRoad);
+		}
+		else
+		{
+			// Road runs along Z
+			len = seg.end.z - seg.start.z;
+			p0 = glm::vec3(seg.start.x - halfRoad, seg.start.y, seg.start.z);
+			p1 = glm::vec3(seg.start.x + halfRoad, seg.start.y, seg.start.z);
+			p2 = glm::vec3(seg.end.x + halfRoad, seg.end.y, seg.end.z);
+			p3 = glm::vec3(seg.end.x - halfRoad, seg.end.y, seg.end.z);
+		}
+
+		// Texture: tile along length, stretch across width
+		float ar = len / roadWidth;
+		AddRoadQuad(output, p0, p1, p2, p3, 0.0f, 1.0f, 0.0f, ar * roadTexScale);
+
+		// Sidewalks on both sides
+		if (sidewalkWidth > 0.01f)
+		{
+			if (seg.dimX)
+			{
+				glm::vec3 edge0Start(seg.start.x, seg.start.y, seg.start.z - halfRoad);
+				glm::vec3 edge0End(seg.end.x, seg.end.y, seg.end.z - halfRoad);
+				glm::vec3 edge1Start(seg.start.x, seg.start.y, seg.start.z + halfRoad);
+				glm::vec3 edge1End(seg.end.x, seg.end.y, seg.end.z + halfRoad);
+
+				AddSidewalkStrip(output, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
+				AddSidewalkStrip(output, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
+			}
+			else
+			{
+				glm::vec3 edge0Start(seg.start.x - halfRoad, seg.start.y, seg.start.z);
+				glm::vec3 edge0End(seg.end.x - halfRoad, seg.end.y, seg.end.z);
+				glm::vec3 edge1Start(seg.start.x + halfRoad, seg.start.y, seg.start.z);
+				glm::vec3 edge1End(seg.end.x + halfRoad, seg.end.y, seg.end.z);
+
+				AddSidewalkStrip(output, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
+				AddSidewalkStrip(output, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
+			}
+		}
+	}
+
+	// 2. Intersections
+	for (const auto& isec : intersections)
+	{
+		BuildIntersectionQuad(output, isec);
+
+		// Sidewalk corners at intersections
+		if (sidewalkWidth > 0.01f)
+		{
+			float half = isec.size * 0.5f;
+			float sw = sidewalkWidth;
+			float y = isec.center.y + 0.03f; // Sidewalk raised
+
+			// Four corner sidewalk pads (one per corner of the intersection)
+			// These fill in the gaps where road sidewalks don't reach
+			glm::vec3 corners[4] = {
+				glm::vec3(isec.center.x - half - sw, y, isec.center.z - half - sw), // -X, -Z
+				glm::vec3(isec.center.x + half,      y, isec.center.z - half - sw), // +X, -Z
+				glm::vec3(isec.center.x + half,      y, isec.center.z + half),      // +X, +Z
+				glm::vec3(isec.center.x - half - sw, y, isec.center.z + half),      // -X, +Z
+			};
+
+			for (int c = 0; c < 4; c++)
+			{
+				glm::vec3 cp0 = corners[c];
+				glm::vec3 cp1 = cp0 + glm::vec3(sw, 0, 0);
+				glm::vec3 cp2 = cp0 + glm::vec3(sw, 0, sw);
+				glm::vec3 cp3 = cp0 + glm::vec3(0, 0, sw);
+				AddRoadQuad(output, cp0, cp1, cp2, cp3, 0.0f, 1.0f, 0.0f, 1.0f);
+			}
+		}
+	}
+
+	// 3. Plot ground quads (grass/concrete fill for the blocks between roads)
+	for (const auto& plot : plots)
+	{
+		float halfW = plot.size.x * 0.5f;
+		float halfD = plot.size.y * 0.5f;
+		float y = plot.center.y - 0.01f; // Slightly below road level
+
+		// Shrink by sidewalk width to not overlap
+		float shrink = sidewalkWidth;
+		glm::vec3 p0(plot.center.x - halfW + shrink, y, plot.center.z - halfD + shrink);
+		glm::vec3 p1(plot.center.x + halfW - shrink, y, plot.center.z - halfD + shrink);
+		glm::vec3 p2(plot.center.x + halfW - shrink, y, plot.center.z + halfD - shrink);
+		glm::vec3 p3(plot.center.x - halfW + shrink, y, plot.center.z + halfD - shrink);
+
+		float texU = (halfW * 2 - shrink * 2) * 0.2f; // Grass texture tiling
+		float texV = (halfD * 2 - shrink * 2) * 0.2f;
+		AddRoadQuad(output, p0, p1, p2, p3, 0.0f, texU, 0.0f, texV);
+	}
+
+	printf("[CityGridNode] Built road mesh: %d vertices, %d triangles\n",
+		output.GetVertexCount(), output.GetTriangleCount());
+}
+
+// =====================================================================
+// Build Plot Transforms (output for building placement)
+// =====================================================================
+
+void CityGridNode::BuildPlotTransforms(TransformList& output)
+{
+	output.clear();
+	output.reserve(plots.size());
+
+	for (const auto& plot : plots)
+	{
+		if (plot.isPark) continue; // Parks don't get buildings
+
+		TransformData td;
+		td.position = plot.center;
+		td.rotation = glm::vec3(0.0f);
+		td.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+		// Encode plot size in scale (useful for downstream building placement)
+		// Scale X = available width, Scale Z = available depth
+		float availW = plot.size.x - buildingSetback * 2.0f;
+		float availD = plot.size.y - buildingSetback * 2.0f;
+		td.scale = glm::vec3(
+			std::max(1.0f, availW),
+			plot.isResidential ? 1.0f : 2.0f, // Y scale hint: 1 = residential, 2 = commercial
+			std::max(1.0f, availD)
+		);
+
+		output.push_back(td);
+	}
+}
+
+// =====================================================================
+// Terrain Height Sampling (basic nearest-point for flat terrain)
+// =====================================================================
+
+float CityGridNode::SampleTerrainHeight(const MeshData& terrain, float x, float z)
+{
+	if (terrain.vertices.empty()) return 0.0f;
+
+	// Simple: find nearest vertex and return its Y
+	float bestDist = 1e18f;
+	float bestY = 0.0f;
+	int count = terrain.GetVertexCount();
+
+	for (int i = 0; i < count; i += 10) // Sample every 10th vertex for speed
+	{
+		glm::vec3 p = terrain.GetPosition(i);
+		float dx = p.x - x;
+		float dz = p.z - z;
+		float dist = dx * dx + dz * dz;
+		if (dist < bestDist) { bestDist = dist; bestY = p.y; }
+	}
+
+	return bestY;
+}
+
+// =====================================================================
+// Execute
+// =====================================================================
+
+void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+{
+	if (progress) progress(0.0f, "Generating city grid...");
+
+	// 1. Generate the grid layout
+	GenerateGrid();
+
+	if (progress) progress(30.0f, "Building road mesh...");
+
+	// 2. Build road mesh data
+	MeshData roadMesh;
+	BuildRoadMesh(roadMesh);
+
+	// 3. If we have a terrain input, offset road height to match
+	if (!inputs[0].data.meshData.vertices.empty())
+	{
+		const MeshData& terrain = inputs[0].data.meshData;
+		float avgHeight = SampleTerrainHeight(terrain, 0.0f, 0.0f);
+
+		// Offset all road vertices by terrain center height
+		int vertCount = roadMesh.GetVertexCount();
+		for (int i = 0; i < vertCount; i++)
+		{
+			int base = i * 14;
+			roadMesh.vertices[base + 1] += avgHeight; // Y offset
+		}
+
+		// Also offset plot centers
+		for (auto& plot : plots)
+			plot.center.y += avgHeight;
+	}
+
+	if (progress) progress(70.0f, "Building plot data...");
+
+	// 4. Build plot transform list
+	TransformList plotTransforms;
+	BuildPlotTransforms(plotTransforms);
+
+	// 5. Set output pins
+	outputs[0].data.type = PinDataType::Mesh;
+	outputs[0].data.meshData = std::move(roadMesh);
+
+	outputs[1].data.type = PinDataType::TransformList;
+	outputs[1].data.transforms = std::move(plotTransforms);
+
+	if (progress) progress(100.0f, "City grid complete!");
+
+	printf("[CityGridNode] Execution complete: %d plots available for building placement\n",
+		(int)plotTransforms.size());
+}

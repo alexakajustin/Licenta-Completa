@@ -154,6 +154,7 @@
     <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CascadedShadowMap.cpp" />
+    <ClCompile Include="CityGridNode.cpp" />
     <ClCompile Include="CustomNode.cpp" />
     <ClCompile Include="CustomNodeDef.cpp" />
     <ClCompile Include="DebugOverlay.cpp" />
@@ -534,6 +535,7 @@
     <ClInclude Include="AssetManager.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CascadedShadowMap.h" />
+    <ClInclude Include="CityGridNode.h" />
     <ClInclude Include="CommonValues.h" />
     <ClInclude Include="CustomNode.h" />
     <ClInclude Include="CustomNodeDef.h" />

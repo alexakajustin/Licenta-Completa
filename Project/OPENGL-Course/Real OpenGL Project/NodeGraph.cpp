@@ -12,6 +12,7 @@
 #include "BranchNode.h"
 #include "FilterTransformListNode.h"
 #include "ForEachNode.h"
+#include "CityGridNode.h"
 #include "NodeBuilderUI.h"
 #include "SceneManager.h"
 #include "GameObject.h"
@@ -881,6 +882,7 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "Branch") node = new BranchNode(*this);
 			else if (title == "Filter Transforms") node = new FilterTransformListNode(*this);
 			else if (title == "For Each") node = new ForEachNode(*this);
+		else if (title == "City Grid") node = new CityGridNode(*this);
 			else
 			{
 				// Check if it's a Custom Node
