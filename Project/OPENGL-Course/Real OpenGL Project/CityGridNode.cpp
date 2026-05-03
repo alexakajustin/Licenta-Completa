@@ -516,13 +516,130 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	syncCityObject("City_Roads_" + idStr, roadMesh, "Assets/Textures/roads/asphalt.jpg", 4.0f);
 	syncCityObject("City_Plots_" + idStr, plotMesh, "Assets/Textures/roads/grass_park.jpg", 2.0f);
 
-	if (progress) progress(70.0f, "Building plot data...");
+	if (progress) progress(60.0f, "Generating street lamps...");
 
-	// 4. Build plot transform list
+	// ---- Phase 3: Street Decoration ----
+
+	// 5a. Street Lamps — placed along road segments at regular intervals
+	MeshData lampMesh;
+	float lampSpacing = 12.0f;  // One lamp every N world units
+	float poleRadius = 0.08f;
+	float poleHeight = 4.0f;
+	float lampHeadW = 0.4f;
+	float lampHeadH = 0.1f;
+	float lampHeadD = 0.15f;
+	float halfRoad = roadWidth * 0.5f;
+
+	auto addBox = [&](MeshData& m, glm::vec3 center, glm::vec3 half, glm::vec3 n, glm::vec3 t, glm::vec3 b) {
+		// Simple 6-face box (all same normal for simplicity — lit as a solid block)
+		struct F { glm::vec3 n; glm::vec3 c[4]; };
+		float w = half.x, h = half.y, d = half.z;
+		F faces[6] = {
+			// Front (-Z)
+			{ {0,0,-1}, { {center.x-w,center.y-h,center.z-d}, {center.x-w,center.y+h,center.z-d}, {center.x+w,center.y+h,center.z-d}, {center.x+w,center.y-h,center.z-d} } },
+			// Back (+Z)
+			{ {0,0,1}, { {center.x+w,center.y-h,center.z+d}, {center.x+w,center.y+h,center.z+d}, {center.x-w,center.y+h,center.z+d}, {center.x-w,center.y-h,center.z+d} } },
+			// Left (-X)
+			{ {-1,0,0}, { {center.x-w,center.y-h,center.z+d}, {center.x-w,center.y+h,center.z+d}, {center.x-w,center.y+h,center.z-d}, {center.x-w,center.y-h,center.z-d} } },
+			// Right (+X)
+			{ {1,0,0}, { {center.x+w,center.y-h,center.z-d}, {center.x+w,center.y+h,center.z-d}, {center.x+w,center.y+h,center.z+d}, {center.x+w,center.y-h,center.z+d} } },
+			// Top (+Y)
+			{ {0,1,0}, { {center.x-w,center.y+h,center.z-d}, {center.x-w,center.y+h,center.z+d}, {center.x+w,center.y+h,center.z+d}, {center.x+w,center.y+h,center.z-d} } },
+			// Bottom (-Y)
+			{ {0,-1,0}, { {center.x-w,center.y-h,center.z+d}, {center.x-w,center.y-h,center.z-d}, {center.x+w,center.y-h,center.z-d}, {center.x+w,center.y-h,center.z+d} } },
+		};
+		for (int f = 0; f < 6; f++) {
+			unsigned int base = m.GetVertexCount();
+			for (int v = 0; v < 4; v++)
+				m.AddVertex(faces[f].c[v].x, faces[f].c[v].y, faces[f].c[v].z, 0, 0,
+					faces[f].n.x, faces[f].n.y, faces[f].n.z, 1, 0, 0, 0, 0, 1);
+			m.AddTriangle(base, base+1, base+2);
+			m.AddTriangle(base, base+2, base+3);
+		}
+	};
+
+	for (const auto& seg : roadSegs)
+	{
+		float len = seg.dimX ? (seg.end.x - seg.start.x) : (seg.end.z - seg.start.z);
+		int numLamps = std::max(1, (int)(len / lampSpacing));
+
+		for (int li = 0; li <= numLamps; li++)
+		{
+			float t = (float)li / (float)numLamps;
+			glm::vec3 roadPt = seg.start + (seg.end - seg.start) * t;
+			roadPt.y += terrainOffset;
+
+			// Place lamps on both sides of the road
+			for (int side = -1; side <= 1; side += 2)
+			{
+				glm::vec3 lampPos = roadPt;
+				if (seg.dimX)
+					lampPos.z += (halfRoad + sidewalkWidth * 0.5f) * (float)side;
+				else
+					lampPos.x += (halfRoad + sidewalkWidth * 0.5f) * (float)side;
+
+				// Pole
+				glm::vec3 poleCenter(lampPos.x, lampPos.y + poleHeight * 0.5f, lampPos.z);
+				addBox(lampMesh, poleCenter, glm::vec3(poleRadius, poleHeight * 0.5f, poleRadius),
+					glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
+
+				// Lamp head
+				glm::vec3 headCenter(lampPos.x, lampPos.y + poleHeight + lampHeadH * 0.5f, lampPos.z);
+				addBox(lampMesh, headCenter, glm::vec3(lampHeadW, lampHeadH, lampHeadD),
+					glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
+			}
+		}
+	}
+
+	syncCityObject("City_Lamps_" + idStr, lampMesh, "Assets/Textures/buildings/metal_building.jpg", 1.0f);
+
+	if (progress) progress(75.0f, "Planting trees...");
+
+	// 5b. Trees on park plots — simple procedural trunk + canopy
+	MeshData treeMesh;
+	float trunkRadius = 0.12f;
+	float trunkHeight = 2.5f;
+	float canopyRadius = 1.5f;
+	float canopyHeight = 2.0f;
+	std::mt19937 treeRng(seed + 777);
+	std::uniform_real_distribution<float> treePosOff(-0.3f, 0.3f);
+
+	for (const auto& plot : plots)
+	{
+		if (!plot.isPark) continue;
+
+		// Place a few trees per park
+		int numTrees = 2 + (treeRng() % 4);
+		float parkW = plot.size.x * 0.4f;
+		float parkD = plot.size.y * 0.4f;
+
+		for (int ti = 0; ti < numTrees; ti++)
+		{
+			float ox = (treeRng() / (float)treeRng.max() - 0.5f) * 2.0f * parkW;
+			float oz = (treeRng() / (float)treeRng.max() - 0.5f) * 2.0f * parkD;
+			glm::vec3 treeBase(plot.center.x + ox, plot.center.y + terrainOffset, plot.center.z + oz);
+
+			// Trunk
+			glm::vec3 trunkCenter(treeBase.x, treeBase.y + trunkHeight * 0.5f, treeBase.z);
+			addBox(treeMesh, trunkCenter, glm::vec3(trunkRadius, trunkHeight * 0.5f, trunkRadius),
+				glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
+
+			// Canopy (larger box)
+			glm::vec3 canopyCenter(treeBase.x, treeBase.y + trunkHeight + canopyHeight * 0.5f, treeBase.z);
+			addBox(treeMesh, canopyCenter, glm::vec3(canopyRadius, canopyHeight * 0.5f, canopyRadius),
+				glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
+		}
+	}
+
+	syncCityObject("City_Trees_" + idStr, treeMesh, "Assets/Textures/roads/grass_park.jpg", 1.0f);
+
+	if (progress) progress(80.0f, "Building plot data...");
+
+	// 6. Build plot transform list
 	TransformList plotTransforms;
 	BuildPlotTransforms(plotTransforms);
 
-	// 5. Pass-through terrain mesh on output
+	// 7. Pass-through terrain mesh on output
 	if (!inputs[0].data.meshData.vertices.empty()) {
 		outputs[0].data = inputs[0].data;
 	} else {
@@ -535,6 +652,6 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (progress) progress(100.0f, "City grid complete!");
 
-	printf("[CityGridNode] Spawned roads + plots. %d building plots available.\n",
-		(int)outputs[1].data.transforms.size());
+	printf("[CityGridNode] Spawned roads + plots + %d lamps + trees. %d building plots available.\n",
+		(int)(lampMesh.GetVertexCount() / 48), (int)outputs[1].data.transforms.size());
 }
