@@ -30,8 +30,6 @@ private:
 	float waterOffset = -0.005f; // Negative offset to hide jagged mesh edges inside the terrain bank
 	int smoothPasses = 8;
 	float lakeVolumeMultiplier = 500.0f;
-	float textureTiling = 6.0f;
-	float flowSpeed = 0.12f;
 
 
 	// Internal helper for normal recomputation
