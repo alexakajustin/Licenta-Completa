@@ -155,6 +155,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CascadedShadowMap.cpp" />
     <ClCompile Include="CityGridNode.cpp" />
+    <ClCompile Include="BuildingGenNode.cpp" />
     <ClCompile Include="CustomNode.cpp" />
     <ClCompile Include="CustomNodeDef.cpp" />
     <ClCompile Include="DebugOverlay.cpp" />

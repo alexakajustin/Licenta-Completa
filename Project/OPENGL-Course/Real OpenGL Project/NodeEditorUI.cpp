@@ -16,6 +16,7 @@
 #include "FilterTransformListNode.h"
 #include "ForEachNode.h"
 #include "CityGridNode.h"
+#include "BuildingGenNode.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -255,6 +256,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
 		if (ImGui::MenuItem("Merge Mesh")) newNode = new MergeMeshNode(graph);
 		if (ImGui::MenuItem("City Grid")) newNode = new CityGridNode(graph);
+		if (ImGui::MenuItem("Building Gen")) newNode = new BuildingGenNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
 
 		ImGui::Separator();
