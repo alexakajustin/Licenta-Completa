@@ -20,6 +20,20 @@ static const char* WALL_TEXTURES[] = {
 	"Assets/Textures/buildings/window_blocks.jpg",
 	"Assets/Textures/buildings/metal_building.jpg",
 };
+
+// Different textures contain different numbers of windows per image.
+// We apply a multiplier to the tiling so that densely-packed window textures
+// aren't shrunk to the size of a matchbox.
+static const float WALL_TEXTURE_SCALES[] = {
+	0.25f, // office_windows: extremely dense
+	0.35f, // apartment_windows: dense
+	0.60f, // skyscraper1
+	0.80f, // skyscraper2: already looks quite large
+	0.80f, // skyscraper3
+	0.25f, // window_blocks: extremely dense
+	1.00f, // metal_building: horizontal siding, scale 1.0 is fine
+};
+
 static const int NUM_WALL_TEXTURES = sizeof(WALL_TEXTURES) / sizeof(WALL_TEXTURES[0]);
 
 static const char* ROOF_TEXTURE = "Assets/Textures/buildings/roof_shingles.jpg";
@@ -102,8 +116,9 @@ MeshData BuildingGenNode::MakeCubePart(glm::vec3 center, glm::vec3 halfExtents)
 	float sizeZ = halfExtents.z * 2.0f;
 
 	// Scale UVs so that texture doesn't stretch on large buildings.
-	// We map 1 unit of UV to 'floorHeight' world units to keep windows perfectly square.
-	float uvScale = 1.0f / floorHeight;
+	// We map 1 unit of UV to 'floorHeight' world units, but scale it down slightly
+	// so the base texture covers a couple of floors, making windows generally larger.
+	float uvScale = 0.5f / floorHeight;
 
 	for (int i = 0; i < cube.GetVertexCount(); i++) {
 		// vertex layout: x, y, z, u, v, nx, ny, nz
@@ -289,13 +304,20 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		bool isCommercial = (plot.scale.y > 1.5f);
 
 		// Building footprint (shrink from plot edge)
-		float bW = (plotW - wallInset * 2.0f) * 0.5f;
-		float bD = (plotD - wallInset * 2.0f) * 0.5f;
+		// Residential plots get a larger inset to create a "yard", while commercial uses the standard small wallInset
+		float currentInset = isCommercial ? wallInset : std::max(wallInset, 4.0f);
+		float bW = (plotW - currentInset * 2.0f) * 0.5f;
+		float bD = (plotD - currentInset * 2.0f) * 0.5f;
 		if (bW < 0.5f || bD < 0.5f) continue;
 
 		// ---- Section 1: Base ----
 		float baseH = heightDist(rng);
-		if (isCommercial) baseH *= 1.5f;
+		if (isCommercial) {
+			baseH *= 1.5f;
+		} else {
+			// Residential houses should typically be 1-2 stories, maybe 3 max
+			baseH = std::min(baseH, floorHeight * 2.5f);
+		}
 
 		// Snap to floor count
 		int floors = std::max(1, (int)(baseH / floorHeight));
@@ -409,7 +431,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		wallLayer.texture = texCache[texIdx];
 		wallLayer.blendMode = LayerBlendMode::Normal;
 		wallLayer.opacity = 1.0f;
-		wallLayer.tiling = 1.0f; // Tiling baked directly into mesh UVs
+		wallLayer.tiling = WALL_TEXTURE_SCALES[texIdx]; // Apply texture-specific scale to the baked UVs
 		obj->AddTextureLayer(wallLayer);
 
 		// Pick roof texture
@@ -427,6 +449,125 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		roofLayer.opacity = 1.0f;
 		roofLayer.tiling = 1.0f; // Tiling baked directly into mesh UVs for both peaked and flat roofs 
 		roofObj->AddTextureLayer(roofLayer);
+
+		// ---- Fences and Parking Spots (Residential only) ----
+		MeshData fenceMesh;
+		MeshData parkingMesh;
+		bool hasFenceAndParking = (!isCommercial);
+
+		if (hasFenceAndParking) {
+			float fenceThickness = 0.15f;
+			float fenceHeight = 1.5f;
+			float plotHalfW = plotW * 0.5f;
+			float plotHalfD = plotD * 0.5f;
+			float yBase = plot.position.y;
+
+			// Left Fence (-X)
+			fenceMesh.Append(MakeCubePart(
+				glm::vec3(plot.position.x - plotHalfW + fenceThickness * 0.5f, yBase + fenceHeight * 0.5f, plot.position.z),
+				glm::vec3(fenceThickness * 0.5f, fenceHeight * 0.5f, plotHalfD)
+			));
+			// Right Fence (+X)
+			fenceMesh.Append(MakeCubePart(
+				glm::vec3(plot.position.x + plotHalfW - fenceThickness * 0.5f, yBase + fenceHeight * 0.5f, plot.position.z),
+				glm::vec3(fenceThickness * 0.5f, fenceHeight * 0.5f, plotHalfD)
+			));
+			// Back Fence (-Z)
+			fenceMesh.Append(MakeCubePart(
+				glm::vec3(plot.position.x, yBase + fenceHeight * 0.5f, plot.position.z - plotHalfD + fenceThickness * 0.5f),
+				glm::vec3(plotHalfW, fenceHeight * 0.5f, fenceThickness * 0.5f)
+			));
+
+			// Front Fence (+Z) with driveway gap
+			float drivewayW = 4.0f;
+			float drivewayHalf = drivewayW * 0.5f;
+			
+			// Front Left
+			float frontLeftW = plotHalfW - drivewayHalf;
+			if (frontLeftW > 0.1f) {
+				fenceMesh.Append(MakeCubePart(
+					glm::vec3(plot.position.x - plotHalfW + frontLeftW * 0.5f, yBase + fenceHeight * 0.5f, plot.position.z + plotHalfD - fenceThickness * 0.5f),
+					glm::vec3(frontLeftW * 0.5f, fenceHeight * 0.5f, fenceThickness * 0.5f)
+				));
+			}
+			// Front Right
+			float frontRightW = plotHalfW - drivewayHalf;
+			if (frontRightW > 0.1f) {
+				fenceMesh.Append(MakeCubePart(
+					glm::vec3(plot.position.x + drivewayHalf + frontRightW * 0.5f, yBase + fenceHeight * 0.5f, plot.position.z + plotHalfD - fenceThickness * 0.5f),
+					glm::vec3(frontRightW * 0.5f, fenceHeight * 0.5f, fenceThickness * 0.5f)
+				));
+			}
+
+			// Driveway Slab (from building to front of plot)
+			float drivewayDepth = plotHalfD - bD;
+			if (drivewayDepth > 0.1f) {
+				parkingMesh.Append(MakeCubePart(
+					glm::vec3(plot.position.x, yBase + 0.05f, plot.position.z + bD + drivewayDepth * 0.5f),
+					glm::vec3(drivewayHalf, 0.05f, drivewayDepth * 0.5f)
+				));
+			}
+		}
+
+		// ---- Spawn Fence GameObject ----
+		std::string fenceName = objName + "_Fence";
+		GameObject* fenceObj = scene.FindObject(fenceName);
+		if (hasFenceAndParking) {
+			if (!fenceObj) {
+				fenceObj = new GameObject(fenceName);
+				scene.AddObject(fenceObj);
+			}
+			fenceObj->GetTransform().SetPosition(glm::vec3(0.0f));
+			fenceObj->GetTransform().SetScale(glm::vec3(1.0f));
+			fenceObj->SetMesh(fenceMesh.ToMesh());
+			fenceObj->SetCPUMeshData(fenceMesh);
+
+			while (fenceObj->GetTextureLayers().size() > 0) fenceObj->RemoveTextureLayer(0);
+			
+			if (texCache.find(102) == texCache.end()) {
+				texCache[102] = new Texture("Assets/Textures/buildings/fence.jpg");
+				texCache[102]->LoadTexture();
+			}
+			TextureLayer fenceLayer;
+			fenceLayer.texturePath = "Assets/Textures/buildings/fence.jpg";
+			fenceLayer.texture = texCache[102];
+			fenceLayer.blendMode = LayerBlendMode::Normal;
+			fenceLayer.opacity = 1.0f;
+			fenceLayer.tiling = 1.0f; // UVs baked in MakeCubePart
+			fenceObj->AddTextureLayer(fenceLayer);
+		} else if (fenceObj) {
+			fenceObj->SetMesh(nullptr);
+		}
+
+		// ---- Spawn Parking GameObject ----
+		std::string parkingName = objName + "_Parking";
+		GameObject* parkingObj = scene.FindObject(parkingName);
+		if (hasFenceAndParking && parkingMesh.GetVertexCount() > 0) {
+			if (!parkingObj) {
+				parkingObj = new GameObject(parkingName);
+				scene.AddObject(parkingObj);
+			}
+			parkingObj->GetTransform().SetPosition(glm::vec3(0.0f));
+			parkingObj->GetTransform().SetScale(glm::vec3(1.0f));
+			parkingObj->SetMesh(parkingMesh.ToMesh());
+			parkingObj->SetCPUMeshData(parkingMesh);
+
+			while (parkingObj->GetTextureLayers().size() > 0) parkingObj->RemoveTextureLayer(0);
+			
+			if (texCache.find(101) == texCache.end()) {
+				texCache[101] = new Texture("Assets/Textures/buildings/concrete.jpg");
+				texCache[101]->LoadTexture();
+			}
+			TextureLayer parkingLayer;
+			parkingLayer.texturePath = "Assets/Textures/buildings/concrete.jpg";
+			parkingLayer.texture = texCache[101];
+			parkingLayer.blendMode = LayerBlendMode::Normal;
+			parkingLayer.opacity = 1.0f;
+			parkingLayer.tiling = 1.0f; // UVs baked in MakeCubePart
+			parkingObj->AddTextureLayer(parkingLayer);
+		} else if (parkingObj) {
+			parkingObj->SetMesh(nullptr);
+		}
 
 		builtCount++;
 
