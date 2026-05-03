@@ -419,7 +419,9 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float
 
 		if(specularFactor > 0.0f) 
 		{
-			specularFactor = pow(specularFactor, material.shininess);
+            // Energy conservation normalization (inspired by 3DWorld's ads_lighting)
+            float normalization = (material.shininess + 8.0) / 8.0;
+			specularFactor = pow(specularFactor, material.shininess) * normalization;
 			specularColour = light.colour * material.specularIntensity * specularFactor * light.diffuseIntensity;
 		}
 	}
