@@ -151,12 +151,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			
 			if (pathID[idx] == -1 || pathID[idx] == currentPathID) {
 				pathID[idx] = currentPathID;
-				if (!merged) path.push_back({ currX, currZ });
+				path.push_back({ currX, currZ });
 			} else {
-				if (!merged) {
-					path.push_back({ currX, currZ }); // Connect to the main river
-					merged = true;
-				}
+				// We hit another river! Stop tracing the spline here to prevent overlap.
+				path.push_back({ currX, currZ }); // One final point for a clean join
+				merged = true;
+				break; 
 			}
 
 			int bestX = currX, bestZ = currZ;
@@ -327,7 +327,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	// --- PRE-COMPUTE SMOOTH SPLINES FOR CARVING AND MESHES ---
 	struct SplinePoint { glm::vec2 pos; float volume; float lakeLevel; float height; };
-	std::vector<std::vector<SplinePoint>> fineRivers;
+	struct RiverData { std::vector<SplinePoint> path; bool isMerged; };
+	std::vector<RiverData> fineRivers;
 
 	auto clampGrid = [&](int v) { return std::max(0, std::min(v, gridRes - 1)); };
 	auto catmullRom = [](glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, float t) -> glm::vec2 {
@@ -416,12 +417,18 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			lastH = finePath[i].height;
 		}
 
-		fineRivers.push_back(finePath);
+		bool isMerged = false;
+		int lastIdx = (int)path.size() - 1;
+		int idx = clampGrid(path[lastIdx].z) * gridRes + clampGrid(path[lastIdx].x);
+		if (pathID[idx] != currentPathID) isMerged = true;
+
+		fineRivers.push_back({finePath, isMerged});
+		currentPathID++;
 	}
 
 	// 4. Spline-Based Terrain Carving (Butter Smooth)
-	for (const auto& river : fineRivers) {
-		for (const auto& pt : river) {
+	for (const auto& riverData : fineRivers) {
+		for (const auto& pt : riverData.path) {
 			if (pt.lakeLevel > -1.0f) continue; // Don't carve rivers inside lakes
 
 			float volume = pt.volume;
@@ -495,15 +502,15 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	float yOffset = waterOffset / terrainScale.y;
 
 	// 6a. River Ribbon Meshes (Flowing)
-	for (const auto& finePath : fineRivers)
+	for (const auto& riverData : fineRivers)
 	{
 		int baseIdx = riverMesh.GetVertexCount();
 		int emittedVerts = 0;
 
-		for (size_t i = 0; i < finePath.size(); i++)
+		for (size_t i = 0; i < riverData.path.size(); i++)
 		{
-			float fx = finePath[i].pos.x;
-			float fz = finePath[i].pos.y;
+			float fx = riverData.path[i].pos.x;
+			float fz = riverData.path[i].pos.y;
 			fx = glm::clamp(fx, 0.0f, (float)(gridRes - 1));
 			fz = glm::clamp(fz, 0.0f, (float)(gridRes - 1));
 
@@ -516,29 +523,37 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			posX = glm::mix(data.vertices[(z0 * gridRes + x0) * 14], data.vertices[(z0 * gridRes + x1) * 14], tx);
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
-			float currentDepth = baseDepth * std::pow(finePath[i].volume, 0.35f);
-			if (finePath[i].lakeLevel > -1.0f) posY = finePath[i].lakeLevel;
-			else posY = finePath[i].height - (currentDepth * 0.5f);
+			float currentDepth = baseDepth * std::pow(riverData.path[i].volume, 0.35f);
+			if (riverData.path[i].lakeLevel > -1.0f) posY = riverData.path[i].lakeLevel;
+			else posY = riverData.path[i].height - (currentDepth * 0.5f);
 
 			glm::vec3 dir;
 			if (i == 0) {
-				glm::vec2 d = finePath[i + 1].pos - finePath[i].pos;
+				glm::vec2 d = riverData.path[i + 1].pos - riverData.path[i].pos;
 				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
-			} else if (i == finePath.size() - 1) {
-				glm::vec2 d = finePath[i].pos - finePath[i - 1].pos;
+			} else if (i == riverData.path.size() - 1) {
+				glm::vec2 d = riverData.path[i].pos - riverData.path[i - 1].pos;
 				dir = glm::normalize(glm::vec3(d.x, 0, d.y));
 			} else {
-				glm::vec2 d = finePath[i + 1].pos - finePath[i - 1].pos;
+				glm::vec2 d = riverData.path[i + 1].pos - riverData.path[i - 1].pos;
 				float len = glm::length(d);
 				if (len > 0.0001f) dir = glm::normalize(glm::vec3(d.x, 0, d.y));
 				else dir = glm::vec3(1, 0, 0);
 			}
-
+			
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-			float worldWidth = baseWidth * std::pow(finePath[i].volume, 0.35f) * waterMeshWidthMultiplier;
-			float localWidth = worldWidth / terrainScale.x;
 
 			glm::vec3 center(posX, posY + yOffset, posZ);
+			
+			float worldWidth = baseWidth * std::pow(riverData.path[i].volume, 0.35f) * waterMeshWidthMultiplier;
+			
+			// Taper width at the end if this river merged into another
+			if (riverData.isMerged && i > riverData.path.size() - 5) {
+				float taper = (float)(riverData.path.size() - 1 - i) / 4.0f;
+				worldWidth *= taper;
+			}
+			
+			float localWidth = worldWidth / terrainScale.x;
 			glm::vec3 pL = center - right * localWidth;
 			glm::vec3 pR = center + right * localWidth;
 
