@@ -148,6 +148,12 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 				float nh01 = hmap[(nzi + 1) * gridRes + nxi];
 				float nh11 = hmap[(nzi + 1) * gridRes + (nxi + 1)];
 				float nh = (nh00 * (1 - nxf) + nh10 * nxf) * (1 - nzf) + (nh01 * (1 - nxf) + nh11 * nxf) * nzf;
+				
+				// --- BOUNDARY SOFT-FADING ---
+				// Gradually reduce erosion/deposition as the drop approaches the map edge
+				// This prevents both holes (voids) and spikes at the boundaries.
+				float edgeDist = std::min({xp, (float)gridRes - 1 - xp, zp, (float)gridRes - 1 - zp});
+				float edgeFactor = std::min(1.0f, edgeDist / 8.0f); // 8-pixel safe margin
 
 				// Deposit/Erode logic from Inspiration project
 				if (nh >= h) {
@@ -176,7 +182,7 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 					float ds = s - q;
 
 					if (ds >= 0) { // Deposit
-						ds *= currentKd;
+						ds *= (currentKd * edgeFactor);
 						float dep = ds;
 						hmap[iz * gridRes + ix] += dep * (1 - xf) * (1 - zf);
 						hmap[iz * gridRes + ix + 1] += dep * xf * (1 - zf);
@@ -184,21 +190,29 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 						hmap[(iz + 1) * gridRes + ix + 1] += dep * xf * zf;
 						s -= ds;
 					} else { // Erode with 4x4 Radius Kernel
-						ds *= -currentKr;
+						ds *= (-currentKr * edgeFactor);
 						ds = std::min(ds, dh * 0.99f);
 						
+						float totalWeight = 0;
 						for (int rz = zi - 1; rz <= zi + 2; rz++) {
 							for (int rx = xi - 1; rx <= xi + 2; rx++) {
 								if (rx < 0 || rx >= gridRes || rz < 0 || rz >= gridRes) continue;
-								float xo = (float)rx - xp;
-								float zo = (float)rz - zp;
-								float weight = 1.0f - (xo * xo + zo * zo) * 0.25f;
-								if (weight <= 0) continue;
-								weight *= 0.159154943f; // 1/(2*PI) normalization
-								hmap[rz * gridRes + rx] -= ds * currentErodeAmount * weight;
+								float xo = (float)rx - xp; float zo = (float)rz - zp;
+								float w = std::max(0.0f, 1.0f - std::sqrt(xo * xo + zo * zo) / 2.0f);
+								totalWeight += w;
 							}
 						}
-						dh -= ds;
+
+						if (totalWeight > 0) {
+							for (int rz = zi - 1; rz <= zi + 2; rz++) {
+								for (int rx = xi - 1; rx <= xi + 2; rx++) {
+									if (rx < 0 || rx >= gridRes || rz < 0 || rz >= gridRes) continue;
+									float xo = (float)rx - xp; float zo = (float)rz - zp;
+									float w = std::max(0.0f, 1.0f - std::sqrt(xo * xo + zo * zo) / 2.0f);
+									hmap[rz * gridRes + rx] -= ds * (w / totalWeight) * currentErodeAmount;
+								}
+							}
+						}
 						s += ds;
 					}
 					v = std::sqrt(v * v + Kg * dh);
