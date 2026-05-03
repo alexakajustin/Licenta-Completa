@@ -483,11 +483,12 @@ void main()
     
     vec3 waterBaseColor = mix(refractionFinal, foamCol, totalFoam * 0.8);
 
-    // 3. World-space Caustics (Projected on terrain/river bed)
-    vec2 causticUV = FragPos.xz * 0.1 + vec2(0.0, -flowTime * 0.2);
+    // 3. Flow-aligned Caustics (Following the river path)
+    // We use TexCoord because it follows the river ribbon (V is along the flow)
+    vec2 causticUV = vec2(TexCoord.x * 2.0, TexCoord.y * 12.0) + vec2(0.0, -flowTime * 3.0);
     vec3 causticCol = texture(material_causticsMap, causticUV).rgb;
-    causticCol += texture(material_causticsMap, causticUV * 0.8 + vec2(0.1, 0.1)).rgb;
-    waterBaseColor += causticCol * 0.15 * (1.0 - totalFoam); // Fades under foam
+    causticCol += texture(material_causticsMap, causticUV * 0.7 + vec2(0.15, 0.15)).rgb;
+    waterBaseColor += causticCol * 0.25 * (1.0 - totalFoam); // Fades under foam
 
     float finalAlpha = max(waterAlpha, totalFoam * 0.9) * smoothstep(0.0, 0.05, depthDiff);
 

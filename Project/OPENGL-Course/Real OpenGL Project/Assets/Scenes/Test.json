@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.8035288453102112,
-            -0.5591928958892822,
-            0.2040703296661377
+            -0.8395456671714783,
+            -0.22495104372501373,
+            -0.49453020095825195
         ],
-        "pitch": -34.0,
+        "pitch": -13.0,
         "position": [
-            -36.230037689208984,
-            343.0666809082031,
-            90.5461654663086
+            145.3739013671875,
+            309.5351867675781,
+            165.3807830810547
         ],
-        "yaw": 14.25
+        "yaw": -149.5
     },
     "instancedGroups": [],
     "lights": [
@@ -55,7 +55,7 @@
                 "start": 8
             }
         ],
-        "nextId": 18,
+        "nextId": 31,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -240,20 +240,20 @@
                 "material_shininessOverride": 512.0,
                 "material_specularIntensityOverride": 5.0,
                 "material_waterColorDeep": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.018429560586810112,
+                    0.554894208908081,
+                    0.6204620599746704,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.0,
+                    0.4817175567150116,
+                    0.6237623691558838,
                     0.9921568632125854
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 0.11999999731779099,
+                "material_waveSpeed": 1.0,
                 "material_waveStrength": 5.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
@@ -318,14 +318,14 @@
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
+                    0.28382837772369385,
                     1.0,
-                    1.0,
-                    1.0,
+                    0.9361826777458191,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    1.0,
-                    1.0,
+                    0.22772276401519775,
+                    0.9311832189559937,
                     1.0,
                     0.7020000219345093
                 ],
