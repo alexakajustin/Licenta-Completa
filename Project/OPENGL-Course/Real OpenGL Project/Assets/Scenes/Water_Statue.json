@@ -119,9 +119,9 @@
                     0.7020000219345093
                 ],
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 0.10000000149011612,
-                "material_waveStrength": 0.10000000149011612,
+                "material_waveScale": 100.0,
+                "material_waveSpeed": 0.05000000074505806,
+                "material_waveStrength": 6.0,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
             },

@@ -128,16 +128,19 @@ void main()
     float edgeFadeZ = smoothstep(0.0, 0.05, 1.0 - abs(pos.z));
     float edgeFade = edgeFadeX * edgeFadeZ;
 
+    // Calculate steady clip space coords for reflection/refraction UVs BEFORE wave displacement
+    // This prevents the "panning" effect where reflections crawl with the geometric waves.
+    clipSpaceCoords = projection * view * vec4(worldGridPoint, 1.0);
+
     // Apply displacement to world position (X, Y, Z for true sharp Gerstner crests)
     worldPos.y += waveOffset.y * edgeFade;
-    worldPos.x += waveOffset.x * edgeFade * 0.5; // Mild XZ displacement for organic crests
+    worldPos.x += waveOffset.x * edgeFade * 0.5; 
     worldPos.z += waveOffset.z * edgeFade * 0.5;
     
 	vec3 normalW = normalize(cross(binormalW, tangentW));
 
 	gl_ClipDistance[0] = dot(worldPos, clipPlane);
-	clipSpaceCoords = projection * view * worldPos;
-	gl_Position = clipSpaceCoords;
+	gl_Position = projection * view * worldPos;
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	

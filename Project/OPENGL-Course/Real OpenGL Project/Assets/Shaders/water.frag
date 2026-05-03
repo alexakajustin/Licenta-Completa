@@ -142,7 +142,7 @@ vec3 GetWaterNormal(vec2 uv) {
     float scaleFactor = max(vObjectScale / 100.0, 0.01);
     // Increase default tiling massively so ripples are crisp and small instead of huge and blurry
     float dudvTiling = material_dudvTiling == 0.0 ? 60.0 * scaleFactor : material_dudvTiling;
-    float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
+    float moveSpeed = material_waveSpeed == 0.0 ? 0.05 : material_waveSpeed;
     
     // Layer 1: Fast, small ripples
     vec2 uv1 = uv * dudvTiling;
@@ -169,7 +169,7 @@ vec2 GetDuDvDistortion(vec2 uv) {
     float scaleFactor = max(vObjectScale / 100.0, 0.01);
     float dudvTiling = material_dudvTiling == 0.0 ? 60.0 * scaleFactor : material_dudvTiling;
     float dudvStrength = material_dudvStrength == 0.0 ? 0.02 : material_dudvStrength;
-    float moveSpeed = material_waveSpeed == 0.0 ? 0.75 : material_waveSpeed;
+    float moveSpeed = material_waveSpeed == 0.0 ? 0.05 : material_waveSpeed;
     float moveFactor = time * moveSpeed * 0.03;
     
     // Dual layer distortion

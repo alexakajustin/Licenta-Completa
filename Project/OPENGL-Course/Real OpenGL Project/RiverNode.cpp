@@ -639,14 +639,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	// 7. Sync Transform & Material
 	std::string waterName = "River_Water_" + std::to_string(id);
 	
-	// NUCLEAR CLEANUP: Explicitly find and delete ALL objects with this name to prevent "ghost" meshes
-	// from previous failed runs or duplicate nodes from causing Z-fighting/overlapping water.
-	while (scene.FindObject(waterName) != nullptr) {
-		scene.RemoveObject(waterName);
+	GameObject* waterObj = scene.FindObject(waterName);
+	if (!waterObj) {
+		waterObj = new GameObject(waterName);
+		scene.AddObject(waterObj);
 	}
-
-	GameObject* waterObj = new GameObject(waterName);
-	scene.AddObject(waterObj);
 
 	if (terrainObj)
 	{
@@ -655,8 +652,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		waterObj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
 	}
 
-	Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
-	if (waterMat) waterObj->SetMaterial(waterMat);
+	if (!waterObj->GetMaterial()) {
+		Material* waterMat = Material::LoadFromFile("Assets/Materials/Water.mat");
+		if (waterMat) waterObj->SetMaterial(waterMat);
+	}
 
 	if (!waterMesh.vertices.empty())
 	{

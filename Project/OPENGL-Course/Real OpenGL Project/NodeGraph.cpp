@@ -890,6 +890,11 @@ bool NodeGraph::IsObjectMeshModified(const std::string& name) const
 				}
 			}
 		}
+		else if (node->title == "River")
+		{
+			std::string waterName = "River_Water_" + std::to_string(node->id);
+			if (name == waterName) return true;
+		}
 	}
 	return false;
 }

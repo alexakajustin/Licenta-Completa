@@ -353,6 +353,16 @@ void Application::Run()
 		}
 
 		if (hasWater) {
+			for (auto* obj : sceneManager.GetObjects()) {
+				Material* mat = obj->GetMaterial();
+				if (mat && mat->GetShader() && (mat->GetShader()->GetVertexPath().find("water.vert") != std::string::npos)) {
+					glm::vec3 bmin, bmax;
+					obj->GetWorldBounds(bmin, bmax);
+					waterHeight = bmax.y; // The top of the procedural water mesh is our reflection plane
+					break;
+				}
+			}
+
 			glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
 			glViewport(0, 0, reflectionWidth, reflectionHeight);
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
