@@ -92,6 +92,7 @@ public:
 		outputs[0].data.textureLayers = inputs[0].data.textureLayers;
 
 		outputs[1].data.type = PinDataType::Mesh;
+		outputs[1].data.meshData = inputs[0].data.meshData;
 		outputs[1].data.sourceObjectName = inputs[0].data.sourceObjectName;
 		outputs[1].data.sourceObject = inputs[0].data.sourceObject;
 		outputs[1].data.sourceMaterial = inputs[0].data.sourceMaterial;

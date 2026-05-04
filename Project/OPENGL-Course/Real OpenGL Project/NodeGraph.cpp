@@ -778,6 +778,11 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							(unsigned int)uploadData.indices.size()
 						);
 
+						// Re-calculate bounds for correct frustum culling
+						glm::vec3 min, max;
+						uploadData.GetBounds(min, max);
+						target->GetMesh()->SetBounds(min, max);
+
 						// Always strictly apply the scale from the input transform
 						if (!meshInput.data.transforms.empty())
 							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
@@ -791,26 +796,27 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						// We must allocate a new unique mesh to avoid mutating other objects.
 						Mesh* newMesh = uploadData.ToMesh();
 						target->SetMesh(newMesh);
+						
+						// Re-calculate bounds for correct frustum culling
+						glm::vec3 min, max;
+						uploadData.GetBounds(min, max);
+						newMesh->SetBounds(min, max);
+						
 						if (!meshInput.data.transforms.empty())
 							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
 						target->SetCPUMeshData(uploadData);
 						printf("Branched new unique mesh for object: %s\n", target->GetName().c_str());
 					}
 
-					// Inherit visual properties from the pipeline ONLY if this target has none set yet.
-					// Existing material/texture/layers set via the Inspector are NEVER overwritten by the
-					// node pipeline — they are authoritative user data.
-					if (meshInput.data.sourceMaterial && !target->GetMaterial())
+					// Inherit visual properties from the pipeline.
+					// If the node pipeline provides a material, we apply it authoritatively.
+					if (meshInput.data.sourceMaterial)
 						target->SetMaterial(meshInput.data.sourceMaterial);
 
-					if (meshInput.data.sourceTexture && !target->GetTexture())
+					if (meshInput.data.sourceTexture)
 						target->SetTexture(meshInput.data.sourceTexture);
-					if (meshInput.data.sourceNormalMap && !target->GetNormalMap())
+					if (meshInput.data.sourceNormalMap)
 						target->SetNormalMap(meshInput.data.sourceNormalMap);
-
-					// IMPORTANT: Texture layers are NEVER copied from pin data to the target object.
-					// Layers are managed exclusively through the Inspector UI per-object.
-					// Copying them here caused terrain layers to bleed into scatter instances and vice versa.
 				}
 			}
 		}

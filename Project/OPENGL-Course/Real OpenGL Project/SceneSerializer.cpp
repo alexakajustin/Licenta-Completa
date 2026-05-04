@@ -541,6 +541,16 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					Material* mat = new Material();
 					mat->SetShader(scene.GetMainShader()); // Default
 
+					if (matJson.contains("shader_vert") && matJson.contains("shader_frag")) {
+						std::string vPath = matJson["shader_vert"].get<std::string>();
+						std::string fPath = matJson["shader_frag"].get<std::string>();
+						if (!vPath.empty() && !fPath.empty()) {
+							Shader* customShader = new Shader();
+							customShader->CreateFromFiles(vPath.c_str(), fPath.c_str());
+							mat->SetShader(customShader);
+						}
+					}
+
 					for (auto it = matJson.begin(); it != matJson.end(); ++it) {
 						if (it.value().is_number()) mat->SetFloat(it.key(), it.value().get<float>());
 						else if (it.value().is_string()) {
