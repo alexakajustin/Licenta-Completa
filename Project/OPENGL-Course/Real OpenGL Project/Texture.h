@@ -19,6 +19,9 @@ public:
 	bool LoadTextureA(); // texture with alpha
 	bool LoadTextureGrayscale(); // single-channel for displacement/height maps (4x less memory)
 	bool LoadTextureFromData(unsigned char* texData, int w, int h, int bitD);
+	
+	bool LoadTextureCPU();
+	bool LoadTextureGPU();
 	void UseTexture();
 	void UseNormalMap();
 	void UseTextureOnUnit(GLenum unit);
@@ -32,9 +35,9 @@ public:
 
 	~Texture();
 private:
-	// id on graphics card
 	GLuint textureID;
 	int width, height, bitDepth;
 	char* fileLocation;
+	unsigned char* rawData = nullptr;
 };
 

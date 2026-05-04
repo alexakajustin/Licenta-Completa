@@ -64,10 +64,10 @@ void Model::LoadModelGPU()
 
 	// Load textures (GPU side)
 	for (auto* tex : textureList) {
-		if (tex) tex->LoadTexture();
+		if (tex) tex->LoadTextureGPU();
 	}
 	for (auto* tex : normalMapList) {
-		if (tex) tex->LoadTexture();
+		if (tex) tex->LoadTextureGPU();
 	}
 
 	intermediateMeshes.clear();
@@ -177,7 +177,7 @@ void Model::LoadMaterials(const aiScene* scene)
 				}
 
 				textureList[i] = new Texture(texPath.c_str());
-				// LoadTexture() will be called in LoadModelGPU
+				textureList[i]->LoadTextureCPU();
 				
 				// Predetermine normal map path
 				size_t dotPos = texPath.rfind('.');
@@ -190,6 +190,7 @@ void Model::LoadMaterials(const aiScene* scene)
 					{
 						fclose(testFile);
 						normalMapList[i] = new Texture(normalPath.c_str());
+						normalMapList[i]->LoadTextureCPU();
 					}
 				}
 			}
@@ -197,6 +198,7 @@ void Model::LoadMaterials(const aiScene* scene)
 		if (!textureList[i])
 		{
 			textureList[i] = new Texture("Assets/Textures/plain.png");
+			textureList[i]->LoadTextureCPU();
 		}
 
 		Material* mat = new Material();

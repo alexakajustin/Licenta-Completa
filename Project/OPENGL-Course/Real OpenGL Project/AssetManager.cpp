@@ -1,7 +1,7 @@
 #include "AssetManager.h"
 #include <iostream>
 
-Model* AssetManager::GetModel(const std::string& path)
+Model* AssetManager::GetModel(const std::string& path, bool loadIfMissing)
 {
 	std::lock_guard<std::mutex> lock(cacheMutex);
 
@@ -9,6 +9,10 @@ Model* AssetManager::GetModel(const std::string& path)
 	if (it != modelCache.end())
 	{
 		return it->second;
+	}
+
+	if (!loadIfMissing) {
+		return nullptr;
 	}
 
 	// Create a new model and start loading it

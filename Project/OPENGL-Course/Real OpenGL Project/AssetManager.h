@@ -19,9 +19,14 @@ public:
 		return instance;
 	}
 
-	// Returns a pointer to a model. If it's not loaded, it starts loading it.
+	// Returns a pointer to a model. If it's not loaded, it starts loading it (if loadIfMissing is true).
 	// Note: The model might not be ready for rendering immediately.
-	Model* GetModel(const std::string& path);
+	Model* GetModel(const std::string& path, bool loadIfMissing = true);
+
+	int GetActiveTasksCount() {
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		return (int)activeTasks.size();
+	}
 
 	// Called every frame to handle deferred GPU uploads on the main thread
 	void Update();

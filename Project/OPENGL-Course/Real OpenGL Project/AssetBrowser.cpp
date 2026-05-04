@@ -420,12 +420,15 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				
 				// ONLY try to generate if we haven't successfully done so before
 				if (thumbnailGenerationMap.find(pStr) == thumbnailGenerationMap.end()) {
-					Model* model = AssetManager::Get().GetModel(pStr);
-					if (model->IsReady() && !model->IsFailed()) {
-						GenerateModelThumbnail(asset.path, asset.thumbnail);
-					}
-					else if (model->IsFailed()) {
-						thumbnailGenerationMap[pStr] = true; // Just mark as "done" so we don't keep checking failed models
+					bool canLoad = AssetManager::Get().GetActiveTasksCount() < 2;
+					Model* model = AssetManager::Get().GetModel(pStr, canLoad);
+					if (model) {
+						if (model->IsReady() && !model->IsFailed()) {
+							GenerateModelThumbnail(asset.path, asset.thumbnail);
+						}
+						else if (model->IsFailed()) {
+							thumbnailGenerationMap[pStr] = true; // Just mark as "done" so we don't keep checking failed models
+						}
 					}
 				}
 			}

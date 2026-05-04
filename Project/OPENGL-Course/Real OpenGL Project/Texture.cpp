@@ -6,7 +6,7 @@ Texture::Texture()
 }
 
 Texture::Texture(const char* fileLoc)
-	: textureID(0), width(0), height(0), bitDepth(0)
+	: textureID(0), width(0), height(0), bitDepth(0), rawData(nullptr)
 {
 	size_t len = strlen(fileLoc) + 1;
 	fileLocation = new char[len];
@@ -24,8 +24,7 @@ Texture::Texture(const Texture& other)
 	} else {
 		fileLocation = nullptr;
 	}
-	// Note: In this simple implementation, we don't handle reference counting for ID.
-	// However, preventing deletion in temporaries using Move helps.
+	rawData = nullptr;
 }
 
 // Copy assignment
@@ -46,16 +45,18 @@ Texture& Texture::operator=(const Texture& other)
 		} else {
 			fileLocation = nullptr;
 		}
+		rawData = nullptr;
 	}
 	return *this;
 }
 
 // Move constructor
 Texture::Texture(Texture&& other) noexcept
-	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation)
+	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation), rawData(other.rawData)
 {
 	other.textureID = 0; // Prevent deletion in other's destructor
 	other.fileLocation = nullptr;
+	other.rawData = nullptr;
 }
 
 // Move assignment
@@ -69,27 +70,38 @@ Texture& Texture::operator=(Texture&& other) noexcept
 		height = other.height;
 		bitDepth = other.bitDepth;
 		fileLocation = other.fileLocation;
+		rawData = other.rawData;
 		
 		other.textureID = 0;
 		other.fileLocation = nullptr;
+		other.rawData = nullptr;
 	}
 	return *this;
 }
 
-bool Texture::LoadTexture()
+bool Texture::LoadTextureCPU()
 {
-	// Force 4 channels (RGBA) for consistency and ease of use in shaders
-	unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
-
-	printf("Image %s loaded - original channels: %d (forced to 4)\n", fileLocation, bitDepth);
-
-	if (!texData)
-	{
+	rawData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
+	if (!rawData) {
 		printf("FAILED TO FIND %s!\n", fileLocation);
 		return false;
 	}
+	bitDepth = 4;
+	return true;
+}
 
-	return LoadTextureFromData(texData, width, height, 4);
+bool Texture::LoadTextureGPU()
+{
+	if (!rawData) return false;
+	bool result = LoadTextureFromData(rawData, width, height, bitDepth);
+	rawData = nullptr; // LoadTextureFromData calls stbi_image_free
+	return result;
+}
+
+bool Texture::LoadTexture()
+{
+	if (!LoadTextureCPU()) return false;
+	return LoadTextureGPU();
 }
 
 bool Texture::LoadTextureFromData(unsigned char* texData, int w, int h, int bitD)
@@ -136,6 +148,10 @@ void Texture::ClearTexture()
 	if (fileLocation) {
 		delete[] fileLocation;
 		fileLocation = nullptr;
+	}
+	if (rawData) {
+		stbi_image_free(rawData);
+		rawData = nullptr;
 	}
 }
 
