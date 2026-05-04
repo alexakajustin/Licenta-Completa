@@ -745,21 +745,6 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			{
 				// Clear the scene
 				nodeGraph.Clear();
-
-			// Create ground plane if none exists
-				if (!scene.FindObject("City_Ground")) {
-					scene.CreateGameObject("Plane", glm::vec3(0.0f));
-					// Rename the last-added Plane to City_Ground
-					auto& objs = scene.GetObjects();
-					for (int i = (int)objs.size() - 1; i >= 0; i--) {
-						if (objs[i]->GetName().find("Plane") != std::string::npos) {
-							objs[i]->SetName("City_Ground");
-							objs[i]->GetTransform().SetScale(glm::vec3(120.0f, 1.0f, 120.0f));
-							break;
-						}
-					}
-				}
-
 				// Create nodes
 				SceneInputNode* input = new SceneInputNode(nodeGraph);
 				CityGridNode* city = new CityGridNode(nodeGraph);
