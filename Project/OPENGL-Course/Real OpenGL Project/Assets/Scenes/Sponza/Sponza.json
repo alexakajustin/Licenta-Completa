@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.990949809551239,
-            0.056692786514759064,
-            -0.12167342752218246
+            0.9634881615638733,
+            -0.13485091924667358,
+            -0.2313130497932434
         ],
-        "pitch": 3.25,
+        "pitch": -7.75,
         "position": [
-            -4.443409442901611,
-            0.9855114221572876,
-            -9.396257400512695
+            -0.7472409605979919,
+            0.5689648985862732,
+            -3.73820161819458
         ],
-        "yaw": 353.0
+        "yaw": -13.5
     },
     "instancedGroups": [],
     "lights": [
@@ -30,25 +30,6 @@
             ],
             "name": "Sun",
             "type": "Directional"
-        },
-        {
-            "ambientIntensity": 0.10000000149011612,
-            "color": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "constant": 1.0,
-            "diffuseIntensity": 0.800000011920929,
-            "exponent": 0.009999999776482582,
-            "linear": 0.019999999552965164,
-            "name": "Point Light 1",
-            "position": [
-                -0.2046184539794922,
-                2.2799248695373535,
-                -9.348760604858398
-            ],
-            "type": "Point"
         }
     ],
     "nodeGraph": {
@@ -67,9 +48,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -0.8799982070922852,
-                    -2.2083606719970703,
-                    -9.713327407836914
+                    0.7147656679153442,
+                    -1.7044812440872192,
+                    -9.82770824432373
                 ],
                 "rotation": [
                     0.0,
@@ -97,6 +78,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -116,11 +99,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_floor",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_0",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -153,6 +152,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -172,11 +173,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_03",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_1",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -209,6 +226,8 @@
                     0.6588240265846252,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -228,11 +247,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object32",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "name": "Mesh_2",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -265,6 +300,7 @@
                     0.784313976764679,
                     1.0
                 ],
+                "material.diffuseMap": "Assets/Textures/plain.png",
                 "material.offset": [
                     0.0,
                     0.0
@@ -284,11 +320,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object31",
+            "name": "Mesh_3",
             "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets/Textures/plain.png",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -321,6 +373,8 @@
                     0.6705880165100098,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -340,11 +394,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "pillar_cor",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+            "name": "Mesh_4",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -377,6 +447,8 @@
                     0.6705880165100098,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -396,11 +468,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "pillar_flo",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+            "name": "Mesh_5",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -433,6 +521,8 @@
                     0.749019980430603,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -452,11 +542,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object28",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+            "name": "Mesh_6",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -489,6 +595,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -508,11 +616,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object27",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+            "name": "Mesh_7",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -545,6 +669,8 @@
                     0.6705880165100098,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -564,11 +690,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "pillar_qua",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+            "name": "Mesh_8",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -601,6 +743,7 @@
                     0.7686280012130737,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -620,11 +763,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "pillar_rou",
+            "name": "Mesh_9",
             "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -657,6 +816,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -676,11 +837,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_floo0",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_10",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -713,6 +890,8 @@
                     0.6588240265846252,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -732,11 +911,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object23",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "name": "Mesh_11",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -769,6 +964,8 @@
                     0.7372549772262573,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -788,11 +985,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object21",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
+            "name": "Mesh_12",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -825,6 +1038,8 @@
                     0.6705880165100098,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -844,11 +1059,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "puillar_fl",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+            "name": "Mesh_13",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_STUB-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_STUB.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -881,6 +1112,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -900,11 +1133,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object19",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+            "name": "Mesh_14",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -937,6 +1186,8 @@
                     0.49019598960876465,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\RELJEF.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\reljef-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -956,11 +1207,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "relief",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\reljef-bump.jpg",
+            "name": "Mesh_15",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\RELJEF.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\reljef-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\RELJEF.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -993,6 +1260,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1012,11 +1281,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_small",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_16",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1049,6 +1334,7 @@
                     0.7686280012130737,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1068,11 +1354,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "holes",
+            "name": "Mesh_17",
             "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\X01_ST.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1105,6 +1407,8 @@
                     0.5607839822769165,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1124,11 +1428,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "outside01",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+            "name": "Mesh_18",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1161,6 +1481,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1180,11 +1502,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_long",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_19",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1217,6 +1555,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1236,11 +1576,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "parapet",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_20",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1273,6 +1629,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1292,11 +1650,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "round_hole",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_21",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1329,6 +1703,8 @@
                     0.7372549772262573,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1348,11 +1724,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "ceiling",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
+            "name": "Mesh_22",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-stup.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN-stup.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1385,6 +1777,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1404,11 +1798,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_01",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_23",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1441,6 +1851,8 @@
                     0.6588240265846252,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1460,11 +1872,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object6",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "name": "Mesh_24",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1497,6 +1925,8 @@
                     0.6588240265846252,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1516,11 +1946,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object5",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "name": "Mesh_25",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\00_SKAP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1553,6 +1999,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1572,11 +2020,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object4",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+            "name": "Mesh_26",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_St_kp-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_ST_KP.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1609,6 +2073,8 @@
                     0.749019980430603,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1628,11 +2094,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "object3",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+            "name": "Mesh_27",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\01_S_BA.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1665,6 +2147,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1684,11 +2168,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_02",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_28",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1721,6 +2221,8 @@
                     0.6745100021362305,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1740,11 +2242,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "arcs_04",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+            "name": "Mesh_29",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\sp_luk-bump.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\SP_LUK.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1777,6 +2295,8 @@
                     0.5607839822769165,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1796,11 +2316,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "walls",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+            "name": "Mesh_30",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1833,6 +2369,8 @@
                     1.0,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1852,11 +2390,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "sp_00_prozor",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+            "name": "Mesh_31",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1889,6 +2443,8 @@
                     0.784313976764679,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1908,11 +2464,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "sp_00_vrata_krug",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+            "name": "Mesh_32",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -1945,6 +2517,8 @@
                     0.5607839822769165,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1964,11 +2538,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "sp_00_zid",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+            "name": "Mesh_33",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -2001,6 +2591,8 @@
                     0.5607839822769165,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2020,11 +2612,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "sp_00_pod",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+            "name": "Mesh_34",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\KAMEN-bump.jpg",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\KAMEN.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -2057,6 +2665,8 @@
                     1.0,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2076,11 +2686,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "windows",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+            "name": "Mesh_35",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\PROZOR1.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -2113,6 +2739,8 @@
                     0.784313976764679,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2132,11 +2760,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "doors",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
+            "name": "Mesh_36",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KO.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,
@@ -2169,6 +2813,8 @@
                     0.784313976764679,
                     1.0
                 ],
+                "material.diffuseMap": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                "material.normalMap": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2188,11 +2834,27 @@
                 ]
             },
             "modelPath": "",
-            "name": "sp_00_vrata_krug",
-            "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+            "name": "Mesh_37",
+            "normalMapPath": "",
             "parent": "sponza (Root)",
             "primitiveType": "",
-            "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\Sponza\\VRATA_KR.JPG",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
             "transform": {
                 "position": [
                     0.0,

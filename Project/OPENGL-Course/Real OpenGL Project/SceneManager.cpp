@@ -1248,15 +1248,23 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 			child->SetMesh(model->GetMesh(i));
 			
 			unsigned int matIdx = model->GetMaterialIndex((unsigned int)i);
-			child->SetTexture(model->GetTexture(matIdx));
-			child->SetNormalMap(model->GetNormalMap(matIdx));
-			
-			// Logic: Set the material to a default if not present
 			Material* matInst = model->GetMaterialInstance(matIdx);
 			if (matInst) {
 				child->SetMaterial(matInst);
 			} else if (!child->GetMaterial()) {
 				child->SetMaterial(new Material());
+			}
+
+			// UNIFIED FIX: Initialize the first Texture Layer to match LoadScene behavior
+			Texture* diffuse = model->GetTexture(matIdx);
+			Texture* normal = model->GetNormalMap(matIdx);
+			if (diffuse || normal) {
+				TextureLayer layer;
+				layer.texture = diffuse;
+				layer.normalMap = normal;
+				layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
+				layer.normalMapPath = normal ? normal->GetFileLocation() : "";
+				child->AddTextureLayer(layer);
 			}
 
 			// Logical Auto-Configuration: Detect Foliage/Leaves
@@ -1300,13 +1308,23 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		newObj->SetModelSourcePath(path.string());
 		
 		unsigned int matIdx = model->GetMaterialIndex(0);
-		newObj->SetTexture(model->GetTexture(matIdx));
-		newObj->SetNormalMap(model->GetNormalMap(matIdx));
 		Material* matInst = model->GetMaterialInstance(matIdx);
 		if (matInst) {
 			newObj->SetMaterial(matInst);
 		} else if (!newObj->GetMaterial()) {
 			newObj->SetMaterial(new Material());
+		}
+
+		// UNIFIED FIX: Initialize the first Texture Layer
+		Texture* diffuse = model->GetTexture(matIdx);
+		Texture* normal = model->GetNormalMap(matIdx);
+		if (diffuse || normal) {
+			TextureLayer layer;
+			layer.texture = diffuse;
+			layer.normalMap = normal;
+			layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
+			layer.normalMapPath = normal ? normal->GetFileLocation() : "";
+			newObj->AddTextureLayer(layer);
 		}
 
 		objects.push_back(newObj);

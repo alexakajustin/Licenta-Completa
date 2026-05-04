@@ -414,39 +414,16 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 			obj->SetPrimitiveType(primType);
 
-			// Recreate model from path (through AssetManager for caching)
 			if (!modelPath.empty())
 			{
 				Model* model = AssetManager::Get().GetModel(modelPath);
 				
-				// IMPROVED MODULAR LOGIC: Check if this object is a specific mesh within the model
-				bool meshFound = false;
-				if (model && model->GetMeshCount() > 1) {
-					std::string targetName = obj->GetName();
-					// Strip suffixes like " (Sponza)"
-					size_t paren = targetName.find(" (");
-					if (paren != std::string::npos) targetName = targetName.substr(0, paren);
-
-					for (size_t m = 0; m < model->GetMeshCount(); m++) {
-						if (model->GetMeshNames()[m] == targetName) {
-							obj->SetMesh(model->GetMesh(m));
-							obj->SetModelSourcePath(modelPath);
-							
-							// Auto-link texture from model material if not explicitly set
-							unsigned int matIdx = model->GetMaterialIndex((unsigned int)m);
-							obj->SetTexture(model->GetTexture(matIdx));
-							obj->SetNormalMap(model->GetNormalMap(matIdx));
-							meshFound = true;
-							break;
-						}
-					}
-				}
-
-				if (!meshFound) {
-					// Fallback: Assign the whole model (e.g., Sponza as a single root)
+				// CRITICAL: If the model has multiple meshes (like Sponza), we DON'T assign it to the root.
+				// This prevents rendering the whole model twice and allows clicking children.
+				if (model && model->GetMeshCount() == 1) {
 					obj->SetModel(model);
-					obj->SetModelSourcePath(modelPath);
 				}
+				obj->SetModelSourcePath(modelPath);
 			}
 
 			// Load custom binary baked mesh if the old graph was cleared
@@ -667,19 +644,27 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 							if (suffixPos != std::string::npos) targetName = targetName.substr(0, suffixPos);
 
 							for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
-								if (parentModel->GetMeshNames()[m] == targetName) {
+								bool nameMatch = (parentModel->GetMeshNames()[m] == targetName);
+								bool indexMatch = (!nameMatch && targetName == ("Mesh_" + std::to_string(m)));
+
+								if (nameMatch || indexMatch) {
 									objects[i]->SetMesh(parentModel->GetMesh(m));
 									
-									// Re-link texture and normal map if they were not explicitly set/loaded from JSON
-									if (!objects[i]->GetTexture()) {
+									// UNIFIED FIX: If the child has no layers, pull them from the model's material
+									if (objects[i]->GetTextureLayers().empty()) {
 										unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)m);
-										objects[i]->SetTexture(parentModel->GetTexture(matIdx));
+										Texture* diffuse = parentModel->GetTexture(matIdx);
+										Texture* normal = parentModel->GetNormalMap(matIdx);
+										
+										if (diffuse || normal) {
+											TextureLayer layer;
+											layer.texture = diffuse;
+											layer.normalMap = normal;
+											layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
+											layer.normalMapPath = normal ? normal->GetFileLocation() : "";
+											objects[i]->AddTextureLayer(layer);
+										}
 									}
-									if (!objects[i]->GetNormalMap()) {
-										unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)m);
-										objects[i]->SetNormalMap(parentModel->GetNormalMap(matIdx));
-									}
-									
 									break;
 								}
 							}
@@ -695,6 +680,9 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	// ========== Load Lights ==========
 	if (j.contains("lights"))
 	{
+		pointLightCount = 0;
+		spotLightCount = 0;
+
 		for (auto& lightJson : j["lights"])
 		{
 			std::string name = lightJson.value("name", "Light");
