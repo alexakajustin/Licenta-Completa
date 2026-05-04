@@ -490,135 +490,109 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		t.join();
 	}
 	
-	if (progress) progress(80.0f, "Spawning Objects...");
+	if (progress) progress(80.0f, "Merging batches...");
 
-	// Phase 2: Synchronous OpenGL Allocation and GameObject Spawning
+	// Phase 2: Merge all meshes by texture into batched mega-meshes
+	// This reduces ~1500 draw calls to ~9 (one per unique texture).
+	std::map<int, MeshData> batchedMeshes; // texKey -> merged MeshData
+
 	for (size_t i = 0; i < plots.size(); i++) {
 		BuildingGenResult& res = results[i];
 		if (!res.valid) continue;
 
-		std::string objName = prefix + std::to_string(i);
-		GameObject* obj = scene.FindObject(objName);
-		if (!obj) {
-			obj = new GameObject(objName);
-			scene.AddObject(obj);
+		// Walls — keyed by wall texture index (0..NUM_WALL_TEXTURES-1)
+		batchedMeshes[res.texIdx].Append(res.buildingMesh);
+
+		// Roofs — keyed by roofTexIdx (100 = shingles, 101 = concrete)
+		batchedMeshes[res.roofTexIdx].Append(res.roofMesh);
+
+		// Fences — keyed as 102
+		if (res.hasFenceAndParking && res.fenceMesh.GetVertexCount() > 0) {
+			batchedMeshes[102].Append(res.fenceMesh);
 		}
 
-		obj->GetTransform().SetPosition(glm::vec3(0.0f));
-		obj->GetTransform().SetRotation(glm::vec3(0.0f));
-		obj->GetTransform().SetScale(glm::vec3(1.0f));
-		obj->SetParent(cityRoot);
-		obj->SetMesh(res.buildingMesh.ToMesh());
-		obj->SetCPUMeshData(res.buildingMesh);
-
-		// Roof
-		std::string roofName = objName + "_Roof";
-		GameObject* roofObj = scene.FindObject(roofName);
-		if (!roofObj) {
-			roofObj = new GameObject(roofName);
-			scene.AddObject(roofObj);
-		}
-		roofObj->GetTransform().SetPosition(glm::vec3(0.0f));
-		roofObj->GetTransform().SetRotation(glm::vec3(0.0f));
-		roofObj->GetTransform().SetScale(glm::vec3(1.0f));
-		roofObj->SetParent(obj);
-		roofObj->SetMesh(res.roofMesh.ToMesh());
-		roofObj->SetCPUMeshData(res.roofMesh);
-
-		// Textures
-		while (obj->GetTextureLayers().size() > 0) obj->RemoveTextureLayer(0);
-		while (roofObj->GetTextureLayers().size() > 0) roofObj->RemoveTextureLayer(0);
-
-		if (texCache.find(res.texIdx) == texCache.end()) {
-			texCache[res.texIdx] = new Texture(WALL_TEXTURES[res.texIdx]);
-			texCache[res.texIdx]->LoadTexture();
-		}
-		TextureLayer wallLayer;
-		wallLayer.texturePath = WALL_TEXTURES[res.texIdx];
-		wallLayer.texture = texCache[res.texIdx];
-		wallLayer.blendMode = LayerBlendMode::Normal;
-		wallLayer.opacity = 1.0f;
-		wallLayer.tiling = 0.1f;
-		obj->AddTextureLayer(wallLayer);
-
-		const char* roofTexPath = res.isPeaked ? "Assets/Textures/buildings/roof_shingles.jpg" : "Assets/Textures/buildings/concrete.jpg";
-		if (texCache.find(res.roofTexIdx) == texCache.end()) {
-			texCache[res.roofTexIdx] = new Texture(roofTexPath);
-			texCache[res.roofTexIdx]->LoadTexture();
-		}
-		TextureLayer roofLayer;
-		roofLayer.texturePath = roofTexPath;
-		roofLayer.texture = texCache[res.roofTexIdx];
-		roofLayer.blendMode = LayerBlendMode::Normal;
-		roofLayer.opacity = 1.0f;
-		roofLayer.tiling = 0.1f;
-		roofObj->AddTextureLayer(roofLayer);
-
-		// Fences
-		std::string fenceName = objName + "_Fence";
-		GameObject* fenceObj = scene.FindObject(fenceName);
-		if (res.hasFenceAndParking) {
-			if (!fenceObj) {
-				fenceObj = new GameObject(fenceName);
-				scene.AddObject(fenceObj);
-			}
-			fenceObj->GetTransform().SetPosition(glm::vec3(0.0f));
-			fenceObj->GetTransform().SetScale(glm::vec3(1.0f));
-			fenceObj->SetParent(obj);
-			fenceObj->SetMesh(res.fenceMesh.ToMesh());
-			fenceObj->SetCPUMeshData(res.fenceMesh);
-
-			while (fenceObj->GetTextureLayers().size() > 0) fenceObj->RemoveTextureLayer(0);
-			if (texCache.find(102) == texCache.end()) {
-				texCache[102] = new Texture("Assets/Textures/buildings/fence.jpg");
-				texCache[102]->LoadTexture();
-			}
-			TextureLayer fenceLayer;
-			fenceLayer.texturePath = "Assets/Textures/buildings/fence.jpg";
-			fenceLayer.texture = texCache[102];
-			fenceLayer.blendMode = LayerBlendMode::Normal;
-			fenceLayer.opacity = 1.0f;
-			fenceLayer.tiling = 0.1f;
-			fenceObj->AddTextureLayer(fenceLayer);
-		} else if (fenceObj) {
-			fenceObj->SetMesh(nullptr);
-		}
-
-		// Parking
-		std::string parkingName = objName + "_Parking";
-		GameObject* parkingObj = scene.FindObject(parkingName);
+		// Parking — keyed as 103 (separate from roof concrete so tiling can differ)
 		if (res.hasFenceAndParking && res.parkingMesh.GetVertexCount() > 0) {
-			if (!parkingObj) {
-				parkingObj = new GameObject(parkingName);
-				scene.AddObject(parkingObj);
-			}
-			parkingObj->GetTransform().SetPosition(glm::vec3(0.0f));
-			parkingObj->GetTransform().SetScale(glm::vec3(1.0f));
-			parkingObj->SetParent(obj);
-			parkingObj->SetMesh(res.parkingMesh.ToMesh());
-			parkingObj->SetCPUMeshData(res.parkingMesh);
-
-			while (parkingObj->GetTextureLayers().size() > 0) parkingObj->RemoveTextureLayer(0);
-			if (texCache.find(101) == texCache.end()) {
-				texCache[101] = new Texture("Assets/Textures/buildings/concrete.jpg");
-				texCache[101]->LoadTexture();
-			}
-			TextureLayer parkingLayer;
-			parkingLayer.texturePath = "Assets/Textures/buildings/concrete.jpg";
-			parkingLayer.texture = texCache[101];
-			parkingLayer.blendMode = LayerBlendMode::Normal;
-			parkingLayer.opacity = 1.0f;
-			parkingLayer.tiling = 0.1f;
-			parkingObj->AddTextureLayer(parkingLayer);
-		} else if (parkingObj) {
-			parkingObj->SetMesh(nullptr);
+			batchedMeshes[103].Append(res.parkingMesh);
 		}
 
 		builtCount++;
-		if (progress && i % 100 == 0)
-			progress(80.0f + 20.0f * (float)i / (float)plots.size(), "Spawned " + std::to_string(builtCount) + " buildings");
+	}
+
+	// Free per-building data now that it's merged
+	results.clear();
+	results.shrink_to_fit();
+
+	if (progress) progress(90.0f, "Uploading to GPU...");
+
+	// Clean up old children from previous executions
+	{
+		std::vector<std::string> oldChildren;
+		for (auto* child : cityRoot->GetChildren()) {
+			oldChildren.push_back(child->GetName());
+		}
+		for (auto& name : oldChildren) {
+			scene.RemoveObject(name);
+		}
+	}
+
+	// Texture path lookup for batch keys
+	auto getTexPathForKey = [](int key) -> const char* {
+		if (key >= 0 && key < NUM_WALL_TEXTURES) return WALL_TEXTURES[key];
+		if (key == 100) return "Assets/Textures/buildings/roof_shingles.jpg";
+		if (key == 101) return "Assets/Textures/buildings/concrete.jpg";
+		if (key == 102) return "Assets/Textures/buildings/fence.jpg";
+		if (key == 103) return "Assets/Textures/buildings/concrete.jpg";
+		return "Assets/Textures/buildings/concrete.jpg";
+	};
+
+	auto getBatchName = [](int key) -> std::string {
+		if (key >= 0 && key < NUM_WALL_TEXTURES) return "Walls_Tex" + std::to_string(key);
+		if (key == 100) return "Roofs_Shingles";
+		if (key == 101) return "Roofs_Flat";
+		if (key == 102) return "Fences";
+		if (key == 103) return "Driveways";
+		return "Batch_" + std::to_string(key);
+	};
+
+	int batchCount = 0;
+	for (auto& [texKey, mergedMesh] : batchedMeshes) {
+		if (mergedMesh.GetVertexCount() == 0) continue;
+
+		std::string batchObjName = prefix + getBatchName(texKey);
+		GameObject* batchObj = scene.FindObject(batchObjName);
+		if (!batchObj) {
+			batchObj = new GameObject(batchObjName);
+			scene.AddObject(batchObj);
+		}
+
+		batchObj->GetTransform().SetPosition(glm::vec3(0.0f));
+		batchObj->GetTransform().SetRotation(glm::vec3(0.0f));
+		batchObj->GetTransform().SetScale(glm::vec3(1.0f));
+		batchObj->SetParent(cityRoot);
+		batchObj->SetMesh(mergedMesh.ToMesh());
+		batchObj->SetCPUMeshData(mergedMesh);
+
+		// Texture
+		while (batchObj->GetTextureLayers().size() > 0) batchObj->RemoveTextureLayer(0);
+
+		const char* texPath = getTexPathForKey(texKey);
+		if (texCache.find(texKey) == texCache.end()) {
+			texCache[texKey] = new Texture(texPath);
+			texCache[texKey]->LoadTexture();
+		}
+
+		TextureLayer layer;
+		layer.texturePath = texPath;
+		layer.texture = texCache[texKey];
+		layer.blendMode = LayerBlendMode::Normal;
+		layer.opacity = 1.0f;
+		layer.tiling = 0.1f;
+		batchObj->AddTextureLayer(layer);
+
+		batchCount++;
 	}
 
 	if (progress) progress(100.0f, "Buildings complete!");
-	printf("[BuildingGenNode] Generated %d multi-part buildings across %d threads.\n", builtCount, numThreads);
+	printf("[BuildingGenNode] Generated %d buildings -> %d batched draw calls across %d threads.\n", builtCount, batchCount, numThreads);
 }
