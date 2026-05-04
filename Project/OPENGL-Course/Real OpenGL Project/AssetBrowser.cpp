@@ -15,6 +15,8 @@
 #include <iostream>
 #include <new>
 
+#include "stb_image.h"
+
 AssetBrowser::AssetBrowser()
 	: currentAssetPath("Assets")
 {
@@ -329,15 +331,17 @@ void AssetBrowser::RefreshAssetList()
 					info.thumbnail = assetTextureCache[pStr];
 				}
 				else {
-					Texture* tex = new Texture(pStr.data());
-					if (tex->LoadTexture()) {
-						assetTextureCache[pStr] = tex;
-						info.thumbnail = tex;
-					}
-					else {
-						delete tex;
-						info.thumbnail = nullptr;
-					}
+					Texture* tex = new Texture("Assets/Textures/plain.png");
+					tex->LoadTextureA();
+					assetTextureCache[pStr] = tex;
+					info.thumbnail = tex;
+
+					asyncTextureTasks.push_back(std::async(std::launch::async, [pStr]() {
+						TextureLoadData* data = new TextureLoadData();
+						data->path = pStr;
+						data->data = stbi_load(pStr.c_str(), &data->width, &data->height, &data->bitDepth, 4);
+						return data;
+					}));
 				}
 			}
 			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf") {
@@ -424,6 +428,39 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 						thumbnailGenerationMap[pStr] = true; // Just mark as "done" so we don't keep checking failed models
 					}
 				}
+			}
+		}
+
+		// Process async textures
+		for (auto it = asyncTextureTasks.begin(); it != asyncTextureTasks.end(); ) {
+			if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+				TextureLoadData* res = it->get();
+				if (res->data) {
+					Texture* tex = new Texture(res->path.c_str());
+					tex->LoadTextureFromData(res->data, res->width, res->height, 4);
+					
+					// Replace placeholder
+					if (assetTextureCache.count(res->path)) {
+						Texture* old = assetTextureCache[res->path];
+						if (old) {
+							old->ClearTexture();
+							delete old;
+						}
+					}
+					assetTextureCache[res->path] = tex;
+					
+					// Update currentAssets pointing to it
+					for (auto& a : currentAssets) {
+						if (a.path.string() == res->path) {
+							a.thumbnail = tex;
+							break;
+						}
+					}
+				}
+				delete res;
+				it = asyncTextureTasks.erase(it);
+			} else {
+				++it;
 			}
 		}
 

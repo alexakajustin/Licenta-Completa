@@ -4,6 +4,15 @@
 #include <string>
 #include <map>
 #include <filesystem>
+#include <future>
+
+struct TextureLoadData {
+	unsigned char* data;
+	int width;
+	int height;
+	int bitDepth;
+	std::string path;
+};
 
 #include <GL/glew.h>
 #include "imgui.h"
@@ -53,6 +62,8 @@ private:
 	std::vector<AssetInfo> currentAssets;
 	std::map<std::string, Texture*> assetTextureCache;
 	bool isOpen = true;
+
+	std::vector<std::future<TextureLoadData*>> asyncTextureTasks;
 
 	// Icons
 	Texture* folderIconSlot = nullptr;

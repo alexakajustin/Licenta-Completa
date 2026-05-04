@@ -18,6 +18,7 @@ public:
 	bool LoadTexture();
 	bool LoadTextureA(); // texture with alpha
 	bool LoadTextureGrayscale(); // single-channel for displacement/height maps (4x less memory)
+	bool LoadTextureFromData(unsigned char* texData, int w, int h, int bitD);
 	void UseTexture();
 	void UseNormalMap();
 	void UseTextureOnUnit(GLenum unit);
