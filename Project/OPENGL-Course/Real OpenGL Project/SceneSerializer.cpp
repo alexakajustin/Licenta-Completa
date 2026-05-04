@@ -620,6 +620,12 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					layer.blendMode = (LayerBlendMode)layerJson.value("blendMode", 0);
 					layer.opacity = layerJson.value("opacity", 1.0f);
 					layer.tiling = layerJson.value("tiling", 1.0f);
+					layer.heightMin = layerJson.value("heightMin", 0.0f);
+					layer.heightMax = layerJson.value("heightMax", 100.0f);
+					layer.slopeMin = layerJson.value("slopeMin", 0.0f);
+					layer.slopeMax = layerJson.value("slopeMax", 0.5f);
+					layer.invert = layerJson.value("invert", false);
+					layer.displacementScale = layerJson.value("displacementScale", 0.05f);
 					obj->AddTextureLayer(layer);
 				}
 			}

@@ -560,9 +560,22 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								}
 							}
 
-							if (level == 0) groupsByName[baseName].lod0Idx = m;
-							else if (level == 1) groupsByName[baseName].lod1Idx = m;
-							else if (level == 2) groupsByName[baseName].lod2Idx = m;
+							if (level == 0) {
+								std::string originalBase = baseName;
+								int dupCount = 1;
+								while (groupsByName.find(baseName) != groupsByName.end() && groupsByName[baseName].lod0Idx != -1) {
+									baseName = originalBase + "_" + std::to_string(dupCount++);
+								}
+								groupsByName[baseName].lod0Idx = m;
+							}
+							else if (level == 1) {
+								// Try to match the most recent lod0 if there are duplicates, or just use the baseName
+								// In most LOD models, the names are properly distinct per part.
+								groupsByName[baseName].lod1Idx = m;
+							}
+							else if (level == 2) {
+								groupsByName[baseName].lod2Idx = m;
+							}
 						}
 
 						for (auto const& [baseName, mg] : groupsByName) {
