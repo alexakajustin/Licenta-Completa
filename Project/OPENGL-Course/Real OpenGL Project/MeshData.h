@@ -505,37 +505,16 @@ private:
 					float px = minX + (gx + 0.5f) * cellSize;
 					float pz = minZ + (gz + 0.5f) * cellSize;
 
-					// Barycentric test (with small epsilon for edge coverage)
+					// Barycentric test
 					float u = ((b2.y - c2.y) * (px - c2.x) + (c2.x - b2.x) * (pz - c2.y)) * invDenom;
 					float v = ((c2.y - a2.y) * (px - c2.x) + (a2.x - c2.x) * (pz - c2.y)) * invDenom;
 					float w = 1.0f - u - v;
 
-					if (u >= -0.05f && v >= -0.05f && w >= -0.05f) {
+					if (u >= -0.01f && v >= -0.01f && w >= -0.01f) {
 						float h = u * v0.y + v * v1.y + w * v2.y;
 						int idx = gz * resX + gx;
 						if (h > (*cache)[idx]) (*cache)[idx] = h;
 					}
-				}
-			}
-		}
-
-		// Flood-fill pass: expand filled cells into empty neighbors
-		// This handles sparse meshes (procedural lakes) where gaps exist between triangles
-		for (int pass = 0; pass < 3; pass++) {
-			std::vector<float> prev = *cache;
-			for (int gz = 0; gz < resZ; gz++) {
-				for (int gx = 0; gx < resX; gx++) {
-					int idx = gz * resX + gx;
-					if (prev[idx] > -1e9f) continue; // Already filled
-
-					// Check 4-connected neighbors for a filled cell
-					float bestH = -1e10f;
-					if (gx > 0 && prev[idx - 1] > -1e9f) bestH = std::max(bestH, prev[idx - 1]);
-					if (gx < resX - 1 && prev[idx + 1] > -1e9f) bestH = std::max(bestH, prev[idx + 1]);
-					if (gz > 0 && prev[idx - resX] > -1e9f) bestH = std::max(bestH, prev[idx - resX]);
-					if (gz < resZ - 1 && prev[idx + resX] > -1e9f) bestH = std::max(bestH, prev[idx + resX]);
-
-					if (bestH > -1e9f) (*cache)[idx] = bestH;
 				}
 			}
 		}
