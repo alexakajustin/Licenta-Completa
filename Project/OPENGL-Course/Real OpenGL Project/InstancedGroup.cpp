@@ -297,7 +297,7 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	}
 
 	// Occlusion Culling (Hi-Z) Uniforms
-	if (hizTexture > 0) {
+	if (hizTexture > 0 && gs && gs->enableOcclusionCulling) {
 		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
 		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
 		

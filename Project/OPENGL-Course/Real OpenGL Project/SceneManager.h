@@ -133,6 +133,9 @@ public:
 	// Keep for asset browser backward compat
 	void RefreshAssetList() {} // No-op, AssetBrowser handles this now
 
+	// Occlusion Culling Access
+	GLuint GetHiZTexture() const { return hizTexture; }
+
 private:
 	std::vector<GameObject*> objects;
 	std::vector<LightObject*> lights;

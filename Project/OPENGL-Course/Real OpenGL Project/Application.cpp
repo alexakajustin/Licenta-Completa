@@ -611,7 +611,7 @@ void Application::Run()
 		assetBrowser.Render(sceneManager, uiState);
 		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
-		editorUI.RenderGraphicsSettings();
+		editorUI.RenderGraphicsSettings(&sceneManager);
 
 
 		// Editor picking & gizmo (REMOVED: moved up)

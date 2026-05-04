@@ -669,7 +669,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// ================================================================
 	// Generate Hi-Z map for Occlusion Culling (zero-latency from Opaque pass)
 	// ================================================================
-	if (!overrideShader && sceneDepthTexture > 0) {
+	if (!overrideShader && sceneDepthTexture > 0 && gs && gs->enableOcclusionCulling) {
 		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
 	}
 
@@ -779,7 +779,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				*targetRenderShader,
 				projection, view, cameraPos,
 				gs ? gs : graphicsSettings,
-				false
+				false,
+				hizTexture,
+				(int)screenWidth, (int)screenHeight
 			);
 		}
 
@@ -2355,6 +2357,12 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		// Set swizzle so it renders as grayscale in ImGui debug view instead of pure red
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_RED);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ONE);
 
 		// Allocate immutable storage for the mipmap chain
 		glTexStorage2D(GL_TEXTURE_2D, hizMipCount, GL_R32F, screenWidth, screenHeight);

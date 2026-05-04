@@ -139,50 +139,77 @@ void main()
             // We use a simplified conservative screen-space bounding box for the sphere
             vec3 ndcPos = clipPos.xyz / clipPos.w;
             
-            // Approximate the screen-space radius using perspective projection properties
-            // P[0][0] = viewProj[0][0], P[1][1] = viewProj[1][1]
-            // Actually, just project the bounds directly.
-            // Quick approximation of projected radius:
-            float projRadiusX = (radius * viewProj[0][0]) / clipPos.w;
-            float projRadiusY = (radius * viewProj[1][1]) / clipPos.w;
+            // Project the 8 corners of the world-space AABB to find the screen-space bounding box
+            vec3 minPos = testPos - vec3(radius);
+            vec3 maxPos = testPos + vec3(radius);
             
-            vec2 minNDC = clamp(ndcPos.xy - vec2(projRadiusX, projRadiusY), -1.0, 1.0);
-            vec2 maxNDC = clamp(ndcPos.xy + vec2(projRadiusX, projRadiusY), -1.0, 1.0);
+            vec4 corners[8];
+            corners[0] = viewProj * vec4(minPos.x, minPos.y, minPos.z, 1.0);
+            corners[1] = viewProj * vec4(maxPos.x, minPos.y, minPos.z, 1.0);
+            corners[2] = viewProj * vec4(minPos.x, maxPos.y, minPos.z, 1.0);
+            corners[3] = viewProj * vec4(maxPos.x, maxPos.y, minPos.z, 1.0);
+            corners[4] = viewProj * vec4(minPos.x, minPos.y, maxPos.z, 1.0);
+            corners[5] = viewProj * vec4(maxPos.x, minPos.y, maxPos.z, 1.0);
+            corners[6] = viewProj * vec4(minPos.x, maxPos.y, maxPos.z, 1.0);
+            corners[7] = viewProj * vec4(maxPos.x, maxPos.y, maxPos.z, 1.0);
             
-            vec2 minUV = minNDC * 0.5 + 0.5;
-            vec2 maxUV = maxNDC * 0.5 + 0.5;
+            vec2 minNDC = vec2(1.0);
+            vec2 maxNDC = vec2(-1.0);
+            bool crossesNearPlane = false;
             
-            // Convert to screen pixels to determine mip level
-            vec2 sizePixels = (maxUV - minUV) * screenSize;
-            float maxDim = max(sizePixels.x, sizePixels.y);
-            
-            // Target mip level where the bounding box spans ~2x2 texels
-            float mip = ceil(log2(max(maxDim, 1.0)));
-            
-            // Compute conservative depth of the instance nearest point
-            // Calculate the point on the bounding sphere closest to the camera
-            vec3 toCamera = normalize(cameraPos - testPos);
-            vec3 nearestPos = testPos + toCamera * radius;
-            
-            // Project the nearest point to get its depth
-            vec4 nearestClip = viewProj * vec4(nearestPos, 1.0);
-            float nearestZ = nearestClip.z / nearestClip.w;
-            float nearestDepth = nearestZ * 0.5 + 0.5; // NDC to 0..1 range
-        
-            // Sample the 4 texels from the Hi-Z map
-            float d0 = textureLod(hizMap, vec2(minUV.x, minUV.y), mip).r;
-            float d1 = textureLod(hizMap, vec2(maxUV.x, minUV.y), mip).r;
-            float d2 = textureLod(hizMap, vec2(minUV.x, maxUV.y), mip).r;
-            float d3 = textureLod(hizMap, vec2(maxUV.x, maxUV.y), mip).r;
-            
-            // The max value from the map is the deepest point of the occluders in that region.
-            // If the nearest part of our instance is deeper than the deepest occluder, it's hidden!
-            float maxOccluderDepth = max(max(d0, d1), max(d2, d3));
-            
-            // We add a tiny bias to prevent z-fighting/artifacts on surfaces
-            if (nearestDepth > maxOccluderDepth + 0.001) {
-                return; // Occluded!
+            for(int i = 0; i < 8; ++i) {
+                if (corners[i].w < 0.01) {
+                    crossesNearPlane = true;
+                    break;
+                }
+                vec2 ndc = corners[i].xy / corners[i].w;
+                minNDC = min(minNDC, ndc);
+                maxNDC = max(maxNDC, ndc);
             }
+            
+            // If the object crosses the camera near plane, it's highly visible and mathematically tricky to bound in NDC
+            if (crossesNearPlane) {
+                // skip Hi-Z
+            } else {
+                minNDC = clamp(minNDC, -1.0, 1.0);
+                maxNDC = clamp(maxNDC, -1.0, 1.0);
+                
+                vec2 minUV = minNDC * 0.5 + 0.5;
+                vec2 maxUV = maxNDC * 0.5 + 0.5;
+                
+                // Convert to screen pixels to determine mip level
+                vec2 sizePixels = (maxUV - minUV) * screenSize;
+                float maxDim = max(sizePixels.x, sizePixels.y);
+                
+                // Target mip level where the bounding box spans ~2x2 texels
+                float mip = ceil(log2(max(maxDim, 1.0)));
+                
+                // Compute conservative depth of the instance nearest point
+                // Calculate the point on the bounding sphere closest to the camera
+                vec3 toCamera = normalize(cameraPos - testPos);
+                vec3 nearestPos = testPos + toCamera * radius;
+                
+                // Project the nearest point to get its depth
+                vec4 nearestClip = viewProj * vec4(nearestPos, 1.0);
+                float nearestZ = nearestClip.z / nearestClip.w;
+                float nearestDepth = nearestZ * 0.5 + 0.5; // NDC to 0..1 range
+            
+                // Sample the 4 texels from the Hi-Z map
+                float d0 = textureLod(hizMap, vec2(minUV.x, minUV.y), mip).r;
+                float d1 = textureLod(hizMap, vec2(maxUV.x, minUV.y), mip).r;
+                float d2 = textureLod(hizMap, vec2(minUV.x, maxUV.y), mip).r;
+                float d3 = textureLod(hizMap, vec2(maxUV.x, maxUV.y), mip).r;
+                
+                // The max value from the map is the deepest point of the occluders in that region.
+                // If the nearest part of our instance is deeper than the deepest occluder, it's hidden!
+                float maxOccluderDepth = max(max(d0, d1), max(d2, d3));
+                
+                // We add a tiny bias to prevent z-fighting/artifacts on surfaces
+                if (nearestDepth > maxOccluderDepth + 0.001) {
+                    return; // Occluded!
+                }
+            }
+            
         }
     }
 

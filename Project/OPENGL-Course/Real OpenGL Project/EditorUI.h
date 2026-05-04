@@ -100,7 +100,7 @@ public:
 
 	// Graphics settings link
 	void SetGraphicsSettings(GraphicsSettings* s) { graphicsSettingsPtr = s; }
-	void RenderGraphicsSettings();
+	void RenderGraphicsSettings(class SceneManager* sceneManager = nullptr);
 
 private:
 	glm::vec2 viewportPos = glm::vec2(0.0f);

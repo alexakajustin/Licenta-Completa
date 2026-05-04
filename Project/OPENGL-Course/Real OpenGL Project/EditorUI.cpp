@@ -1692,7 +1692,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 // RenderViewport renamed to Render (which handles the Scene window)
 // RenderViewportDropTarget removed as it's now handled by the Scene window logic
 
-void EditorUI::RenderGraphicsSettings()
+void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 {
 	if (!windowState.isGraphicsSettingsOpen || !graphicsSettingsPtr) return;
 
@@ -1801,10 +1801,25 @@ void EditorUI::RenderGraphicsSettings()
 			ImGui::Checkbox("LOD Coloring (R=0, G=1, B=2)", &graphicsSettingsPtr->debugLODColoring);
 			ImGui::Checkbox("Show Bounding Spheres", &graphicsSettingsPtr->debugShowBounds);
 			ImGui::Checkbox("Freeze Culling Frustum", &graphicsSettingsPtr->debugFreezeCulling);
-			ImGui::Checkbox("Show Wireframe", &graphicsSettingsPtr->showWireframe);
-			
 			if (ImGui::IsItemHovered())
 				ImGui::SetTooltip("Freezes the frustum used for culling to current camera position, allowing you to fly 'outside' and see what is being culled.");
+			ImGui::Checkbox("Show Wireframe", &graphicsSettingsPtr->showWireframe);
+
+			ImGui::Separator();
+			ImGui::Text("Occlusion Culling");
+			ImGui::Checkbox("Enable Occlusion Culling", &graphicsSettingsPtr->enableOcclusionCulling);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Uses zero-latency Hi-Z depth map to cull objects behind terrain.");
+			
+			ImGui::Checkbox("Show Hi-Z Map", &graphicsSettingsPtr->debugShowHiZ);
+			
+			if (graphicsSettingsPtr->debugShowHiZ && sceneManager && sceneManager->GetHiZTexture() > 0)
+			{
+				ImGui::Text("Hi-Z Depth Buffer (Conservative):");
+				// ImGui draws textures upside-down by default for OpenGL, so we invert the V coordinates
+				ImVec2 size(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x * (1080.0f / 1920.0f));
+				ImGui::Image((void*)(intptr_t)sceneManager->GetHiZTexture(), size, ImVec2(0, 1), ImVec2(1, 0));
+			}
 		}
 	}
 	ImGui::End();
