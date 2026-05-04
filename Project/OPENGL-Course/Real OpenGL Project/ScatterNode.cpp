@@ -397,22 +397,107 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 
 	// Filter out deleted volumes (Spatial Masking)
-	if (!deletionVolumes.empty()) {
+	if (!deletionVolumes.empty() && !outputs[1].data.transforms.empty()) {
 		if (progress) progress(25.0f, "Applying Deletion Masks...");
-		std::vector<TransformData> filtered;
-		filtered.reserve(outputs[1].data.transforms.size());
-		for (const auto& t : outputs[1].data.transforms) {
-			bool skip = false;
-			for (const auto& vol : deletionVolumes) {
-				// Fast squared distance check
-				float distSq = glm::distance2(t.position, vol.position);
-				if (distSq <= (vol.radius * vol.radius)) {
-					skip = true;
-					break;
+
+		// 1. Build Spatial Grid for Deletion Volumes
+		float minX = std::numeric_limits<float>::max();
+		float minZ = std::numeric_limits<float>::max();
+		float maxX = std::numeric_limits<float>::lowest();
+		float maxZ = std::numeric_limits<float>::lowest();
+		float maxRadius = 0.0f;
+
+		for (const auto& vol : deletionVolumes) {
+			minX = std::min(minX, vol.position.x - vol.radius);
+			maxX = std::max(maxX, vol.position.x + vol.radius);
+			minZ = std::min(minZ, vol.position.z - vol.radius);
+			maxZ = std::max(maxZ, vol.position.z + vol.radius);
+			maxRadius = std::max(maxRadius, vol.radius);
+		}
+
+		// Prevent zero-sized grid or excessively small cells
+		float cellSize = std::max(maxRadius * 2.0f, 10.0f);
+		int gridWidth = std::max(1, (int)std::ceil((maxX - minX) / cellSize));
+		int gridHeight = std::max(1, (int)std::ceil((maxZ - minZ) / cellSize));
+
+		// Vector of indices of deletion volumes in each cell
+		std::vector<std::vector<int>> grid(gridWidth * gridHeight);
+
+		for (int i = 0; i < (int)deletionVolumes.size(); ++i) {
+			const auto& vol = deletionVolumes[i];
+			int minCX = std::max(0, (int)std::floor((vol.position.x - vol.radius - minX) / cellSize));
+			int maxCX = std::min(gridWidth - 1, (int)std::floor((vol.position.x + vol.radius - minX) / cellSize));
+			int minCZ = std::max(0, (int)std::floor((vol.position.z - vol.radius - minZ) / cellSize));
+			int maxCZ = std::min(gridHeight - 1, (int)std::floor((vol.position.z + vol.radius - minZ) / cellSize));
+
+			for (int cz = minCZ; cz <= maxCZ; ++cz) {
+				for (int cx = minCX; cx <= maxCX; ++cx) {
+					grid[cz * gridWidth + cx].push_back(i);
 				}
 			}
-			if (!skip) filtered.push_back(t);
 		}
+
+		// 2. Multithreaded evaluation
+		int numTransforms = (int)outputs[1].data.transforms.size();
+		std::vector<bool> keep(numTransforms, true);
+
+		int numThreads = std::thread::hardware_concurrency();
+		if (numThreads == 0) numThreads = 8;
+		
+		int chunkSize = numTransforms / numThreads;
+		if (chunkSize < 1000) {
+			chunkSize = 1000;
+			numThreads = (numTransforms + chunkSize - 1) / chunkSize;
+		}
+
+		std::vector<std::future<void>> evalFutures;
+		for (int i = 0; i < numThreads; ++i) {
+			int startIdx = i * chunkSize;
+			if (startIdx >= numTransforms) break;
+			int endIdx = std::min(startIdx + chunkSize, numTransforms);
+
+			evalFutures.push_back(std::async(std::launch::async, [&, startIdx, endIdx]() {
+				for (int j = startIdx; j < endIdx; ++j) {
+					const auto& t = outputs[1].data.transforms[j];
+					
+					// If outside the grid bounds entirely, it's not deleted
+					if (t.position.x < minX || t.position.x > maxX || 
+						t.position.z < minZ || t.position.z > maxZ) {
+						continue;
+					}
+
+					int cx = std::clamp((int)std::floor((t.position.x - minX) / cellSize), 0, gridWidth - 1);
+					int cz = std::clamp((int)std::floor((t.position.z - minZ) / cellSize), 0, gridHeight - 1);
+					
+					int cellIndex = cz * gridWidth + cx;
+					const auto& cellVolumes = grid[cellIndex];
+
+					bool skip = false;
+					for (int volIdx : cellVolumes) {
+						const auto& vol = deletionVolumes[volIdx];
+						float distSq = glm::distance2(t.position, vol.position);
+						if (distSq <= (vol.radius * vol.radius)) {
+							skip = true;
+							break;
+						}
+					}
+					
+					if (skip) keep[j] = false;
+				}
+			}));
+		}
+
+		for (auto& fut : evalFutures) fut.get();
+
+		// 3. Consolidate results
+		std::vector<TransformData> filtered;
+		filtered.reserve(numTransforms);
+		for (int i = 0; i < numTransforms; ++i) {
+			if (keep[i]) {
+				filtered.push_back(outputs[1].data.transforms[i]);
+			}
+		}
+		filtered.shrink_to_fit();
 		outputs[1].data.transforms = std::move(filtered);
 	}
 
