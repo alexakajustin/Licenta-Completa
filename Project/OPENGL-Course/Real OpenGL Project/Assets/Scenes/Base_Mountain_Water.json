@@ -1,19 +1,27 @@
 {
     "camera": {
         "front": [
-            0.9118918776512146,
-            -0.28401535749435425,
-            -0.29629117250442505
+            0.7329263687133789,
+            -0.4107188284397125,
+            0.5423365831375122
         ],
-        "pitch": -16.5,
+        "pitch": -24.25,
         "position": [
-            803.5433959960938,
-            259.4494323730469,
-            298.60760498046875
+            133.57208251953125,
+            346.2903137207031,
+            45.96710205078125
         ],
-        "yaw": -738.0
+        "yaw": -1043.5
     },
-    "instancedGroups": [],
+    "instancedGroups": [
+        {
+            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_48_Tree_(Root)_.inst",
+            "maxDrawDistance": 1000.0,
+            "name": "Scatter_Instanced_48_Tree (Root)_",
+            "shadowDistance": 800.0,
+            "sourceObjectName": "Mesh_1"
+        }
+    ],
     "lights": [
         {
             "ambientIntensity": 0.4000000059604645,
@@ -35,27 +43,27 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 4,
-                "id": 14,
-                "start": 2
+                "end": 49,
+                "id": 53,
+                "start": 45
             },
             {
-                "end": 10,
-                "id": 15,
-                "start": 5
+                "end": 50,
+                "id": 54,
+                "start": 47
             },
             {
-                "end": 7,
-                "id": 16,
-                "start": 11
+                "end": 56,
+                "id": 59,
+                "start": 52
             },
             {
-                "end": 13,
-                "id": 17,
-                "start": 8
+                "end": 61,
+                "id": 64,
+                "start": 57
             }
         ],
-        "nextId": 31,
+        "nextId": 65,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -80,95 +88,121 @@
                 "cachedTexturePath": "",
                 "editorPos": [
                     50.0,
-                    150.0
+                    50.0
                 ],
-                "forceOriginalPrimitive": true,
+                "forceOriginalPrimitive": false,
                 "hasCachedMaterial": false,
-                "id": 1,
+                "id": 44,
                 "inputPins": [],
                 "outputPins": [
-                    2
+                    45
                 ],
                 "selectedName": "Plane",
                 "title": "Scene Input"
             },
             {
-                "amplitude": 400.0,
+                "cachedModelPath": "Assets\\Models\\Tree.obj",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    814.2578125,
+                    252.05996704101563,
+                    295.6037902832031
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    5.0,
+                    5.0,
+                    5.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
                 "editorPos": [
-                    250.0,
+                    50.0,
+                    250.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 46,
+                "inputPins": [],
+                "outputPins": [
+                    47
+                ],
+                "selectedName": "Tree (Root)",
+                "title": "Scene Input"
+            },
+            {
+                "alignToNormal": false,
+                "count": 10000,
+                "createdGroupNames": [
+                    "Scatter_Instanced_48_Tree (Root)",
+                    "Scatter_Instanced_48_Tree (Root)_"
+                ],
+                "editorPos": [
+                    300.0,
                     150.0
                 ],
-                "frequency": 0.5,
-                "id": 3,
+                "id": 48,
                 "inputPins": [
-                    4
+                    49,
+                    50
                 ],
-                "octaves": 8,
-                "offsetX": 0.0,
-                "offsetZ": 0.0,
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
                 "outputPins": [
-                    5
+                    51,
+                    52
                 ],
-                "persistence": 0.44999998807907104,
-                "ridged": true,
+                "randomRotation": true,
                 "seed": 42,
-                "title": "Perlin Noise",
-                "useNormalDisplacement": false
+                "spawnAsObjects": true,
+                "spawnedMap": {},
+                "targetParentName": "(none)",
+                "title": "Scatter"
             },
             {
-                "baseDepth": 1.0,
-                "baseWidth": 15.0,
+                "bufferDistance": 0.009999999776482582,
                 "editorPos": [
-                    650.0,
-                    150.0
+                    640.0,
+                    483.0
                 ],
-                "id": 6,
+                "filterMode": 0,
+                "horizontalMargin": 0.07000000029802322,
+                "id": 55,
                 "inputPins": [
-                    7
-                ],
-                "lakeVolumeMultiplier": 500.0,
-                "maxSteps": 1500,
-                "outputPins": [
-                    8
-                ],
-                "smoothPasses": 8,
-                "springCount": 8,
-                "title": "River",
-                "waterOffset": 0.004999999888241291
-            },
-            {
-                "depositionConstant": 0.019999999552965164,
-                "dissolvingConstant": 0.8999999761581421,
-                "editorPos": [
-                    450.0,
-                    150.0
-                ],
-                "id": 9,
-                "inputPins": [
-                    10
+                    56
                 ],
                 "outputPins": [
-                    11
+                    57,
+                    58
                 ],
-                "rainRate": 1.0,
-                "simulationSteps": 60,
-                "smoothPasses": 2,
-                "title": "Hydraulic Erosion"
+                "targetName": "Lake_Water_6",
+                "title": "Object Filter",
+                "verticalMode": 0
             },
             {
+                "bufferDistance": 0.10000000149011612,
                 "editorPos": [
-                    850.0,
-                    150.0
+                    1039.0,
+                    613.0
                 ],
-                "id": 12,
+                "filterMode": 0,
+                "horizontalMargin": 0.07000000029802322,
+                "id": 60,
                 "inputPins": [
-                    13
+                    61
                 ],
-                "outputPins": [],
-                "sameAsInput": true,
-                "targetName": "(none)",
-                "title": "Output",
-                "updateMesh": true
+                "outputPins": [
+                    62,
+                    63
+                ],
+                "targetName": "River_Water_6",
+                "title": "Object Filter",
+                "verticalMode": 0
             }
         ]
     },
@@ -416,7 +450,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -489,7 +525,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -589,6 +627,182 @@
                     5.0,
                     5.0,
                     5.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_48_Tree (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Textures/plain.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Extracted Scatter_Instanced_48_Tree (Root)_",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    127.91188049316406,
+                    256.1834716796875,
+                    115.8907241821289
+                ],
+                "rotation": [
+                    0.0,
+                    203.20506286621094,
+                    0.0
+                ],
+                "scale": [
+                    4.863318920135498,
+                    4.863318920135498,
+                    4.863318920135498
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Textures/plain.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Extracted Scatter_Instanced_48_Tree (Root)_",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    121.26490020751953,
+                    258.3729248046875,
+                    118.63848114013672
+                ],
+                "rotation": [
+                    0.0,
+                    28.771434783935547,
+                    0.0
+                ],
+                "scale": [
+                    4.737669467926025,
+                    4.737669467926025,
+                    4.737669467926025
                 ]
             }
         }

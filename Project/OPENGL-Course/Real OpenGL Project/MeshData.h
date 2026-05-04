@@ -240,15 +240,40 @@ struct MeshData
 	int GetVertexCount() const { return (int)vertices.size() / 14; }
 	int GetTriangleCount() const { return (int)indices.size() / 3; }
 
-	float GetHeightAt(float x, float z) const
+	float GetHeightAt(float x, float z, float radius = 0.0f) const
 	{
 		BuildHeightCacheIfNeeded();
 		if (!heightCache || heightCacheRes <= 0) return -1e10f;
+
 		float gx = (x - heightCacheMinX) / heightCacheCellSize;
 		float gz = (z - heightCacheMinZ) / heightCacheCellSize;
-		int ix = (int)gx; int iz = (int)gz;
-		if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheResZ) return -1e10f;
-		return (*heightCache)[iz * heightCacheRes + ix];
+
+		if (radius <= 0.0f) {
+			int ix = (int)gx, iz = (int)gz;
+			if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheResZ) return -1e10f;
+			return (*heightCache)[iz * heightCacheRes + ix];
+		}
+
+		// Radius search (find max height within radius)
+		int searchRange = (int)std::ceil(radius / heightCacheCellSize);
+		float radiusSq = radius * radius;
+		float maxH = -1e10f;
+		int ixCenter = (int)gx, izCenter = (int)gz;
+
+		for (int dz = -searchRange; dz <= searchRange; dz++) {
+			for (int dx = -searchRange; dx <= searchRange; dx++) {
+				int ix = ixCenter + dx, iz = izCenter + dz;
+				if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheResZ) continue;
+
+				float dxDist = (ix - gx) * heightCacheCellSize;
+				float dzDist = (iz - gz) * heightCacheCellSize;
+				if (dxDist * dxDist + dzDist * dzDist <= radiusSq) {
+					float h = (*heightCache)[iz * heightCacheRes + ix];
+					if (h > maxH) maxH = h;
+				}
+			}
+		}
+		return maxH;
 	}
 
 	void Clear() { vertices.clear(); indices.clear(); InvalidateHeightCache(); }
@@ -342,25 +367,6 @@ private:
 			}
 		}
 
-		std::vector<float> dilated = *cache;
-		for (int gz = 0; gz < resZ; gz++) {
-			for (int gx = 0; gx < resX; gx++) {
-				if ((*cache)[gz * resX + gx] < -1e9f) {
-					float maxNH = -1e10f;
-					for (int dz = -1; dz <= 1; dz++) {
-						for (int dx = -1; dx <= 1; dx++) {
-							if (dx == 0 && dz == 0) continue;
-							int nz = gz + dz, nx = gx + dx;
-							if (nz >= 0 && nz < resZ && nx >= 0 && nx < resX) {
-								float nh = (*cache)[nz * resX + nx]; if (nh > -1e9f && nh > maxNH) maxNH = nh;
-							}
-						}
-					}
-					if (maxNH > -1e9f) dilated[gz * resX + gx] = maxNH;
-				}
-			}
-		}
-		*cache = std::move(dilated);
 		heightCacheMinX = minX; heightCacheMinZ = minZ; heightCacheCellSize = cellSize;
 		heightCacheRes = resX; heightCacheResZ = resZ; heightCache = cache;
 		heightCacheBuilt.store(true, std::memory_order_release);

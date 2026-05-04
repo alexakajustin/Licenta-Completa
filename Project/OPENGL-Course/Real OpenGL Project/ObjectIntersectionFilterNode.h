@@ -36,6 +36,7 @@ public:
 		j["filterMode"] = filterMode;
 		j["verticalMode"] = verticalMode;
 		j["bufferDistance"] = bufferDistance;
+		j["horizontalMargin"] = horizontalMargin;
 		return j;
 	}
 
@@ -46,6 +47,7 @@ public:
 		filterMode = j.value("filterMode", 0);
 		verticalMode = j.value("verticalMode", 0);
 		bufferDistance = j.value("bufferDistance", 0.1f);
+		horizontalMargin = j.value("horizontalMargin", 0.0f);
 	}
 
 	void RenderContent(SceneManager* scene) override
@@ -73,7 +75,8 @@ public:
 		const char* vModes[] = { "Any (Intersection)", "Spawn Above", "Spawn Below" };
 		ImGui::Combo("Vertical Rule", &verticalMode, vModes, 3);
 
-		ImGui::DragFloat("Buffer Dist", &bufferDistance, 0.1f, -10.0f, 10.0f);
+		ImGui::DragFloat("Vertical Buffer", &bufferDistance, 0.01f, -10.0f, 10.0f, "%.3f");
+		ImGui::DragFloat("Horizontal Margin", &horizontalMargin, 0.01f, 0.0f, 50.0f, "%.3f");
 	}
 
 	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
@@ -156,7 +159,8 @@ public:
 					glm::vec4 localPos = invModel * glm::vec4(t.position, 1.0f);
 					
 					// 2. Sample Height in Local Space (High Performance)
-					float localTargetHeight = targetMeshData.GetHeightAt(localPos.x, localPos.z);
+					// We pass horizontalMargin to GetHeightAt to support the "Safety Zone" around water.
+					float localTargetHeight = targetMeshData.GetHeightAt(localPos.x, localPos.z, horizontalMargin);
 					bool intersects = (localTargetHeight > -1e9f);
 					
 					bool conditionMet = false;
@@ -206,4 +210,5 @@ private:
 	int filterMode = 0;   // 0: Avoid, 1: Confine
 	int verticalMode = 0; // 0: Any, 1: Above, 2: Below
 	float bufferDistance = 0.1f;
+	float horizontalMargin = 0.0f;
 };
