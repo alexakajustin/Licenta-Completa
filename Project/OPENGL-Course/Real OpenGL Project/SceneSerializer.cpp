@@ -371,11 +371,9 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	spotLightCount = 0;
 
 	// ========== Pre-load Models ==========
-	// Start loading all required models and wait for them to finish.
-	// This ensures that model->GetMeshCount() is correct when we evaluate
-	// whether an object is a modular root or a single-mesh object.
 	if (j.contains("objects"))
 	{
+		// First pass: Pre-load all models into the AssetManager
 		for (auto& objJson : j["objects"])
 		{
 			std::string modelPath = objJson.value("modelPath", "");
@@ -384,6 +382,8 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				AssetManager::Get().GetModel(modelPath);
 			}
 		}
+		
+		// CRITICAL: Wait for all models to finish CPU AND GPU loading (buffers uploaded)
 		AssetManager::Get().WaitForAll();
 	}
 
@@ -418,10 +418,32 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			if (!modelPath.empty())
 			{
 				Model* model = AssetManager::Get().GetModel(modelPath);
+				
+				// IMPROVED MODULAR LOGIC: Check if this object is a specific mesh within the model
+				bool meshFound = false;
 				if (model && model->GetMeshCount() > 1) {
-					// Modular root: only store the source path for re-linking children
-					obj->SetModelSourcePath(modelPath);
-				} else {
+					std::string targetName = obj->GetName();
+					// Strip suffixes like " (Sponza)"
+					size_t paren = targetName.find(" (");
+					if (paren != std::string::npos) targetName = targetName.substr(0, paren);
+
+					for (size_t m = 0; m < model->GetMeshCount(); m++) {
+						if (model->GetMeshNames()[m] == targetName) {
+							obj->SetMesh(model->GetMesh(m));
+							obj->SetModelSourcePath(modelPath);
+							
+							// Auto-link texture from model material if not explicitly set
+							unsigned int matIdx = model->GetMaterialIndex((unsigned int)m);
+							obj->SetTexture(model->GetTexture(matIdx));
+							obj->SetNormalMap(model->GetNormalMap(matIdx));
+							meshFound = true;
+							break;
+						}
+					}
+				}
+
+				if (!meshFound) {
+					// Fallback: Assign the whole model (e.g., Sponza as a single root)
 					obj->SetModel(model);
 					obj->SetModelSourcePath(modelPath);
 				}
@@ -620,7 +642,11 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 		// Second pass: resolve parent-child relationships and re-link modular meshes
 		auto& objects = scene.GetObjects();
-		for (int i = 0; i < (int)j["objects"].size() && i < (int)objects.size(); i++)
+		// Final pass: Re-link modular hierarchies and update transforms
+		// Ensure any models requested during the main loop (if any were missed) are also finished
+		AssetManager::Get().WaitForAll();
+
+		for (size_t i = 0; i < objects.size(); i++)
 		{
 			std::string parentName = j["objects"][i].value("parent", "");
 			if (!parentName.empty())

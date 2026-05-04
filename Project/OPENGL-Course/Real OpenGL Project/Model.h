@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
+#include <atomic>
 
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
@@ -25,6 +26,9 @@ public:
 	bool IsReady() const { return isGPUReady; }
 	bool IsCPUReady() const { return isCPUReady; }
 	bool IsFailed() const { return loadFailed; }
+	
+	float GetLoadProgress() const { return loadProgress.load(); }
+	void SetLoadProgress(float p) { loadProgress.store(p); }
 	
 	void RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseTexture, GLuint uniformNormalMapSampler, GLuint uniformDiffuseTextureSampler);
 	void RenderModelGeometryOnly(); // Render meshes without binding model textures (for overrides)
@@ -65,6 +69,8 @@ private:
 	bool isCPUReady = false;
 	bool isGPUReady = false;
 	bool loadFailed = false;
+	
+	std::atomic<float> loadProgress{0.0f};
 	
 	struct IntermediateMeshData {
 		std::vector<GLfloat> vertices;

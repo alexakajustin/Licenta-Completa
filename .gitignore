@@ -39,3 +39,15 @@
 *.tmp
 *.bak
 Thumbs.db
+
+# Large Model Binary Caches
+*.assbin
+*.mesh
+*.inst
+
+# Project Specific Large Assets
+Inspiration/
+Assets/Textures/Shared/
+*.pdb
+*.ilk
+*.exe

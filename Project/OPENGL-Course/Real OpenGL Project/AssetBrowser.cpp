@@ -539,8 +539,21 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				// Show "Loading..." overlay for models that haven't generated their thumbnail yet
 				if (currentAssets[i].type == AssetType::Model) {
 					if (thumbnailGenerationMap.find(currentAssets[i].path.string()) == thumbnailGenerationMap.end()) {
-						ImGui::SetCursorPos(ImVec2(startPos.x + 10, startPos.y + cellSize / 2 - 5));
-						ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Loading...");
+						Model* model = AssetManager::Get().GetModel(currentAssets[i].path.string(), false);
+						if (model && !model->IsReady() && !model->IsFailed()) {
+							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
+							char progStr[32];
+							float prog = model->GetLoadProgress();
+							snprintf(progStr, sizeof(progStr), "%d%%", (int)(prog * 100));
+							
+							// Style the progress bar to look nice inside the thumbnail
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+							ImGui::ProgressBar(prog, ImVec2(cellSize - 10, 15), progStr);
+							ImGui::PopStyleColor();
+						} else {
+							ImGui::SetCursorPos(ImVec2(startPos.x + 10, startPos.y + cellSize / 2 - 5));
+							ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Queued...");
+						}
 					}
 				}
 			}
