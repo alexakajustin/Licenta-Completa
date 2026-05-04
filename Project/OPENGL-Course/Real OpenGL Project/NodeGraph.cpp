@@ -14,6 +14,7 @@
 #include "ForEachNode.h"
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
+#include "ObjectIntersectionFilterNode.h"
 #include "NodeBuilderUI.h"
 #include "SceneManager.h"
 #include "GameObject.h"
@@ -369,7 +370,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							if (link.startPinId == currentPin->id)
 							{
 								GraphNode* downstream = FindNodeByPinId(link.endPinId);
-								if (downstream && downstream->title == "Filter Transforms")
+								if (downstream && (downstream->title == "Filter Transforms" || downstream->title == "Object Filter"))
 								{
 									// Use this filter's "Passed" output (outputs[0])
 									if (!downstream->outputs.empty())
@@ -882,6 +883,7 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "Compare") node = new CompareNode(*this);
 			else if (title == "Branch") node = new BranchNode(*this);
 			else if (title == "Filter Transforms") node = new FilterTransformListNode(*this);
+			else if (title == "Object Filter") node = new ObjectIntersectionFilterNode(*this);
 			else if (title == "For Each") node = new ForEachNode(*this);
 		else if (title == "City Grid") node = new CityGridNode(*this);
 		else if (title == "Building Gen") node = new BuildingGenNode(*this);

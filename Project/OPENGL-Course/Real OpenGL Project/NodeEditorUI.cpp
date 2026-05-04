@@ -17,6 +17,7 @@
 #include "ForEachNode.h"
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
+#include "ObjectIntersectionFilterNode.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -267,6 +268,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 			if (ImGui::MenuItem("Compare")) newNode = new CompareNode(graph);
 			if (ImGui::MenuItem("Branch (If/Else)")) newNode = new BranchNode(graph);
 			if (ImGui::MenuItem("Filter Transforms")) newNode = new FilterTransformListNode(graph);
+			if (ImGui::MenuItem("Object Filter")) newNode = new ObjectIntersectionFilterNode(graph);
 			if (ImGui::MenuItem("For Each")) newNode = new ForEachNode(graph);
 			ImGui::EndMenu();
 		}

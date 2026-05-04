@@ -86,11 +86,17 @@ public:
 		outputs[0].data.meshData = inputs[0].data.meshData;
 		outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName;
 		outputs[0].data.sourceObject = inputs[0].data.sourceObject;
+		outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
+		outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
+		outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
 		outputs[0].data.textureLayers = inputs[0].data.textureLayers;
 
 		outputs[1].data.type = PinDataType::Mesh;
 		outputs[1].data.sourceObjectName = inputs[0].data.sourceObjectName;
 		outputs[1].data.sourceObject = inputs[0].data.sourceObject;
+		outputs[1].data.sourceMaterial = inputs[0].data.sourceMaterial;
+		outputs[1].data.sourceTexture = inputs[0].data.sourceTexture;
+		outputs[1].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
 		outputs[1].data.textureLayers = inputs[0].data.textureLayers;
 
 		auto& inputTransforms = inputs[0].data.transforms;

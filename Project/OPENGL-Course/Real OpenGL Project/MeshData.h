@@ -6,6 +6,10 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <cmath>
+#include <cfloat>
 #include "Mesh.h"
 
 class Material;
@@ -43,6 +47,45 @@ struct MeshData
 {
 	std::vector<GLfloat> vertices;
 	std::vector<unsigned int> indices;
+
+	// Default constructor
+	MeshData() = default;
+
+	// Destructor: free height cache
+	~MeshData() { if (heightCache) { delete heightCache; heightCache = nullptr; } }
+
+	// Copy constructor: copy data, don't copy cache (it's lazy)
+	MeshData(const MeshData& other)
+		: vertices(other.vertices), indices(other.indices) {}
+
+	// Move constructor: steal data, don't move cache
+	MeshData(MeshData&& other) noexcept
+		: vertices(std::move(other.vertices)), indices(std::move(other.indices)) {}
+
+	// Copy assignment
+	MeshData& operator=(const MeshData& other)
+	{
+		if (this != &other) {
+			vertices = other.vertices;
+			indices = other.indices;
+			InvalidateHeightCache();
+		}
+		return *this;
+	}
+
+	// Move assignment
+	MeshData& operator=(MeshData&& other) noexcept
+	{
+		if (this != &other) {
+			vertices = std::move(other.vertices);
+			indices = std::move(other.indices);
+			// Direct cleanup (no mutex — no concurrent access during move)
+			if (heightCache) { delete heightCache; heightCache = nullptr; }
+			heightCacheBuilt.store(false);
+			heightCacheRes = 0;
+		}
+		return *this;
+	}
 
 	// Upload to GPU and return a new Mesh
 	Mesh* ToMesh(int maxInstances = 0) const
@@ -284,13 +327,43 @@ struct MeshData
 	int GetVertexCount() const { return (int)vertices.size() / 14; }
 	int GetTriangleCount() const { return (int)indices.size() / 3; }
 
-	void Clear() { vertices.clear(); indices.clear(); }
+	// =====================================================================
+	// Fast Height Lookup — Lazy 2D Heightfield Cache
+	// Rasterizes all triangles into a grid on first call, O(1) lookups after.
+	// Returns -1e10f if the query point is outside the mesh footprint.
+	// Thread-safe: multiple threads can call GetHeightAt concurrently.
+	// =====================================================================
+	float GetHeightAt(float x, float z) const
+	{
+		BuildHeightCacheIfNeeded();
+		if (!heightCache || heightCacheRes <= 0) return -1e10f;
+
+		// Convert world XZ to grid cell
+		float gx = (x - heightCacheMinX) / heightCacheCellSize;
+		float gz = (z - heightCacheMinZ) / heightCacheCellSize;
+
+		int ix = (int)gx;
+		int iz = (int)gz;
+
+		if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheRes)
+			return -1e10f;
+
+		return (*heightCache)[iz * heightCacheRes + ix];
+	}
+
+	void Clear()
+	{
+		vertices.clear();
+		indices.clear();
+		InvalidateHeightCache();
+	}
 
 	// Truly free RAM by swapping with empty vectors (standard C++ swap trick)
 	void DeepClear()
 	{
 		std::vector<GLfloat>().swap(vertices);
 		std::vector<unsigned int>().swap(indices);
+		InvalidateHeightCache();
 	}
 
 	// =====================================================================
@@ -332,6 +405,114 @@ struct MeshData
 
 		fclose(file);
 		return true;
+	}
+
+private:
+	// --- Height Cache Internals ---
+	mutable std::vector<float>* heightCache = nullptr;
+	mutable int heightCacheRes = 0;
+	mutable float heightCacheMinX = 0, heightCacheMinZ = 0, heightCacheCellSize = 1.0f;
+	mutable std::atomic<bool> heightCacheBuilt{false};
+	mutable std::mutex heightCacheMutex;
+
+	void InvalidateHeightCache() const
+	{
+		std::lock_guard<std::mutex> lock(heightCacheMutex);
+		if (heightCache) { delete heightCache; heightCache = nullptr; }
+		heightCacheBuilt.store(false);
+		heightCacheRes = 0;
+	}
+
+	void BuildHeightCacheIfNeeded() const
+	{
+		if (heightCacheBuilt.load(std::memory_order_acquire)) return;
+		std::lock_guard<std::mutex> lock(heightCacheMutex);
+		if (heightCacheBuilt.load(std::memory_order_relaxed)) return; // Double-check
+
+		int vertCount = GetVertexCount();
+		int triCount = GetTriangleCount();
+		if (vertCount == 0 || triCount == 0) {
+			heightCacheBuilt.store(true, std::memory_order_release);
+			return;
+		}
+
+		// Find XZ bounds
+		float minX = FLT_MAX, maxX = -FLT_MAX;
+		float minZ = FLT_MAX, maxZ = -FLT_MAX;
+		for (int i = 0; i < vertCount; i++) {
+			glm::vec3 p = GetPosition(i);
+			if (p.x < minX) minX = p.x;
+			if (p.x > maxX) maxX = p.x;
+			if (p.z < minZ) minZ = p.z;
+			if (p.z > maxZ) maxZ = p.z;
+		}
+
+		float rangeX = maxX - minX;
+		float rangeZ = maxZ - minZ;
+		if (rangeX < 0.001f) rangeX = 0.001f;
+		if (rangeZ < 0.001f) rangeZ = 0.001f;
+
+		// Resolution: ~1 cell per unit, capped at 1024 for memory safety
+		int res = (int)std::max(rangeX, rangeZ);
+		if (res < 16) res = 16;
+		if (res > 1024) res = 1024;
+
+		float cellSize = std::max(rangeX, rangeZ) / (float)res;
+
+		auto* cache = new std::vector<float>(res * res, -1e10f);
+
+		// Rasterize every triangle into the grid
+		for (int t = 0; t < triCount; t++) {
+			unsigned int i0 = indices[t * 3];
+			unsigned int i1 = indices[t * 3 + 1];
+			unsigned int i2 = indices[t * 3 + 2];
+
+			glm::vec3 v0 = GetPosition(i0);
+			glm::vec3 v1 = GetPosition(i1);
+			glm::vec3 v2 = GetPosition(i2);
+
+			// Triangle AABB in grid space
+			float tMinX = std::min({v0.x, v1.x, v2.x});
+			float tMaxX = std::max({v0.x, v1.x, v2.x});
+			float tMinZ = std::min({v0.z, v1.z, v2.z});
+			float tMaxZ = std::max({v0.z, v1.z, v2.z});
+
+			int gxMin = std::max(0, (int)((tMinX - minX) / cellSize));
+			int gxMax = std::min(res - 1, (int)((tMaxX - minX) / cellSize));
+			int gzMin = std::max(0, (int)((tMinZ - minZ) / cellSize));
+			int gzMax = std::min(res - 1, (int)((tMaxZ - minZ) / cellSize));
+
+			// Precompute barycentric denominator
+			glm::vec2 a2(v0.x, v0.z), b2(v1.x, v1.z), c2(v2.x, v2.z);
+			float denom = (b2.y - c2.y) * (a2.x - c2.x) + (c2.x - b2.x) * (a2.y - c2.y);
+			if (std::abs(denom) < 1e-10f) continue; // Degenerate triangle
+			float invDenom = 1.0f / denom;
+
+			for (int gz = gzMin; gz <= gzMax; gz++) {
+				for (int gx = gxMin; gx <= gxMax; gx++) {
+					float px = minX + (gx + 0.5f) * cellSize;
+					float pz = minZ + (gz + 0.5f) * cellSize;
+
+					// Barycentric test
+					float u = ((b2.y - c2.y) * (px - c2.x) + (c2.x - b2.x) * (pz - c2.y)) * invDenom;
+					float v = ((c2.y - a2.y) * (px - c2.x) + (a2.x - c2.x) * (pz - c2.y)) * invDenom;
+					float w = 1.0f - u - v;
+
+					if (u >= -0.01f && v >= -0.01f && w >= -0.01f) {
+						float h = u * v0.y + v * v1.y + w * v2.y;
+						int idx = gz * res + gx;
+						if (h > (*cache)[idx]) (*cache)[idx] = h;
+					}
+				}
+			}
+		}
+
+		heightCacheMinX = minX;
+		heightCacheMinZ = minZ;
+		heightCacheCellSize = cellSize;
+		heightCacheRes = res;
+		heightCache = cache;
+		heightCacheBuilt.store(true, std::memory_order_release);
 	}
 };
 
