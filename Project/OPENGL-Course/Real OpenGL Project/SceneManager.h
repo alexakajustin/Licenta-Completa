@@ -149,6 +149,16 @@ private:
 	Shader* cullShader = nullptr;
 	Shader* instancedRenderShader = nullptr;
 
+	// Hi-Z Occlusion Culling
+	GLuint hizTexture = 0;
+	int hizWidth = 0;
+	int hizHeight = 0;
+	int hizMipCount = 1;
+	Shader* hizComputeShader = nullptr;
+	Shader* hizCopyShader = nullptr;
+
+	void GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture);
+
 	// Global light state pointers
 	PointLight* globalPointLights = nullptr;
 	unsigned int* globalPointLightCount = nullptr;

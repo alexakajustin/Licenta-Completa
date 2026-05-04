@@ -76,6 +76,11 @@ uniform vec3  meshBoundsCenter;     // Center of mesh AABB relative to origin (e
 uniform int   lodCount;             // 1, 2, or 3
 uniform float lodDistances[3];      // Max distance for each LOD level
 
+// Hi-Z Occlusion Culling
+uniform int useHiZ;
+uniform vec2 screenSize;
+layout(binding = 15) uniform sampler2D hizMap;
+
 void main()
 {
     uint id = gl_GlobalInvocationID.x;
@@ -123,6 +128,63 @@ void main()
     if (clipPos.y < -absW || clipPos.y > absW) return;
     // Near/Far planes
     if (clipPos.z < -radius || clipPos.z > absW) return;
+
+    // ------- Hi-Z Occlusion Culling -------
+    if (useHiZ == 1) {
+        // If the camera is inside the bounding sphere, it cannot be occluded!
+        if (distance(cameraPos, testPos) <= radius) {
+            // Skip Hi-Z test
+        } else {
+            // Compute NDC coordinates of the bounding sphere's screen projection
+            // We use a simplified conservative screen-space bounding box for the sphere
+            vec3 ndcPos = clipPos.xyz / clipPos.w;
+            
+            // Approximate the screen-space radius using perspective projection properties
+            // P[0][0] = viewProj[0][0], P[1][1] = viewProj[1][1]
+            // Actually, just project the bounds directly.
+            // Quick approximation of projected radius:
+            float projRadiusX = (radius * viewProj[0][0]) / clipPos.w;
+            float projRadiusY = (radius * viewProj[1][1]) / clipPos.w;
+            
+            vec2 minNDC = clamp(ndcPos.xy - vec2(projRadiusX, projRadiusY), -1.0, 1.0);
+            vec2 maxNDC = clamp(ndcPos.xy + vec2(projRadiusX, projRadiusY), -1.0, 1.0);
+            
+            vec2 minUV = minNDC * 0.5 + 0.5;
+            vec2 maxUV = maxNDC * 0.5 + 0.5;
+            
+            // Convert to screen pixels to determine mip level
+            vec2 sizePixels = (maxUV - minUV) * screenSize;
+            float maxDim = max(sizePixels.x, sizePixels.y);
+            
+            // Target mip level where the bounding box spans ~2x2 texels
+            float mip = ceil(log2(max(maxDim, 1.0)));
+            
+            // Compute conservative depth of the instance nearest point
+            // Calculate the point on the bounding sphere closest to the camera
+            vec3 toCamera = normalize(cameraPos - testPos);
+            vec3 nearestPos = testPos + toCamera * radius;
+            
+            // Project the nearest point to get its depth
+            vec4 nearestClip = viewProj * vec4(nearestPos, 1.0);
+            float nearestZ = nearestClip.z / nearestClip.w;
+            float nearestDepth = nearestZ * 0.5 + 0.5; // NDC to 0..1 range
+        
+            // Sample the 4 texels from the Hi-Z map
+            float d0 = textureLod(hizMap, vec2(minUV.x, minUV.y), mip).r;
+            float d1 = textureLod(hizMap, vec2(maxUV.x, minUV.y), mip).r;
+            float d2 = textureLod(hizMap, vec2(minUV.x, maxUV.y), mip).r;
+            float d3 = textureLod(hizMap, vec2(maxUV.x, maxUV.y), mip).r;
+            
+            // The max value from the map is the deepest point of the occluders in that region.
+            // If the nearest part of our instance is deeper than the deepest occluder, it's hidden!
+            float maxOccluderDepth = max(max(d0, d1), max(d2, d3));
+            
+            // We add a tiny bias to prevent z-fighting/artifacts on surfaces
+            if (nearestDepth > maxOccluderDepth + 0.001) {
+                return; // Occluded!
+            }
+        }
+    }
 
     // ------- LOD Classification + Density-Based Culling -------
     // For simple meshes (grass quads), LOD meshes are identical to LOD0.

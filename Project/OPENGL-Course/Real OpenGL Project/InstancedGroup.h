@@ -63,7 +63,8 @@ public:
 	void CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 		const glm::mat4& projection, const glm::mat4& view,
 		const glm::vec3& cameraPos, const GraphicsSettings* gs,
-		bool isShadowPass = false);
+		bool isShadowPass = false, GLuint hizTexture = 0,
+		int screenWidth = 0, int screenHeight = 0);
 
 	// Per-frame: cull against light frustum and draw into shadow map
 	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,

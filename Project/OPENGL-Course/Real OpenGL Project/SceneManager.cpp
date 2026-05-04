@@ -667,6 +667,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	}
 
 	// ================================================================
+	// Generate Hi-Z map for Occlusion Culling (zero-latency from Opaque pass)
+	// ================================================================
+	if (!overrideShader && sceneDepthTexture > 0) {
+		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
+	}
+
+	// ================================================================
 	// GPU-Driven Instanced Groups (grass, foliage, rocks, etc.)
 	// These bypass the entire GameObject pipeline for maximum performance.
 	// NOTE: Shadow pass for instanced groups is handled separately by
@@ -2316,4 +2323,92 @@ bool SceneManager::RayPlaneIntersect(glm::vec3 rayOrigin, glm::vec3 rayDir, glm:
 		}
 	}
 	return false;
+}
+
+void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture)
+{
+	// 1. Initialize shaders if needed
+	if (!hizComputeShader) {
+		hizComputeShader = new Shader();
+		hizComputeShader->CreateComputeShader("Assets/Shaders/hiz_downsample.glsl");
+	}
+	if (!hizCopyShader) {
+		hizCopyShader = new Shader();
+		hizCopyShader->CreateComputeShader("Assets/Shaders/hiz_copy.glsl");
+	}
+
+	if (screenWidth <= 0 || screenHeight <= 0) return;
+
+	// 2. Resize or create the Hi-Z texture
+	if (hizTexture == 0 || hizWidth != screenWidth || hizHeight != screenHeight) {
+		hizWidth = screenWidth;
+		hizHeight = screenHeight;
+		hizMipCount = (int)std::floor(std::log2(std::max(screenWidth, screenHeight))) + 1;
+
+		if (hizTexture != 0) glDeleteTextures(1, &hizTexture);
+
+		glGenTextures(1, &hizTexture);
+		glBindTexture(GL_TEXTURE_2D, hizTexture);
+
+		// Use nearest filtering for conservative depth logic
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		// Allocate immutable storage for the mipmap chain
+		glTexStorage2D(GL_TEXTURE_2D, hizMipCount, GL_R32F, screenWidth, screenHeight);
+	}
+
+	// 3. Copy Depth Buffer to Mip 0
+	hizCopyShader->UseShader();
+	glUniform1i(glGetUniformLocation(hizCopyShader->GetShaderID(), "depthTex"), 0);
+	
+	// Bind scene depth texture to binding 0
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+	
+	// Bind hizTexture mip 0 as image
+	glBindImageTexture(0, hizTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
+
+	// Dispatch
+	int numGroupsX = (screenWidth + 7) / 8;
+	int numGroupsY = (screenHeight + 7) / 8;
+	glDispatchCompute(numGroupsX, numGroupsY, 1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+	// 4. Generate Mipmap Chain
+	hizComputeShader->UseShader();
+	glUniform1i(glGetUniformLocation(hizComputeShader->GetShaderID(), "inTexture"), 0);
+	
+	// Bind the full texture for sampling
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, hizTexture);
+
+	int currentWidth = screenWidth;
+	int currentHeight = screenHeight;
+
+	for (int i = 1; i < hizMipCount; i++) {
+		// Calculate size of this mip level
+		int nextWidth = std::max(1, currentWidth / 2);
+		int nextHeight = std::max(1, currentHeight / 2);
+
+		// Pass uniforms
+		glUniform2f(glGetUniformLocation(hizComputeShader->GetShaderID(), "inputSize"), (float)currentWidth, (float)currentHeight);
+		glUniform1i(glGetUniformLocation(hizComputeShader->GetShaderID(), "lod"), i - 1);
+
+		// Bind this mip level as output image
+		glBindImageTexture(0, hizTexture, i, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
+
+		// Dispatch
+		numGroupsX = (nextWidth + 7) / 8;
+		numGroupsY = (nextHeight + 7) / 8;
+		glDispatchCompute(numGroupsX, numGroupsY, 1);
+		
+		// Barrier to ensure this mip is written before being read by the next iteration
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+
+		currentWidth = nextWidth;
+		currentHeight = nextHeight;
+	}
 }

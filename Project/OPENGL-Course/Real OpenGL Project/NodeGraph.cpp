@@ -518,8 +518,16 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						}
 					}
 
-					float maxDist = 2000.0f;
-					float shadowDist = 100.0f;
+					// Placeholder parent for hierarchy
+					std::string parentName = "Scatter_Group_" + std::to_string(node->id) + "_" + objName;
+					GameObject* placeholder = scene.FindObject(parentName);
+					if (!placeholder) {
+						placeholder = new GameObject(parentName);
+						scene.AddObject(placeholder);
+					}
+
+					float maxDist = placeholder->GetMaxDrawDistance();
+					float shadowDist = placeholder->GetShadowDrawDistance();
 
 					if (multiMeshModel && multiMeshModel->GetMeshCount() > 1 && sourceObj) {
 						// ============================================================
@@ -569,11 +577,19 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								groupsByName[baseName].lod0Idx = m;
 							}
 							else if (level == 1) {
-								// Try to match the most recent lod0 if there are duplicates, or just use the baseName
-								// In most LOD models, the names are properly distinct per part.
+								std::string originalBase = baseName;
+								int dupCount = 1;
+								while (groupsByName.find(baseName) != groupsByName.end() && groupsByName[baseName].lod1Idx != -1) {
+									baseName = originalBase + "_" + std::to_string(dupCount++);
+								}
 								groupsByName[baseName].lod1Idx = m;
 							}
 							else if (level == 2) {
+								std::string originalBase = baseName;
+								int dupCount = 1;
+								while (groupsByName.find(baseName) != groupsByName.end() && groupsByName[baseName].lod2Idx != -1) {
+									baseName = originalBase + "_" + std::to_string(dupCount++);
+								}
 								groupsByName[baseName].lod2Idx = m;
 							}
 						}
@@ -644,6 +660,9 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								group->SetLODMesh(2, meshCache[key2], 0.0f);
 							}
 
+							group->SetMaxDrawDistance(maxDist);
+							group->SetShadowDistance(shadowDist);
+
 							scene.AddInstancedGroup(group);
 							scatterNode->AddCreatedGroupName(subGroupName);
 						}
@@ -713,14 +732,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 							printf("[NodeGraph] GPU-Driven: Created InstancedGroup '%s' with %d instances (%d verts)\n",
 								groupName.c_str(), (int)packedInstances.size(), singleMesh.GetVertexCount());
 						}
-					}
-
-					// Placeholder parent for hierarchy
-					std::string parentName = "Scatter_Group_" + std::to_string(node->id) + "_" + objName;
-					GameObject* placeholder = scene.FindObject(parentName);
-					if (!placeholder) {
-						placeholder = new GameObject(parentName);
-						scene.AddObject(placeholder);
 					}
 				}
 			}

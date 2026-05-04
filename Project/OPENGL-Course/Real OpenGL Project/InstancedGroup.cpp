@@ -235,7 +235,8 @@ void InstancedGroup::SetLODMesh(int level, Mesh* mesh, float maxDistance)
 void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	const glm::mat4& projection, const glm::mat4& view,
 	const glm::vec3& cameraPos, const GraphicsSettings* gs,
-	bool isShadowPass)
+	bool isShadowPass, GLuint hizTexture,
+	int screenWidth, int screenHeight)
 {
 	if (totalCount == 0 || !sharedMesh) return;
 
@@ -293,6 +294,19 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	float dvals[3] = { finalLOD0, finalLOD1, finalLOD2 };
 	for (int i = 0; i < 3; i++) {
 		if (uLodDistances[i] != -1) glUniform1f(uLodDistances[i], dvals[i]);
+	}
+
+	// Occlusion Culling (Hi-Z) Uniforms
+	if (hizTexture > 0) {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
+		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
+		
+		// Bind the Hi-Z map to texture unit 15 (or any safe unit)
+		glActiveTexture(GL_TEXTURE15);
+		glBindTexture(GL_TEXTURE_2D, hizTexture);
+		glUniform1i(glGetUniformLocation(cullShaderID, "hizMap"), 15);
+	} else {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
 	}
 
 	if (useChunking) {
