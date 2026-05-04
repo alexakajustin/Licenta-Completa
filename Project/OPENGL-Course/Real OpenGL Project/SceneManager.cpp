@@ -1252,7 +1252,10 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 			child->SetNormalMap(model->GetNormalMap(matIdx));
 			
 			// Logic: Set the material to a default if not present
-			if (!child->GetMaterial()) {
+			Material* matInst = model->GetMaterialInstance(matIdx);
+			if (matInst) {
+				child->SetMaterial(matInst);
+			} else if (!child->GetMaterial()) {
 				child->SetMaterial(new Material());
 			}
 
@@ -1295,6 +1298,17 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		newObj->GetTransform().SetPosition(spawnPos);
 		newObj->SetModel(model);
 		newObj->SetModelSourcePath(path.string());
+		
+		unsigned int matIdx = model->GetMaterialIndex(0);
+		newObj->SetTexture(model->GetTexture(matIdx));
+		newObj->SetNormalMap(model->GetNormalMap(matIdx));
+		Material* matInst = model->GetMaterialInstance(matIdx);
+		if (matInst) {
+			newObj->SetMaterial(matInst);
+		} else if (!newObj->GetMaterial()) {
+			newObj->SetMaterial(new Material());
+		}
+
 		objects.push_back(newObj);
 		SetSelectedIndex((int)objects.size() - 1);
 		printf("[SceneManager] Instantiated single-mesh model: %s\n", baseName.c_str());

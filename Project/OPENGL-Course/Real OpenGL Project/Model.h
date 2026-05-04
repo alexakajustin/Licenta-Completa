@@ -10,6 +10,7 @@
 
 #include "Mesh.h"
 #include "Texture.h"
+#include "Material.h"
 #include "MeshData.h"
 
 class Model
@@ -45,6 +46,7 @@ public:
 	unsigned int GetMaterialIndex(size_t index) const { return index < meshToTex.size() ? meshToTex[index] : 0; }
 	Texture* GetTexture(unsigned int matIndex) const { return matIndex < textureList.size() ? textureList[matIndex] : nullptr; }
 	Texture* GetNormalMap(unsigned int matIndex) const { return matIndex < normalMapList.size() ? normalMapList[matIndex] : nullptr; }
+	Material* GetMaterialInstance(unsigned int matIndex) const { return matIndex < materialList.size() ? materialList[matIndex] : nullptr; }
 
 private:
 	// scene contains all data, node is just one part of that list of data
@@ -56,6 +58,7 @@ private:
 	std::vector <std::string> meshNames;
 	std::vector <Texture*> textureList;
 	std::vector <Texture*> normalMapList;
+	std::vector <Material*> materialList;
 	std::vector<unsigned int> meshToTex;
 	std::vector<MeshData> meshDataList;
 
@@ -73,5 +76,6 @@ private:
 
 	glm::vec3 minBound = glm::vec3(1e10);
 	glm::vec3 maxBound = glm::vec3(-1e10);
+	std::string filePath;
 };
 

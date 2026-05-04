@@ -7,6 +7,7 @@ Model::Model()
 
 void Model::LoadModelCPU(const std::string& fileName)
 {
+	this->filePath = fileName;
 	minBound = glm::vec3(1e10);
 	maxBound = glm::vec3(-1e10);
 
@@ -143,6 +144,13 @@ void Model::LoadMaterials(const aiScene* scene)
 {
 	textureList.resize(scene->mNumMaterials);
 	normalMapList.resize(scene->mNumMaterials);
+	materialList.resize(scene->mNumMaterials);
+
+	std::string directory = "";
+	size_t slashPos = filePath.find_last_of("/\\");
+	if (slashPos != std::string::npos) {
+		directory = filePath.substr(0, slashPos + 1);
+	}
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++)
 	{
@@ -156,9 +164,17 @@ void Model::LoadMaterials(const aiScene* scene)
 			aiString path;
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS)
 			{
-				size_t idx = std::string(path.data).rfind("\\");
+				size_t idx = std::string(path.data).find_last_of("/\\");
 				std::string filename = std::string(path.data).substr(idx == std::string::npos ? 0 : idx + 1);
-				std::string texPath = std::string("Assets/Textures/") + filename;
+				
+				std::string texPath = directory + filename;
+				FILE* testFile = nullptr;
+				fopen_s(&testFile, texPath.c_str(), "r");
+				if (testFile) {
+					fclose(testFile);
+				} else {
+					texPath = std::string("Assets/Textures/") + filename;
+				}
 
 				textureList[i] = new Texture(texPath.c_str());
 				// LoadTexture() will be called in LoadModelGPU
@@ -182,6 +198,21 @@ void Model::LoadMaterials(const aiScene* scene)
 		{
 			textureList[i] = new Texture("Assets/Textures/plain.png");
 		}
+
+		Material* mat = new Material();
+		aiColor3D color(1.0f, 1.0f, 1.0f);
+		material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+		mat->SetColor(glm::vec3(color.r, color.g, color.b));
+		
+		float shininess = 32.0f;
+		material->Get(AI_MATKEY_SHININESS, shininess);
+		mat->SetShininess(shininess);
+		
+		float specular = 0.5f;
+		material->Get(AI_MATKEY_SHININESS_STRENGTH, specular);
+		mat->SetSpecularIntensity(specular);
+		
+		materialList[i] = mat;
 	}
 }
 
@@ -214,6 +245,15 @@ void Model::ClearModel()
 		{
 			delete normalMapList[i];
 			normalMapList[i] = nullptr;
+		}
+	}
+
+	for (size_t i = 0; i < materialList.size(); i++)
+	{
+		if (materialList[i])
+		{
+			delete materialList[i];
+			materialList[i] = nullptr;
 		}
 	}
 }
