@@ -427,9 +427,11 @@ void CityGridNode::BuildPlotTransforms(TransformList& output)
 		td.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
 		// Encode plot size in scale (useful for downstream building placement)
-		// Scale X = available width, Scale Z = available depth
-		float availW = plot.size.x - buildingSetback * 2.0f;
-		float availD = plot.size.y - buildingSetback * 2.0f;
+		// Scale X = available width, Scale Z = available depth.
+		// We must subtract the sidewalk width so buildings/fences don't overlap concrete.
+		float totalSetback = sidewalkWidth + buildingSetback;
+		float availW = plot.size.x - totalSetback * 2.0f;
+		float availD = plot.size.y - totalSetback * 2.0f;
 		td.scale = glm::vec3(
 			std::max(1.0f, availW),
 			plot.isResidential ? 1.0f : 2.0f, // Y scale hint: 1 = residential, 2 = commercial
