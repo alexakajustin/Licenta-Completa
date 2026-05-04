@@ -17,6 +17,8 @@
 
 #include <fstream>
 #include <iostream>
+#include <set>
+#include <thread>
 #include <Windows.h>
 #include <commdlg.h>
 
@@ -373,18 +375,35 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	// ========== Pre-load Models ==========
 	if (j.contains("objects"))
 	{
-		// First pass: Pre-load all models into the AssetManager
-		for (auto& objJson : j["objects"])
-		{
-			std::string modelPath = objJson.value("modelPath", "");
-			if (!modelPath.empty())
-			{
-				AssetManager::Get().GetModel(modelPath);
-			}
+		if (progressCallback) progressCallback(15.0f, 0.0f, "Preparing Assets...");
+
+		// Pass 0: Collect unique model paths to avoid redundant overhead
+		std::set<std::string> uniquePaths;
+		for (auto& objJson : j["objects"]) {
+			std::string path = objJson.value("modelPath", "");
+			if (!path.empty()) uniquePaths.insert(path);
+		}
+
+		// Pass 0.5: Trigger background loading
+		for (const auto& path : uniquePaths) {
+			AssetManager::Get().GetModel(path);
 		}
 		
-		// CRITICAL: Wait for all models to finish CPU AND GPU loading (buffers uploaded)
-		AssetManager::Get().WaitForAll();
+		// Responsive Wait: Process GPU uploads while keeping UI alive
+		size_t initialTasks = AssetManager::Get().GetActiveTasksCount();
+		while (AssetManager::Get().GetActiveTasksCount() > 0)
+		{
+			AssetManager::Get().Update(); // Process ready GPU uploads
+			
+			if (progressCallback) {
+				size_t remaining = AssetManager::Get().GetActiveTasksCount();
+				float progress = 15.0f + (initialTasks > 0 ? (1.0f - (float)remaining / initialTasks) * 15.0f : 15.0f);
+				progressCallback(progress, 0.0f, "Uploading GPU Assets (" + std::to_string(remaining) + " left)...");
+			}
+			
+			// Small sleep to avoid pegged CPU if no tasks are ready for GPU yet
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
 	}
 
 	// ========== Load Objects ==========

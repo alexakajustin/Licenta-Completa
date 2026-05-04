@@ -12,6 +12,7 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <thread>
 #include <unordered_set>
 #include "InstancedGroup.h"
 #include "Renderer.h"
@@ -840,6 +841,14 @@ void SceneManager::AddLight(LightObject* light)
 
 void SceneManager::Clear()
 {
+	printf("[SceneManager] Clearing scene (%d objects)...\n", (int)objects.size());
+
+	// 1. Orphan objects to avoid O(N^2) recursion in destructors
+	for (auto* obj : objects) {
+		if (obj) obj->Orphan();
+	}
+
+	// 2. Safe deletion
 	for (auto* obj : objects) delete obj;
 	objects.clear();
 	
@@ -1228,6 +1237,12 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	std::string baseName = path.stem().string();
 	Model* model = AssetManager::Get().GetModel(path.string());
 	if (!model) return;
+
+	// Responsive Wait: Ensure model is ready before modular detection
+	while (AssetManager::Get().GetActiveTasksCount() > 0) {
+		AssetManager::Get().Update();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
 
 	// If the model has multiple meshes, explode it into a modular hierarchy
 	// (e.g. Tree -> [Trunk, Leaves])

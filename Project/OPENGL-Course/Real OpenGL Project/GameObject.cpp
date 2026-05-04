@@ -186,6 +186,12 @@ void GameObject::RemoveChild(GameObject* child)
 	}
 }
 
+void GameObject::Orphan()
+{
+	parent = nullptr;
+	children.clear();
+}
+
 void GameObject::SetModel(Model* mdl)
 {
 	model = mdl;

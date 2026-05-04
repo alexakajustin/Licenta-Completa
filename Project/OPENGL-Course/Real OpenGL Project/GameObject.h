@@ -57,6 +57,7 @@ public:
 	const std::vector<GameObject*>& GetChildren() const { return children; }
 	void AddChild(GameObject* child);
 	void RemoveChild(GameObject* child);
+	void Orphan(); // Fast hierarchy disconnection (no recursive searches)
 
 	void SetInheritScale(bool inherit) { inheritScale = inherit; }
 	bool GetInheritScale() const { return inheritScale; }
