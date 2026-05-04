@@ -1,32 +1,32 @@
 {
     "camera": {
         "front": [
-            0.030519932508468628,
-            -0.03489949554204941,
-            -0.998924732208252
+            -4.371138828673793e-08,
+            0.0,
+            -1.0
         ],
-        "pitch": -2.0,
+        "pitch": 0.0,
         "position": [
-            -56.923675537109375,
-            43.35520553588867,
-            60.31114196777344
+            0.0,
+            0.0,
+            0.0
         ],
-        "yaw": -88.25
+        "yaw": -90.0
     },
     "instancedGroups": [],
     "lights": [
         {
-            "ambientIntensity": 1.0,
+            "ambientIntensity": 0.4000000059604645,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.0,
+            "diffuseIntensity": 0.6000000238418579,
             "direction": [
-                -0.0950549766421318,
-                0.9949159026145935,
-                0.03326921910047531
+                -20.0,
+                -5.0,
+                7.0
             ],
             "name": "Sun",
             "type": "Directional"
@@ -34,10 +34,36 @@
     ],
     "nodeGraph": {
         "links": [],
-        "nextId": 24,
+        "nextId": 1,
         "nodes": []
     },
     "objects": [
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ]
+            }
+        },
         {
             "inheritScale": true,
             "modelPath": "Assets\\Scenes\\Head\\head.OBJ",
@@ -48,9 +74,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -56.96195983886719,
-                    43.418704986572266,
-                    59.93400192260742
+                    -1.5952732563018799,
+                    -2.371161937713623,
+                    -9.582937240600586
                 ],
                 "rotation": [
                     0.0,

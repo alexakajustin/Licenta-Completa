@@ -41,6 +41,7 @@ public:
 	glm::vec2 GetVec2(const std::string& name) const { return vec2s.count(name) ? vec2s.at(name) : glm::vec2(0.0f); }
 
 	void SetTextureParam(const std::string& name, const std::string& path);
+	void SetTexture(const std::string& name, Texture* texture);
 	const std::map<std::string, std::string>& GetTexturePaths() const { return texturePaths; }
 
 	// Keep these for backward compatibility/helper access

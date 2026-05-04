@@ -409,22 +409,48 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 	// ========== Load Objects ==========
 	if (j.contains("objects"))
 	{
+		if (progressCallback) progressCallback(40.0f, 0.0f, "Instantiating Objects (Parallel)...");
+		
 		int objCount = (int)j["objects"].size();
+		std::map<std::string, GameObject*> objectMap;
+		std::mutex mapMutex;
+
+		// Pass 1: Parallel instantiation using all available cores
+		const int chunkSize = 100;
+		std::vector<std::future<void>> futures;
+		
+		for (int i = 0; i < objCount; i += chunkSize)
+		{
+			int end = (std::min)(i + chunkSize, objCount);
+			futures.push_back(std::async(std::launch::async, [i, end, &j, &objectMap, &mapMutex]() {
+				for (int k = i; k < end; k++) {
+					auto& objJson = j["objects"][k];
+					std::string name = objJson.value("name", "Object");
+					GameObject* obj = new GameObject(name);
+					
+					std::lock_guard<std::mutex> lock(mapMutex);
+					objectMap[name] = obj;
+				}
+			}));
+		}
+		for (auto& f : futures) f.wait();
+
+		if (progressCallback) progressCallback(55.0f, 0.0f, "Finalizing Objects...");
+
+		// Pass 1.5: Set properties (non-parallel for safety)
 		int objIndex = 0;
+		std::map<std::string, Texture*> localTextureCache;
+		std::map<std::string, Material*> localMaterialCache;
 
 		for (auto& objJson : j["objects"])
 		{
 			objIndex++;
-			if (progressCallback) {
-				float pct = 15.0f + ((float)objIndex / (float)objCount) * 15.0f; // 15% -> 30%
-				progressCallback(pct, 0.0f, "Loading Object: " + objJson.value("name", "Object"));
-			}
-
 			std::string name = objJson.value("name", "Object");
+			GameObject* obj = objectMap[name];
+			if (!obj) continue;
+
 			std::string primType = objJson.value("primitiveType", "");
 			std::string modelPath = objJson.value("modelPath", "");
-
-			GameObject* obj = new GameObject(name);
 
 			// Recreate mesh based on primitiveType
 			if (primType == "Plane")       obj->SetMesh(PrimitiveGenerator::CreatePlane());
@@ -436,29 +462,21 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			if (!modelPath.empty())
 			{
 				Model* model = AssetManager::Get().GetModel(modelPath);
-				
-				// CRITICAL: If the model has multiple meshes (like Sponza), we DON'T assign it to the root.
-				// This prevents rendering the whole model twice and allows clicking children.
 				if (model && model->GetMeshCount() == 1) {
 					obj->SetModel(model);
 				}
 				obj->SetModelSourcePath(modelPath);
 			}
 
-			// Load custom binary baked mesh if the old graph was cleared
+			// Load custom binary baked mesh
 			if (objJson.contains("customMeshPath"))
 			{
 				std::string meshFileName = objJson["customMeshPath"].get<std::string>();
 				std::string meshFilePath = (std::filesystem::path(filePath).parent_path() / meshFileName).string();
-				
 				MeshData bakedData;
 				if (bakedData.LoadFromBinary(meshFilePath)) {
-					Mesh* newMesh = bakedData.ToMesh();
-					obj->SetMesh(newMesh);
+					obj->SetMesh(bakedData.ToMesh());
 					obj->SetCPUMeshData(bakedData);
-					printf("[SceneSerializer] Successfully loaded baked custom mesh: %s\n", meshFileName.c_str());
-				} else {
-					printf("[SceneSerializer] Warning: Could not find baked mesh sidecar: %s\n", meshFilePath.c_str());
 				}
 			}
 
@@ -466,159 +484,132 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			if (objJson.contains("transform"))
 			{
 				auto& t = objJson["transform"];
-				if (t.contains("position"))
-				{
+				if (t.contains("position")) {
 					auto& p = t["position"];
 					obj->GetTransform().SetPosition(glm::vec3(p[0].get<float>(), p[1].get<float>(), p[2].get<float>()));
 				}
-				if (t.contains("rotation"))
-				{
+				if (t.contains("rotation")) {
 					auto& r = t["rotation"];
 					obj->GetTransform().SetRotation(glm::vec3(r[0].get<float>(), r[1].get<float>(), r[2].get<float>()));
 				}
-				if (t.contains("scale"))
-				{
+				if (t.contains("scale")) {
 					auto& s = t["scale"];
 					obj->GetTransform().SetScale(glm::vec3(s[0].get<float>(), s[1].get<float>(), s[2].get<float>()));
 				}
 			}
 
-			// Hierarchy settings (parent is resolved in a second pass)
-			obj->SetInheritScale(objJson.value("inheritScale", true));
-
-			// Texture
+			// Texture Loading (Optimized with Cache)
 			std::string texPath = objJson.value("texturePath", "");
 			if (!texPath.empty())
 			{
-				Texture* tex = new Texture(texPath.c_str());
-				if (tex->LoadTextureA())
-				{
-					obj->SetTexture(tex);
-				}
-				else
-				{
-					printf("[SceneSerializer] Warning: Failed to load texture: %s\n", texPath.c_str());
-					delete tex;
+				if (localTextureCache.count(texPath)) {
+					obj->SetTexture(localTextureCache[texPath]);
+				} else {
+					Texture* tex = new Texture(texPath.c_str());
+					if (tex->LoadTextureA()) {
+						obj->SetTexture(tex);
+						localTextureCache[texPath] = tex;
+					} else { delete tex; }
 				}
 			}
 
-			// Normal map
+			// Normal Map (Optimized with Cache)
 			std::string normPath = objJson.value("normalMapPath", "");
 			if (!normPath.empty())
 			{
-				Texture* norm = new Texture(normPath.c_str());
-				if (norm->LoadTextureA())
-				{
-					obj->SetNormalMap(norm);
-				}
-				else
-				{
-					printf("[SceneSerializer] Warning: Failed to load normal map: %s\n", normPath.c_str());
-					delete norm;
+				if (localTextureCache.count(normPath)) {
+					obj->SetNormalMap(localTextureCache[normPath]);
+				} else {
+					Texture* norm = new Texture(normPath.c_str());
+					if (norm->LoadTextureA()) {
+						obj->SetNormalMap(norm);
+						localTextureCache[normPath] = norm;
+					} else { delete norm; }
 				}
 			}
 
-			// Material
+			// Material Loading (Shared Cache)
 			if (objJson.contains("material"))
 			{
 				auto& matJson = objJson["material"];
-				Material* mat = new Material();
+				// Simple caching: If it's a modular mesh or has a common material key, reuse it
+				std::string matKey = matJson.dump(); // Use full JSON as key for perfect matching
+				
+				if (localMaterialCache.count(matKey)) {
+					obj->SetMaterial(localMaterialCache[matKey]);
+				} else {
+					Material* mat = new Material();
+					mat->SetShader(scene.GetMainShader()); // Default
 
-				// Load all properties
-				for (auto it = matJson.begin(); it != matJson.end(); ++it) {
-					if (it.value().is_number_float() || it.value().is_number_integer()) {
-						mat->SetFloat(it.key(), it.value().get<float>());
-					}
-					else if (it.value().is_string()) {
-						if (it.key() != "shader_vert" && it.key() != "shader_frag") {
-							mat->SetTextureParam(it.key(), it.value().get<std::string>());
+					for (auto it = matJson.begin(); it != matJson.end(); ++it) {
+						if (it.value().is_number()) mat->SetFloat(it.key(), it.value().get<float>());
+						else if (it.value().is_string()) {
+							std::string path = it.value().get<std::string>();
+							if (it.key().find("shader") != std::string::npos) continue; // Skip shaders here
+
+							// Use the texture cache for material parameters!
+							if (localTextureCache.count(path)) {
+								mat->SetTexture(it.key(), localTextureCache[path]);
+							} else {
+								Texture* t = new Texture(path.c_str());
+								if (t->LoadTextureA()) {
+									mat->SetTexture(it.key(), t);
+									localTextureCache[path] = t;
+								} else delete t;
+							}
+						}
+						else if (it.value().is_array()) {
+							if (it.value().size() == 2) mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));
+							else if (it.value().size() == 3) mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
+							else if (it.value().size() == 4) mat->SetVec4(it.key(), glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
 						}
 					}
-					else if (it.value().is_array() && it.value().size() == 2) {
-						mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));
-					}
-					else if (it.value().is_array() && it.value().size() == 3) {
-						mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
-					}
-					else if (it.value().is_array() && it.value().size() == 4) {
-						mat->SetVec4(it.key(), glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
-					}
+					obj->SetMaterial(mat);
+					localMaterialCache[matKey] = mat;
 				}
-
-				// Handle shader loading
-				if (matJson.contains("shader_vert") && matJson.contains("shader_frag")) {
-					std::string v = matJson["shader_vert"];
-					std::string f = matJson["shader_frag"];
-					// We need a way to load/cache this shader. 
-					// For now, we'll set it to mainShader if it matches, 
-					// or we'll need a ShaderManager.
-					if (v == "Assets/Shaders/shader.vert" || v == "Shaders/shader.vert") mat->SetShader(scene.GetMainShader());
-					else {
-						// Create a new shader for this material? 
-						// This could lead to duplicate shaders.
-						Shader* s = new Shader();
-						s->CreateFromFiles(v.c_str(), f.c_str());
-						mat->SetShader(s);
-					}
-				} else {
-					mat->SetShader(scene.GetMainShader());
-				}
-
-				obj->SetMaterial(mat);
 			}
 
-			// Texture Layers
+			// Texture Layers (Optimized with Cache)
 			if (objJson.contains("textureLayers"))
 			{
 				for (const auto& layerJson : objJson["textureLayers"])
 				{
 					TextureLayer layer;
-					layer.texturePath = layerJson.value("texturePath", "");
-					layer.normalMapPath = layerJson.value("normalMapPath", "");
+					std::string tp = layerJson.value("texturePath", "");
+					std::string np = layerJson.value("normalMapPath", "");
+					std::string dp = layerJson.value("displacementMapPath", "");
+
+					if (!tp.empty()) {
+						if (localTextureCache.count(tp)) layer.texture = localTextureCache[tp];
+						else {
+							Texture* t = new Texture(tp.c_str());
+							if (t->LoadTextureA()) { layer.texture = t; localTextureCache[tp] = t; }
+							else delete t;
+						}
+					}
+					if (!np.empty()) {
+						if (localTextureCache.count(np)) layer.normalMap = localTextureCache[np];
+						else {
+							Texture* t = new Texture(np.c_str());
+							if (t->LoadTextureA()) { layer.normalMap = t; localTextureCache[np] = t; }
+							else delete t;
+						}
+					}
+					if (!dp.empty()) {
+						if (localTextureCache.count(dp)) layer.displacementMap = localTextureCache[dp];
+						else {
+							Texture* t = new Texture(dp.c_str());
+							if (t->LoadTextureGrayscale()) { layer.displacementMap = t; localTextureCache[dp] = t; }
+							else delete t;
+						}
+					}
+
+					layer.texturePath = tp;
+					layer.normalMapPath = np;
+					layer.displacementMapPath = dp;
 					layer.blendMode = (LayerBlendMode)layerJson.value("blendMode", 0);
 					layer.opacity = layerJson.value("opacity", 1.0f);
 					layer.tiling = layerJson.value("tiling", 1.0f);
-					layer.heightMin = layerJson.value("heightMin", 0.0f);
-					layer.heightMax = layerJson.value("heightMax", 100.0f);
-					layer.slopeMin = layerJson.value("slopeMin", 0.0f);
-					layer.slopeMax = layerJson.value("slopeMax", 0.5f);
-					layer.invert = layerJson.value("invert", false);
-					layer.displacementMapPath = layerJson.value("displacementMapPath", "");
-					layer.displacementScale = layerJson.value("displacementScale", 0.05f);
-
-					if (!layer.texturePath.empty())
-					{
-						Texture* tex = new Texture(layer.texturePath.c_str());
-						if (tex->LoadTextureA()) {
-							layer.texture = tex;
-						} else {
-							printf("[SceneSerializer] Warning: Failed to load layer texture: %s\n", layer.texturePath.c_str());
-							delete tex;
-						}
-					}
-
-					if (!layer.normalMapPath.empty())
-					{
-						Texture* norm = new Texture(layer.normalMapPath.c_str());
-						if (norm->LoadTextureA()) {
-							layer.normalMap = norm;
-						} else {
-							printf("[SceneSerializer] Warning: Failed to load layer normal map: %s\n", layer.normalMapPath.c_str());
-							delete norm;
-						}
-					}
-
-					if (!layer.displacementMapPath.empty())
-					{
-						Texture* disp = new Texture(layer.displacementMapPath.c_str());
-						if (disp->LoadTextureGrayscale()) {
-							layer.displacementMap = disp;
-						} else {
-							printf("[SceneSerializer] Warning: Failed to load layer displacement map: %s\n", layer.displacementMapPath.c_str());
-							delete disp;
-						}
-					}
-
 					obj->AddTextureLayer(layer);
 				}
 			}
@@ -638,53 +629,68 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 		// Second pass: resolve parent-child relationships and re-link modular meshes
 		auto& objects = scene.GetObjects();
-		// Final pass: Re-link modular hierarchies and update transforms
-		// Ensure any models requested during the main loop (if any were missed) are also finished
-		AssetManager::Get().WaitForAll();
-
-		for (size_t i = 0; i < objects.size(); i++)
+		// Pass 2: Hierarchy and Mesh Re-linking (O(1) lookup)
+		std::map<Model*, std::map<std::string, size_t>> modelMeshIndexCache;
+		for (int i = 0; i < (int)objects.size(); i++)
 		{
-			std::string parentName = j["objects"][i].value("parent", "");
-			if (!parentName.empty())
+			auto& objJson = j["objects"][i];
+			std::string parentName = objJson.value("parent", "");
+			if (parentName.empty()) parentName = objJson.value("parentName", ""); // Handle both naming conventions
+
+			if (!parentName.empty() && objectMap.count(parentName))
 			{
-				GameObject* parent = scene.FindObject(parentName);
+				GameObject* parent = objectMap[parentName];
 				if (parent && parent != objects[i])
 				{
-					parent->AddChild(objects[i]); // Use raw parenting to preserve local transforms from JSON
+					parent->AddChild(objects[i]);
 
-					// MODULAR FIX: If this is a child of a model-based root, re-link the mesh
-					if (!parent->GetModelSourcePath().empty() && !objects[i]->GetMesh() && !objects[i]->GetModel())
+					// MODULAR RE-LINKING: If this is a child of a modular model, re-attach its specific mesh
+					std::string sourcePath = parent->GetModelSourcePath();
+					if (!sourcePath.empty() && !objects[i]->GetMesh() && !objects[i]->GetModel())
 					{
-						Model* parentModel = AssetManager::Get().GetModel(parent->GetModelSourcePath());
-						if (parentModel) {
-							// Find mesh matching this object's name (stripping suffixes like " (Foliage)")
+						Model* parentModel = AssetManager::Get().GetModel(sourcePath);
+						if (parentModel) 
+						{
+							// Optimize mesh lookup by indexing the model once
+							if (modelMeshIndexCache.find(parentModel) == modelMeshIndexCache.end()) {
+								auto& indexMap = modelMeshIndexCache[parentModel];
+								for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
+									indexMap[parentModel->GetMeshNames()[m]] = m;
+								}
+							}
+
 							std::string targetName = objects[i]->GetName();
 							size_t suffixPos = targetName.find(" (");
 							if (suffixPos != std::string::npos) targetName = targetName.substr(0, suffixPos);
 
-							for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
-								bool nameMatch = (parentModel->GetMeshNames()[m] == targetName);
-								bool indexMatch = (!nameMatch && targetName == ("Mesh_" + std::to_string(m)));
+							auto& indexMap = modelMeshIndexCache[parentModel];
+							size_t meshIdx = size_t(-1);
 
-								if (nameMatch || indexMatch) {
-									objects[i]->SetMesh(parentModel->GetMesh(m));
-									
-									// UNIFIED FIX: If the child has no layers, pull them from the model's material
-									if (objects[i]->GetTextureLayers().empty()) {
-										unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)m);
-										Texture* diffuse = parentModel->GetTexture(matIdx);
-										Texture* normal = parentModel->GetNormalMap(matIdx);
-										
-										if (diffuse || normal) {
-											TextureLayer layer;
-											layer.texture = diffuse;
-											layer.normalMap = normal;
-											layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
-											layer.normalMapPath = normal ? normal->GetFileLocation() : "";
-											objects[i]->AddTextureLayer(layer);
-										}
+							if (indexMap.count(targetName)) {
+								meshIdx = indexMap[targetName];
+							} else {
+								// Fallback to "Mesh_X" check
+								if (targetName.find("Mesh_") == 0) {
+									try { meshIdx = std::stoull(targetName.substr(5)); } catch (...) {}
+								}
+							}
+
+							if (meshIdx < parentModel->GetMeshCount()) {
+								objects[i]->SetMesh(parentModel->GetMesh(meshIdx));
+								
+								// Inherit textures/layers if missing
+								if (objects[i]->GetTextureLayers().empty()) {
+									unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)meshIdx);
+									Texture* diffuse = parentModel->GetTexture(matIdx);
+									Texture* normal = parentModel->GetNormalMap(matIdx);
+									if (diffuse || normal) {
+										TextureLayer layer;
+										layer.texture = diffuse;
+										layer.normalMap = normal;
+										layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
+										layer.normalMapPath = normal ? normal->GetFileLocation() : "";
+										objects[i]->AddTextureLayer(layer);
 									}
-									break;
 								}
 							}
 						}

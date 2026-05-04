@@ -57,9 +57,20 @@ void Material::SetTextureParam(const std::string& name, const std::string& path)
 	// Load the texture if not already loaded
 	if (textures.find(name) == textures.end() || textures[name] == nullptr) {
 		Texture* tex = new Texture(path.c_str());
-		tex->LoadTextureA();
-		textures[name] = tex;
-		printf("[Material] Loaded texture param '%s' from '%s'\n", name.c_str(), path.c_str());
+		if (tex->LoadTextureA()) {
+			textures[name] = tex;
+			printf("[Material] Loaded texture param '%s' from '%s'\n", name.c_str(), path.c_str());
+		} else {
+			delete tex;
+		}
+	}
+}
+
+void Material::SetTexture(const std::string& name, Texture* texture)
+{
+	if (texture) {
+		textures[name] = texture;
+		texturePaths[name] = texture->GetFileLocation();
 	}
 }
 
