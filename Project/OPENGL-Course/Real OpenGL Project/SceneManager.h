@@ -164,6 +164,14 @@ private:
 	Shader* hizCopyShader = nullptr;
 	Shader* hizDebugShader = nullptr;
 
+	// CPU-Side Hi-Z Occlusion Culling
+	GLuint hizPBO[2] = { 0, 0 };
+	int currentPBO = 0;
+	std::vector<float> cpuHiZMap;
+	int cpuHiZWidth = 0;
+	int cpuHiZHeight = 0;
+	glm::mat4 prevViewProj = glm::mat4(1.0f);
+
 	void GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture);
 
 	// Global light state pointers

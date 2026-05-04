@@ -282,6 +282,24 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	float time, const Frustum* frustum, Shader* overrideShader, float screenWidth, float screenHeight, class Renderer* renderer, 
 	GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
 {
+	// ================================================================
+	// CPU Hi-Z Occlusion Culling: Map PBO from previous frame (1-frame latency)
+	// ================================================================
+	if (!overrideShader && hizPBO[0] != 0 && gs && gs->enableOcclusionCulling) {
+		int prevPBO = (currentPBO + 1) % 2;
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[prevPBO]);
+		float* ptr = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+		if (ptr) {
+			int bufferSize = cpuHiZWidth * cpuHiZHeight * sizeof(float);
+			if (cpuHiZMap.size() != cpuHiZWidth * cpuHiZHeight) {
+				cpuHiZMap.resize(cpuHiZWidth * cpuHiZHeight);
+			}
+			memcpy(cpuHiZMap.data(), ptr, bufferSize);
+			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+		}
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	}
+
 	struct Batch {
 		Mesh* mesh;
 		Material* material;
@@ -431,6 +449,83 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 				// LAYER 3: AABB vs Frustum
 				if (!frustum->IsBoxVisible(bmin, bmax)) continue;
+
+				// LAYER 4: CPU Hi-Z Occlusion Culling (1-frame latency)
+				if (!overrideShader && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+					glm::vec3 corners[8] = {
+						glm::vec3(bmin.x, bmin.y, bmin.z),
+						glm::vec3(bmax.x, bmin.y, bmin.z),
+						glm::vec3(bmin.x, bmax.y, bmin.z),
+						glm::vec3(bmax.x, bmax.y, bmin.z),
+						glm::vec3(bmin.x, bmin.y, bmax.z),
+						glm::vec3(bmax.x, bmin.y, bmax.z),
+						glm::vec3(bmin.x, bmax.y, bmax.z),
+						glm::vec3(bmax.x, bmax.y, bmax.z)
+					};
+
+					glm::vec2 minNDC = glm::vec2(1.0f);
+					glm::vec2 maxNDC = glm::vec2(-1.0f);
+					bool crossesNearPlane = false;
+					float nearestDepth = 1.0f;
+
+					for (int i = 0; i < 8; ++i) {
+						glm::vec4 clipPos = prevViewProj * glm::vec4(corners[i], 1.0f);
+						if (clipPos.w < 0.01f) {
+							crossesNearPlane = true;
+							break;
+						}
+						glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+						minNDC.x = std::min(minNDC.x, ndc.x);
+						minNDC.y = std::min(minNDC.y, ndc.y);
+						maxNDC.x = std::max(maxNDC.x, ndc.x);
+						maxNDC.y = std::max(maxNDC.y, ndc.y);
+
+						float d = ndc.z * 0.5f + 0.5f;
+						nearestDepth = std::min(nearestDepth, d);
+					}
+
+					if (!crossesNearPlane) {
+						minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f);
+						minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
+						maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f);
+						maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
+
+						glm::vec2 minUV = minNDC * 0.5f + 0.5f;
+						glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
+
+						int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+						int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+						int endX = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+						int endY = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+
+						float maxOccluderDepth = 0.0f;
+						int area = (endX - startX + 1) * (endY - startY + 1);
+						
+						// Skip testing if object covers more than 20% of the screen (it's very likely visible and too expensive to test)
+						if (area < (cpuHiZWidth * cpuHiZHeight) / 5) {
+							for (int y = startY; y <= endY; ++y) {
+								int rowOffset = y * cpuHiZWidth;
+								for (int x = startX; x <= endX; ++x) {
+									float d = cpuHiZMap[rowOffset + x];
+									maxOccluderDepth = std::max(maxOccluderDepth, d);
+								}
+							}
+
+							float A = projection[2][2];
+							float B = projection[3][2];
+							float nearPlane = B / (A - 1.0f);
+							float farPlane = B / (A + 1.0f);
+
+							float linNearest = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
+							float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
+
+							// If the nearest point of the object is further than the deepest occluder
+							if (linNearest > linOccluder + 1.0f) {
+								continue;
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -839,6 +934,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glEnable(GL_CULL_FACE);
+	}
+	
+	if (!overrideShader) {
+		prevViewProj = projection * view;
 	}
 }
 
@@ -2419,6 +2518,43 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 		currentWidth = nextWidth;
 		currentHeight = nextHeight;
 	}
+
+	// ================================================================
+	// 5. CPU Readback using PBO (1-frame latency)
+	// ================================================================
+	int targetMip = 0;
+	int mipW = hizWidth;
+	int mipH = hizHeight;
+	while (mipW > 256 && targetMip < hizMipCount - 1) {
+		mipW /= 2;
+		mipH /= 2;
+		targetMip++;
+	}
+	cpuHiZWidth = std::max(1, mipW);
+	cpuHiZHeight = std::max(1, mipH);
+	int numPixels = cpuHiZWidth * cpuHiZHeight;
+	int bufferSize = numPixels * sizeof(float);
+
+	// Ensure PBOs are allocated with enough space (up to 512x512 to be safe)
+	if (hizPBO[0] == 0) {
+		glGenBuffers(2, hizPBO);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[0]);
+		glBufferData(GL_PIXEL_PACK_BUFFER, 512 * 512 * sizeof(float), nullptr, GL_DYNAMIC_READ);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[1]);
+		glBufferData(GL_PIXEL_PACK_BUFFER, 512 * 512 * sizeof(float), nullptr, GL_DYNAMIC_READ);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	}
+
+	int nextPBO = currentPBO;
+
+	// Issue read command for current frame into nextPBO
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[nextPBO]);
+	glBindTexture(GL_TEXTURE_2D, hizTexture);
+	glGetTexImage(GL_TEXTURE_2D, targetMip, GL_RED, GL_FLOAT, 0);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+	// Swap PBO index for the next frame
+	currentPBO = (currentPBO + 1) % 2;
 }
 
 void SceneManager::GenerateHiZDebug(float nearPlane, float farPlane)
