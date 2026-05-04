@@ -2420,3 +2420,48 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 		currentHeight = nextHeight;
 	}
 }
+
+void SceneManager::GenerateHiZDebug(float nearPlane, float farPlane)
+{
+	if (hizTexture == 0 || hizWidth <= 0 || hizHeight <= 0) return;
+
+	// Initialize debug shader if needed
+	if (!hizDebugShader) {
+		hizDebugShader = new Shader();
+		hizDebugShader->CreateComputeShader("Assets/Shaders/hiz_debug.glsl");
+	}
+
+	// Create/resize debug texture (RGBA8 for ImGui display)
+	int debugW = hizWidth / 4;  // Quarter-res for performance
+	int debugH = hizHeight / 4;
+	if (hizDebugTexture == 0) {
+		glGenTextures(1, &hizDebugTexture);
+		glBindTexture(GL_TEXTURE_2D, hizDebugTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, debugW, debugH, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+
+	hizDebugShader->UseShader();
+	GLuint sid = hizDebugShader->GetShaderID();
+
+	// Bind Hi-Z texture for sampling
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, hizTexture);
+	glUniform1i(glGetUniformLocation(sid, "hizTexture"), 0);
+
+	// Bind debug output image
+	glBindImageTexture(0, hizDebugTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+
+	// Pass near/far
+	glUniform1f(glGetUniformLocation(sid, "nearPlane"), nearPlane);
+	glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
+
+	// Dispatch
+	int numGroupsX = (debugW + 7) / 8;
+	int numGroupsY = (debugH + 7) / 8;
+	glDispatchCompute(numGroupsX, numGroupsY, 1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+}

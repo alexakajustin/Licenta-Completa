@@ -1815,10 +1815,15 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			
 			if (graphicsSettingsPtr->debugShowHiZ && sceneManager && sceneManager->GetHiZTexture() > 0)
 			{
-				ImGui::Text("Hi-Z Depth Buffer (Conservative):");
-				// ImGui draws textures upside-down by default for OpenGL, so we invert the V coordinates
-				ImVec2 size(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x * (1080.0f / 1920.0f));
-				ImGui::Image((void*)(intptr_t)sceneManager->GetHiZTexture(), size, ImVec2(0, 1), ImVec2(1, 0));
+				// Generate linearized debug visualization (raw depth is all ~1.0 due to perspective compression)
+				sceneManager->GenerateHiZDebug(0.1f, 20000.0f);
+				
+				GLuint debugTex = sceneManager->GetHiZDebugTexture();
+				if (debugTex > 0) {
+					ImGui::Text("Hi-Z Depth (Linearized, near=white):");
+					ImVec2 size(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x * (1080.0f / 1920.0f));
+					ImGui::Image((void*)(intptr_t)debugTex, size, ImVec2(0, 1), ImVec2(1, 0));
+				}
 			}
 		}
 	}

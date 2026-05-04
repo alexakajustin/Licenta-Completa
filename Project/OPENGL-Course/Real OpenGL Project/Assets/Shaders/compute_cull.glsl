@@ -79,6 +79,8 @@ uniform float lodDistances[3];      // Max distance for each LOD level
 // Hi-Z Occlusion Culling
 uniform int useHiZ;
 uniform vec2 screenSize;
+uniform float nearPlane;
+uniform float farPlane;
 layout(binding = 15) uniform sampler2D hizMap;
 
 void main()
@@ -204,8 +206,15 @@ void main()
                 // If the nearest part of our instance is deeper than the deepest occluder, it's hidden!
                 float maxOccluderDepth = max(max(d0, d1), max(d2, d3));
                 
-                // We add a tiny bias to prevent z-fighting/artifacts on surfaces
-                if (nearestDepth > maxOccluderDepth + 0.001) {
+                // Linearize both depths for comparison.
+                // Standard OpenGL depth is nonlinearly compressed: objects at 200m and 300m
+                // differ by only ~0.0002 in raw depth. Any fixed bias would either
+                // fail to cull or over-cull. Linearizing makes the comparison work correctly.
+                float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
+                float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
+                
+                // In linear space, a 1-meter bias is safe and intuitive
+                if (linNearest > linOccluder + 1.0) {
                     return; // Occluded!
                 }
             }

@@ -11,6 +11,7 @@
 #include <future>
 #include <stdexcept>
 #include <mutex>
+#include <limits>
 #include <glm/gtx/norm.hpp>
 
 json ScatterNode::Serialize() const

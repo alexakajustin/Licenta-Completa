@@ -135,6 +135,8 @@ public:
 
 	// Occlusion Culling Access
 	GLuint GetHiZTexture() const { return hizTexture; }
+	GLuint GetHiZDebugTexture() const { return hizDebugTexture; }
+	void GenerateHiZDebug(float nearPlane, float farPlane);
 
 private:
 	std::vector<GameObject*> objects;
@@ -154,11 +156,13 @@ private:
 
 	// Hi-Z Occlusion Culling
 	GLuint hizTexture = 0;
+	GLuint hizDebugTexture = 0;
 	int hizWidth = 0;
 	int hizHeight = 0;
 	int hizMipCount = 1;
 	Shader* hizComputeShader = nullptr;
 	Shader* hizCopyShader = nullptr;
+	Shader* hizDebugShader = nullptr;
 
 	void GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture);
 

@@ -301,6 +301,17 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
 		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
 		
+		// Extract near and far planes from the projection matrix
+		// For a standard perspective projection:
+		//   P[2][2] = -(far+near)/(far-near)
+		//   P[3][2] = -(2*far*near)/(far-near)
+		float A = projection[2][2];
+		float B = projection[3][2];
+		float nearP = B / (A - 1.0f);
+		float farP  = B / (A + 1.0f);
+		glUniform1f(glGetUniformLocation(cullShaderID, "nearPlane"), nearP);
+		glUniform1f(glGetUniformLocation(cullShaderID, "farPlane"), farP);
+		
 		// Bind the Hi-Z map to texture unit 15 (or any safe unit)
 		glActiveTexture(GL_TEXTURE15);
 		glBindTexture(GL_TEXTURE_2D, hizTexture);
