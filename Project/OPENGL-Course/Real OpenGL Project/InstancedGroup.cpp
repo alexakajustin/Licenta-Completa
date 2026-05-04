@@ -9,6 +9,8 @@
 #include "Frustum.h"
 #include "GameObject.h"
 #include "SceneManager.h"
+#include "NodeGraph.h"
+#include "ScatterNode.h"
 #include <cstdio>
 #include <cmath>
 #include <map>
@@ -740,6 +742,26 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 	// 1. Get the instance data
 	PackedInstance inst = cpuInstances[index];
 	
+	// Extract the node ID from the name if it's procedurally generated
+	ScatterNode* scatterNode = nullptr;
+	if (scene && name.find("Scatter_") != std::string::npos) {
+		int nodeID = -1;
+		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
+			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
+		{
+			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			if (node && node->title == "Scatter") {
+				scatterNode = static_cast<ScatterNode*>(node);
+			}
+		}
+	}
+
+	if (scatterNode) {
+		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+		float scale = inst.positionAndScale.w;
+		scatterNode->AddDeletionVolume(pos, meshBoundRadius * scale * 1.0f);
+	}
+	
 	// 2. Remove it from the CPU array (O(1) removal via swap-pop)
 	cpuInstances[index] = cpuInstances.back();
 	cpuInstances.pop_back();
@@ -810,8 +832,28 @@ void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneMana
 		newObjects[arrIdx] = obj;
 	});
 
+	// Extract the node ID from the name if it's procedurally generated
+	ScatterNode* scatterNode = nullptr;
+	if (scene && name.find("Scatter_") != std::string::npos) {
+		int nodeID = -1;
+		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
+			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
+		{
+			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			if (node && node->title == "Scatter") {
+				scatterNode = static_cast<ScatterNode*>(node);
+			}
+		}
+	}
+
 	// Sequential removal from cpuInstances (O(1) swap-pop in descending order)
 	for (int idx : sortedIndices) {
+		if (scatterNode) {
+			PackedInstance& inst = cpuInstances[idx];
+			glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+			float scale = inst.positionAndScale.w;
+			scatterNode->AddDeletionVolume(pos, meshBoundRadius * scale * 1.0f);
+		}
 		cpuInstances[idx] = cpuInstances.back();
 		cpuInstances.pop_back();
 	}
@@ -878,9 +920,23 @@ void InstancedGroup::ClearSelection()
 	ReuploadGPU();
 }
 
-void InstancedGroup::DeleteSelectedInstances()
+void InstancedGroup::DeleteSelectedInstances(SceneManager* scene)
 {
 	if (selectedInstanceIndices.empty()) return;
+
+	// Extract the node ID from the name if it's procedurally generated
+	ScatterNode* scatterNode = nullptr;
+	if (scene && name.find("Scatter_") != std::string::npos) {
+		int nodeID = -1;
+		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
+			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
+		{
+			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			if (node && node->title == "Scatter") {
+				scatterNode = static_cast<ScatterNode*>(node);
+			}
+		}
+	}
 
 	// O(N) filter to delete instances physically
 	std::vector<PackedInstance> newInstances;
@@ -889,6 +945,13 @@ void InstancedGroup::DeleteSelectedInstances()
 	for (const auto& inst : cpuInstances) {
 		if (inst.rotationAndFlags.w < 0.5f) {
 			newInstances.push_back(inst);
+		} else {
+			// It's being deleted! Mask it permanently if procedurally generated.
+			if (scatterNode) {
+				glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+				float scale = inst.positionAndScale.w;
+				scatterNode->AddDeletionVolume(pos, meshBoundRadius * scale * 1.0f); // 1.0f tolerance multiplier
+			}
 		}
 	}
 

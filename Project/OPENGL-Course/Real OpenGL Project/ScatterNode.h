@@ -106,6 +106,21 @@ private:
 	std::set<std::string> createdGroupNames;
 	std::map<std::string, std::vector<std::string>> spawnedMap; // objectName -> list of instance names
 	
+	// Spatial Masking for deleted instances
+	struct DeletionVolume {
+		glm::vec3 position;
+		float radius;
+	};
+	std::vector<DeletionVolume> deletionVolumes;
+
+public:
+	void AddDeletionVolume(const glm::vec3& pos, float radius) {
+		deletionVolumes.push_back({ pos, radius });
+	}
+	void ClearDeletionVolumes() { deletionVolumes.clear(); }
+	const std::vector<DeletionVolume>& GetDeletionVolumes() const { return deletionVolumes; }
+
+private:
 	// Random float in [min, max]
 	float RandRange(float min, float max);
 

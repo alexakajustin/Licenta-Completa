@@ -11,6 +11,7 @@
 #include <future>
 #include <stdexcept>
 #include <mutex>
+#include <glm/gtx/norm.hpp>
 
 json ScatterNode::Serialize() const
 {
@@ -37,6 +38,18 @@ json ScatterNode::Serialize() const
 		sMap[objName] = instArr;
 	}
 	j["spawnedMap"] = sMap;
+
+	// Save deletion volumes
+	json delVols = json::array();
+	for (const auto& vol : deletionVolumes) {
+		json v;
+		v["x"] = vol.position.x;
+		v["y"] = vol.position.y;
+		v["z"] = vol.position.z;
+		v["radius"] = vol.radius;
+		delVols.push_back(v);
+	}
+	j["deletionVolumes"] = delVols;
 
 	return j;
 }
@@ -67,6 +80,19 @@ void ScatterNode::Deserialize(const json& j)
 			std::vector<std::string> instances;
 			for (const auto& name : it.value()) instances.push_back(name.get<std::string>());
 			spawnedMap[it.key()] = instances;
+		}
+	}
+
+	// Restore deletion volumes
+	deletionVolumes.clear();
+	if (j.contains("deletionVolumes")) {
+		for (const auto& v : j["deletionVolumes"]) {
+			DeletionVolume vol;
+			vol.position.x = v.value("x", 0.0f);
+			vol.position.y = v.value("y", 0.0f);
+			vol.position.z = v.value("z", 0.0f);
+			vol.radius = v.value("radius", 1.0f);
+			deletionVolumes.push_back(vol);
 		}
 	}
 }
@@ -368,6 +394,26 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 		if (progress) progress(10.0f + (transCompleted * 15.0f / transFutures.size()), "Computing Transforms... (" + std::to_string(transCompleted) + "/" + std::to_string(transFutures.size()) + ") Threads");
+	}
+
+	// Filter out deleted volumes (Spatial Masking)
+	if (!deletionVolumes.empty()) {
+		if (progress) progress(25.0f, "Applying Deletion Masks...");
+		std::vector<TransformData> filtered;
+		filtered.reserve(outputs[1].data.transforms.size());
+		for (const auto& t : outputs[1].data.transforms) {
+			bool skip = false;
+			for (const auto& vol : deletionVolumes) {
+				// Fast squared distance check
+				float distSq = glm::distance2(t.position, vol.position);
+				if (distSq <= (vol.radius * vol.radius)) {
+					skip = true;
+					break;
+				}
+			}
+			if (!skip) filtered.push_back(t);
+		}
+		outputs[1].data.transforms = std::move(filtered);
 	}
 
 	// We only output transforms and surface now. 

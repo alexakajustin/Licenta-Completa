@@ -104,7 +104,7 @@ public:
 	// GPU Selection Pipeline
 	void SelectInstances(const std::vector<int>& indices, bool additive);
 	void ClearSelection();
-	void DeleteSelectedInstances();
+	void DeleteSelectedInstances(class SceneManager* scene = nullptr);
 	void ExtractInstance(int index, class SceneManager* scene, bool skipReuploadAndSelect = false);
 	void ExtractInstances(const std::vector<int>& indices, class SceneManager* scene, bool skipReuploadAndSelect = false);
 	void ReuploadGPU(); // Re-upload after batch extraction

@@ -68,7 +68,7 @@ void SceneManager::RemoveObject(const std::string& name)
 void SceneManager::DeleteSelectedObjects()
 {
 	for (auto* group : instancedGroups) {
-		if (group) group->DeleteSelectedInstances();
+		if (group) group->DeleteSelectedInstances(this);
 	}
 
 	if (selectedObjectIndices.empty()) return;
