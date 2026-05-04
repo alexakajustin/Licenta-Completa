@@ -445,7 +445,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		wallLayer.texture = texCache[texIdx];
 		wallLayer.blendMode = LayerBlendMode::Normal;
 		wallLayer.opacity = 1.0f;
-		wallLayer.tiling = WALL_TEXTURE_SCALES[texIdx]; // Apply texture-specific scale to the baked UVs
+		wallLayer.tiling = 0.1f; // Defaulted to 0.1 as requested
 		obj->AddTextureLayer(wallLayer);
 
 		// Pick roof texture
@@ -461,7 +461,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		roofLayer.texture = texCache[roofTexIdx];
 		roofLayer.blendMode = LayerBlendMode::Normal;
 		roofLayer.opacity = 1.0f;
-		roofLayer.tiling = 1.0f; // Tiling baked directly into mesh UVs for both peaked and flat roofs 
+		roofLayer.tiling = 0.1f; // Defaulted to 0.1 as requested
 		roofObj->AddTextureLayer(roofLayer);
 
 		// ---- Fences and Parking Spots (Residential only) ----
@@ -548,7 +548,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			fenceLayer.texture = texCache[102];
 			fenceLayer.blendMode = LayerBlendMode::Normal;
 			fenceLayer.opacity = 1.0f;
-			fenceLayer.tiling = 1.0f; // UVs baked in MakeCubePart
+			fenceLayer.tiling = 0.1f; // Defaulted to 0.1 as requested
 			fenceObj->AddTextureLayer(fenceLayer);
 		} else if (fenceObj) {
 			fenceObj->SetMesh(nullptr);
@@ -579,7 +579,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			parkingLayer.texture = texCache[101];
 			parkingLayer.blendMode = LayerBlendMode::Normal;
 			parkingLayer.opacity = 1.0f;
-			parkingLayer.tiling = 1.0f; // UVs baked in MakeCubePart
+			parkingLayer.tiling = 0.1f; // Defaulted to 0.1 as requested
 			parkingObj->AddTextureLayer(parkingLayer);
 		} else if (parkingObj) {
 			parkingObj->SetMesh(nullptr);

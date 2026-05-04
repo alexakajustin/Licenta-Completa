@@ -151,32 +151,6 @@
     },
     "objects": [
         {
-            "inheritScale": true,
-            "modelPath": "",
-            "name": "Plane",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "Plane",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    100.0,
-                    1.0,
-                    100.0
-                ]
-            }
-        },
-        {
             "customMeshPath": "City_Grid_City_Ground.mesh",
             "inheritScale": true,
             "modelPath": "",
