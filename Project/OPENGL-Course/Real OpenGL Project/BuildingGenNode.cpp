@@ -128,8 +128,9 @@ void BuildingGenNode::Deserialize(const json& j)
 
 MeshData BuildingGenNode::MakeCubePart(glm::vec3 center, glm::vec3 halfExtents)
 {
-	// Get the engine's unit cube (correct UVs on all 6 faces)
-	MeshData cube = PrimitiveGenerator::GetCubeData();
+	// Cache the engine's unit cube — generated ONCE (C++11 thread-safe static init), then copied
+	static const MeshData baseCube = PrimitiveGenerator::GetCubeData();
+	MeshData cube = baseCube; // copy for this call's modifications
 
 	float sizeX = halfExtents.x * 2.0f;
 	float sizeY = halfExtents.y * 2.0f;
@@ -555,6 +556,22 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		return "Batch_" + std::to_string(key);
 	};
 
+	auto getTilingForKey = [](int key) -> float {
+		// Wall Tiling: Hardcoded per user request
+		// 0.1 for office, apartments, and skyscraper3
+		// 0.2 for other skyscraper types and blocks
+		if (key == 0 || key == 1 || key == 4) return 0.1f;
+		if (key >= 2 && key < NUM_WALL_TEXTURES) return 0.2f;
+
+		// Roof Shingles
+		if (key == 100) return 2.0f;
+		// Concrete (Flat roofs / Driveways): Needs high density for detail
+		if (key == 101 || key == 103) return 5.0f;
+		// Fences
+		if (key == 102) return 1.0f;
+		return 1.0f;
+	};
+
 	int batchCount = 0;
 	for (auto& [texKey, mergedMesh] : batchedMeshes) {
 		if (mergedMesh.GetVertexCount() == 0) continue;
@@ -587,9 +604,9 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		layer.texture = texCache[texKey];
 		layer.blendMode = LayerBlendMode::Normal;
 		layer.opacity = 1.0f;
-		layer.tiling = 0.1f;
+		layer.tiling = getTilingForKey(texKey);
 		batchObj->AddTextureLayer(layer);
-
+		
 		batchCount++;
 	}
 

@@ -77,10 +77,10 @@ void CityGridNode::Deserialize(const json& j)
 {
 	GraphNode::Deserialize(j);
 	citySize = j.value("citySize", 100.0f);
-	roadWidth = j.value("roadWidth", 2.0f);
-	roadSpacingX = j.value("roadSpacingX", 20.0f);
-	roadSpacingZ = j.value("roadSpacingZ", 20.0f);
-	sidewalkWidth = j.value("sidewalkWidth", 0.4f);
+	roadWidth = j.value("roadWidth", 6.0f);
+	roadSpacingX = j.value("roadSpacingX", 30.0f);
+	roadSpacingZ = j.value("roadSpacingZ", 30.0f);
+	sidewalkWidth = j.value("sidewalkWidth", 1.5f);
 	roadHeight = j.value("roadHeight", 0.02f);
 	buildingSetback = j.value("buildingSetback", 1.0f);
 	residentialProbability = j.value("residentialProbability", 0.5f);
@@ -243,7 +243,7 @@ void CityGridNode::AddRoadQuad(MeshData& mesh, glm::vec3 p0, glm::vec3 p1, glm::
 	mesh.AddVertex(p2.x, p2.y, p2.z, uMax, vMax, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
 	mesh.AddVertex(p3.x, p3.y, p3.z, uMin, vMax, normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, bitangent.x, bitangent.y, bitangent.z);
 
-	// Two triangles: 0-1-2, 0-2-3
+	// Two triangles: 0-1-2, 0-2-3 (Standard CCW)
 	mesh.AddTriangle(base, base + 1, base + 2);
 	mesh.AddTriangle(base, base + 2, base + 3);
 }
@@ -251,21 +251,31 @@ void CityGridNode::AddRoadQuad(MeshData& mesh, glm::vec3 p0, glm::vec3 p1, glm::
 void CityGridNode::AddSidewalkStrip(MeshData& mesh, glm::vec3 roadEdgeStart, glm::vec3 roadEdgeEnd,
 	float width, bool side, float texScale)
 {
-	// Sidewalk runs parallel to the road edge, offset by 'width' to one side
 	glm::vec3 dir = glm::normalize(roadEdgeEnd - roadEdgeStart);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
 	glm::vec3 right = glm::normalize(glm::cross(dir, up));
 
 	float offset = side ? width : -width;
-	float sidewalkHeight = 0.03f; // Slightly raised above road
+	float y = roadEdgeStart.y + 0.03f; // Slightly raised above road
 
-	glm::vec3 p0 = roadEdgeStart + glm::vec3(0, sidewalkHeight, 0);
-	glm::vec3 p1 = roadEdgeEnd + glm::vec3(0, sidewalkHeight, 0);
-	glm::vec3 p2 = roadEdgeEnd + right * offset + glm::vec3(0, sidewalkHeight, 0);
-	glm::vec3 p3 = roadEdgeStart + right * offset + glm::vec3(0, sidewalkHeight, 0);
+	glm::vec3 pA = roadEdgeStart;
+	glm::vec3 pB = roadEdgeEnd;
+	glm::vec3 pC = roadEdgeEnd + right * offset;
+	glm::vec3 pD = roadEdgeStart + right * offset;
 
+	// Universal ordered bounds
+	float xMin = std::min({pA.x, pB.x, pC.x, pD.x});
+	float xMax = std::max({pA.x, pB.x, pC.x, pD.x});
+	float zMin = std::min({pA.z, pB.z, pC.z, pD.z});
+	float zMax = std::max({pA.z, pB.z, pC.z, pD.z});
+
+	glm::vec3 p0(xMin, y, zMax); // BL
+	glm::vec3 p1(xMax, y, zMax); // BR
+	glm::vec3 p2(xMax, y, zMin); // TR
+	glm::vec3 p3(xMin, y, zMin); // TL
+	
 	float len = glm::length(roadEdgeEnd - roadEdgeStart);
-	AddRoadQuad(mesh, p0, p1, p2, p3, 0.0f, len * texScale, 0.0f, width * texScale);
+	AddRoadQuad(mesh, p0, p1, p2, p3, 0.0f, width * texScale, 0.0f, len * texScale);
 }
 
 void CityGridNode::BuildIntersectionQuad(MeshData& mesh, const RoadIntersection& isec)
@@ -273,10 +283,15 @@ void CityGridNode::BuildIntersectionQuad(MeshData& mesh, const RoadIntersection&
 	float half = isec.size * 0.5f;
 	float y = isec.center.y;
 
-	glm::vec3 p0(isec.center.x - half, y, isec.center.z - half);
-	glm::vec3 p1(isec.center.x + half, y, isec.center.z - half);
-	glm::vec3 p2(isec.center.x + half, y, isec.center.z + half);
-	glm::vec3 p3(isec.center.x - half, y, isec.center.z + half);
+	float xMin = isec.center.x - half;
+	float xMax = isec.center.x + half;
+	float zMin = isec.center.z - half;
+	float zMax = isec.center.z + half;
+
+	glm::vec3 p0(xMin, y, zMax); // BL
+	glm::vec3 p1(xMax, y, zMax); // BR
+	glm::vec3 p2(xMax, y, zMin); // TR
+	glm::vec3 p3(xMin, y, zMin); // TL
 
 	AddRoadQuad(mesh, p0, p1, p2, p3, 0.0f, 1.0f, 0.0f, 1.0f);
 }
@@ -285,9 +300,10 @@ void CityGridNode::BuildIntersectionQuad(MeshData& mesh, const RoadIntersection&
 // Build Complete Road Mesh
 // =====================================================================
 
-void CityGridNode::BuildRoadMesh(MeshData& output)
+void CityGridNode::BuildRoadMesh(MeshData& roadOutput, MeshData& sidewalkOutput)
 {
-	output.Clear();
+	roadOutput.Clear();
+	sidewalkOutput.Clear();
 
 	float halfRoad = roadWidth * 0.5f;
 
@@ -297,28 +313,34 @@ void CityGridNode::BuildRoadMesh(MeshData& output)
 		float len = 0.0f;
 		glm::vec3 p0, p1, p2, p3;
 
+		float xMin, xMax, zMin, zMax;
+		float y = seg.start.y;
+
 		if (seg.dimX)
 		{
-			// Road runs along X
-			len = seg.end.x - seg.start.x;
-			p0 = glm::vec3(seg.start.x, seg.start.y, seg.start.z - halfRoad);
-			p1 = glm::vec3(seg.end.x, seg.end.y, seg.end.z - halfRoad);
-			p2 = glm::vec3(seg.end.x, seg.end.y, seg.end.z + halfRoad);
-			p3 = glm::vec3(seg.start.x, seg.start.y, seg.start.z + halfRoad);
+			xMin = std::min(seg.start.x, seg.end.x);
+			xMax = std::max(seg.start.x, seg.end.x);
+			zMin = seg.start.z - halfRoad;
+			zMax = seg.start.z + halfRoad;
+			len = xMax - xMin;
 		}
 		else
 		{
-			// Road runs along Z
-			len = seg.end.z - seg.start.z;
-			p0 = glm::vec3(seg.start.x - halfRoad, seg.start.y, seg.start.z);
-			p1 = glm::vec3(seg.start.x + halfRoad, seg.start.y, seg.start.z);
-			p2 = glm::vec3(seg.end.x + halfRoad, seg.end.y, seg.end.z);
-			p3 = glm::vec3(seg.end.x - halfRoad, seg.end.y, seg.end.z);
+			xMin = seg.start.x - halfRoad;
+			xMax = seg.start.x + halfRoad;
+			zMin = std::min(seg.start.z, seg.end.z);
+			zMax = std::max(seg.start.z, seg.end.z);
+			len = zMax - zMin;
 		}
+
+		p0 = glm::vec3(xMin, y, zMax); // BL
+		p1 = glm::vec3(xMax, y, zMax); // BR
+		p2 = glm::vec3(xMax, y, zMin); // TR
+		p3 = glm::vec3(xMin, y, zMin); // TL
 
 		// Texture: tile along length, stretch across width
 		float ar = len / roadWidth;
-		AddRoadQuad(output, p0, p1, p2, p3, 0.0f, 1.0f, 0.0f, ar * roadTexScale);
+		AddRoadQuad(roadOutput, p0, p1, p2, p3, 0.0f, 1.0f, 0.0f, ar * roadTexScale);
 
 		// Sidewalks on both sides
 		if (sidewalkWidth > 0.01f)
@@ -330,8 +352,8 @@ void CityGridNode::BuildRoadMesh(MeshData& output)
 				glm::vec3 edge1Start(seg.start.x, seg.start.y, seg.start.z + halfRoad);
 				glm::vec3 edge1End(seg.end.x, seg.end.y, seg.end.z + halfRoad);
 
-				AddSidewalkStrip(output, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
-				AddSidewalkStrip(output, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
+				AddSidewalkStrip(sidewalkOutput, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
+				AddSidewalkStrip(sidewalkOutput, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
 			}
 			else
 			{
@@ -340,16 +362,14 @@ void CityGridNode::BuildRoadMesh(MeshData& output)
 				glm::vec3 edge1Start(seg.start.x + halfRoad, seg.start.y, seg.start.z);
 				glm::vec3 edge1End(seg.end.x + halfRoad, seg.end.y, seg.end.z);
 
-				AddSidewalkStrip(output, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
-				AddSidewalkStrip(output, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
+				AddSidewalkStrip(sidewalkOutput, edge0Start, edge0End, sidewalkWidth, false, sidewalkTexScale);
+				AddSidewalkStrip(sidewalkOutput, edge1Start, edge1End, sidewalkWidth, true, sidewalkTexScale);
 			}
 		}
 	}
 
-	// Roads now fully overlap at intersections, no separate intersection quads needed
-
-	printf("[CityGridNode] Built road mesh: %d vertices, %d triangles\n",
-		output.GetVertexCount(), output.GetTriangleCount());
+	printf("[CityGridNode] Built meshes: Road(%d tris), Sidewalk(%d tris)\n",
+		roadOutput.GetTriangleCount(), sidewalkOutput.GetTriangleCount());
 }
 
 // =====================================================================
@@ -370,13 +390,20 @@ void CityGridNode::BuildPlotMesh(MeshData& output)
 		// Extend plots slightly under roads to eliminate gaps
 		float overlapX = roadWidth * 0.5f;
 		float overlapZ = roadWidth * 0.5f;
-		glm::vec3 p0(plot.center.x - halfW - overlapX, y, plot.center.z - halfD - overlapZ);
-		glm::vec3 p1(plot.center.x - halfW - overlapX, y, plot.center.z + halfD + overlapZ);
-		glm::vec3 p2(plot.center.x + halfW + overlapX, y, plot.center.z + halfD + overlapZ);
-		glm::vec3 p3(plot.center.x + halfW + overlapX, y, plot.center.z - halfD - overlapZ);
+
+		float xMin = plot.center.x - halfW - overlapX;
+		float xMax = plot.center.x + halfW + overlapX;
+		float zMin = plot.center.z - halfD - overlapZ;
+		float zMax = plot.center.z + halfD + overlapZ;
+
+		glm::vec3 p0(xMin, y, zMax); // BL
+		glm::vec3 p1(xMax, y, zMax); // BR
+		glm::vec3 p2(xMax, y, zMin); // TR
+		glm::vec3 p3(xMin, y, zMin); // TL
 
 		float texU = plot.size.x * 0.15f;
 		float texV = plot.size.y * 0.15f;
+		// Use p0, p1, p2, p3 which is CCW, AddRoadQuad will make it CW (facing UP)
 		AddRoadQuad(output, p0, p1, p2, p3, 0.0f, texU, 0.0f, texV);
 	}
 }
@@ -448,15 +475,11 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	// 1. Generate the grid layout
 	GenerateGrid();
-
-	if (progress) progress(30.0f, "Building road mesh...");
-
-	// 2. Build road mesh data
-	MeshData roadMesh;
-	BuildRoadMesh(roadMesh);
-
-	// 2b. Build plot ground mesh (separate for green texture)
-	MeshData plotMesh;
+	if (progress) progress(30.0f, "Building road meshes...");
+	
+	// 2. Build road and sidewalk meshes separately
+	MeshData roadMesh, sidewalkMesh, plotMesh;
+	BuildRoadMesh(roadMesh, sidewalkMesh);
 	BuildPlotMesh(plotMesh);
 
 	// 3. If we have a terrain input, offset all geometry to match
@@ -468,6 +491,8 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 		for (int i = 0; i < roadMesh.GetVertexCount(); i++)
 			roadMesh.vertices[i * 14 + 1] += terrainOffset;
+		for (int i = 0; i < sidewalkMesh.GetVertexCount(); i++)
+			sidewalkMesh.vertices[i * 14 + 1] += terrainOffset;
 		for (int i = 0; i < plotMesh.GetVertexCount(); i++)
 			plotMesh.vertices[i * 14 + 1] += terrainOffset;
 
@@ -512,9 +537,10 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	};
 
-	// Spawn roads and plots as separate GameObjects with diffuse layers
+	// Spawn roads, sidewalks and plots as separate GameObjects with their own textures
 	syncCityObject("City_Roads_" + idStr, roadMesh, "Assets/Textures/roads/asphalt.jpg", 4.0f);
-	syncCityObject("City_Plots_" + idStr, plotMesh, "Assets/Textures/roads/grass_park.jpg", 2.0f);
+	syncCityObject("City_Sidewalks_" + idStr, sidewalkMesh, "Assets/Textures/buildings/concrete.jpg", 2.0f);
+	syncCityObject("City_Plots_" + idStr, plotMesh, "Assets/Textures/terrain/grass/albedo.jpg", 2.0f);
 
 	if (progress) progress(60.0f, "Generating street lamps...");
 
@@ -583,9 +609,20 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				addBox(lampMesh, poleCenter, glm::vec3(poleRadius, poleHeight * 0.5f, poleRadius),
 					glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
 
-				// Lamp head
+				// Lamp head — offset it so it hangs OVER the road instead of being centered on the pole
 				glm::vec3 headCenter(lampPos.x, lampPos.y + poleHeight + lampHeadH * 0.5f, lampPos.z);
-				addBox(lampMesh, headCenter, glm::vec3(lampHeadW, lampHeadH, lampHeadD),
+				glm::vec3 headHalfExtents(lampHeadW, lampHeadH, lampHeadD);
+				
+				if (seg.dimX) {
+					// Road is along X, side is along Z. Head should be long in Z and point towards road (Z=0)
+					headHalfExtents = glm::vec3(lampHeadH, lampHeadH, lampHeadW); // Swap W/D for orientation
+					headCenter.z -= (headHalfExtents.z) * (float)side; 
+				} else {
+					// Road is along Z, side is along X. Head should be long in X and point towards road (X=0)
+					headCenter.x -= (headHalfExtents.x) * (float)side;
+				}
+
+				addBox(lampMesh, headCenter, headHalfExtents,
 					glm::vec3(0,1,0), glm::vec3(1,0,0), glm::vec3(0,0,1));
 			}
 		}

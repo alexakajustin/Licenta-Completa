@@ -61,10 +61,10 @@ public:
 private:
 	// City Parameters
 	float citySize = 100.0f;          // Total city extent (square, world units)
-	float roadWidth = 2.0f;           // Width of each road
-	float roadSpacingX = 20.0f;       // Distance between roads in X
-	float roadSpacingZ = 20.0f;       // Distance between roads in Z
-	float sidewalkWidth = 0.4f;       // Sidewalk width on each side of road
+	float roadWidth = 6.0f;           // Width of each road
+	float roadSpacingX = 30.0f;       // Distance between roads in X
+	float roadSpacingZ = 30.0f;       // Distance between roads in Z
+	float sidewalkWidth = 1.5f;       // Sidewalk width on each side of road
 	float roadHeight = 0.02f;         // Slight elevation above terrain
 	float buildingSetback = 1.0f;     // How far buildings sit back from roads
 	float residentialProbability = 0.5f; // 0..1, probability of residential vs commercial
@@ -82,7 +82,7 @@ private:
 
 	// Mesh generation helpers
 	void GenerateGrid();
-	void BuildRoadMesh(MeshData& output);
+	void BuildRoadMesh(MeshData& roadOutput, MeshData& sidewalkOutput);
 	void AddRoadQuad(MeshData& mesh, glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3,
 		float uMin, float uMax, float vMin, float vMax);
 	void AddSidewalkStrip(MeshData& mesh, glm::vec3 roadEdgeStart, glm::vec3 roadEdgeEnd,
