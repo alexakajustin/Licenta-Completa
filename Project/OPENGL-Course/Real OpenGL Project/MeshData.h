@@ -83,6 +83,7 @@ struct MeshData
 			if (heightCache) { delete heightCache; heightCache = nullptr; }
 			heightCacheBuilt.store(false);
 			heightCacheRes = 0;
+			heightCacheResZ = 0;
 		}
 		return *this;
 	}
@@ -345,7 +346,7 @@ struct MeshData
 		int ix = (int)gx;
 		int iz = (int)gz;
 
-		if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheRes)
+		if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheResZ)
 			return -1e10f;
 
 		return (*heightCache)[iz * heightCacheRes + ix];
@@ -411,6 +412,7 @@ private:
 	// --- Height Cache Internals ---
 	mutable std::vector<float>* heightCache = nullptr;
 	mutable int heightCacheRes = 0;
+	mutable int heightCacheResZ = 0;
 	mutable float heightCacheMinX = 0, heightCacheMinZ = 0, heightCacheCellSize = 1.0f;
 	mutable std::atomic<bool> heightCacheBuilt{false};
 	mutable std::mutex heightCacheMutex;
@@ -421,6 +423,7 @@ private:
 		if (heightCache) { delete heightCache; heightCache = nullptr; }
 		heightCacheBuilt.store(false);
 		heightCacheRes = 0;
+		heightCacheResZ = 0;
 	}
 
 	void BuildHeightCacheIfNeeded() const
@@ -452,14 +455,23 @@ private:
 		if (rangeX < 0.001f) rangeX = 0.001f;
 		if (rangeZ < 0.001f) rangeZ = 0.001f;
 
-		// Resolution: ~1 cell per unit, capped at 1024 for memory safety
-		int res = (int)std::max(rangeX, rangeZ);
-		if (res < 16) res = 16;
+		// Use separate X/Z resolutions for non-square meshes
+		float maxRange = std::max(rangeX, rangeZ);
+		int res = (int)maxRange;
+		if (res < 32) res = 32;
 		if (res > 1024) res = 1024;
 
-		float cellSize = std::max(rangeX, rangeZ) / (float)res;
+		// Cell size based on the larger dimension, so cells are square
+		float cellSize = maxRange / (float)res;
 
-		auto* cache = new std::vector<float>(res * res, -1e10f);
+		// Grid dimensions in cells
+		int resX = std::max(1, (int)std::ceil(rangeX / cellSize));
+		int resZ = std::max(1, (int)std::ceil(rangeZ / cellSize));
+		if (resX > res) resX = res;
+		if (resZ > res) resZ = res;
+
+		// Use resX for row stride (the grid is resX * resZ)
+		auto* cache = new std::vector<float>(resX * resZ, -1e10f);
 
 		// Rasterize every triangle into the grid
 		for (int t = 0; t < triCount; t++) {
@@ -478,9 +490,9 @@ private:
 			float tMaxZ = std::max({v0.z, v1.z, v2.z});
 
 			int gxMin = std::max(0, (int)((tMinX - minX) / cellSize));
-			int gxMax = std::min(res - 1, (int)((tMaxX - minX) / cellSize));
+			int gxMax = std::min(resX - 1, (int)((tMaxX - minX) / cellSize));
 			int gzMin = std::max(0, (int)((tMinZ - minZ) / cellSize));
-			int gzMax = std::min(res - 1, (int)((tMaxZ - minZ) / cellSize));
+			int gzMax = std::min(resZ - 1, (int)((tMaxZ - minZ) / cellSize));
 
 			// Precompute barycentric denominator
 			glm::vec2 a2(v0.x, v0.z), b2(v1.x, v1.z), c2(v2.x, v2.z);
@@ -493,16 +505,37 @@ private:
 					float px = minX + (gx + 0.5f) * cellSize;
 					float pz = minZ + (gz + 0.5f) * cellSize;
 
-					// Barycentric test
+					// Barycentric test (with small epsilon for edge coverage)
 					float u = ((b2.y - c2.y) * (px - c2.x) + (c2.x - b2.x) * (pz - c2.y)) * invDenom;
 					float v = ((c2.y - a2.y) * (px - c2.x) + (a2.x - c2.x) * (pz - c2.y)) * invDenom;
 					float w = 1.0f - u - v;
 
-					if (u >= -0.01f && v >= -0.01f && w >= -0.01f) {
+					if (u >= -0.05f && v >= -0.05f && w >= -0.05f) {
 						float h = u * v0.y + v * v1.y + w * v2.y;
-						int idx = gz * res + gx;
+						int idx = gz * resX + gx;
 						if (h > (*cache)[idx]) (*cache)[idx] = h;
 					}
+				}
+			}
+		}
+
+		// Flood-fill pass: expand filled cells into empty neighbors
+		// This handles sparse meshes (procedural lakes) where gaps exist between triangles
+		for (int pass = 0; pass < 3; pass++) {
+			std::vector<float> prev = *cache;
+			for (int gz = 0; gz < resZ; gz++) {
+				for (int gx = 0; gx < resX; gx++) {
+					int idx = gz * resX + gx;
+					if (prev[idx] > -1e9f) continue; // Already filled
+
+					// Check 4-connected neighbors for a filled cell
+					float bestH = -1e10f;
+					if (gx > 0 && prev[idx - 1] > -1e9f) bestH = std::max(bestH, prev[idx - 1]);
+					if (gx < resX - 1 && prev[idx + 1] > -1e9f) bestH = std::max(bestH, prev[idx + 1]);
+					if (gz > 0 && prev[idx - resX] > -1e9f) bestH = std::max(bestH, prev[idx - resX]);
+					if (gz < resZ - 1 && prev[idx + resX] > -1e9f) bestH = std::max(bestH, prev[idx + resX]);
+
+					if (bestH > -1e9f) (*cache)[idx] = bestH;
 				}
 			}
 		}
@@ -510,8 +543,10 @@ private:
 		heightCacheMinX = minX;
 		heightCacheMinZ = minZ;
 		heightCacheCellSize = cellSize;
-		heightCacheRes = res;
+		heightCacheRes = resX; // Store resX as the row stride
+		heightCacheResZ = resZ;
 		heightCache = cache;
+
 		heightCacheBuilt.store(true, std::memory_order_release);
 	}
 };
