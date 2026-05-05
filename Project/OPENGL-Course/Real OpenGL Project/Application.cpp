@@ -22,6 +22,17 @@
 #include "AssetManager.h"
 #include "AllOperations.h"
 #include "SceneSerializer.h"
+#include <iostream>
+
+// OpenGL Debug Callback
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return; // Skip notification noise
+	
+	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+		type, severity, message);
+}
 
 Application::Application()
 	: pointLightCount(0), spotLightCount(0),
@@ -39,6 +50,11 @@ bool Application::Init()
 	// Window
 	mainWindow = Window(1920, 1080);
 	mainWindow.Initialise();
+
+	// Enable OpenGL Debug Output
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glDebugMessageCallback(MessageCallback, 0);
 
 	// Camera
 	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 1.0f, 0.25f);

@@ -10,8 +10,8 @@ class Texture
 public:
 	Texture();
 	Texture(const char* fileLoc);
-	Texture(const Texture& other);
-	Texture& operator=(const Texture& other);
+	Texture(const Texture& other) = delete;
+	Texture& operator=(const Texture& other) = delete;
 	Texture(Texture&& other) noexcept;
 	Texture& operator=(Texture&& other) noexcept;
 

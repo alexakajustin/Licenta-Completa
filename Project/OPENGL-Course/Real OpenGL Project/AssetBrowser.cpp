@@ -460,6 +460,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 						}
 					}
 				}
+				if (res->data) stbi_image_free(res->data);
 				delete res;
 				it = asyncTextureTasks.erase(it);
 			} else {

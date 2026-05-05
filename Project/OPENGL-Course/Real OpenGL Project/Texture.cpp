@@ -13,43 +13,6 @@ Texture::Texture(const char* fileLoc)
 	strcpy_s(fileLocation, len, fileLoc);
 }
 
-// Copy constructor (Shallow copy for ID, deep copy for path)
-Texture::Texture(const Texture& other)
-	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth)
-{
-	if (other.fileLocation) {
-		size_t len = strlen(other.fileLocation) + 1;
-		fileLocation = new char[len];
-		strcpy_s(fileLocation, len, other.fileLocation);
-	} else {
-		fileLocation = nullptr;
-	}
-	rawData = nullptr;
-}
-
-// Copy assignment
-Texture& Texture::operator=(const Texture& other)
-{
-	if (this != &other) {
-		ClearTexture(); // Delete old texture
-		
-		textureID = other.textureID;
-		width = other.width;
-		height = other.height;
-		bitDepth = other.bitDepth;
-		
-		if (other.fileLocation) {
-			size_t len = strlen(other.fileLocation) + 1;
-			fileLocation = new char[len];
-			strcpy_s(fileLocation, len, other.fileLocation);
-		} else {
-			fileLocation = nullptr;
-		}
-		rawData = nullptr;
-	}
-	return *this;
-}
-
 // Move constructor
 Texture::Texture(Texture&& other) noexcept
 	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation), rawData(other.rawData)
@@ -94,7 +57,11 @@ bool Texture::LoadTextureGPU()
 {
 	if (!rawData) return false;
 	bool result = LoadTextureFromData(rawData, width, height, bitDepth);
-	rawData = nullptr; // LoadTextureFromData calls stbi_image_free
+	
+	// Caller now owns the memory lifecycle
+	stbi_image_free(rawData);
+	rawData = nullptr;
+	
 	return result;
 }
 
@@ -106,28 +73,47 @@ bool Texture::LoadTexture()
 
 bool Texture::LoadTextureFromData(unsigned char* texData, int w, int h, int bitD)
 {
-	if (!texData) return false;
+	if (!texData || w <= 0 || h <= 0) {
+		return false;
+	}
+
+	// Safety: Clear existing GPU texture before creating a new one
+	ClearTexture();
 
 	width = w;
 	height = h;
 	bitDepth = bitD;
 
-	GLenum format = GL_RGBA;
-	GLenum internalFormat = GL_RGBA;
-
 	glGenTextures(1, &textureID);
+	if (textureID == 0) return false;
+
 	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	// Fortress: Reset ALL pixel storage states to defaults
+	// These might have been left in a dirty state by other middleware (ImGui, etc.)
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+	glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
 
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, texData);
+	// Use sized internal format GL_RGBA8 for better driver compatibility
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
+	
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR) {
+		printf("[Texture] GL Error during glTexImage2D: 0x%X (ID: %d, Size: %dx%d)\n", err, textureID, width, height);
+		return false;
+	}
+
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	stbi_image_free(texData);
+	// Restore alignment to default (4) for other engine operations
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	return true;
 }
@@ -140,18 +126,9 @@ bool Texture::LoadTextureA()
 
 void Texture::ClearTexture()
 {
-	glDeleteTextures(1, &textureID);
-	textureID = 0;
-	width = 0;
-	height = 0;
-	bitDepth = 0;
-	if (fileLocation) {
-		delete[] fileLocation;
-		fileLocation = nullptr;
-	}
-	if (rawData) {
-		stbi_image_free(rawData);
-		rawData = nullptr;
+	if (textureID != 0) {
+		glDeleteTextures(1, &textureID);
+		textureID = 0;
 	}
 }
 
@@ -197,6 +174,12 @@ bool Texture::LoadTextureGrayscale()
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 
+	// Fortress: Reset ALL pixel storage states
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+	glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -210,6 +193,9 @@ bool Texture::LoadTextureGrayscale()
 	glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Restore alignment to default
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -239,4 +225,12 @@ void Texture::UseTextureOnUnit(GLenum unit)
 Texture::~Texture()
 {
 	ClearTexture();
+	if (fileLocation) {
+		delete[] fileLocation;
+		fileLocation = nullptr;
+	}
+	if (rawData) {
+		stbi_image_free(rawData);
+		rawData = nullptr;
+	}
 }
