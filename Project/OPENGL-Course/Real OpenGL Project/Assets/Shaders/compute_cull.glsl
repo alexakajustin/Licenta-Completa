@@ -83,6 +83,39 @@ uniform float nearPlane;
 uniform float farPlane;
 layout(binding = 15) uniform sampler2D hizMap;
 
+// =====================================================================
+// Utility: Apply Euler Rotation (Z -> X -> Y order, matching C++ Transform)
+// =====================================================================
+vec3 rotateEulerZYX(vec3 p, vec3 eulerDeg) {
+    vec3 rad = radians(eulerDeg);
+    vec3 c = cos(rad);
+    vec3 s = sin(rad);
+
+    // 1. Rotate Z
+    vec3 p1 = vec3(
+        p.x * c.z - p.y * s.z,
+        p.x * s.z + p.y * c.z,
+        p.z
+    );
+
+    // 2. Rotate X
+    vec3 p2 = vec3(
+        p1.x,
+        p1.y * c.x - p1.z * s.x,
+        p1.y * s.x + p1.z * c.x
+    );
+
+    // 3. Rotate Y
+    vec3 p3 = vec3(
+        p2.x * c.y + p2.z * s.y,
+        p2.y,
+       -p2.x * s.y + p2.z * c.y
+    );
+
+    return p3;
+}
+
+
 void main()
 {
     uint id = gl_GlobalInvocationID.x;
@@ -94,14 +127,12 @@ void main()
     float radius = instanceBoundRadius * scale;
 
     // Offset test position to the mesh's bounding sphere center.
-    // Instance position is at mesh origin (e.g. grass base at y=0),
-    // but the visual center is at meshBoundsCenter (e.g. y=0.5).
-    // Without this offset, tall objects get culled when their base
-    // goes off-screen even though the top is still visible.
-    vec3 testPos = pos + meshBoundsCenter * scale;
+    // We must rotate the meshBoundsCenter by the instance's rotation before scaling and adding to pos.
+    vec3 rotatedCenter = rotateEulerZYX(meshBoundsCenter, inst.rotAndFlags.xyz);
+    vec3 testPos = pos + rotatedCenter * scale;
 
     // ------- Distance Culling -------
-    float dist = distance(pos, cameraPos);
+    float dist = distance(testPos, cameraPos);
     if (dist > maxDrawDistance) return;
 
     // ------- Distance Fade (dithered discard in fragment shader) -------
@@ -122,7 +153,7 @@ void main()
     // Behind camera check
     if (w < -radius) return;
 
-    // Add a massive safety margin (20% of W + radius expansion) to prevent precision popping
+    // Add a safety margin (20% of W + radius expansion) to prevent precision popping
     float margin = radius * 2.0 + abs(w) * 0.2;
     float absW = abs(w) + margin;
 
@@ -130,8 +161,8 @@ void main()
     if (clipPos.x < -absW || clipPos.x > absW) return;
     // Bottom/Top planes
     if (clipPos.y < -absW || clipPos.y > absW) return;
-    // Near/Far planes
-    if (clipPos.z < -margin || clipPos.z > absW) return;
+    // Near/Far planes (standard OpenGL depth range -w to w)
+    if (clipPos.z < -absW || clipPos.z > absW) return;
 
     // ------- Hi-Z Occlusion Culling -------
     if (useHiZ == 1) {

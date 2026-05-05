@@ -525,10 +525,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						placeholder = new GameObject(parentName);
 						scene.AddObject(placeholder);
 					}
-
-					float maxDist = placeholder->GetMaxDrawDistance();
-					float shadowDist = placeholder->GetShadowDrawDistance();
-
 					if (multiMeshModel && multiMeshModel->GetMeshCount() > 1 && sourceObj) {
 						// ============================================================
 						// MULTI-MESH & LOD-AWARE PATH: Group LOD meshes by name.
@@ -659,10 +655,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								if (meshCache.find(key2) == meshCache.end()) meshCache[key2] = meshDataList[m2].ToMesh(0);
 								group->SetLODMesh(2, meshCache[key2], 0.0f);
 							}
-
-							group->SetMaxDrawDistance(maxDist);
-							group->SetShadowDistance(shadowDist);
-
 							scene.AddInstancedGroup(group);
 							scatterNode->AddCreatedGroupName(subGroupName);
 						}
@@ -723,9 +715,6 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 							InstancedGroup* group = new InstancedGroup(groupName);
 							group->SetSourceObjectName(objName);
-							group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
-							group->SetMaxDrawDistance(maxDist);
-							group->SetShadowDistance(shadowDist);
 
 							scene.AddInstancedGroup(group);
 

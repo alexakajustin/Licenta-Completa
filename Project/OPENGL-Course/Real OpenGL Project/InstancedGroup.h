@@ -80,10 +80,6 @@ public:
 	uint32_t GetTotalCount() const { return totalCount; }
 	uint32_t GetVisibleCount() const { return lastVisibleCount; }
 	float GetMeshBoundRadius() const { return meshBoundRadius; }
-	void SetMaxDrawDistance(float dist) { defaultMaxDrawDistance = dist; }
-	float GetMaxDrawDistance() const { return defaultMaxDrawDistance; }
-	void SetShadowDistance(float dist) { shadowDrawDistance = dist; }
-	float GetShadowDistance() const { return shadowDrawDistance; }
 
 	// Material/texture access for rendering pipeline
 	Material* GetMaterial() const { return material; }
@@ -144,8 +140,6 @@ private:
 	uint32_t lastVisibleCount = 0;
 	float meshBoundRadius = 1.0f;
 	glm::vec3 meshBoundsCenter = glm::vec3(0.0f); // Center of mesh AABB relative to origin
-	float defaultMaxDrawDistance = 1000.0f;
-	float shadowDrawDistance = 800.0f;  // High quality shadows up to 800m
 
 	// Spatial chunking for 10M+ scale
 	struct Chunk {

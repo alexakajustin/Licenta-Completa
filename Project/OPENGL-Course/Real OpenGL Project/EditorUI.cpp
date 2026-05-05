@@ -1480,33 +1480,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 			}
 
-			// --- Culling Settings ---
-			if (ImGui::CollapsingHeader("Culling", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				float maxDist = selected->GetMaxDrawDistance();
-				float shadowDist = selected->GetShadowDrawDistance();
-				bool changed = false;
-
-				if (ImGui::DragFloat("Max Draw Distance", &maxDist, 10.0f, 10.0f, 20000.0f)) changed = true;
-				if (ImGui::DragFloat("Shadow Draw Distance", &shadowDist, 5.0f, 0.0f, 5000.0f)) changed = true;
-
-				if (changed) {
-					selected->SetMaxDrawDistance(maxDist);
-					selected->SetShadowDrawDistance(shadowDist);
-
-					// If this is a procedural scatter placeholder, apply immediately to associated GPU instances
-					if (selected->GetName().find("Scatter_Group_") != std::string::npos ||
-						selected->GetName().find("Scatter_Instanced_") != std::string::npos)
-					{
-						for (auto* group : scene.GetInstancedGroups()) {
-							if (group && group->GetName().find(selected->GetName()) == 0) {
-								group->SetMaxDrawDistance(maxDist);
-								group->SetShadowDistance(shadowDist);
-							}
-						}
-					}
-				}
-			}
+			// Culling Settings removed to enforce Single Responsibility Principle (Global Culling only)
 
 			// --- Material (collapsible, with preview sphere) ---
 			if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))

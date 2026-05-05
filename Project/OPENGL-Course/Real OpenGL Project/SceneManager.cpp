@@ -532,8 +532,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
 
 							// If the nearest point of the object is significantly further than the deepest occluder
-							// Margin increased to 50.0f for absolute visibility safety
-							if (linNearest > linOccluder + 50.0f) {
+							// Margin set to 5.0f for safety while maintaining culling efficiency
+							if (linNearest > linOccluder + 5.0f) {
 								continue;
 							}
 						}

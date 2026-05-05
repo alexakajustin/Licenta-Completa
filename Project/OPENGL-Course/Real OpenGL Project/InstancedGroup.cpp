@@ -63,7 +63,6 @@ void InstancedGroup::Setup(Mesh* mesh,
 	// MeshSimplifier will override them with simplified meshes if the mesh is complex enough.
 	// For simple meshes (grass quads), density-based culling in the compute shader handles LOD.
 	lodLevels[0].mesh = sharedMesh;
-	lodLevels[0].maxDistance = defaultMaxDrawDistance;
 	lodCount = 3;
 
 	// Decide whether to use chunking

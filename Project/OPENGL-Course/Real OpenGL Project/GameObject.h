@@ -112,12 +112,6 @@ public:
 	void SetSaveInScene(bool save) { saveInScene = save; }
 	bool GetSaveInScene() const { return saveInScene; }
 
-	// Culling Settings
-	float GetMaxDrawDistance() const { return maxDrawDistance; }
-	void SetMaxDrawDistance(float dist) { maxDrawDistance = dist; }
-	float GetShadowDrawDistance() const { return shadowDrawDistance; }
-	void SetShadowDrawDistance(float dist) { shadowDrawDistance = dist; }
-
 	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
 	void GetWorldBoundingSphere(glm::vec3& center, float& radius);
 	
@@ -162,10 +156,6 @@ private:
 	std::string modelSourcePath;  // File path for model-based objects
 	
 	bool saveInScene = true;
-
-	// Culling Settings
-	float maxDrawDistance = 2000.0f;
-	float shadowDrawDistance = 100.0f;
 
 	// CPU Caching for Performance
 	glm::mat4 cachedWorldMatrix = glm::mat4(1.0f);

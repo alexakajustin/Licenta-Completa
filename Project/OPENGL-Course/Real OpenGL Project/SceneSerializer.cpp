@@ -213,9 +213,6 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			objJson["tessellation"]["displacementBias"] = obj->GetTessDisplacementBias();
 		}
 
-		// Culling Settings
-		objJson["culling"]["maxDrawDistance"] = obj->GetMaxDrawDistance();
-		objJson["culling"]["shadowDrawDistance"] = obj->GetShadowDrawDistance();
 
 		objectsArray.push_back(objJson);
 	}
@@ -275,8 +272,6 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		json groupJson;
 		groupJson["name"] = group->GetName();
 		groupJson["sourceObjectName"] = group->GetSourceObjectName();
-		groupJson["maxDrawDistance"] = group->GetMaxDrawDistance();
-		groupJson["shadowDistance"] = group->GetShadowDistance();
 
 		// Save the cpuInstances to a binary file
 		std::filesystem::path scenePath(filePath);
@@ -645,11 +640,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			}
 
 			// Culling Settings
-			if (objJson.contains("culling")) {
-				auto& cullJson = objJson["culling"];
-				obj->SetMaxDrawDistance(cullJson.value("maxDrawDistance", 2000.0f));
-				obj->SetShadowDrawDistance(cullJson.value("shadowDrawDistance", 100.0f));
-			}
+			// Legacy culling settings ignored
 
 			scene.AddObject(obj);
 		}
@@ -845,8 +836,6 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		{
 			std::string name = groupJson.value("name", "InstancedGroup");
 			std::string sourceObjName = groupJson.value("sourceObjectName", "");
-			float maxDraw = groupJson.value("maxDrawDistance", 200.0f);
-			float shadowDist = groupJson.value("shadowDistance", 30.0f);
 
 			std::string instFileName = groupJson.value("instanceDataPath", "");
 			if (instFileName.empty()) continue;
@@ -894,8 +883,6 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				InstancedGroup* group = new InstancedGroup(name);
 				group->SetSourceObjectName(sourceObjName);
 				group->Setup(mesh, instances, mat, tex, norm, layers);
-				group->SetMaxDrawDistance(maxDraw);
-				group->SetShadowDistance(shadowDist);
 				scene.AddInstancedGroup(group);
 			}
 			else if (sourceObj && sourceObj->GetModel())
@@ -925,8 +912,6 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					InstancedGroup* group = new InstancedGroup(name);
 					group->SetSourceObjectName(sourceObjName);
 					group->Setup(mesh, instances, mat, tex, norm, layers);
-					group->SetMaxDrawDistance(maxDraw);
-					group->SetShadowDistance(shadowDist);
 					scene.AddInstancedGroup(group);
 				}
 			}
