@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.5719687342643738,
-            -0.3826834559440613,
-            0.7255378365516663
+            -0.9154016971588135,
+            -0.32556813955307007,
+            0.2367384135723114
         ],
-        "pitch": -22.5,
+        "pitch": -19.0,
         "position": [
-            928.1239013671875,
-            220.07952880859375,
-            223.1769561767578
+            940.5479125976563,
+            244.38612365722656,
+            238.1365509033203
         ],
-        "yaw": -1311.75
+        "yaw": -1274.5
     },
     "instancedGroups": [
         {
@@ -77,7 +77,7 @@
                 "start": 57
             }
         ],
-        "nextId": 269,
+        "nextId": 286,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -14502,10 +14502,11 @@
                     0.7490000128746033,
                     0.7020000219345093
                 ],
+                "material_waterDepthScale": 2.450000047683716,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 1.0,
-                "material_waveStrength": 5.0,
+                "material_waveScale": 0.004999999888241291,
+                "material_waveSpeed": 0.05000000074505806,
+                "material_waveStrength": 1.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
             },
@@ -14588,7 +14589,7 @@
                 "material_waterDepthScale": 0.30000001192092896,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 0.009999999776482582,
+                "material_waveSpeed": 1.1100000143051147,
                 "material_waveStrength": 0.10000000149011612,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
