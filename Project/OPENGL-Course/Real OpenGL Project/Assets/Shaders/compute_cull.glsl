@@ -215,9 +215,8 @@ void main()
                 float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 
-                // In linear space, a 100-meter bias is virtually "no occlusion" but keeps the logic active.
-                // This prevents trees from disappearing behind hill ridges erroneously.
-                if (linNearest > linOccluder + 100.0) {
+                // In linear space, a 50.0-meter bias is extremely conservative for maximum visibility
+                if (linNearest > linOccluder + 50.0) {
                     return; // Occluded!
                 }
             }
