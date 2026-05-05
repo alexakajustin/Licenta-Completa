@@ -330,7 +330,7 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 
 	// Render opaque scene objects only (no transparent/water) with clip plane active
 	glm::vec4 reflectionClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -waterHeight + 0.01f);
-	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, &frustum, nullptr, (float)fbw, (float)fbh, this, 0, 0, 0, reflectionClipPlane, glm::mat4(1.0f), gs);
+	scene.RenderAll(projection, reflectedView, reflectedCamPos, &mainLight, pointLights, pointLightCount, spotLights, spotLightCount, time, nullptr, nullptr, (float)fbw, (float)fbh, this, 0, 0, 0, reflectionClipPlane, glm::mat4(1.0f), gs);
 
 	// Restore state
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

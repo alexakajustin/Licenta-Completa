@@ -23,6 +23,7 @@
 #include "AllOperations.h"
 #include "SceneSerializer.h"
 #include <iostream>
+#include <map>
 
 // OpenGL Debug Callback
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -423,14 +424,13 @@ void Application::Run()
 				}
 
 				// Stability smoothing: prevent frame-to-frame height jumps
-				static float smoothedHeight = targetWaterHeight;
-				static bool initialized = false;
-				if (!initialized) {
-					smoothedHeight = targetWaterHeight;
-					initialized = true;
+				// We use a map to store smoothed heights for each water object individually
+				static std::map<GameObject*, float> smoothedHeights;
+				if (smoothedHeights.find(bestWater) == smoothedHeights.end()) {
+					smoothedHeights[bestWater] = targetWaterHeight;
 				}
-				smoothedHeight = glm::mix(smoothedHeight, targetWaterHeight, 0.15f);
-				waterHeight = smoothedHeight;
+				smoothedHeights[bestWater] = glm::mix(smoothedHeights[bestWater], targetWaterHeight, 0.05f); // Very aggressive smoothing
+				waterHeight = smoothedHeights[bestWater];
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);

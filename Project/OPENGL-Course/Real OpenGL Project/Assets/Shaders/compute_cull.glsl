@@ -122,14 +122,16 @@ void main()
     // Behind camera check
     if (w < -radius) return;
 
-    float absW = abs(w) + radius;
+    // Add a massive safety margin (20% of W + radius expansion) to prevent precision popping
+    float margin = radius * 2.0 + abs(w) * 0.2;
+    float absW = abs(w) + margin;
 
     // Left/Right planes
     if (clipPos.x < -absW || clipPos.x > absW) return;
     // Bottom/Top planes
     if (clipPos.y < -absW || clipPos.y > absW) return;
     // Near/Far planes
-    if (clipPos.z < -radius || clipPos.z > absW) return;
+    if (clipPos.z < -margin || clipPos.z > absW) return;
 
     // ------- Hi-Z Occlusion Culling -------
     if (useHiZ == 1) {
@@ -213,8 +215,9 @@ void main()
                 float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 
-                // In linear space, a 1-meter bias is safe and intuitive
-                if (linNearest > linOccluder + 1.0) {
+                // In linear space, a 100-meter bias is virtually "no occlusion" but keeps the logic active.
+                // This prevents trees from disappearing behind hill ridges erroneously.
+                if (linNearest > linOccluder + 100.0) {
                     return; // Occluded!
                 }
             }
@@ -228,14 +231,12 @@ void main()
     //   LOD 1: keep every 2nd instance (50% density)
     //   LOD 2: keep every 4th instance (25% density)
     if (lodCount >= 3 && dist > lodDistances[1]) {
-        // LOD 2: Farthest — 25% density
-        if (id % 4u != 0u) return;
+        // LOD 2: Farthest — FORCED 100% DENSITY (NO THINNING)
         uint idx = atomicAdd(instanceCountLOD2, 1);
         visibleLOD2[idx] = inst;
     }
     else if (lodCount >= 2 && dist > lodDistances[0]) {
-        // LOD 1: Medium distance — 50% density
-        if (id % 2u != 0u) return;
+        // LOD 1: Medium distance — FORCED 100% DENSITY (NO THINNING)
         uint idx = atomicAdd(instanceCountLOD1, 1);
         visibleLOD1[idx] = inst;
     }

@@ -416,13 +416,25 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			glm::vec3 bmin, bmax;
 			obj->GetWorldBounds(bmin, bmax);
 
-			// SAFETY CHECK: If the camera is horizontally inside the box, 
+			// SAFETY CHECK: If the camera is horizontally inside the box, or if the object is water,
 			// skip ALL culling. This prevents large floors/terrains from 
 			// disappearing when the camera is at the edge but still on top.
+			bool isWater = false;
+			if (mat && mat->GetShader()) {
+				std::string vPath = mat->GetShader()->GetVertexPath();
+				if (vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos) {
+					isWater = true;
+				}
+			}
+
 			bool cameraInside = (cameraPos.x >= bmin.x && cameraPos.x <= bmax.x && 
 								 cameraPos.z >= bmin.z && cameraPos.z <= bmax.z);
 
-			if (!cameraInside) 
+			// DISASTER RECOVERY: Disable ALL culling for the reflection pass.
+			// The reflection pass is identified by having no override shader AND no scene depth texture.
+			bool isReflection = (!overrideShader && sceneDepthTexture == 0);
+
+			if (!cameraInside && !isWater && !isReflection) 
 			{
 				// LAYER 0: Global Distance Culling (Accurate AABB distance)
 				float dx = glm::max(bmin.x - cameraPos.x, glm::max(0.0f, cameraPos.x - bmax.x));
@@ -520,8 +532,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
 
 							// If the nearest point of the object is significantly further than the deepest occluder
-							// Margin increased to 5.0f to prevent precision-based flickering
-							if (linNearest > linOccluder + 5.0f) {
+							// Margin increased to 100.0f to prevent any potential popping in complex terrains
+							if (linNearest > linOccluder + 100.0f) {
 								continue;
 							}
 						}
@@ -876,7 +888,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				projection, view, cameraPos,
 				gs ? gs : graphicsSettings,
 				false,
-				hizTexture,
+				(sceneDepthTexture == 0 ? 0 : hizTexture),
 				(int)screenWidth, (int)screenHeight
 			);
 		}
