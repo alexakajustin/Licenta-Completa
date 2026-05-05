@@ -389,37 +389,48 @@ void Application::Run()
 			}
 
 			if (bestWater) {
-				const MeshData& md = bestWater->GetCPUMeshData();
-				if (md.GetVertexCount() > 0) {
-					// For flat lakes, any vertex works. For sloped rivers, we find the height 
-					// at the local XZ point closest to the camera to get the most relevant reflection plane.
-					glm::mat4 invModel = glm::inverse(bestWater->GetWorldMatrix());
-					glm::vec3 localCam = glm::vec3(invModel * glm::vec4(camPos, 1.0f));
-					
-					float closestDistSq = 1e10f;
-					float localY = md.vertices[1];
-					
-					// Optimization: sample every Nth vertex for large river meshes
-					int vCount = md.GetVertexCount();
-					int step = vCount > 2000 ? vCount / 500 : 1; 
-					for (int i = 0; i < vCount; i += step) {
-						int base = i * 14;
-						float dx = md.vertices[base] - localCam.x;
-						float dz = md.vertices[base + 2] - localCam.z;
-						float d2 = dx*dx + dz*dz;
-						if (d2 < closestDistSq) {
-							closestDistSq = d2;
-							localY = md.vertices[base + 1];
+				float targetWaterHeight = bestWater->GetTransform().GetPosition().y;
+
+				// Only perform expensive/jittery sampling for non-flat water (rivers/sloped)
+				if (bestWater->GetPrimitiveType() != "Plane") {
+					const MeshData& md = bestWater->GetCPUMeshData();
+					if (md.GetVertexCount() > 0) {
+						glm::mat4 invModel = glm::inverse(bestWater->GetWorldMatrix());
+						glm::vec3 localCam = glm::vec3(invModel * glm::vec4(camPos, 1.0f));
+						
+						float closestDistSq = 1e10f;
+						float localY = md.vertices[1];
+						
+						int vCount = md.GetVertexCount();
+						int step = vCount > 2000 ? vCount / 500 : 1; 
+						for (int i = 0; i < vCount; i += step) {
+							int base = i * 14;
+							float dx = md.vertices[base] - localCam.x;
+							float dz = md.vertices[base + 2] - localCam.z;
+							float d2 = dx*dx + dz*dz;
+							if (d2 < closestDistSq) {
+								closestDistSq = d2;
+								localY = md.vertices[base + 1];
+							}
 						}
+						glm::vec4 worldHeightPos = bestWater->GetWorldMatrix() * glm::vec4(0.0f, localY, 0.0f, 1.0f);
+						targetWaterHeight = worldHeightPos.y;
+					} else {
+						glm::vec3 bmin, bmax;
+						bestWater->GetWorldBounds(bmin, bmax);
+						targetWaterHeight = bmax.y;
 					}
-					// Transform local height back to world space
-					glm::vec4 worldHeightPos = bestWater->GetWorldMatrix() * glm::vec4(0.0f, localY, 0.0f, 1.0f);
-					waterHeight = worldHeightPos.y;
-				} else {
-					glm::vec3 bmin, bmax;
-					bestWater->GetWorldBounds(bmin, bmax);
-					waterHeight = bmax.y;
 				}
+
+				// Stability smoothing: prevent frame-to-frame height jumps
+				static float smoothedHeight = targetWaterHeight;
+				static bool initialized = false;
+				if (!initialized) {
+					smoothedHeight = targetWaterHeight;
+					initialized = true;
+				}
+				smoothedHeight = glm::mix(smoothedHeight, targetWaterHeight, 0.15f);
+				waterHeight = smoothedHeight;
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);

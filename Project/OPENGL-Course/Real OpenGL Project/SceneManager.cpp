@@ -442,16 +442,16 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				// LAYER 1: Bounding Sphere vs Frustum
 				if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
 
-				// LAYER 2: Contribution culling
+				// LAYER 2: Contribution culling (Skip sub-pixel objects)
 				if (!overrideShader && screenHeight > 0.0f) {
-					if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 2.0f, projection, screenHeight, cameraPos)) continue;
+					if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) continue;
 				}
 
 				// LAYER 3: AABB vs Frustum
 				if (!frustum->IsBoxVisible(bmin, bmax)) continue;
 
 				// LAYER 4: CPU Hi-Z Occlusion Culling (1-frame latency)
-				if (!overrideShader && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+				if (!overrideShader && sceneDepthTexture != 0 && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
 					glm::vec3 corners[8] = {
 						glm::vec3(bmin.x, bmin.y, bmin.z),
 						glm::vec3(bmax.x, bmin.y, bmin.z),
@@ -519,8 +519,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							float linNearest = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
 							float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
 
-							// If the nearest point of the object is further than the deepest occluder
-							if (linNearest > linOccluder + 1.0f) {
+							// If the nearest point of the object is significantly further than the deepest occluder
+							// Margin increased to 5.0f to prevent precision-based flickering
+							if (linNearest > linOccluder + 5.0f) {
 								continue;
 							}
 						}
@@ -936,7 +937,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		glEnable(GL_CULL_FACE);
 	}
 	
-	if (!overrideShader) {
+	if (!overrideShader && sceneDepthTexture != 0) {
 		prevViewProj = projection * view;
 	}
 }
