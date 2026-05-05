@@ -241,7 +241,7 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     vec2 deltaTexCoords = p / numLayers;
     
     vec2 currentTexCoords = texCoords;
-    float currentDepthMapValue = texture(heightMap, currentTexCoords).r;
+    float currentDepthMapValue = textureLod(heightMap, currentTexCoords, 0.0).r;
     
     // Hard cap on iterations to prevent GPU hang
     int maxSteps = int(numLayers) + 1;
@@ -249,7 +249,7 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     while(currentLayerDepth < currentDepthMapValue && step < maxSteps)
     {
         currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = texture(heightMap, currentTexCoords).r;
+        currentDepthMapValue = textureLod(heightMap, currentTexCoords, 0.0).r;
         currentLayerDepth += layerDepth;
         step++;
     }
@@ -257,7 +257,7 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     // Parallax Occlusion Mapping (Interpolation)
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = texture(heightMap, prevTexCoords).r - currentLayerDepth + layerDepth;
+    float beforeDepth = textureLod(heightMap, prevTexCoords, 0.0).r - currentLayerDepth + layerDepth;
     float weight = afterDepth / (afterDepth - beforeDepth);
     
     return mix(currentTexCoords, prevTexCoords, weight);
@@ -588,41 +588,62 @@ void CalcLayeredSurface(out vec3 outColor)
                 layerWorldNorm = TangentToWorld(layerNorm, TBN);
             }
 		} else {
-			// Terrain/Structured modes: use Triplanar Mapping to fix "melting"
-            vec3 samplePos = LocalPos;
-            
-            // To make "displacement maps work like normal maps per tile" for terrain,
-            // we apply Parallax Occlusion Mapping to the Triplanar sampling coordinates!
-            if (layerData[i].hasDisplacementMap == 1) {
-                vec3 viewDirWorld = normalize(eyePosition - FragPos);
-                
-                // Fast Triplanar POM: Apply POM to the most dominant plane to save performance
-                if (triWeights.y >= triWeights.x && triWeights.y >= triWeights.z) {
-                    // Y-plane dominant (Top-down, like terrain ground)
-                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
-                    vec2 pomUV = CalcParallaxUVs(samplePos.xz * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
-                    samplePos.xz = pomUV / tiling;
-                }
-                else if (triWeights.x >= triWeights.y && triWeights.x >= triWeights.z) {
-                    // X-plane dominant (Cliffs facing X)
-                    vec3 viewDirTangent = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
-                    vec2 pomUV = CalcParallaxUVs(samplePos.zy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
-                    samplePos.zy = pomUV / tiling;
-                }
-                else {
-                    // Z-plane dominant (Cliffs facing Z)
-                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
-                    vec2 pomUV = CalcParallaxUVs(samplePos.xy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
-                    samplePos.xy = pomUV / tiling;
-                }
-            }
+			// Terrain/Structured modes: Triplanar Mapping with per-axis POM
+			// Each axis gets independent POM-displaced UVs to prevent seams
+			// at the boundary where the dominant projection axis switches.
 
-			layerSample.rgb = SampleTriplanarDiffuse(textureLayers[i], samplePos, triWeights, tiling);
-            layerSample.a = 1.0; // Assume opaque for triplanar layers
-            
-            if (layerData[i].hasNormalMap == 1) {
-                layerWorldNorm = SampleTriplanarNormal(layerNormalMaps[i], samplePos, triWeights, tiling, geometryNormal);
-            }
+			// Per-axis base UVs from the original object-space position
+			vec2 uvX = LocalPos.zy * tiling;
+			vec2 uvY = LocalPos.xz * tiling;
+			vec2 uvZ = LocalPos.xy * tiling;
+
+			// Freeze derivatives from the ORIGINAL (un-displaced) UVs.
+			// POM shifts UVs non-linearly, which corrupts hardware dFdx/dFdy
+			// and causes mipmap banding at axis transitions.
+			vec2 duvX_dx = dFdx(uvX); vec2 duvX_dy = dFdy(uvX);
+			vec2 duvY_dx = dFdx(uvY); vec2 duvY_dy = dFdy(uvY);
+			vec2 duvZ_dx = dFdx(uvZ); vec2 duvZ_dy = dFdy(uvZ);
+
+			// Apply POM independently per projection axis
+			if (layerData[i].hasDisplacementMap == 1) {
+				vec3 viewDirWorld = normalize(eyePosition - FragPos);
+
+				// X-plane (cliffs facing X): UV = pos.zy, depth = viewDir.x
+				if (triWeights.x > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
+					uvX = CalcParallaxUVs(uvX, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+				// Y-plane (flat ground): UV = pos.xz, depth = viewDir.y
+				if (triWeights.y > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
+					uvY = CalcParallaxUVs(uvY, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+				// Z-plane (cliffs facing Z): UV = pos.xy, depth = viewDir.z
+				if (triWeights.z > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
+					uvZ = CalcParallaxUVs(uvZ, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+			}
+
+			// Sample diffuse per-axis using textureGrad with frozen derivatives
+			vec3 xDiff = textureGrad(textureLayers[i], uvX, duvX_dx, duvX_dy).rgb;
+			vec3 yDiff = textureGrad(textureLayers[i], uvY, duvY_dx, duvY_dy).rgb;
+			vec3 zDiff = textureGrad(textureLayers[i], uvZ, duvZ_dx, duvZ_dy).rgb;
+			layerSample.rgb = xDiff * triWeights.x + yDiff * triWeights.y + zDiff * triWeights.z;
+			layerSample.a = 1.0;
+
+			// Sample normal maps per-axis with frozen derivatives
+			if (layerData[i].hasNormalMap == 1) {
+				vec3 xNorm = textureGrad(layerNormalMaps[i], uvX, duvX_dx, duvX_dy).rgb * 2.0 - 1.0;
+				vec3 yNorm = textureGrad(layerNormalMaps[i], uvY, duvY_dx, duvY_dy).rgb * 2.0 - 1.0;
+				vec3 zNorm = textureGrad(layerNormalMaps[i], uvZ, duvZ_dx, duvZ_dy).rgb * 2.0 - 1.0;
+
+				vec3 xWorld = vec3(xNorm.z * sign(geometryNormal.x), xNorm.y, xNorm.x);
+				vec3 yWorld = vec3(yNorm.x, yNorm.z * sign(geometryNormal.y), yNorm.y);
+				vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z * sign(geometryNormal.z));
+
+				layerWorldNorm = normalize(xWorld * triWeights.x + yWorld * triWeights.y + zWorld * triWeights.z);
+			}
 		}
 
 		// Compute blend weight
