@@ -191,11 +191,11 @@ vec3 SampleTriplanarNormal(sampler2D tex, vec3 pos, vec3 weights, float tiling, 
 
     // Swizzle tangent-space normals to world-space based on the axis they represent
     // X-plane: Normal points in X, so tangent is Z, bitangent is Y
-    vec3 xWorld = vec3(xNorm.z, xNorm.y, xNorm.x) * sign(surfaceNorm.x);
+    vec3 xWorld = vec3(xNorm.z * sign(surfaceNorm.x), xNorm.y, xNorm.x);
     // Y-plane: Normal points in Y (standard X-Z mapping), so tangent is X, bitangent is Z
-    vec3 yWorld = vec3(yNorm.x, yNorm.z, yNorm.y) * sign(surfaceNorm.y);
+    vec3 yWorld = vec3(yNorm.x, yNorm.z * sign(surfaceNorm.y), yNorm.y);
     // Z-plane: Normal points in Z, so tangent is X, bitangent is Y
-    vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z) * sign(surfaceNorm.z);
+    vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z * sign(surfaceNorm.z));
 
     return normalize(xWorld * weights.x + yWorld * weights.y + zWorld * weights.z);
 }
@@ -228,7 +228,16 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     float effectiveScale = heightScale * pomFade;
     
     // Shift magnitude along the view vector
-    vec2 p = viewDirTangent.xy / viewDirTangent.z * effectiveScale;
+    // Fix: Clamp Z to prevent division by zero and use abs() for triplanar slopes
+    float viewZ = max(abs(viewDirTangent.z), 0.05);
+    vec2 p = viewDirTangent.xy / viewZ * effectiveScale;
+    
+    // Cap the maximum shift to prevent "melting" / extreme stretching at grazing angles
+    float maxShift = effectiveScale * 1.5; 
+    if (length(p) > maxShift) {
+        p = normalize(p) * maxShift;
+    }
+    
     vec2 deltaTexCoords = p / numLayers;
     
     vec2 currentTexCoords = texCoords;
@@ -588,21 +597,21 @@ void CalcLayeredSurface(out vec3 outColor)
                 vec3 viewDirWorld = normalize(eyePosition - FragPos);
                 
                 // Fast Triplanar POM: Apply POM to the most dominant plane to save performance
-                if (triWeights.y > triWeights.x && triWeights.y > triWeights.z) {
+                if (triWeights.y >= triWeights.x && triWeights.y >= triWeights.z) {
                     // Y-plane dominant (Top-down, like terrain ground)
-                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.z, viewDirWorld.y);
+                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
                     vec2 pomUV = CalcParallaxUVs(samplePos.xz * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
                     samplePos.xz = pomUV / tiling;
                 }
-                else if (triWeights.x > triWeights.y && triWeights.x > triWeights.z) {
+                else if (triWeights.x >= triWeights.y && triWeights.x >= triWeights.z) {
                     // X-plane dominant (Cliffs facing X)
-                    vec3 viewDirTangent = vec3(-viewDirWorld.z, viewDirWorld.y, viewDirWorld.x) * sign(geometryNormal.x);
+                    vec3 viewDirTangent = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
                     vec2 pomUV = CalcParallaxUVs(samplePos.zy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
                     samplePos.zy = pomUV / tiling;
                 }
                 else {
                     // Z-plane dominant (Cliffs facing Z)
-                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.y, viewDirWorld.z) * sign(geometryNormal.z);
+                    vec3 viewDirTangent = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
                     vec2 pomUV = CalcParallaxUVs(samplePos.xy * tiling, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
                     samplePos.xy = pomUV / tiling;
                 }
