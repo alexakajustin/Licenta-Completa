@@ -246,8 +246,8 @@ void main()
                 float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                 
-                // In linear space, a 50.0-meter bias is extremely conservative for maximum visibility
-                if (linNearest > linOccluder + 50.0) {
+                // In linear space, 5.0m bias matches the CPU Hi-Z path
+                if (linNearest > linOccluder + 5.0) {
                     return; // Occluded!
                 }
             }
@@ -255,18 +255,26 @@ void main()
         }
     }
 
+    // ------- Contribution Culling (skip sub-pixel instances) -------
+    // Project the bounding sphere to screen pixels; skip if < 2px
+    if (screenSize.x > 0.0 && w > 0.01) {
+        float projSize = (radius * screenSize.y) / w;
+        if (projSize < 2.0) return;
+    }
+
     // ------- LOD Classification + Density-Based Culling -------
-    // For simple meshes (grass quads), LOD meshes are identical to LOD0.
     // Density culling skips instances at far distances to reduce triangle count:
     //   LOD 1: keep every 2nd instance (50% density)
     //   LOD 2: keep every 4th instance (25% density)
     if (lodCount >= 3 && dist > lodDistances[1]) {
-        // LOD 2: Farthest — FORCED 100% DENSITY (NO THINNING)
+        // LOD 2: Farthest — 25% density (keep every 4th instance)
+        if (id % 4u != 0u) return;
         uint idx = atomicAdd(instanceCountLOD2, 1);
         visibleLOD2[idx] = inst;
     }
     else if (lodCount >= 2 && dist > lodDistances[0]) {
-        // LOD 1: Medium distance — FORCED 100% DENSITY (NO THINNING)
+        // LOD 1: Medium distance — 50% density (keep every 2nd instance)
+        if (id % 2u != 0u) return;
         uint idx = atomicAdd(instanceCountLOD1, 1);
         visibleLOD1[idx] = inst;
     }
