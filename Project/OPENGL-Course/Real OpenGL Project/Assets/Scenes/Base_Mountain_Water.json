@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.9257057309150696,
-            -0.32556816935539246,
-            -0.19254708290100098
+            0.48417848348617554,
+            -0.18223552405834198,
+            -0.8557811975479126
         ],
-        "pitch": -19.0,
+        "pitch": -10.5,
         "position": [
-            844.182861328125,
-            182.21656799316406,
-            30.584978103637695
+            248.49977111816406,
+            306.413330078125,
+            290.75244140625
         ],
-        "yaw": -528.25
+        "yaw": -1140.5
     },
     "instancedGroups": [
         {
@@ -27,63 +27,20 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.0,
+            "ambientIntensity": 0.3529999852180481,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.0,
+            "diffuseIntensity": 1.0980000495910645,
             "direction": [
-                -0.9186304211616516,
-                -0.2296576052904129,
-                0.3215206563472748
+                -0.5443397164344788,
+                -0.8169436454772949,
+                0.19051876664161682
             ],
             "name": "Sun",
             "type": "Directional"
-        },
-        {
-            "ambientIntensity": 0.10000000149011612,
-            "color": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "constant": 0.009999999776482582,
-            "diffuseIntensity": 0.800000011920929,
-            "exponent": 0.0010000000474974513,
-            "linear": 0.0010000000474974513,
-            "name": "Point Light 1",
-            "position": [
-                830.0872802734375,
-                183.412109375,
-                27.861228942871094
-            ],
-            "type": "Point"
-        },
-        {
-            "ambientIntensity": 0.10000000149011612,
-            "color": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "constant": 1.0,
-            "diffuseIntensity": 1.0,
-            "direction": [
-                0.0,
-                -1.0,
-                0.0
-            ],
-            "exponent": 0.009999999776482582,
-            "linear": 0.019999999552965164,
-            "name": "Spot Light 2",
-            "position": [
-                815.7670288085938,
-                183.34425354003906,
-                27.62640953063965
-            ],
-            "type": "Spot"
         }
     ],
     "nodeGraph": {
@@ -109,7 +66,7 @@
                 "start": 125
             }
         ],
-        "nextId": 150,
+        "nextId": 167,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -978,7 +935,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\statue.obj",
             "name": "statue 7",

@@ -18,6 +18,7 @@
 #include "Renderer.h"
 #include "UndoActions.h"
 #include "GraphicsSettings.h"
+#include "Planet.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -632,7 +633,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
 				cameraPos,
 				graphicsSettings,
-				targetShader->GetShaderID()
+				targetShader->GetShaderID(),
+				targetShader->HasTessellation()
 			);
 		}
 	}
@@ -1339,20 +1341,38 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 
 void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 {
-	GameObject* newObj = new GameObject(type + " " + std::to_string(objects.size()));
-	
-	if (type == "Plane") newObj->SetMesh(PrimitiveGenerator::CreatePlane());
-	else if (type == "Cube") newObj->SetMesh(PrimitiveGenerator::CreateCube());
-	else if (type == "Sphere") newObj->SetMesh(PrimitiveGenerator::CreateSphere());
+	GameObject* obj = nullptr;
+	std::string name = type + " " + std::to_string(objects.size());
 
-	newObj->SetPrimitiveType(type == "Empty Object" ? "Empty" : type);
-	newObj->GetTransform().SetPosition(spawnPos);
+	if (type == "Plane") {
+		obj = new GameObject(name);
+		obj->SetMesh(PrimitiveGenerator::CreatePlane());
+	}
+	else if (type == "Cube") {
+		obj = new GameObject(name);
+		obj->SetMesh(PrimitiveGenerator::CreateCube());
+	}
+	else if (type == "Sphere") {
+		obj = new GameObject(name);
+		obj->SetMesh(PrimitiveGenerator::CreateSphere());
+	}
+	else if (type == "Planet") {
+		Planet* planet = new Planet(name);
+		planet->Generate();
+		obj = planet;
+	}
+	else {
+		obj = new GameObject(name);
+	}
 
-	objects.push_back(newObj);
+	obj->SetPrimitiveType(type == "Empty Object" ? "Empty" : type);
+	obj->GetTransform().SetPosition(spawnPos);
+
+	objects.push_back(obj);
 	SetSelectedIndex((int)objects.size() - 1);
 
 	// Record undo action
-	undoManager.PushAction(std::make_unique<CreateObjectAction>(this, std::vector<GameObject*>{newObj}, "Create " + type));
+	undoManager.PushAction(std::make_unique<CreateObjectAction>(this, std::vector<GameObject*>{obj}, "Create " + type));
 }
 
 #include "AssetManager.h"

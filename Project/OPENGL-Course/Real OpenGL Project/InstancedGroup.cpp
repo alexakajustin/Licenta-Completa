@@ -652,19 +652,6 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
-	// DEBUG: Read back instance count to verify compute cull produced results
-	{
-		DrawElementsIndirectCommand readback = {};
-		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, shadowIndirectBuffer);
-		glGetBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &readback);
-		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-		static int debugCounter = 0;
-		if (debugCounter++ % 300 == 0) { // Print every ~5 seconds at 60fps
-			printf("[ShadowDebug] '%s': instanceCount=%u, indexCount=%u, totalInstances=%u\n",
-				name.c_str(), readback.instanceCount, readback.count, totalCount);
-		}
-	}
-
 	// ================================================================
 	// PHASE 2: Render into shadow map using instanced shadow shader
 	// ================================================================

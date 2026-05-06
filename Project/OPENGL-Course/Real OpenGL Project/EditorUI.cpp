@@ -22,6 +22,7 @@
 #include "BuildingGenNode.h"
 #include "SceneSerializer.h"
 #include "UndoActions.h"
+#include "Planet.h"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -537,6 +538,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			if (ImGui::MenuItem("3D Object -> Plane")) { scene.CreateGameObject("Plane", spawnPos); }
 			if (ImGui::MenuItem("3D Object -> Cube")) { scene.CreateGameObject("Cube", spawnPos); }
 			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere", spawnPos); }
+			if (ImGui::MenuItem("3D Object -> Planet")) { scene.CreateGameObject("Planet", spawnPos); }
 			ImGui::Separator();
 			if (ImGui::BeginMenu("Light"))
 			{
@@ -1097,6 +1099,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 				if (ImGui::MenuItem("Plane")) scene.CreateGameObject("Plane", spawnPos);
 				if (ImGui::MenuItem("Cube")) scene.CreateGameObject("Cube", spawnPos);
 				if (ImGui::MenuItem("Sphere")) scene.CreateGameObject("Sphere", spawnPos);
+				if (ImGui::MenuItem("Planet")) scene.CreateGameObject("Planet", spawnPos);
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Create Light"))
@@ -1317,6 +1320,27 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 						std::vector<TransformSnapshot> after = {{ selected, transform.GetPosition(), transform.GetRotation(), transform.GetScale() }};
 						scene.GetUndoManager().PushAction(std::make_unique<TransformAction>("Inspector Transform", before, after));
 					}
+				}
+			}
+
+			// --- Planet (collapsible) ---
+			Planet* planet = dynamic_cast<Planet*>(selected);
+			if (planet && ImGui::CollapsingHeader("Planet Generator", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				PlanetParams p = planet->GetParams();
+				bool meshChanged = false;
+				bool uniformsChanged = false;
+
+				if (ImGui::DragFloat("Radius", &p.radius, 1.0f, 1.0f, 10000.0f)) meshChanged = true;
+				if (ImGui::SliderInt("Subdivisions", &p.subdivisions, 1, 8)) meshChanged = true;
+				if (ImGui::DragInt("Seed", (int*)&p.seed, 1)) { meshChanged = true; uniformsChanged = true; }
+
+				if (meshChanged || uniformsChanged) {
+					planet->SetParams(p);
+					if (meshChanged) {
+						if (!ImGui::IsAnyItemActive()) planet->Generate();
+					}
+					planet->UpdateUniforms();
 				}
 			}
 

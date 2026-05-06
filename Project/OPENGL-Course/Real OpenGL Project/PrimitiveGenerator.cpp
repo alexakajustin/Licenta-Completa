@@ -1,6 +1,8 @@
 #include "PrimitiveGenerator.h"
 #include <cmath>
 #include <vector>
+#include <map>
+#include <algorithm>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -123,17 +125,17 @@ MeshData PrimitiveGenerator::GetSphereData(unsigned int rings, unsigned int sect
 
     for (unsigned int r = 0; r < rings; r++) {
         for (unsigned int s = 0; s < sectors; s++) {
-            float y = sin(-M_PI / 2 + M_PI * r * R);
-            float x = cos(2 * M_PI * s * S) * sin(M_PI * r * R);
-            float z = sin(2 * M_PI * s * S) * sin(M_PI * r * R);
+            float y = sin(-3.14159265f / 2.0f + 3.14159265f * (float)r * R);
+            float x = cos(2.0f * 3.14159265f * (float)s * S) * sin(3.14159265f * (float)r * R);
+            float z = sin(2.0f * 3.14159265f * (float)s * S) * sin(3.14159265f * (float)r * R);
 
             float u = s * S;
             float v = r * R;
             float nx = x, ny = y, nz = z;
 
-            float tx = -sin(2 * M_PI * s * S);
+            float tx = -sin(2.0f * 3.14159265f * (float)s * S);
             float ty = 0.0f;
-            float tz = cos(2 * M_PI * s * S);
+            float tz = cos(2.0f * 3.14159265f * (float)s * S);
             float tlen = sqrt(tx * tx + ty * ty + tz * tz);
             if (tlen > 0.0f) { tx /= tlen; ty /= tlen; tz /= tlen; }
 
@@ -159,5 +161,96 @@ MeshData PrimitiveGenerator::GetSphereData(unsigned int rings, unsigned int sect
 Mesh* PrimitiveGenerator::CreateSphere(unsigned int rings, unsigned int sectors)
 {
     MeshData data = GetSphereData(rings, sectors);
+    return data.ToMesh();
+}
+
+MeshData PrimitiveGenerator::GetIcosphereData(int subdivisions)
+{
+    MeshData data;
+    
+    // Phi = (1 + sqrt(5)) / 2
+    const float t = (1.0f + sqrt(5.0f)) / 2.0f;
+
+    // Initial 12 vertices of an icosahedron
+    std::vector<glm::vec3> verts = {
+        glm::normalize(glm::vec3(-1,  t,  0)),
+        glm::normalize(glm::vec3( 1,  t,  0)),
+        glm::normalize(glm::vec3(-1, -t,  0)),
+        glm::normalize(glm::vec3( 1, -t,  0)),
+
+        glm::normalize(glm::vec3( 0, -1,  t)),
+        glm::normalize(glm::vec3( 0,  1,  t)),
+        glm::normalize(glm::vec3( 0, -1, -t)),
+        glm::normalize(glm::vec3( 0,  1, -t)),
+
+        glm::normalize(glm::vec3( t,  0, -1)),
+        glm::normalize(glm::vec3( t,  0,  1)),
+        glm::normalize(glm::vec3(-t,  0, -1)),
+        glm::normalize(glm::vec3(-t,  0,  1))
+    };
+
+    struct Triangle { unsigned int v1, v2, v3; };
+    std::vector<Triangle> faces = {
+        {0, 11, 5}, {0, 5, 1}, {0, 1, 7}, {0, 7, 10}, {0, 10, 11},
+        {1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+        {3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9},
+        {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1}
+    };
+
+    auto getMidpoint = [&](unsigned int v1, unsigned int v2, std::map<std::pair<unsigned int, unsigned int>, unsigned int>& cache) {
+        if (v1 > v2) std::swap(v1, v2);
+        auto key = std::make_pair(v1, v2);
+        if (cache.count(key)) return cache[key];
+
+        glm::vec3 mid = glm::normalize((verts[v1] + verts[v2]) * 0.5f);
+        verts.push_back(mid);
+        cache[key] = (unsigned int)verts.size() - 1;
+        return (unsigned int)verts.size() - 1;
+    };
+
+    for (int i = 0; i < subdivisions; i++) {
+        std::vector<Triangle> newFaces;
+        std::map<std::pair<unsigned int, unsigned int>, unsigned int> midpointCache;
+        for (auto& f : faces) {
+            unsigned int a = getMidpoint(f.v1, f.v2, midpointCache);
+            unsigned int b = getMidpoint(f.v2, f.v3, midpointCache);
+            unsigned int c = getMidpoint(f.v3, f.v1, midpointCache);
+
+            newFaces.push_back({f.v1, a, c});
+            newFaces.push_back({f.v2, b, a});
+            newFaces.push_back({f.v3, c, b});
+            newFaces.push_back({a, b, c});
+        }
+        faces = std::move(newFaces);
+    }
+
+    // Convert to MeshData
+    for (const auto& v : verts) {
+        // Calculate UVs (spherical mapping)
+        float u = 0.5f + (atan2(v.z, v.x) / (2.0f * (float)M_PI));
+        float v_coord = 0.5f - (asin(v.y) / (float)M_PI);
+
+        // Normals for a sphere are just the normalized position
+        glm::vec3 n = v;
+
+        // Tangents and bitangents
+        glm::vec3 t_vec;
+        if (abs(n.y) > 0.999f) t_vec = glm::vec3(1, 0, 0);
+        else t_vec = glm::normalize(glm::cross(glm::vec3(0, 1, 0), n));
+        glm::vec3 b_vec = glm::cross(n, t_vec);
+
+        data.AddVertex(v.x, v.y, v.z, u, v_coord, n.x, n.y, n.z, t_vec.x, t_vec.y, t_vec.z, b_vec.x, b_vec.y, b_vec.z);
+    }
+
+    for (const auto& f : faces) {
+        data.AddTriangle(f.v1, f.v2, f.v3);
+    }
+
+    return data;
+}
+
+Mesh* PrimitiveGenerator::CreateIcosphere(int subdivisions)
+{
+    MeshData data = GetIcosphereData(subdivisions);
     return data.ToMesh();
 }

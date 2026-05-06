@@ -104,6 +104,11 @@ void Material::Bind(GLuint overrideProgram)
 		if (loc != -1) glUniform1f(loc, val);
 	}
 
+	for (auto const& [name, val] : ints) {
+		GLint loc = GetLoc(name);
+		if (loc != -1) glUniform1i(loc, val);
+	}
+
 	for (auto const& [name, val] : vec2s) {
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform2fv(loc, 1, glm::value_ptr(val));
@@ -180,7 +185,17 @@ Material* Material::LoadFromFile(const std::string& path)
 			else if (values.size() == 4) mat->SetVec4(key, glm::vec4(values[0], values[1], values[2], values[3]));
 		}
 		else {
-			mat->SetFloat(key, std::stof(valStr));
+			// If it's a whole number, store as int? 
+			// For now, let's keep it simple: if it contains a '.', it's a float.
+			if (valStr.find('.') != std::string::npos) {
+				mat->SetFloat(key, std::stof(valStr));
+			} else {
+				try {
+					mat->SetInt(key, std::stoi(valStr));
+				} catch (...) {
+					mat->SetFloat(key, std::stof(valStr));
+				}
+			}
 		}
 	}
 
@@ -205,6 +220,7 @@ bool Material::SaveToFile(const std::string& path) const
 	}
 
 	for (auto const& [name, val] : floats) file << name << "=" << val << "\n";
+	for (auto const& [name, val] : ints)   file << name << "=" << val << "\n";
 	for (auto const& [name, val] : vec2s)  file << name << "=" << val.x << "," << val.y << "\n";
 	for (auto const& [name, val] : vec3s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "\n";
 	for (auto const& [name, val] : vec4s)  file << name << "=" << val.x << "," << val.y << "," << val.z << "," << val.w << "\n";

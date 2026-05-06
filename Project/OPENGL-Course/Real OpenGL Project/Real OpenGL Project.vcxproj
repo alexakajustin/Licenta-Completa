@@ -185,6 +185,7 @@
     <ClCompile Include="OmniShadowMap.cpp" />
     <ClCompile Include="Operation.cpp" />
     <ClCompile Include="PerlinNoiseGenerator.cpp" />
+    <ClCompile Include="Planet.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGenerator.cpp" />
     <ClCompile Include="Renderer.cpp" />
@@ -226,6 +227,8 @@
     <None Include="Assets\CustomNodes\Twisted_Column.json" />
     <None Include="assimp-vc142-mt.dll" />
     <None Include="assimp-vc143-mt.dll" />
+    <None Include="debug_instanced_shadow.vert" />
+    <None Include="debug_patched_shader.vert" />
     <None Include="External Libs\ASSIMP\include\assimp\color4.inl" />
     <None Include="External Libs\ASSIMP\include\assimp\material.inl" />
     <None Include="External Libs\ASSIMP\include\assimp\matrix3x3.inl" />
@@ -534,6 +537,7 @@
   <ItemGroup>
     <ClInclude Include="AllOperations.h" />
     <ClInclude Include="AssetManager.h" />
+    <ClInclude Include="BuildingGenNode.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CascadedShadowMap.h" />
     <ClInclude Include="CityGridNode.h" />
@@ -546,6 +550,9 @@
     <ClInclude Include="GraphicsSettings.h" />
     <ClInclude Include="Grid2D.h" />
     <ClInclude Include="HydraulicErosionNode.h" />
+    <ClInclude Include="Noise3D.h" />
+    <ClInclude Include="ObjectIntersectionFilterNode.h" />
+    <ClInclude Include="Planet.h" />
     <ClInclude Include="RiverNode.h" />
     <ClInclude Include="UndoManager.h" />
     <ClInclude Include="UndoActions.h" />

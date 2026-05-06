@@ -256,7 +256,7 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 		}
 	}
 
-	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, cameraPos, gs);
+	RenderSingle(uniformModel, uniformSpecularIntensity, uniformShininess, uniformMaterialColor, uniformTiling, uniformOffset, uniformUseNormalMap, uniformUseDiffuseTexture, uniformDiffuseTexture, uniformNormalMap, cameraPos, gs, 0, false);
 
 	// Recursive render for children
 	for (auto* child : children)
@@ -267,10 +267,13 @@ void GameObject::Render(GLint uniformModel, GLint uniformSpecularIntensity, GLin
 	}
 }
 
-void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
-	GLint uniformTiling, GLint uniformOffset, GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
-	const glm::vec3& cameraPos, const GraphicsSettings* gs,
-	GLuint shaderID)
+void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor,
+	GLint uniformTiling, GLint uniformOffset,
+	GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
+	const glm::vec3& cameraPos,
+	const GraphicsSettings* gs,
+	GLuint shaderID,
+	bool shaderSupportsTessellation)
 {
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
@@ -494,7 +497,7 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 
 		// Render
 		if (useTessellation) {
-			meshToRender->RenderMeshTessellated();
+			meshToRender->RenderMeshTessellated(shaderSupportsTessellation);
 		} else {
 			meshToRender->RenderMesh();
 		}

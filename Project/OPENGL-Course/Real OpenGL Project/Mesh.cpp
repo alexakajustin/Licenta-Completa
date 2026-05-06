@@ -117,16 +117,22 @@ void Mesh::RenderMesh()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
 }
 
-void Mesh::RenderMeshTessellated()
+void Mesh::RenderMeshTessellated(bool canTessellate)
 {
 	// Set patch size to 3 vertices per patch (triangles)
 	glPatchParameteri(GL_PATCH_VERTICES, 3);
 
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-	// Draw with GL_PATCHES instead of GL_TRIANGLES — the tessellation hardware
-	// will subdivide each 3-vertex patch according to the TCS tessellation levels
-	glDrawElements(GL_PATCHES, indexCount, GL_UNSIGNED_INT, 0);
+
+	if (canTessellate) {
+		// Draw with GL_PATCHES — the tessellation hardware will subdivide each patch
+		glDrawElements(GL_PATCHES, indexCount, GL_UNSIGNED_INT, 0);
+	} else {
+		// Fallback: Draw as regular triangles if the shader doesn't support tessellation
+		// (e.g. during a standard shadow pass or fallback rendering)
+		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+	}
 
 	// Track stats (tessellated triangle count is unknown at CPU side, count input patches)
 	if (DebugOverlay::GetInstance()) {

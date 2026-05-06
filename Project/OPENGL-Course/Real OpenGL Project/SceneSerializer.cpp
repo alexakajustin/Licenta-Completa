@@ -1,3 +1,9 @@
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#include <commdlg.h>
+
 #include "SceneSerializer.h"
 #include "Camera.h"
 #include "SceneManager.h"
@@ -19,8 +25,6 @@
 #include <iostream>
 #include <set>
 #include <thread>
-#include <Windows.h>
-#include <commdlg.h>
 
 #pragma comment(lib, "comdlg32.lib")
 

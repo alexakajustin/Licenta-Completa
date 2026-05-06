@@ -183,6 +183,15 @@
     <ClCompile Include="RiverNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CityGridNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingGenNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Planet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="External Libs\GLEW\doc\advanced.html" />
@@ -956,6 +965,8 @@
     <None Include="Assets\CustomNodes\Twisted_Column.json" />
     <None Include="assimp-vc142-mt.dll" />
     <None Include="glfw3.dll" />
+    <None Include="debug_instanced_shadow.vert" />
+    <None Include="debug_patched_shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="External Libs\GLEW\include\GL\eglew.h">
@@ -2255,6 +2266,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GraphicsSettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CityGridNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingGenNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Noise3D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectIntersectionFilterNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Planet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

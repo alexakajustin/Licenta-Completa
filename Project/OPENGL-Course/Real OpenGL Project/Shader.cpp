@@ -184,6 +184,7 @@ void Shader::CompileShader(const char* vertexCode, const char* tcsCode, const ch
 	if (!AddShader(shaderID, tesCode, GL_TESS_EVALUATION_SHADER)) { ClearShader(); return; }
 	if (!AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER)) { ClearShader(); return; }
 
+	hasTessellation = true;
 	CompileProgram();
 	if (shaderID == 0) return;
 

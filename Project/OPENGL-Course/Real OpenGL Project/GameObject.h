@@ -21,7 +21,7 @@ class GameObject
 public:
 	GameObject();
 	GameObject(const std::string& name);
-	~GameObject();
+	virtual ~GameObject();
 
 	GameObject* Clone(const std::string& newName);
 
@@ -76,7 +76,8 @@ public:
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
 		const glm::vec3& cameraPos,
 		const GraphicsSettings* gs = nullptr,
-		GLuint shaderID = 0);
+		GLuint shaderID = 0,
+		bool shaderSupportsTessellation = false);
 
 	// Texture layers
 	std::vector<TextureLayer>& GetTextureLayers() { return textureLayers; }
