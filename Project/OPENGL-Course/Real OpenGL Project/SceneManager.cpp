@@ -825,6 +825,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				targetRenderShader->UseShader();
 				GLuint sid = targetRenderShader->GetShaderID();
 
+				// Bind eye position for specular/point light calculations
+				GLint eyeLoc = targetRenderShader->GetEyePositionLocation();
+				if (eyeLoc != -1) glUniform3f(eyeLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+
 				if (dLight) {
 					targetRenderShader->SetDirectionalLight(dLight);
 					

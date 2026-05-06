@@ -715,6 +715,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 							InstancedGroup* group = new InstancedGroup(groupName);
 							group->SetSourceObjectName(objName);
+							group->Setup(meshCache[dataKey], packedInstances, finalMat, finalTex, finalNorm, finalLayers);
 
 							scene.AddInstancedGroup(group);
 
