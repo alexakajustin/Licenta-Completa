@@ -652,6 +652,19 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
+	// DEBUG: Read back instance count to verify compute cull produced results
+	{
+		DrawElementsIndirectCommand readback = {};
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, shadowIndirectBuffer);
+		glGetBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &readback);
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+		static int debugCounter = 0;
+		if (debugCounter++ % 300 == 0) { // Print every ~5 seconds at 60fps
+			printf("[ShadowDebug] '%s': instanceCount=%u, indexCount=%u, totalInstances=%u\n",
+				name.c_str(), readback.instanceCount, readback.count, totalCount);
+		}
+	}
+
 	// ================================================================
 	// PHASE 2: Render into shadow map using instanced shadow shader
 	// ================================================================
@@ -661,6 +674,15 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	// Set light transform
 	shadowShader.SetDirectionalLightTransform(lightViewProj);
 
+	// Set time and wind uniforms
+	GLint timeLoc = glGetUniformLocation(sid, "time");
+	if (timeLoc != -1) glUniform1f(timeLoc, time);
+	glUniform1i(glGetUniformLocation(sid, "windEnabled"), 0);
+
+	// Material tiling/offset (default identity so TexCoord isn't zeroed out)
+	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
+	glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
+
 	// Set material alpha (for shadow color map)
 	GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");
 	if (alphaLoc != -1) {
@@ -668,11 +690,28 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 		glUniform1f(alphaLoc, alpha);
 	}
 
+	// Alpha testing uniforms (for foliage with transparent textures)
+	GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
+	if (useDiffuseLoc != -1) {
+		int useTex = texture ? 1 : 0;
+		glUniform1i(useDiffuseLoc, useTex);
+	}
+	if (texture) {
+		glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
+		texture->UseTexture();
+	}
+
+	// Disable face culling for thin double-sided foliage (grass blades, leaves)
+	glDisable(GL_CULL_FACE);
+
 	// Bind shadow visible SSBO for vertex shader
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
 
 	// Draw using LOD 0 mesh only (full detail for shadows)
 	sharedMesh->RenderIndirect(shadowIndirectBuffer);
+
+	// Restore face culling
+	glEnable(GL_CULL_FACE);
 }
 
 // =====================================================================
