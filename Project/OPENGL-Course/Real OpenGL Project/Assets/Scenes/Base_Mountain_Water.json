@@ -1,43 +1,39 @@
 {
     "camera": {
         "front": [
-            -0.6032078266143799,
-            -0.3173046410083771,
-            0.7317500114440918
+            -0.9257057309150696,
+            -0.32556816935539246,
+            -0.19254708290100098
         ],
-        "pitch": -18.5,
+        "pitch": -19.0,
         "position": [
-            976.9357299804688,
-            295.3625793457031,
-            77.75281524658203
+            844.182861328125,
+            182.21656799316406,
+            30.584978103637695
         ],
-        "yaw": -590.5
+        "yaw": -528.25
     },
     "instancedGroups": [
         {
             "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_116_Tree_(Root)_.inst",
-            "maxDrawDistance": 2000.0,
             "name": "Scatter_Instanced_116_Tree (Root)_",
-            "shadowDistance": 100.0,
             "sourceObjectName": "Mesh_0"
         },
         {
             "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_116_Tree_(Root)__1.inst",
-            "maxDrawDistance": 2000.0,
             "name": "Scatter_Instanced_116_Tree (Root)__1",
-            "shadowDistance": 100.0,
             "sourceObjectName": "Mesh_1"
         }
     ],
     "lights": [
         {
-            "ambientIntensity": 0.4000000059604645,
+            "ambientIntensity": 0.0,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.6000000238418579,
+            "diffuseIntensity": 0.0,
             "direction": [
                 -0.9186304211616516,
                 -0.2296576052904129,
@@ -45,6 +41,49 @@
             ],
             "name": "Sun",
             "type": "Directional"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "constant": 0.009999999776482582,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.0010000000474974513,
+            "linear": 0.0010000000474974513,
+            "name": "Point Light 1",
+            "position": [
+                830.0872802734375,
+                183.412109375,
+                27.861228942871094
+            ],
+            "type": "Point"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 1.0,
+            "direction": [
+                0.0,
+                -1.0,
+                0.0
+            ],
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Spot Light 2",
+            "position": [
+                815.7670288085938,
+                183.34425354003906,
+                27.62640953063965
+            ],
+            "type": "Spot"
         }
     ],
     "nodeGraph": {
@@ -70,7 +109,7 @@
                 "start": 125
             }
         ],
-        "nextId": 133,
+        "nextId": 150,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -307,6 +346,108 @@
                         "x": 978.6842651367188,
                         "y": 151.60035705566406,
                         "z": 353.63201904296875
+                    },
+                    {
+                        "radius": 28.586566925048828,
+                        "x": 884.8040161132813,
+                        "y": 171.2257537841797,
+                        "z": 87.01850128173828
+                    },
+                    {
+                        "radius": 27.71654510498047,
+                        "x": 884.8040161132813,
+                        "y": 171.2257537841797,
+                        "z": 87.01850128173828
+                    },
+                    {
+                        "radius": 27.347455978393555,
+                        "x": 903.5473022460938,
+                        "y": 173.4462890625,
+                        "z": 95.75932312011719
+                    },
+                    {
+                        "radius": 26.515146255493164,
+                        "x": 903.5473022460938,
+                        "y": 173.4462890625,
+                        "z": 95.75932312011719
+                    },
+                    {
+                        "radius": 31.2268123626709,
+                        "x": 787.8485717773438,
+                        "y": 184.80987548828125,
+                        "z": 87.27623748779297
+                    },
+                    {
+                        "radius": 30.477705001831055,
+                        "x": 824.2900390625,
+                        "y": 173.0647430419922,
+                        "z": 63.960777282714844
+                    },
+                    {
+                        "radius": 30.74485206604004,
+                        "x": 804.7213134765625,
+                        "y": 173.5539093017578,
+                        "z": 50.21808624267578
+                    },
+                    {
+                        "radius": 31.415231704711914,
+                        "x": 826.3222045898438,
+                        "y": 172.97142028808594,
+                        "z": 56.87952423095703
+                    },
+                    {
+                        "radius": 25.784231185913086,
+                        "x": 830.2898559570313,
+                        "y": 173.04913330078125,
+                        "z": 63.29115295410156
+                    },
+                    {
+                        "radius": 31.43440055847168,
+                        "x": 824.2900390625,
+                        "y": 173.0647430419922,
+                        "z": 63.960777282714844
+                    },
+                    {
+                        "radius": 31.709932327270508,
+                        "x": 804.7213134765625,
+                        "y": 173.5539093017578,
+                        "z": 50.21808624267578
+                    },
+                    {
+                        "radius": 32.4013557434082,
+                        "x": 826.3222045898438,
+                        "y": 172.97142028808594,
+                        "z": 56.87952423095703
+                    },
+                    {
+                        "radius": 26.593597412109375,
+                        "x": 830.2898559570313,
+                        "y": 173.04913330078125,
+                        "z": 63.29115295410156
+                    },
+                    {
+                        "radius": 31.492595672607422,
+                        "x": 754.6986694335938,
+                        "y": 198.59490966796875,
+                        "z": 91.28337860107422
+                    },
+                    {
+                        "radius": 30.534128189086914,
+                        "x": 754.6986694335938,
+                        "y": 198.59490966796875,
+                        "z": 91.28337860107422
+                    },
+                    {
+                        "radius": 30.27643585205078,
+                        "x": 787.8485717773438,
+                        "y": 184.80987548828125,
+                        "z": 87.27623748779297
+                    },
+                    {
+                        "radius": 30.5775203704834,
+                        "x": 834.523193359375,
+                        "y": 172.89047241210938,
+                        "z": 33.82061767578125
                     }
                 ],
                 "editorPos": [
@@ -375,10 +516,6 @@
     },
     "objects": [
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "customMeshPath": "Base_Mountain_Water_Plane.mesh",
             "inheritScale": true,
             "modelPath": "",
@@ -450,10 +587,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "customMeshPath": "Base_Mountain_Water_River_Water_87.mesh",
             "inheritScale": true,
             "material": {
@@ -533,10 +666,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "customMeshPath": "Base_Mountain_Water_Lake_Water_87.mesh",
             "inheritScale": true,
             "material": {
@@ -617,10 +746,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "inheritScale": true,
             "modelPath": "Assets\\Models\\Tree.obj",
             "name": "Tree (Root)",
@@ -647,10 +772,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "inheritScale": true,
             "material": {
                 "material.ambientColor": [
@@ -681,7 +802,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -724,10 +847,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "inheritScale": true,
             "material": {
                 "material.ambientColor": [
@@ -758,7 +877,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -801,10 +922,6 @@
             }
         },
         {
-            "culling": {
-                "maxDrawDistance": 2000.0,
-                "shadowDrawDistance": 100.0
-            },
             "inheritScale": true,
             "modelPath": "",
             "name": "Scatter_Group_116_Tree (Root)",
@@ -827,6 +944,154 @@
                     1.0,
                     1.0,
                     1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Textures/plain.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\statue.obj",
+            "name": "statue 7",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    827.4632568359375,
+                    174.2133026123047,
+                    31.987943649291992
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Textures/plain.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Extracted Scatter_Instanced_116_Tree (Root)__1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "Assets/Textures/plain.png",
+            "transform": {
+                "position": [
+                    834.523193359375,
+                    172.89047241210938,
+                    33.82061767578125
+                ],
+                "rotation": [
+                    0.0,
+                    59.1791877746582,
+                    0.0
+                ],
+                "scale": [
+                    10.95044994354248,
+                    10.95044994354248,
+                    10.95044994354248
                 ]
             }
         }

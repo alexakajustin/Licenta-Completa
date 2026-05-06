@@ -354,9 +354,9 @@ void Application::Run()
 		float shadowFar = graphicsSettings.shadowDistance;
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar, &graphicsSettings);
 		for (unsigned int i = 0; i < pointLightCount; i++)
-			renderer.OmniShadowMapPass(&pointLights[i], sceneManager);
+			renderer.OmniShadowMapPass(&pointLights[i], sceneManager, &graphicsSettings);
 		for (unsigned int i = 0; i < spotLightCount; i++)
-			renderer.OmniShadowMapPass(&spotLights[i], sceneManager);
+			renderer.OmniShadowMapPass(&spotLights[i], sceneManager, &graphicsSettings);
 
 		// 1. Reflection Pass (if there is water)
 		float waterHeight = -1000.0f; 

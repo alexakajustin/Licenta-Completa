@@ -606,6 +606,17 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), 1);
 	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), finalShadowDist);
 
+	// Disable Hi-Z occlusion culling for shadow pass
+	// (the Hi-Z map is built from the camera's depth buffer, not the light's)
+	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+
+	// Disable sphere culling (used only by omni shadow pass)
+	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);
+
+	// Zero out screenSize to disable sub-pixel contribution culling
+	// (the light's orthographic projection has different scale than the camera)
+	glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), 0.0f, 0.0f);
+
 	// Bind shadow output buffers
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowIndirectBuffer);
@@ -655,6 +666,115 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	if (alphaLoc != -1) {
 		float alpha = material ? material->GetAlpha() : 1.0f;
 		glUniform1f(alphaLoc, alpha);
+	}
+
+	// Bind shadow visible SSBO for vertex shader
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
+
+	// Draw using LOD 0 mesh only (full detail for shadows)
+	sharedMesh->RenderIndirect(shadowIndirectBuffer);
+}
+
+// =====================================================================
+// CullAndDrawShadowOmni — Omni (point/spot) light shadow map pass
+// Uses sphere-based culling against light position and limited draw distance
+// =====================================================================
+void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowShader,
+	const glm::vec3& lightPos, float farPlane,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs, float time)
+{
+	if (totalCount == 0 || !sharedMesh) return;
+
+	float finalShadowDist = gs ? gs->shadowDistance : 100.0f;
+	float cullDistance = std::min(farPlane, finalShadowDist);
+
+	// ================================================================
+	// PHASE 1: Cull against light sphere (distance-based)
+	// ================================================================
+	glUseProgram(cullShaderID);
+
+	// Reset shadow indirect buffer
+	DrawElementsIndirectCommand resetCmd = {};
+	resetCmd.count = sharedMesh->GetIndexCount();
+	resetCmd.instanceCount = 0;
+
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, shadowIndirectBuffer);
+	glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &resetCmd);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+	// Set cull uniforms for sphere-based culling
+	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), cullDistance);
+	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
+	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
+
+	// Enable sphere culling mode (uses lightPos instead of frustum)
+	glUniform3fv(glGetUniformLocation(cullShaderID, "lightPos"), 1, glm::value_ptr(lightPos));
+	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 1);
+
+	// Force LOD count to 1 for shadow pass (no LOD in shadows)
+	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), 1);
+	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), cullDistance);
+
+	// Disable Hi-Z for shadow pass
+	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+
+	// Bind shadow output buffers
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowIndirectBuffer);
+
+	// Dispatch for each chunk (or flat)
+	if (useChunking) {
+		// Distance-based chunk pre-cull (light position)
+		for (auto& chunk : chunks) {
+			glm::vec3 chunkCenter = (chunk.boundsMin + chunk.boundsMax) * 0.5f;
+			float distToLight = glm::length(chunkCenter - lightPos) - glm::length(chunk.boundsMax - chunk.boundsMin) * 0.5f;
+			if (distToLight > cullDistance) continue;
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, chunk.ssbo);
+			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), chunk.instanceCount);
+
+			GLuint numGroups = (chunk.instanceCount + 255) / 256;
+			glDispatchCompute(numGroups, 1, 1);
+		}
+	} else {
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+		GLint prog;
+		glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+		glUniform1ui(glGetUniformLocation(prog, "totalInstances"), totalCount);
+
+		GLuint numGroups = (totalCount + 255) / 256;
+		glDispatchCompute(numGroups, 1, 1);
+	}
+
+	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+
+	// ================================================================
+	// PHASE 2: Render into omni shadow map using instanced omni shadow shader
+	// ================================================================
+	shadowShader.UseShader();
+	GLuint sid = shadowShader.GetShaderID();
+
+	// Set omni light uniforms
+	glUniform3fv(glGetUniformLocation(sid, "omniLightPos"), 1, glm::value_ptr(lightPos));
+	glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
+	glUniform1f(glGetUniformLocation(sid, "time"), time);
+	glUniform1i(glGetUniformLocation(sid, "windEnabled"), 0);
+
+	// Material tiling/offset (default to identity for shadows)
+	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
+	glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
+
+	// Alpha testing uniforms
+	GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
+	if (useDiffuseLoc != -1) {
+		int useTex = texture ? 1 : 0;
+		glUniform1i(useDiffuseLoc, useTex);
+	}
+	if (texture) {
+		glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
+		texture->UseTexture();
 	}
 
 	// Bind shadow visible SSBO for vertex shader

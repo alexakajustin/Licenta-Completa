@@ -37,6 +37,7 @@ void Renderer::Init()
 	instancedCullShader.CreateComputeShader("Assets/Shaders/compute_cull.glsl");
 	instancedRenderShader.CreateFromFiles("Assets/Shaders/instanced_object.vert", "Assets/Shaders/shader.frag");
 	instancedShadowShader.CreateFromFiles("Shaders/instanced_shadow.vert", "Shaders/instanced_shadow.frag");
+	instancedOmniShadowShader.CreateFromFiles("Shaders/instanced_omni_shadow.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
 
 	tessShader.CreateFromFiles(
 		"Assets/Shaders/shader_tess.vert",
@@ -129,7 +130,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
+void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene, const GraphicsSettings* gs)
 {
 	omniShadowShader.UseShader();
 
@@ -152,6 +153,26 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene)
 	float sw = (float)light->GetShadowMap()->GetShadowWidth();
 	float sh = (float)light->GetShadowMap()->GetShadowHeight();
 	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this);
+
+	// GPU-Driven Instanced Groups — omni shadow pass
+	float time = (float)glfwGetTime();
+	auto& groups = scene.GetInstancedGroups();
+	if (!groups.empty() && instancedCullShader.GetShaderID()) {
+		instancedOmniShadowShader.UseShader();
+		instancedOmniShadowShader.SetLightMatrices(light->CalculateLightTransform());
+		for (auto* group : groups) {
+			if (!group) continue;
+			group->CullAndDrawShadowOmni(
+				instancedCullShader.GetShaderID(),
+				instancedOmniShadowShader,
+				light->GetPosition(),
+				light->GetFarPlane(),
+				light->GetPosition(),
+				gs,
+				time
+			);
+		}
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

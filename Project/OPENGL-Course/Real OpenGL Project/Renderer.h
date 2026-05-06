@@ -28,7 +28,7 @@ public:
 
 	// Render passes
 	void DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far, const GraphicsSettings* gs);
-	void OmniShadowMapPass(PointLight* light, SceneManager& scene);
+	void OmniShadowMapPass(PointLight* light, SceneManager& scene, const GraphicsSettings* gs);
 	void RenderPass(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, SceneManager& scene, 
 		DirectionalLight& mainLight, PointLight* pointLights, unsigned int pointLightCount,
 		SpotLight* spotLights, unsigned int spotLightCount, int fbw, int fbh, GLuint sceneDepthTexture = 0, GLuint reflectionTexture = 0, GLuint refractionTexture = 0,
@@ -53,7 +53,8 @@ private:
 	Shader omniShadowShader;
 	Shader instancedCullShader;    // GPU compute shader for frustum culling
 	Shader instancedRenderShader;  // Vertex/Fragment shader for instanced objects
-	Shader instancedShadowShader;  // Vertex/Fragment shader for instanced shadow pass
+	Shader instancedShadowShader;  // Vertex/Fragment shader for instanced shadow pass (directional)
+	Shader instancedOmniShadowShader; // Vertex/Geom/Fragment shader for instanced omni shadow pass (point/spot)
 	Shader tessShader;             // Tessellation shader (vert+tcs+tes+frag) for GPU displacement
 	Shader directionalShadowTessShader; // Tessellation shader for shadow pass
 	Skybox skybox;

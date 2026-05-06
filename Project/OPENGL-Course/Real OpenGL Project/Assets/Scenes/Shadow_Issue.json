@@ -1,0 +1,306 @@
+{
+    "camera": {
+        "front": [
+            0.8440276980400085,
+            -0.46561452746391296,
+            0.26612091064453125
+        ],
+        "pitch": -27.75,
+        "position": [
+            15.893978118896484,
+            7.879590034484863,
+            51.107540130615234
+        ],
+        "yaw": 17.5
+    },
+    "instancedGroups": [
+        {
+            "instanceDataPath": "Shadow_Issue_Scatter_Instanced_5_Cube_1.inst",
+            "name": "Scatter_Instanced_5_Cube 1",
+            "sourceObjectName": "Cube 1"
+        }
+    ],
+    "lights": [
+        {
+            "ambientIntensity": 0.0,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.0,
+            "direction": [
+                -0.9186304211616516,
+                -0.2296576052904129,
+                0.3215206563472748
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Point Light 1",
+            "position": [
+                21.454038619995117,
+                5.347716808319092,
+                53.79842758178711
+            ],
+            "type": "Point"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 6,
+                "id": 10,
+                "start": 2
+            },
+            {
+                "end": 7,
+                "id": 11,
+                "start": 4
+            }
+        ],
+        "nextId": 21,
+        "nodes": [
+            {
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    50.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 1,
+                "inputPins": [],
+                "outputPins": [
+                    2
+                ],
+                "selectedName": "Plane",
+                "title": "Scene Input"
+            },
+            {
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    -31.185771942138672,
+                    -0.14734649658203125,
+                    56.40087127685547
+                ],
+                "cachedPrimitiveType": "Cube",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    5.0,
+                    5.0,
+                    5.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    250.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 3,
+                "inputPins": [],
+                "outputPins": [
+                    4
+                ],
+                "selectedName": "Cube 1",
+                "title": "Scene Input"
+            },
+            {
+                "alignToNormal": true,
+                "count": 50,
+                "createdGroupNames": [
+                    "Scatter_Instanced_5_Cube 1"
+                ],
+                "deletionVolumes": [
+                    {
+                        "radius": 4.082741737365723,
+                        "x": -2.5202226638793945,
+                        "y": 0.0,
+                        "z": 49.60929870605469
+                    },
+                    {
+                        "radius": 4.9119648933410645,
+                        "x": 1.3776031732559204,
+                        "y": 0.0,
+                        "z": 24.034072875976563
+                    },
+                    {
+                        "radius": 4.086446285247803,
+                        "x": -8.131086349487305,
+                        "y": 0.0,
+                        "z": 25.531444549560547
+                    },
+                    {
+                        "radius": 4.308988571166992,
+                        "x": -18.519535064697266,
+                        "y": 0.0,
+                        "z": 8.445127487182617
+                    },
+                    {
+                        "radius": 3.6343352794647217,
+                        "x": -22.02405548095703,
+                        "y": 0.0,
+                        "z": -15.799321174621582
+                    },
+                    {
+                        "radius": 4.73499059677124,
+                        "x": -17.589458465576172,
+                        "y": 0.0,
+                        "z": 22.50931167602539
+                    },
+                    {
+                        "radius": 4.6897101402282715,
+                        "x": 19.393959045410156,
+                        "y": 0.0,
+                        "z": 64.73575592041016
+                    },
+                    {
+                        "radius": 4.92987585067749,
+                        "x": -1.781705379486084,
+                        "y": 0.0,
+                        "z": 69.26611328125
+                    }
+                ],
+                "editorPos": [
+                    300.0,
+                    150.0
+                ],
+                "id": 5,
+                "inputPins": [
+                    6,
+                    7
+                ],
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
+                "outputPins": [
+                    8,
+                    9
+                ],
+                "randomRotation": true,
+                "seed": 18467,
+                "spawnAsObjects": true,
+                "spawnedMap": {},
+                "targetParentName": "(none)",
+                "title": "Scatter"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Cube 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Cube",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -31.185771942138672,
+                    -0.14734649658203125,
+                    56.40087127685547
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    5.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Scatter_Group_5_Cube 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

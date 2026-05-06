@@ -71,6 +71,11 @@ public:
 		const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
 		const GraphicsSettings* gs, float time);
 
+	// Per-frame: cull against light sphere and draw into omni (point/spot) shadow map
+	void CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowShader,
+		const glm::vec3& lightPos, float farPlane,
+		const glm::vec3& cameraPos, const GraphicsSettings* gs, float time);
+
 	// LOD configuration
 	void SetLODMesh(int level, Mesh* mesh, float maxDistance);
 	int GetLODCount() const { return lodCount; }
