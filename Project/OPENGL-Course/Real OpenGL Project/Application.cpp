@@ -30,6 +30,14 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 {
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return; // Skip notification noise
 	
+	static std::string lastMessage = "";
+
+	if (std::string(message) == lastMessage) {
+		return;
+	} 
+	
+	lastMessage = message;
+
 	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
 		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
 		type, severity, message);
