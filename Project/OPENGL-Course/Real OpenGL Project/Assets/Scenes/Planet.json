@@ -1,0 +1,109 @@
+{
+    "camera": {
+        "front": [
+            0.6123724579811096,
+            -0.5000000596046448,
+            -0.6123724579811096
+        ],
+        "pitch": -30.0,
+        "position": [
+            -1485.3177490234375,
+            1212.7568359375,
+            1485.3177490234375
+        ],
+        "yaw": -45.0
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [],
+        "nextId": 1,
+        "nodes": []
+    },
+    "objects": [
+        {
+            "customMeshPath": "Planet_Planet_1.mesh",
+            "inheritScale": true,
+            "material": {
+                "displacementHeight": 150.0,
+                "grassLevel": 0.14000000059604645,
+                "lacunarity": 3.0,
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "noiseScale": 0.5,
+                "persistence": 0.5,
+                "radius": 1000.0,
+                "rockLevel": 0.6200000047683716,
+                "shader_frag": "Assets/Shaders/planet.frag",
+                "shader_vert": "Assets/Shaders/planet.vert",
+                "snowLevel": 0.6399999856948853,
+                "tessDistance": 10.0,
+                "tessLevel": 1.0
+            },
+            "modelPath": "",
+            "name": "Planet 1",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Planet",
+            "tessellation": {
+                "displacementBias": -0.5,
+                "displacementScale": 1.0,
+                "distance": 50.0,
+                "enabled": true,
+                "level": 8.0
+            },
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -106.45957946777344,
+                    86.92388916015625,
+                    106.45957946777344
+                ],
+                "rotation": [
+                    0.0,
+                    -122.89161682128906,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

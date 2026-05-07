@@ -1147,8 +1147,8 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 		
 		glm::vec3 center = (bMin + bMax) * 0.5f;
 		float size = glm::length(bMax - bMin);
-		// Ensure a minimum focus distance of 5.0, but cap it at 100.0 to prevent flying out of the world for huge planes
-		float focusDistance = glm::clamp(size * 0.8f, 5.0f, 100.0f);
+		// Unity-style focus: Ensure camera is far enough to see the whole object, without an arbitrary small cap
+		float focusDistance = glm::max(size * 0.65f, 5.0f);
 		
 		camera->SetPositionAndLookAt(center, focusDistance);
 	}
