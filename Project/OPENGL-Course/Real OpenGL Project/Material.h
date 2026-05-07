@@ -84,6 +84,7 @@ private:
 	std::map<std::string, glm::vec4> vec4s;
 	std::map<std::string, std::string> texturePaths;
 	std::map<std::string, Texture*> textures;
+	bool needsDefaultSync = false;
 
 	mutable std::map<std::string, GLint> uniformLocations;
 	mutable std::map<GLuint, std::map<std::string, GLint>> overrideUniformLocations;

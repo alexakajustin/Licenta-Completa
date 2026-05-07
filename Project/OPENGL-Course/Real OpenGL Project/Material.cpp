@@ -44,7 +44,7 @@ void Material::SetDefaults()
 void Material::SetShader(Shader* shader)
 {
 	this->shader = shader;
-	InitializeDefaultsFromShader();
+	needsDefaultSync = true;
 	uniformLocations.clear();
 
 	if (shader) {
@@ -84,6 +84,13 @@ void Material::Bind(GLuint overrideProgram)
 	}
 
 	if (programID == 0) return;
+
+	glUseProgram(programID);
+
+	if (needsDefaultSync) {
+		InitializeDefaultsFromShader();
+		needsDefaultSync = false;
+	}
 
 	auto GetLoc = [&](const std::string& name) {
 		if (overrideProgram == 0) {
@@ -240,6 +247,9 @@ void Material::InitializeDefaultsFromShader()
 	if (!shader || shader->GetShaderID() == 0) return;
 
 	GLuint program = shader->GetShaderID();
+	GLint currentProgram;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+	glUseProgram(program);
 	
 	for (auto const& [name, prop] : shader->GetUniformProperties()) {
 		if (prop.type == Shader::UniformType::Float) {
@@ -278,4 +288,5 @@ void Material::InitializeDefaultsFromShader()
 			}
 		}
 	}
+	glUseProgram(currentProgram);
 }

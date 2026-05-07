@@ -42,6 +42,7 @@ public:
 	~Shader();
 
 	void CreateFromString(const char* vertexCode, const char* fragmentCode);
+	void CreateFromString(const char* vertexCode, const char* tcsCode, const char* tesCode, const char* fragmentCode);
 	void CreateFromFiles(const char* vertexLocation, const char* fragmentLocation);
 	void CreateFromFiles(const char* vertexLocation, const char* geometryLocation, const char* fragmentLocation);
 	void CreateFromFiles(const char* vertexLocation, const char* tcsLocation, const char* tesLocation, const char* fragmentLocation);

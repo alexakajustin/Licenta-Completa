@@ -36,6 +36,12 @@ void Shader::CreateFromString(const char* vertexCode, const char* fragmentCode)
 	CompileShader(vertexCode, fragmentCode);
 }
 
+void Shader::CreateFromString(const char* vertexCode, const char* tcsCode, const char* tesCode, const char* fragmentCode)
+{
+	hasTessellation = true;
+	CompileShader(vertexCode, tcsCode, tesCode, fragmentCode);
+}
+
 void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLocation)
 {
 	vertexPath = vertexLocation;

@@ -14,8 +14,37 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
     PackedInstance instances[];
 };
 
-// Intermediate storage for fade factor (avoids forward-reference to vFadeFactor)
+// Stage-specific Instance data block
+struct InstanceData {
+    int iInstanceID;
+    float vFadeFactor;
+};
+
 float _instanceFadeFactor = 0.0;
+
+#if defined(IS_VERTEX_SHADER)
+    layout(location = 10) flat out InstanceData vData;
+    #define INST_ID gl_InstanceID
+    #ifdef HAS_TESSELLATION
+        float vFadeFactor; // Local shadow in VS if tessellation handles the 'out'
+    #endif
+#elif defined(IS_TCS)
+    layout(location = 10) flat in InstanceData vDataIn[];
+    layout(location = 10) flat out InstanceData vDataOut[];
+    #define INST_ID vDataIn[gl_InvocationID].iInstanceID
+#elif defined(IS_TES)
+    layout(location = 10) flat in InstanceData vDataIn[];
+    layout(location = 10) flat out InstanceData vData; // To Frag
+    #define INST_ID vDataIn[0].iInstanceID
+#elif defined(IS_FRAG)
+    layout(location = 10) flat in InstanceData vData;
+    #define INST_ID vData.iInstanceID
+    #define vFadeFactor vData.vFadeFactor
+#else
+    // Fallback for single-stage shaders
+    #define INST_ID gl_InstanceID
+    out float vFadeFactor;
+#endif
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -37,7 +66,7 @@ mat3 eulerToMat3(vec3 euler) {
 // Build the model matrix for the current instance (gl_InstanceID)
 // Stores fade factor in _instanceFadeFactor (copied to vFadeFactor in main())
 mat4 ResolveInstancedModelMatrix() {
-    PackedInstance inst = instances[gl_InstanceID];
+    PackedInstance inst = instances[INST_ID];
     
     vec3 instancePos = inst.posAndScale.xyz;
     float instanceScale = inst.posAndScale.w;

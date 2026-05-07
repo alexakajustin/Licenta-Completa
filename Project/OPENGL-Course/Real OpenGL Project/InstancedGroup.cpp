@@ -564,7 +564,7 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[lod].visibleSSBO);
 
 		// Issue indirect draw
-		lodMesh->RenderIndirect(lodLevels[lod].indirectBuffer);
+		lodMesh->RenderIndirect(lodLevels[lod].indirectBuffer, renderShader.HasTessellation());
 	}
 }
 

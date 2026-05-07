@@ -14,7 +14,7 @@ public:
 	void RenderMesh();
 	void RenderMeshTessellated(bool canTessellate = true);
 	void RenderInstancedMesh(unsigned int instanceCount, const glm::mat4* instanceMatrices);
-	void RenderIndirect(GLuint indirectBuffer); // GPU-driven indirect draw
+	void RenderIndirect(GLuint indirectBuffer, bool useTessellation = false); // GPU-driven indirect draw
 	void ClearMesh();
 
 	bool IsInstanced() const { return instanceVBO != 0; }

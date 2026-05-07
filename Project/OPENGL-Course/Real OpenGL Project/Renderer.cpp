@@ -394,60 +394,113 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 	vStream << vFile.rdbuf();
 	vFile.close();
 	std::string vSource = vStream.str();
-
-	// 3. Patch the version and prepend header
-	size_t vPos = vSource.find("#version");
-	if (vPos != std::string::npos) {
-		size_t eol = vSource.find("\n", vPos);
-		vSource.replace(vPos, eol - vPos, "#version 430 core");
+	// 3. Robust Patching Logic for multi-stage pipelines
+	auto patchSource = [&](std::string& src, int stageType, bool hasTessPipe = false) {
+		// stageType: 0=VS, 1=TCS, 2=TES, 3=FS
 		
-		// Recalculate eol because replace() changed string length!
-		eol = vSource.find("\n", vPos);
-		vSource.insert(eol + 1, "\n" + hSource + "\n");
-	}
+		// Neutralize conflicting globals
+		auto neutralize = [&](const std::string& target, const std::string& replacement) {
+			size_t pos = 0;
+			while ((pos = src.find(target, pos)) != std::string::npos) {
+				src.replace(pos, target.length(), replacement);
+				pos += replacement.length();
+			}
+		};
 
-	// 4. Robust Neutralization of conflicting globals
-	auto neutralize = [&](const std::string& target, const std::string& replacement) {
-		size_t pos = 0;
-		while ((pos = vSource.find(target, pos)) != std::string::npos) {
-			vSource.replace(pos, target.length(), replacement);
-			pos += replacement.length();
+		neutralize("uniform mat4 model", "uniform mat4 _unused_model");
+		neutralize("in mat4 instanceMatrix", "in mat4 _unused_inst");
+		neutralize("attribute mat4 instanceMatrix", "attribute mat4 _unused_inst2");
+		neutralize("out float vFadeFactor;", "// Redefined by header");
+		neutralize("varying float vFadeFactor;", "// Redefined by header");
+		neutralize("vFadeFactor = 0.0;", "// vFadeFactor set by ResolveInstancedModelMatrix()");
+
+		// Update version and prepend header
+		size_t vPos = src.find("#version");
+		if (vPos != std::string::npos) {
+			size_t eol = src.find("\n", vPos);
+			src.replace(vPos, eol - vPos, "#version 430 core");
+			
+			eol = src.find("\n", vPos);
+			std::string injection = "\n";
+			if (stageType == 0) injection += "#define IS_VERTEX_SHADER\n";
+			else if (stageType == 1) injection += "#define IS_TCS\n";
+			else if (stageType == 2) injection += "#define IS_TES\n";
+			else if (stageType == 3) injection += "#define IS_FRAG\n";
+			
+			if (hasTessPipe) injection += "#define HAS_TESSELLATION\n";
+			injection += hSource + "\n";
+			src.insert(eol + 1, injection);
+		}
+
+		// Inject main() logic
+		size_t mainPos = src.find("void main()");
+		if (mainPos != std::string::npos) {
+			mainPos = src.find("{", mainPos);
+			if (mainPos != std::string::npos) {
+				std::string logic = "\n";
+				if (stageType == 0) { // VS
+					logic += "    mat4 model; model = ResolveInstancedModelMatrix();\n";
+					logic += "    vData.vFadeFactor = _instanceFadeFactor;\n";
+					logic += "    vData.iInstanceID = gl_InstanceID;\n";
+					if (hasTessPipe) logic += "    vFadeFactor = _instanceFadeFactor;\n"; 
+				} else if (stageType == 1) { // TCS
+					logic += "    vDataOut[gl_InvocationID].iInstanceID = vDataIn[gl_InvocationID].iInstanceID;\n";
+					logic += "    vDataOut[gl_InvocationID].vFadeFactor = vDataIn[gl_InvocationID].vFadeFactor;\n";
+				} else if (stageType == 2) { // TES
+					logic += "    mat4 model; model = ResolveInstancedModelMatrix();\n";
+					logic += "    vData.vFadeFactor = _instanceFadeFactor;\n";
+					logic += "    vData.iInstanceID = vDataIn[0].iInstanceID;\n";
+				}
+				src.insert(mainPos + 1, logic);
+			}
 		}
 	};
-	neutralize("uniform mat4 model", "uniform mat4 _unused_model");
-	neutralize("in mat4 instanceMatrix", "in mat4 _unused_inst");
-	neutralize("attribute mat4 instanceMatrix", "attribute mat4 _unused_inst2");
-	// Header sets vFadeFactor from SSBO — neutralize the original 0.0 assignment so it doesn't overwrite
-	neutralize("vFadeFactor = 0.0;", "// vFadeFactor set by ResolveInstancedModelMatrix()");
 
-	// 5. Inject the shadow variables at the start of main()
-	size_t mainPos = vSource.find("void main()");
-	if (mainPos != std::string::npos) {
-		mainPos = vSource.find("{", mainPos);
-		if (mainPos != std::string::npos) {
-			std::string shadowInjection = 
-				"\n    mat4 model; model = ResolveInstancedModelMatrix();"
-				"\n    mat4 instanceMatrix; instanceMatrix = model;"
-				"\n    vFadeFactor = _instanceFadeFactor;\n";
-			vSource.insert(mainPos + 1, shadowInjection);
-		}
+	// 5. Handle Tessellation if the original shader has it
+	bool hasTess = original && original->HasTessellation();
+
+	// 4. Patch Vertex Shader
+	patchSource(vSource, 0, hasTess);
+
+	std::string tcsSource = "";
+	std::string tesSource = "";
+	if (hasTess) {
+		tcsSource = original->ReadFile(original->GetTCSPath().c_str());
+		tesSource = original->ReadFile(original->GetTESPath().c_str());
+
+		patchSource(tcsSource, 1, true);
+		patchSource(tesSource, 2, true);
 	}
 
-	// 6. Create the hybrid shader
+	// 7. Create the hybrid shader
 	Shader* hybrid = new Shader();
 	std::ifstream fFile(fragPath);
 	if (!fFile.is_open()) { delete hybrid; return &instancedRenderShader; }
 	std::stringstream fStream;
 	fStream << fFile.rdbuf();
 	fFile.close();
-	
-	hybrid->CreateFromString(vSource.c_str(), fStream.str().c_str());
-	printf("[Renderer] Created 'Instancified' hybrid: %s\n", cacheKey.c_str());
+
+	// 6. Patch Fragment Shader
+	std::string fSource = fStream.str();
+	patchSource(fSource, 3, hasTess);
+
+	if (hasTess) {
+		hybrid->CreateFromString(vSource.c_str(), tcsSource.c_str(), tesSource.c_str(), fSource.c_str());
+	} else {
+		hybrid->CreateFromString(vSource.c_str(), fSource.c_str());
+	}
+
+	printf("[Renderer] Created 'Instancified' hybrid: %s%s\n", cacheKey.c_str(), hasTess ? " (Tessellation)" : "");
 	
 	// DEBUG DUMP
 	std::ofstream dbg("debug_patched_shader.vert");
 	dbg << vSource;
 	dbg.close();
+	if (hasTess) {
+		std::ofstream dbgT("debug_patched_shader.tes");
+		dbgT << tesSource;
+		dbgT.close();
+	}
 	
 	instancedShaderCache[cacheKey] = hybrid;
 	return hybrid;
