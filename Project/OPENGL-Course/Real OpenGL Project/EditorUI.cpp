@@ -1566,10 +1566,10 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 								float val = mat->GetFloat(name);
 								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) {
 									mat->SetFloat(name, val);
-									// If we changed the radius of a planet, we need to rebuild the CPU mesh for clicking/bounds
-									if (name == "radius" && planet) {
-										planet->Generate();
-									}
+								}
+								// Defer heavy CPU mesh rebuild until the user finishes dragging to prevent lag
+								if (ImGui::IsItemDeactivatedAfterEdit() && name == "radius" && planet) {
+									planet->Generate();
 								}
 							}
 							else if (prop.type == Shader::UniformType::Vec3) {
