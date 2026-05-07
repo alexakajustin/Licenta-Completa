@@ -16,6 +16,7 @@ public:
 	~Material();
 
 	void SetShader(Shader* shader);
+	void InitializeDefaultsFromShader();
 	Shader* GetShader() const { return shader; }
 
 	void Bind(GLuint overrideProgram = 0);

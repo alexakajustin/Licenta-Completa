@@ -87,6 +87,8 @@ public:
 
 	const std::string& GetVertexPath() const { return vertexPath; }
 	const std::string& GetFragmentPath() const { return fragmentPath; }
+	const std::string& GetTCSPath() const { return tcsPath; }
+	const std::string& GetTESPath() const { return tesPath; }
 	bool HasTessellation() const { return hasTessellation; }
 
 	bool isComputeShader = false;

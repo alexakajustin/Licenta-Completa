@@ -44,6 +44,7 @@ void Material::SetDefaults()
 void Material::SetShader(Shader* shader)
 {
 	this->shader = shader;
+	InitializeDefaultsFromShader();
 	uniformLocations.clear();
 
 	if (shader) {
@@ -232,4 +233,49 @@ bool Material::SaveToFile(const std::string& path) const
 	}
 
 	return true;
+}
+
+void Material::InitializeDefaultsFromShader()
+{
+	if (!shader || shader->GetShaderID() == 0) return;
+
+	GLuint program = shader->GetShaderID();
+	
+	for (auto const& [name, prop] : shader->GetUniformProperties()) {
+		if (prop.type == Shader::UniformType::Float) {
+			if (floats.find(name) == floats.end()) {
+				float val;
+				glGetUniformfv(program, prop.location, &val);
+				floats[name] = val;
+			}
+		}
+		else if (prop.type == Shader::UniformType::Int) {
+			if (ints.find(name) == ints.end()) {
+				int val;
+				glGetUniformiv(program, prop.location, &val);
+				ints[name] = val;
+			}
+		}
+		else if (prop.type == Shader::UniformType::Vec2) {
+			if (vec2s.find(name) == vec2s.end()) {
+				glm::vec2 val;
+				glGetUniformfv(program, prop.location, glm::value_ptr(val));
+				vec2s[name] = val;
+			}
+		}
+		else if (prop.type == Shader::UniformType::Vec3) {
+			if (vec3s.find(name) == vec3s.end()) {
+				glm::vec3 val;
+				glGetUniformfv(program, prop.location, glm::value_ptr(val));
+				vec3s[name] = val;
+			}
+		}
+		else if (prop.type == Shader::UniformType::Vec4) {
+			if (vec4s.find(name) == vec4s.end()) {
+				glm::vec4 val;
+				glGetUniformfv(program, prop.location, glm::value_ptr(val));
+				vec4s[name] = val;
+			}
+		}
+	}
 }

@@ -8,6 +8,7 @@
 #include "Camera.h"
 #include "SceneManager.h"
 #include "GameObject.h"
+#include "Planet.h"
 #include "LightObject.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
@@ -138,6 +139,16 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		objJson["transform"]["rotation"] = { t.GetRotation().x, t.GetRotation().y, t.GetRotation().z };
 		objJson["transform"]["scale"] = { t.GetScale().x, t.GetScale().y, t.GetScale().z };
 
+		// Planet Specific
+		if (obj->GetPrimitiveType() == "Planet") {
+			Planet* planet = dynamic_cast<Planet*>(obj);
+			if (planet) {
+				objJson["planet"]["subdivisions"] = planet->GetParams().subdivisions;
+				objJson["planet"]["seed"] = planet->GetParams().seed;
+				objJson["planet"]["radius"] = planet->GetParams().radius;
+			}
+		}
+
 		// Hierarchy
 		objJson["parent"] = obj->GetParent() ? obj->GetParent()->GetName() : "";
 		objJson["inheritScale"] = obj->GetInheritScale();
@@ -153,10 +164,15 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			if (mat->GetShader()) {
 				objJson["material"]["shader_vert"] = mat->GetShader()->GetVertexPath();
 				objJson["material"]["shader_frag"] = mat->GetShader()->GetFragmentPath();
+				if (mat->GetShader()->HasTessellation()) {
+					objJson["material"]["shader_tcs"] = mat->GetShader()->GetTCSPath();
+					objJson["material"]["shader_tes"] = mat->GetShader()->GetTESPath();
+				}
 			}
 
 			// Save all dynamic properties
 			for (auto const& [name, val] : mat->GetFloats()) objJson["material"][name] = val;
+			for (auto const& [name, val] : mat->GetInts())   objJson["material"][name] = val;
 			for (auto const& [name, val] : mat->GetVec2s())  objJson["material"][name] = { val.x, val.y };
 			for (auto const& [name, val] : mat->GetVec3s())  objJson["material"][name] = { val.x, val.y, val.z };
 			for (auto const& [name, val] : mat->GetVec4s())  objJson["material"][name] = { val.x, val.y, val.z, val.w };
@@ -429,7 +445,11 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				for (int k = i; k < end; k++) {
 					auto& objJson = j["objects"][k];
 					std::string name = objJson.value("name", "Object");
-					GameObject* obj = new GameObject(name);
+					std::string primType = objJson.value("primitiveType", "");
+					
+					GameObject* obj = nullptr;
+					if (primType == "Planet") obj = new Planet(name);
+					else obj = new GameObject(name);
 					
 					std::lock_guard<std::mutex> lock(mapMutex);
 					objectMap[name] = obj;
@@ -461,6 +481,20 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 			else if (primType == "Sphere") obj->SetMesh(PrimitiveGenerator::CreateSphere());
 
 			obj->SetPrimitiveType(primType);
+
+			// Planet initialization
+			if (primType == "Planet") {
+				Planet* planet = dynamic_cast<Planet*>(obj);
+				if (planet && objJson.contains("planet")) {
+					auto& pJson = objJson["planet"];
+					PlanetParams p = planet->GetParams();
+					p.subdivisions = pJson.value("subdivisions", 6);
+					p.seed = pJson.value("seed", 12345);
+					p.radius = pJson.value("radius", 100.0f);
+					planet->SetParams(p);
+					planet->Generate(); // Rebuild with loaded subdivisions/radius
+				}
+			}
 
 			if (!modelPath.empty())
 			{
@@ -549,32 +583,53 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 						std::string fPath = matJson["shader_frag"].get<std::string>();
 						if (!vPath.empty() && !fPath.empty()) {
 							Shader* customShader = new Shader();
-							customShader->CreateFromFiles(vPath.c_str(), fPath.c_str());
+							if (matJson.contains("shader_tcs") && matJson.contains("shader_tes")) {
+								std::string tcsPath = matJson["shader_tcs"].get<std::string>();
+								std::string tesPath = matJson["shader_tes"].get<std::string>();
+								customShader->CreateFromFiles(vPath.c_str(), tcsPath.c_str(), tesPath.c_str(), fPath.c_str());
+							} else {
+								customShader->CreateFromFiles(vPath.c_str(), fPath.c_str());
+							}
 							mat->SetShader(customShader);
 						}
 					}
 
 					for (auto it = matJson.begin(); it != matJson.end(); ++it) {
-						if (it.value().is_number()) mat->SetFloat(it.key(), it.value().get<float>());
+						std::string key = it.key();
+						if (key.find("shader") != std::string::npos) continue;
+
+						if (it.value().is_number()) {
+							float val = it.value().get<float>();
+							
+							// Smart type-matching: check the shader's expected type
+							if (mat->GetShader()) {
+								auto const& props = mat->GetShader()->GetUniformProperties();
+								if (props.count(key)) {
+									if (props.at(key).type == Shader::UniformType::Int) {
+										mat->SetInt(key, (int)val);
+										continue;
+									}
+								}
+							}
+							mat->SetFloat(key, val);
+						}
 						else if (it.value().is_string()) {
 							std::string path = it.value().get<std::string>();
-							if (it.key().find("shader") != std::string::npos) continue; // Skip shaders here
-
-							// Use the texture cache for material parameters!
+							// ... (rest of texture loading logic)
 							if (localTextureCache.count(path)) {
-								mat->SetTexture(it.key(), localTextureCache[path]);
+								mat->SetTexture(key, localTextureCache[path]);
 							} else {
 								Texture* t = new Texture(path.c_str());
 								if (t->LoadTextureA()) {
-									mat->SetTexture(it.key(), t);
+									mat->SetTexture(key, t);
 									localTextureCache[path] = t;
 								} else delete t;
 							}
 						}
 						else if (it.value().is_array()) {
-							if (it.value().size() == 2) mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));
-							else if (it.value().size() == 3) mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
-							else if (it.value().size() == 4) mat->SetVec4(it.key(), glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
+							if (it.value().size() == 2) mat->SetVec2(key, glm::vec2(it.value()[0], it.value()[1]));
+							else if (it.value().size() == 3) mat->SetVec3(key, glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
+							else if (it.value().size() == 4) mat->SetVec4(key, glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
 						}
 					}
 					obj->SetMaterial(mat);

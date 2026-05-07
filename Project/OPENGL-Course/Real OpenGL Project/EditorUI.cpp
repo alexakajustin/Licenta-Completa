@@ -1572,6 +1572,10 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 									planet->Generate();
 								}
 							}
+							else if (prop.type == Shader::UniformType::Int) {
+								int val = mat->GetInt(name);
+								if (ImGui::DragInt(name.c_str(), &val, 1)) mat->SetInt(name, val);
+							}
 							else if (prop.type == Shader::UniformType::Vec3) {
 								glm::vec3 val = mat->GetVec3(name);
 								if (name.find("Color") != std::string::npos || name.find("color") != std::string::npos) {
