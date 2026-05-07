@@ -10,14 +10,18 @@ Planet::Planet(const std::string& name) : GameObject(name) {
 Planet::~Planet() {}
 
 void Planet::Generate() {
+    Material* mat = GetMaterial();
+    float r = mat ? mat->GetFloat("radius") : params.radius;
+    if (r <= 0.0f) r = 100.0f;
+
     MeshData data = PrimitiveGenerator::GetIcosphereData(params.subdivisions);
     
-    // Scale vertices by radius
+    // Scale vertices by radius (fixes clickability/bounding box)
     int vertCount = data.GetVertexCount();
     for (int i = 0; i < vertCount; i++) {
         int base = i * 14;
         glm::vec3 pos(data.vertices[base], data.vertices[base + 1], data.vertices[base + 2]);
-        pos *= params.radius;
+        pos *= r;
         data.vertices[base] = pos.x;
         data.vertices[base + 1] = pos.y;
         data.vertices[base + 2] = pos.z;
@@ -36,6 +40,7 @@ void Planet::Generate() {
                                       "Assets/Shaders/planet_tess.tes", 
                                       "Assets/Shaders/planet.frag");
         mat->SetShader(planetShader);
+        mat->SetFloat("radius", params.radius);
         SetMaterial(mat);
     }
     UpdateUniforms();

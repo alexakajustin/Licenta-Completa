@@ -1323,15 +1323,16 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 			}
 
-			// --- Planet (collapsible) ---
 			Planet* planet = dynamic_cast<Planet*>(selected);
+			
+			// --- Planet (collapsible) ---
 			if (planet && ImGui::CollapsingHeader("Planet Generator", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				PlanetParams p = planet->GetParams();
 				bool meshChanged = false;
 				bool uniformsChanged = false;
 
-				if (ImGui::DragFloat("Radius", &p.radius, 1.0f, 1.0f, 10000.0f)) meshChanged = true;
+
 				if (ImGui::SliderInt("Subdivisions", &p.subdivisions, 1, 8)) meshChanged = true;
 				if (ImGui::DragInt("Seed", (int*)&p.seed, 1)) { meshChanged = true; uniformsChanged = true; }
 
@@ -1563,7 +1564,13 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 							ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
 							if (prop.type == Shader::UniformType::Float) {
 								float val = mat->GetFloat(name);
-								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) mat->SetFloat(name, val);
+								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) {
+									mat->SetFloat(name, val);
+									// If we changed the radius of a planet, we need to rebuild the CPU mesh for clicking/bounds
+									if (name == "radius" && planet) {
+										planet->Generate();
+									}
+								}
 							}
 							else if (prop.type == Shader::UniformType::Vec3) {
 								glm::vec3 val = mat->GetVec3(name);
