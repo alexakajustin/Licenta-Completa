@@ -27,11 +27,13 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	std::uniform_real_distribution<float> radDist(minRadius, maxRadius);
 	std::uniform_real_distribution<float> scaleDist(minScale, maxScale);
 	std::uniform_real_distribution<float> angleDist(0.0f, 360.0f);
-	std::uniform_int_distribution<unsigned int> seedDist(0, 0xFFFFFFFF);
+	std::uniform_int_distribution<unsigned int> seedDist(0, 1000); // Bounded to prevent float precision loss in shader
 
 	std::string basePrefix = "SolarSystem_" + std::to_string(id) + "_";
 
 	if (progress) progress(20.0f, "Generating Sun...");
+
+	std::vector<std::pair<glm::vec3, float>> generatedSpheres;
 
 	// 1. Generate Sun — exactly like the menu
 	if (generateSun) {
@@ -40,28 +42,67 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		PlanetParams pParams;
 		pParams.radius = sunScale;
 		pParams.subdivisions = 6;
+		pParams.seed = seedDist(gen);
 		sun->SetParams(pParams);
 		sun->Generate();
+
+		if (Material* mat = sun->GetMaterial()) {
+			mat->SetInt("isSun", 1);
+			mat->SetFloat("displacementHeight", sunScale * 0.05f);
+			mat->SetFloat("seaLevel", 0.45f);
+			mat->SetFloat("sandLevel", 0.48f);
+			mat->SetFloat("grassLevel", 0.6f);
+			mat->SetFloat("rockLevel", 0.8f);
+			mat->SetFloat("snowLevel", 0.9f);
+			mat->SetFloat("noiseScale", 1.0f);
+			mat->SetInt("octaves", 6);
+			mat->SetFloat("persistence", 0.5f);
+			mat->SetFloat("lacunarity", 2.0f);
+			mat->SetFloat("tessLevel", 8.0f);
+			mat->SetFloat("tessDistance", sunScale * 5.0f + 200.0f);
+		}
+
 		sun->GetTransform().SetPosition(center);
 		scene.AddObject(sun);
 		spawnedObjects.insert(sunName);
+		
+		generatedSpheres.push_back({center, sunScale});
 	}
 
 	if (progress) progress(50.0f, "Generating Planets...");
 
 	// 2. Generate Planets — exactly like the context menu: new Planet -> Generate
 	outputs[1].data.transforms.clear();
-	outputs[1].data.transforms.resize(planetCount);
 	outputs[1].data.type = PinDataType::TransformList;
 
 	for (int i = 0; i < planetCount; ++i) {
-		float r = radDist(gen);
-		float angle = angleDist(gen);
-		float s = scaleDist(gen);
+		float r, angle, s;
+		glm::vec3 pos;
+		bool valid = false;
+		int attempts = 0;
 
-		// Calculate position in orbit
-		float radAngle = glm::radians(angle);
-		glm::vec3 pos = center + glm::vec3(r * cos(radAngle), 0.0f, r * sin(radAngle));
+		while (!valid && attempts < 50) {
+			r = radDist(gen);
+			angle = angleDist(gen);
+			s = scaleDist(gen);
+
+			// Calculate position in orbit
+			float radAngle = glm::radians(angle);
+			pos = center + glm::vec3(r * cos(radAngle), 0.0f, r * sin(radAngle));
+
+			valid = true;
+			for (const auto& sphere : generatedSpheres) {
+				float dist = glm::distance(pos, sphere.first);
+				if (dist < (s + sphere.second + 50.0f)) { // Minimum 50 units padding
+					valid = false;
+					break;
+				}
+			}
+			attempts++;
+		}
+
+		if (!valid) continue; // Skip if we couldn't find a valid non-overlapping position
+		generatedSpheres.push_back({pos, s});
 
 		std::string planetName = basePrefix + "Planet_" + std::to_string(i);
 		Planet* p = new Planet(planetName);
@@ -69,9 +110,27 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		// Set radius before Generate() so the mesh is generated at the right size
 		PlanetParams pParams;
 		pParams.radius = s;
+		pParams.seed = seedDist(gen);
 		p->SetParams(pParams);
 
 		p->Generate();
+
+		if (Material* mat = p->GetMaterial()) {
+			mat->SetInt("isSun", 0);
+			mat->SetFloat("displacementHeight", s * 0.1f);
+			mat->SetFloat("seaLevel", 0.45f);
+			mat->SetFloat("sandLevel", 0.48f);
+			mat->SetFloat("grassLevel", 0.6f);
+			mat->SetFloat("rockLevel", 0.8f);
+			mat->SetFloat("snowLevel", 0.9f);
+			mat->SetFloat("noiseScale", 1.0f);
+			mat->SetInt("octaves", 6);
+			mat->SetFloat("persistence", 0.5f);
+			mat->SetFloat("lacunarity", 2.0f);
+			mat->SetFloat("tessLevel", 8.0f);
+			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
+		}
+
 		p->GetTransform().SetPosition(pos);
 		p->GetTransform().SetScale(glm::vec3(1.0f)); // mesh already at correct size
 
@@ -83,7 +142,7 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		td.scale = glm::vec3(s);
 		td.rotation = glm::vec3(0.0f);
 		td.normal = glm::vec3(0, 1, 0);
-		outputs[1].data.transforms[i] = td;
+		outputs[1].data.transforms.push_back(td);
 
 		if (progress) progress(50.0f + (50.0f * (float)i / planetCount), "Generating Planet " + std::to_string(i));
 	}
