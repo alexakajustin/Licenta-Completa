@@ -1,11 +1,11 @@
 #version 410
 
+out vec4 FragColor;
+
 in vec3 WorldPos;
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 LocalPos;
-
-out vec4 color;
 
 uniform vec3 eyePosition;
 uniform float time;
@@ -26,155 +26,151 @@ uniform int seed;
 uniform bool isSun;
 uniform float temperature; // 0.0 = Cold (Blue), 1.0 = Hot (Red)
 
-// Colors
-const vec3 deepOcean = vec3(0.0, 0.1, 0.3);
-const vec3 shallowOcean = vec3(0.0, 0.4, 0.6);
-const vec3 sand = vec3(0.8, 0.7, 0.5);
-const vec3 grass = vec3(0.2, 0.5, 0.1);
-const vec3 forest = vec3(0.1, 0.3, 0.05);
-const vec3 rock = vec3(0.4, 0.4, 0.4);
-const vec3 snow = vec3(0.95, 0.95, 1.0);
+// --- SHADERTOY HELPERS (Morgan McGuire) ---
+const float pi = 3.1415926535;
+const vec3 atmosphereColor = vec3(0.3, 0.6, 1.0) * 1.2;
 
-// Simplex 3D Noise implementation
-vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-float snoise(vec3 v)
-{
-  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-  vec3 i  = floor(v + dot(v, C.yyy) );
-  vec3 x0 =   v - i + dot(i, C.xxx) ;
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min( g.xyz, l.zxy );
-  vec3 i2 = max( g.xyz, l.zxy );
-  vec3 x1 = x0 - i1 + C.xxx;
-  vec3 x2 = x0 - i2 + C.yyy;
-  vec3 x3 = x0 - D.yyy;
-  i = mod289(i);
-  vec4 p = permute( permute( permute(
-             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-  float n_ = 0.142857142857;
-  vec3  ns = n_ * D.wyz - D.xzx;
-  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );
-  vec4 x = x_ *ns.x + ns.yyyy;
-  vec4 y = y_ *ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
-  vec4 s0 = floor(b0)*2.0 + 1.0;
-  vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-  vec3 p0 = vec3(a0.xy,h.x);
-  vec3 p1 = vec3(a0.zw,h.y);
-  vec3 p2 = vec3(a1.xy,h.z);
-  vec3 p3 = vec3(a1.zw,h.w);
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+float hash(float p) { p = fract(p * 0.011); p *= p + 7.5; p *= p + p; return fract(p); }
+float noise(vec3 x) { 
+    const vec3 step = vec3(110, 241, 171); 
+    vec3 i = floor(x); vec3 f = fract(x); 
+    float n = dot(i, step); 
+    vec3 u = f * f * (3.0 - 2.0 * f); 
+    return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x), 
+                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y), 
+               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x), 
+                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z); 
 }
 
-float fBm(vec3 p)
-{
-    float val = 0.0;
-    float amp = 0.5;
-    float freq = noiseScale;
-    vec3 offset = vec3(float(seed) * 0.123, float(seed) * 0.456, float(seed) * 0.789);
-    for(int i = 0; i < octaves; i++) {
-        val += amp * snoise((p + offset) * freq);
-        amp *= persistence;
-        freq *= lacunarity;
-    }
-    return val;
+float fbm3(vec3 x) {
+    float v = 0.0; float a = 0.5; vec3 shift = vec3(100);
+    for (int i = 0; i < 3; ++i) { v += a * noise(x); x = x * 2.0 + shift; a *= 0.5; }
+    return v;
 }
 
-vec3 rgb2hsv(vec3 c)
-{
+float fbm6(vec3 x) {
+    float v = 0.0; float a = 0.5; vec3 shift = vec3(100);
+    for (int i = 0; i < 6; ++i) { v += a * noise(x); x = x * 2.0 + shift; a *= 0.5; }
+    return v;
+}
+
+vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
     vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-
     float d = q.x - min(q.w, q.y);
     float e = 1.0e-10;
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
-vec3 hsv2rgb(vec3 c)
-{
+vec3 hsv2rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - vec3(K.www));
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+float cloudDensity(vec3 p, float t, float temp) {
+    float speedMult = 0.5 + temp * 2.0; // Hotter planets have faster, more chaotic winds
+    vec3 p_move = p * vec3(1.5, 2.5, 2.0);
+    float d = fbm6(p_move + 1.5 * fbm3(p_move - t * speedMult * 0.047) - vec3(t * speedMult * 0.03, t * speedMult * 0.01, t * speedMult * 0.01)) - 0.42;
+    return clamp(d * 2.0, 0.0, 1.0);
 }
 
 void main()
 {
     vec3 n = normalize(Normal);
+    vec3 v = normalize(eyePosition - WorldPos);
     vec3 lPos = normalize(LocalPos);
     
-    // Generate height from noise
-    float h = fBm(lPos) * 0.5 + 0.5;
+    // Generate height from noise (fbm6 for spice)
+    vec3 offset = vec3(float(seed) * 0.123, float(seed) * 0.456, float(seed) * 0.789);
+    float h = fbm6(lPos * noiseScale + offset) * 0.8 + 0.1;
 
     if (isSun) {
         vec3 sunBright = vec3(1.0, 0.95, 0.6);
         vec3 sunDark = vec3(1.0, 0.4, 0.0);
-        color = vec4(mix(sunDark, sunBright, h), 1.0);
+        FragColor = vec4(mix(sunDark, sunBright, h), 1.0);
         return;
     }
     
     // Biome colors interpolated by temperature
-    vec3 c_deep = mix(vec3(0.0, 0.1, 0.3), vec3(0.2, 0.0, 0.0), temperature);      // Cold: Deep Blue | Hot: Dark Magma
-    vec3 c_shallow = mix(vec3(0.0, 0.4, 0.6), vec3(0.8, 0.2, 0.0), temperature);   // Cold: Cyan | Hot: Lava
-    vec3 c_sand = mix(vec3(0.8, 0.7, 0.5), vec3(0.4, 0.2, 0.1), temperature);      // Cold: Sand | Hot: Scorched
-    vec3 c_grass = mix(vec3(0.2, 0.5, 0.1), vec3(0.7, 0.4, 0.1), temperature);     // Cold: Grass | Hot: Desert
-    vec3 c_rock = mix(vec3(0.4, 0.4, 0.4), vec3(0.1, 0.1, 0.1), temperature);      // Cold: Rock | Hot: Basalt
-    vec3 c_snow = mix(vec3(0.95, 0.95, 1.0), vec3(0.8, 0.6, 0.3), temperature);    // Cold: Snow | Hot: Ash/Sulfur
+    vec3 c_deep = mix(vec3(0.0, 0.05, 0.2), vec3(0.2, 0.0, 0.0), temperature);      
+    vec3 c_shallow = mix(vec3(0.0, 0.3, 0.5), vec3(0.8, 0.2, 0.0), temperature);   
+    vec3 c_sand = mix(vec3(0.8, 0.7, 0.5), vec3(0.4, 0.2, 0.1), temperature);      
+    vec3 c_grass = mix(vec3(0.2, 0.4, 0.1), vec3(0.7, 0.4, 0.1), temperature);     
+    vec3 c_rock = mix(vec3(0.4, 0.4, 0.4), vec3(0.1, 0.1, 0.1), temperature);      
+    vec3 c_snow = mix(vec3(0.95, 0.95, 1.0), vec3(0.8, 0.6, 0.3), temperature);    
 
-    // Biome coloring
     vec3 finalColor;
+    float smoothness = 0.0;
+    float metallic = 0.0;
+
+    // Biome coloring logic
     if (h < seaLevel) {
-        finalColor = mix(c_deep, c_shallow, h / seaLevel);
+        float relDepth = clamp((seaLevel - h) * 15.0, 0.0, 1.0);
+        float wave = fbm3(lPos * 25.0 + vec3(time * 0.5)) * 0.02;
+        n = normalize(n + vec3(wave)); 
+        finalColor = mix(c_shallow, c_deep, relDepth);
+        smoothness = 0.8; metallic = 0.2;
     } else if (h < sandLevel) {
         finalColor = c_sand;
     } else if (h < grassLevel) {
         finalColor = mix(c_sand, c_grass, (h - sandLevel) / (grassLevel - sandLevel));
     } else if (h < rockLevel) {
         finalColor = mix(c_grass, c_rock, (h - grassLevel) / (rockLevel - grassLevel));
-    } else if (h < snowLevel) {
-        finalColor = c_rock;
     } else {
-        finalColor = c_snow;
+        finalColor = mix(c_rock, c_snow, (h - rockLevel) / (1.0 - rockLevel));
     }
 
-    // Apply seed-based variation (Reduced to keep temperature identity)
+    // Latitude based snow caps
+    float lat = abs(lPos.y);
+    float noiseLat = fbm3(lPos * 10.0 + offset * 0.5) * 0.1;
+    if (lat + noiseLat > 0.85) {
+        float snowFactor = smoothstep(0.85, 0.95, lat + noiseLat);
+        finalColor = mix(finalColor, c_snow, snowFactor);
+        smoothness = mix(smoothness, 0.4, snowFactor);
+    }
+
+    // --- CLOUDS ---
+    float density = cloudDensity(lPos, time, temperature);
+    // Cloud shadows on ground
+    float cloudShadow = clamp(1.0 - density * 0.5, 0.5, 1.0);
+
+    // Apply seed-based variation
     float hueShift = (fract(sin(float(seed) * 12.9898) * 43758.5453) - 0.5) * 0.05;
-    float valShift = (fract(sin(float(seed) * 37.719) * 43758.5453) - 0.5) * 0.1;
-    
     vec3 hsv = rgb2hsv(finalColor);
     hsv.x = fract(hsv.x + hueShift);
-    hsv.z = clamp(hsv.z + valShift, 0.0, 1.0);
     finalColor = hsv2rgb(hsv);
 
-    // Latitude based snow
-    float lat = abs(lPos.y);
-    if (lat > 0.8) {
-        float snowFactor = smoothstep(0.8, 0.95, lat);
-        finalColor = mix(finalColor, snow, snowFactor);
+    // --- LIGHTING ---
+    vec3 lDir = normalize(vec3(1.0, 1.0, 1.0));
+    vec3 hDir = normalize(lDir + v);
+    float diff = max(dot(n, lDir), 0.0);
+    float spec = pow(max(dot(n, hDir), 0.0), mix(10.0, 100.0, smoothness)) * smoothness;
+    
+    vec3 ambient = finalColor * 0.15;
+    vec3 diffuse = finalColor * diff * cloudShadow;
+    vec3 specular = vec3(1.0) * spec * mix(0.04, 0.5, metallic) * cloudShadow;
+    
+    vec3 litColor = ambient + diffuse + specular;
+
+    // --- ATMOSPHERIC SCATTERING ---
+    float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+    litColor = mix(litColor, atmosphereColor * max(diff, 0.2), fresnel * 0.6);
+
+    // --- CLOUD COMPOSITION ---
+    if (density > 0.0) {
+        vec3 cloudHot = vec3(0.8, 0.6, 0.3); // Sulfurous/Ash
+        vec3 cloudCold = vec3(0.95, 0.95, 1.0); // Icy/White
+        vec3 cloudColor = mix(cloudCold, cloudHot, temperature);
+
+        // Simple wrap shading for cloud "fluffiness"
+        float cloudDiff = max(dot(n, lDir), 0.0) * 1.2;
+        vec3 cloudLit = cloudColor * (cloudDiff + 0.3); // Ambient boost for clouds
+        // Tint clouds with atmosphere at edges
+        cloudLit = mix(cloudLit, atmosphereColor, fresnel * 0.4);
+        litColor = mix(litColor, cloudLit, density);
     }
 
-    // Basic lighting
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff = max(dot(n, lightDir), 0.1);
-    
-    color = vec4(finalColor * diff, 1.0);
+    FragColor = vec4(litColor, 1.0);
 }

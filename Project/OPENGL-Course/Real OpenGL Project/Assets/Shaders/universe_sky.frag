@@ -51,7 +51,7 @@ void main()
 		
 		float pa, a = pa = 0.0;
 		for (int i = 0; i < iterations; i++) { 
-			p = abs(p) / dot(p, p) - formuparam; // the magic formula
+			p = abs(p) / dot(p, p) - vec3(formuparam); // the magic formula
 			a += abs(length(p) - pa); // absolute sum of average change
 			pa = length(p);
 		}
@@ -68,7 +68,7 @@ void main()
 		vec3 starCol = vec3(s, s * s, s * s * s * s);
 		vec3 finalCol = mix(starCol, col, nebulaIntensity);
 		
-		v += fade;
+		v += vec3(fade);
 		v += finalCol * a * brightness * starBrightness * fade; 
 		
 		fade *= distfading; // distance fading
