@@ -52,7 +52,6 @@ float noise4q(vec4 x)
     return r * r * (3.0 - 2.0 * r);
 }
 
-// Function to calculate multiscale plasma noise on the sphere
 float getPlasma(vec3 p, float anim) {
     float s = 0.0;
     float d = 0.03125;
@@ -74,33 +73,31 @@ void main()
     
     float anim = time * 0.4;
     
-    // Core Plasma Body
-    float s1 = getPlasma(lPos, anim);
-    float s2 = getPlasma(lPos + vec3(83.23, 34.34, 67.453), anim * 1.2);
+    // Normalized Core Plasma
+    float s1 = clamp(getPlasma(lPos, anim), 0.0, 1.0);
+    float s2 = clamp(getPlasma(lPos + vec3(83.23, 34.34, 67.453), anim * 1.2), 0.0, 1.0);
     
-    s1 = pow(clamp(s1 * 2.4, 0.0, 1.0), 2.0);
-    s2 = clamp(s2 * 2.2, 0.0, 1.0);
+    s1 = pow(s1 * 2.4, 2.0);
+    s2 = s2 * 2.2;
 
-    // Primary Body Colors (Yellow/White)
+    // Panteleymonov's Color Palettes
     vec3 yellowBody = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 1.0, 1.0), pow(s1, 60.0)) * s1;
-    // Secondary Body Colors (Red/Pink/Purple)
     vec3 redBody = mix(mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 1.0), pow(s2, 2.0)), vec3(1.0, 1.0, 1.0), pow(s2, 10.0)) * s2;
 
     vec3 finalColor = yellowBody + redBody;
 
-    // Corona / Rays logic from reference
-    float c = 1.0 - max(dot(n, v), 0.0); // Simple limb distance
-    float s = max(0.0, 1.0 - abs(0.5 - c) * 2.0); // Ring around edges
+    // --- CORONA AURA ---
+    float fresnel = 1.0 - max(dot(n, v), 0.0);
+    float ring = max(0.0, 1.0 - abs(0.5 - fresnel) * 2.0);
     
-    // Animate rays
-    float nd = pow(noise4q(vec4(lPos * 2.0, -anim + c)) * 2.0, 2.0);
-    float ns = noise4q(vec4(lPos * 10.0, -anim * 2.5 + c * 2.0)) * 2.0;
-    float s3 = pow(s, 4.0) + pow(s, 2.0) * nd * ns;
+    // Radial Rays
+    float nd = pow(noise4q(vec4(lPos * 2.0, -anim + fresnel)) * 2.0, 2.0);
+    float ns = noise4q(vec4(lPos * 10.0, -anim * 2.5 + fresnel * 2.0)) * 2.0;
+    float s3 = pow(ring, 4.0) + pow(ring, 2.0) * nd * ns;
 
     vec3 rayColor = mix(vec3(1.0, 0.6, 0.1), vec3(1.0, 0.95, 1.0), pow(s3, 3.0));
-    finalColor += rayColor * s3 * 0.8;
+    finalColor += rayColor * s3 * 0.7;
 
-    // Final bloom/overexposure look
     finalColor = clamp(finalColor, 0.0, 1.0);
     FragColor = vec4(finalColor, 1.0);
 }
