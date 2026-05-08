@@ -1,0 +1,459 @@
+{
+    "camera": {
+        "front": [
+            0.0756126195192337,
+            -0.6560590267181396,
+            -0.7509123086929321
+        ],
+        "pitch": -41.0,
+        "position": [
+            -212.8656463623047,
+            1881.4434814453125,
+            -930.1593017578125
+        ],
+        "yaw": -804.25
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraph": {
+        "links": [
+            {
+                "end": 17,
+                "id": 27,
+                "start": 15
+            },
+            {
+                "end": 20,
+                "id": 28,
+                "start": 18
+            },
+            {
+                "end": 39,
+                "id": 42,
+                "start": 21
+            },
+            {
+                "end": 26,
+                "id": 43,
+                "start": 40
+            }
+        ],
+        "nextId": 44,
+        "nodes": [
+            {
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedPrimitiveType": "Plane",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    5000.0,
+                    1.0,
+                    5000.0
+                ],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 1,
+                        "heightMax": 1000.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                        "tiling": 20.0
+                    },
+                    {
+                        "blendMode": 1,
+                        "heightMax": 1538.0,
+                        "heightMin": 1322.0,
+                        "invert": false,
+                        "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                        "tiling": 20.0
+                    }
+                ],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    150.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 14,
+                "inputPins": [],
+                "outputPins": [
+                    15
+                ],
+                "selectedName": "Plane",
+                "title": "Scene Input"
+            },
+            {
+                "amplitude": 2000.0,
+                "editorPos": [
+                    250.0,
+                    150.0
+                ],
+                "frequency": 0.6399999856948853,
+                "id": 16,
+                "inputPins": [
+                    17
+                ],
+                "octaves": 8,
+                "offsetX": 0.0,
+                "offsetZ": 0.0,
+                "outputPins": [
+                    18
+                ],
+                "persistence": 0.44999998807907104,
+                "ridged": true,
+                "seed": 6334,
+                "title": "Perlin Noise",
+                "useNormalDisplacement": false
+            },
+            {
+                "editorPos": [
+                    450.0,
+                    150.0
+                ],
+                "erosionCellScale": 2.0,
+                "erosionDetail": 3.0,
+                "erosionGain": 0.0,
+                "erosionGullyWeight": 0.550000011920929,
+                "erosionLacunarity": 1.0,
+                "erosionNormalization": 0.5,
+                "erosionOctaves": 10,
+                "erosionOnset": [
+                    0.699999988079071,
+                    1.25,
+                    2.799999952316284,
+                    1.5
+                ],
+                "erosionRounding": [
+                    0.875,
+                    0.0,
+                    0.10000000149011612,
+                    2.0
+                ],
+                "erosionScale": 0.009999999776482582,
+                "erosionStrength": 0.6399999856948853,
+                "id": 19,
+                "inputPins": [
+                    20
+                ],
+                "outputPins": [
+                    21
+                ],
+                "smoothPasses": 1,
+                "title": "Beautiful Erosion"
+            },
+            {
+                "editorPos": [
+                    850.0,
+                    150.0
+                ],
+                "id": 25,
+                "inputPins": [
+                    26
+                ],
+                "outputPins": [],
+                "sameAsInput": true,
+                "targetName": "(none)",
+                "title": "Output",
+                "updateMesh": true
+            },
+            {
+                "baseDepth": 34.5,
+                "baseWidth": 20.0,
+                "editorPos": [
+                    800.6713256835938,
+                    392.2438659667969
+                ],
+                "id": 38,
+                "inputPins": [
+                    39
+                ],
+                "lakeVolumeMultiplier": 57.98099899291992,
+                "maxSteps": 1009,
+                "outputPins": [
+                    40
+                ],
+                "smoothPasses": 2,
+                "springCount": 8,
+                "title": "River",
+                "waterOffset": 5.0
+            }
+        ]
+    },
+    "objects": [
+        {
+            "customMeshPath": "Base_Mountain_Water_V2_Plane.mesh",
+            "inheritScale": true,
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 1000.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Grass\\coast_sand_rocks_02_diff_1k.jpg",
+                    "tiling": 20.0
+                },
+                {
+                    "blendMode": 1,
+                    "displacementMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 1538.0,
+                    "heightMin": 1322.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Terrain_Snow\\snow_02_nor_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
+                    "tiling": 20.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5000.0,
+                    1.0,
+                    5000.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Base_Mountain_Water_V2_River_Water_38.mesh",
+            "inheritScale": true,
+            "material": {
+                "clipPlane": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 256.0,
+                "material.specularIntensity": 3.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 512.0,
+                "material_specularIntensityOverride": 5.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterDepthScale": 0.0,
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 1.0,
+                "material_waveStrength": 5.0,
+                "screenSize": [
+                    0.0,
+                    0.0
+                ],
+                "selectionTint": 0.0,
+                "shader_frag": "Assets/Shaders/river.frag",
+                "shader_vert": "Assets/Shaders/river.vert"
+            },
+            "modelPath": "",
+            "name": "River_Water_38",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5000.0,
+                    1.0,
+                    5000.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Base_Mountain_Water_V2_Lake_Water_38.mesh",
+            "inheritScale": true,
+            "material": {
+                "clipPlane": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 128.0,
+                "material.specularIntensity": 2.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 256.0,
+                "material_specularIntensityOverride": 3.0,
+                "material_waterColorDeep": [
+                    0.012000000104308128,
+                    0.14900000393390656,
+                    0.3490000069141388,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.050999999046325684,
+                    0.6000000238418579,
+                    0.7490000128746033,
+                    0.7020000219345093
+                ],
+                "material_waterDepthScale": 0.30000001192092896,
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 1.0,
+                "material_waveSpeed": 0.009999999776482582,
+                "material_waveStrength": 0.10000000149011612,
+                "screenSize": [
+                    0.0,
+                    0.0
+                ],
+                "selectionTint": 0.0,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
+            },
+            "modelPath": "",
+            "name": "Lake_Water_38",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5000.0,
+                    1.0,
+                    5000.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

@@ -30,7 +30,7 @@ private:
 	float erosionGullyWeight = 0.5f;
 	float erosionDetail = 1.5f;
 	
-	glm::vec4 erosionRounding = glm::vec4(0.1f, 0.0f, 0.1f, 2.0f);
+	glm::vec4 erosionRounding = glm::vec4(0.3f, 0.0f, 0.1f, 2.0f);
 	glm::vec4 erosionOnset = glm::vec4(0.7f, 1.25f, 2.8f, 1.5f);
 	glm::vec2 erosionAssumedSlope = glm::vec2(0.7f, 1.0f);
 	

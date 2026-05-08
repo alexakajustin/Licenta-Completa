@@ -27,6 +27,12 @@ void BeautifulErosionNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Gully Weight", &erosionGullyWeight, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("Detail", &erosionDetail, 0.01f, 0.0f, 3.0f);
 	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 10);
+	
+	ImGui::Text("Advanced Rounding");
+	ImGui::SliderFloat("Ridge Rounding", &erosionRounding.x, 0.0f, 1.0f);
+	ImGui::SliderFloat("Crease Rounding", &erosionRounding.y, 0.0f, 1.0f);
+	ImGui::SliderFloat("Base Rounding", &erosionRounding.z, 0.0f, 2.0f);
+	ImGui::SliderFloat("Octave Rounding", &erosionRounding.w, 1.0f, 4.0f);
 
 	ImGui::Separator();
 	ImGui::Text("Noise Properties");
@@ -52,6 +58,8 @@ json BeautifulErosionNode::Serialize() const
 	j["erosionCellScale"] = erosionCellScale;
 	j["erosionNormalization"] = erosionNormalization;
 	j["smoothPasses"] = smoothPasses;
+	j["erosionRounding"] = { erosionRounding.x, erosionRounding.y, erosionRounding.z, erosionRounding.w };
+	j["erosionOnset"] = { erosionOnset.x, erosionOnset.y, erosionOnset.z, erosionOnset.w };
 	return j;
 }
 
@@ -68,6 +76,17 @@ void BeautifulErosionNode::Deserialize(const json& j)
 	erosionCellScale = j.value("erosionCellScale", 0.7f);
 	erosionNormalization = j.value("erosionNormalization", 0.5f);
 	smoothPasses = j.value("smoothPasses", 1);
+	
+	if (j.contains("erosionRounding")) {
+		auto r = j["erosionRounding"];
+		erosionRounding = glm::vec4(r[0], r[1], r[2], r[3]);
+	} else {
+		erosionRounding = glm::vec4(0.3f, 0.0f, 0.1f, 2.0f);
+	}
+	if (j.contains("erosionOnset")) {
+		auto o = j["erosionOnset"];
+		erosionOnset = glm::vec4(o[0], o[1], o[2], o[3]);
+	}
 }
 
 float BeautifulErosionNode::Clamp01(float x) const { return glm::clamp(x, 0.0f, 1.0f); }
