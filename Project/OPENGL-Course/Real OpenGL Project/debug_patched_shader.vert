@@ -147,7 +147,7 @@ void main()
 
 	mat4 modelMatrix = model;
 	if (useInstancing == 1) {
-	modelMatrix = instanceMatrix;
+	modelMatrix = model; // GPU-driven override
 	}
 
 	vIsSelected = 0.0;

@@ -410,7 +410,9 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 		neutralize("uniform mat4 model", "uniform mat4 _unused_model");
 		neutralize("in mat4 instanceMatrix", "in mat4 _unused_inst");
 		neutralize("attribute mat4 instanceMatrix", "attribute mat4 _unused_inst2");
+		neutralize("modelMatrix = instanceMatrix;", "modelMatrix = model; // GPU-driven override");
 		neutralize("out float vFadeFactor;", "// Redefined by header");
+		neutralize("in float vFadeFactor;", "// Redefined by header");
 		neutralize("varying float vFadeFactor;", "// Redefined by header");
 		neutralize("vFadeFactor = 0.0;", "// vFadeFactor set by ResolveInstancedModelMatrix()");
 
