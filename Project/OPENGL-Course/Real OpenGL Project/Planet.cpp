@@ -15,6 +15,19 @@ Planet::Planet(const std::string& name) : GameObject(name) {
     Material* mat = new Material();
     mat->SetShader(sharedShader);
     mat->SetFloat("radius", params.radius);
+    mat->SetFloat("temperature", 0.5f);
+    mat->SetFloat("seaLevel", 0.45f);
+    mat->SetFloat("sandLevel", 0.48f);
+    mat->SetFloat("grassLevel", 0.6f);
+    mat->SetFloat("rockLevel", 0.8f);
+    mat->SetFloat("snowLevel", 0.9f);
+    mat->SetFloat("noiseScale", 1.0f);
+    mat->SetInt("octaves", 6);
+    mat->SetFloat("persistence", 0.5f);
+    mat->SetFloat("lacunarity", 2.0f);
+    mat->SetFloat("displacementHeight", 5.0f);
+    mat->SetFloat("tessLevel", 8.0f);
+    mat->SetFloat("tessDistance", params.radius * 5.0f + 200.0f);
     SetMaterial(mat);
     noise = std::make_unique<Noise3D>(params.seed);
 }
@@ -53,6 +66,19 @@ void Planet::Generate() {
                                       "Assets/Shaders/planet.frag");
         mat->SetShader(planetShader);
         mat->SetFloat("radius", params.radius);
+        mat->SetFloat("temperature", 0.5f);
+        mat->SetFloat("seaLevel", 0.45f);
+        mat->SetFloat("sandLevel", 0.48f);
+        mat->SetFloat("grassLevel", 0.6f);
+        mat->SetFloat("rockLevel", 0.8f);
+        mat->SetFloat("snowLevel", 0.9f);
+        mat->SetFloat("noiseScale", 1.0f);
+        mat->SetInt("octaves", 6);
+        mat->SetFloat("persistence", 0.5f);
+        mat->SetFloat("lacunarity", 2.0f);
+        mat->SetFloat("displacementHeight", 5.0f);
+        mat->SetFloat("tessLevel", 8.0f);
+        mat->SetFloat("tessDistance", params.radius * 5.0f + 200.0f);
         SetMaterial(mat);
     }
     UpdateUniforms();

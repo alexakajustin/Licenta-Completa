@@ -105,6 +105,7 @@ private:
 	Shader ssaoApplyShader;
 	Shader godrayShader;
 	Shader volumetricSkyShader;
+	Shader universeSkyShader;
 
 	GLuint quadVAO = 0;
 	GLuint quadVBO = 0;

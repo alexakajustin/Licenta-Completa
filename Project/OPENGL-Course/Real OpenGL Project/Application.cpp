@@ -451,7 +451,6 @@ void Application::Run()
 			{
 				glDisable(GL_DEPTH_TEST);
 				glDisable(GL_BLEND);
-				volumetricSkyShader.UseShader();
 				
 				// Calculate reflected matrices
 				glm::mat4 reflectionMatrix(1.0f);
@@ -461,21 +460,37 @@ void Application::Run()
 
 				glm::mat4 invProj = glm::inverse(projection);
 				glm::mat4 invView = glm::inverse(reflectedView);
-				
-				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
-				
-				glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-				glm::vec3 dirToSun = -glm::normalize(sunDir);
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
-				
-				// Cloud data
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
-				glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+
+				if (graphicsSettings.skyboxType == SkyboxType::Atmospheric) 
+				{
+					volumetricSkyShader.UseShader();
+					glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+					glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+
+					glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+					glm::vec3 dirToSun = -glm::normalize(sunDir);
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+
+					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+					glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
+					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
+					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
+					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+				}
+				else if (graphicsSettings.skyboxType == SkyboxType::Universe)
+				{
+					universeSkyShader.UseShader();
+					glUniformMatrix4fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+					glUniformMatrix4fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+					glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+					glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "starDensity"), graphicsSettings.universeStarDensity);
+					glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "starBrightness"), graphicsSettings.universeStarBrightness);
+					glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaIntensity"), graphicsSettings.universeNebulaIntensity);
+					glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "universeSpeed"), graphicsSettings.universeSpeed);
+					glUniform3fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaColor1"), 1, glm::value_ptr(graphicsSettings.universeNebulaColor1));
+					glUniform3fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaColor2"), 1, glm::value_ptr(graphicsSettings.universeNebulaColor2));
+				}
 
 				RenderQuad();
 				glEnable(GL_DEPTH_TEST);
@@ -495,22 +510,38 @@ void Application::Run()
 		{
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_BLEND); // Solid background
-			volumetricSkyShader.UseShader();
 			glm::mat4 invProj = glm::inverse(projection);
 			glm::mat4 invView = glm::inverse(view);
-			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-			glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
-			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-			glm::vec3 dirToSun = -glm::normalize(sunDir);
-			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-			glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
-			
-			// Cloud data
-			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
-			glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
-			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
-			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
-			glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+
+			if (graphicsSettings.skyboxType == SkyboxType::Atmospheric)
+			{
+				volumetricSkyShader.UseShader();
+				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+				glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+				glm::vec3 dirToSun = -glm::normalize(sunDir);
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+				glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
+				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+			}
+			else if (graphicsSettings.skyboxType == SkyboxType::Universe)
+			{
+				universeSkyShader.UseShader();
+				glUniformMatrix4fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+				glUniformMatrix4fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+				glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
+				glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "starDensity"), graphicsSettings.universeStarDensity);
+				glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "starBrightness"), graphicsSettings.universeStarBrightness);
+				glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaIntensity"), graphicsSettings.universeNebulaIntensity);
+				glUniform1f(glGetUniformLocation(universeSkyShader.GetShaderID(), "universeSpeed"), graphicsSettings.universeSpeed);
+				glUniform3fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaColor1"), 1, glm::value_ptr(graphicsSettings.universeNebulaColor1));
+				glUniform3fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaColor2"), 1, glm::value_ptr(graphicsSettings.universeNebulaColor2));
+			}
 
 			RenderQuad();
 			glEnable(GL_DEPTH_TEST);
@@ -855,6 +886,7 @@ void Application::InitSSAO()
 	ssaoApplyShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
 	godrayShader.CreateFromFiles("Assets/Shaders/godrays.vert", "Assets/Shaders/godrays.frag");
 	volumetricSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/volumetric_sky.frag");
+	universeSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/universe_sky.frag");
 
 	// Gen FBOs
 	glGenFramebuffers(1, &ssaoFBO);

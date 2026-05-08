@@ -1809,10 +1809,76 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			}
 		}
 
+		if (ImGui::CollapsingHeader("Sky & Environment", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Checkbox("Enable Volumetric Sky", &graphicsSettingsPtr->volumetricSkyEnabled);
+			ImGui::Separator();
+
+			if (!graphicsSettingsPtr->volumetricSkyEnabled) {
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+				ImGui::BeginDisabled();
+			}
+
+			const char* skyTypes[] = { "Atmospheric", "Universe" };
+			int currentSkyType = (int)graphicsSettingsPtr->skyboxType;
+			if (ImGui::Combo("Skybox Type", &currentSkyType, skyTypes, IM_ARRAYSIZE(skyTypes))) {
+				graphicsSettingsPtr->skyboxType = (SkyboxType)currentSkyType;
+			}
+
+			ImGui::Separator();
+
+			if (graphicsSettingsPtr->skyboxType == SkyboxType::Atmospheric) {
+				ImGui::Text("Procedural Clouds");
+				ImGui::Checkbox("Enable Clouds", &graphicsSettingsPtr->cloudsEnabled);
+				
+				if (!graphicsSettingsPtr->cloudsEnabled) {
+					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+					ImGui::BeginDisabled();
+				}
+				
+				ImGui::SliderFloat("Cloud Density", &graphicsSettingsPtr->cloudsDensity, 0.1f, 0.9f);
+				ImGui::SliderFloat("Cloud Speed", &graphicsSettingsPtr->cloudsSpeed, 0.0f, 0.5f);
+				ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
+
+				if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
+					graphicsSettingsPtr->cloudsDensity = 0.5f;
+					graphicsSettingsPtr->cloudsSpeed = 0.05f;
+					graphicsSettingsPtr->cloudsSharpness = 0.3f;
+				}
+
+				if (!graphicsSettingsPtr->cloudsEnabled) {
+					ImGui::EndDisabled();
+					ImGui::PopStyleVar();
+				}
+			}
+			else if (graphicsSettingsPtr->skyboxType == SkyboxType::Universe) {
+				ImGui::Text("Universe Settings");
+				ImGui::SliderFloat("Star Density", &graphicsSettingsPtr->universeStarDensity, 0.1f, 2.0f);
+				ImGui::SliderFloat("Star Brightness", &graphicsSettingsPtr->universeStarBrightness, 0.1f, 5.0f);
+				ImGui::SliderFloat("Nebula Intensity", &graphicsSettingsPtr->universeNebulaIntensity, 0.0f, 2.0f);
+				ImGui::SliderFloat("Universe Speed", &graphicsSettingsPtr->universeSpeed, 0.0f, 0.1f);
+				ImGui::ColorEdit3("Nebula Color 1", &graphicsSettingsPtr->universeNebulaColor1.x);
+				ImGui::ColorEdit3("Nebula Color 2", &graphicsSettingsPtr->universeNebulaColor2.x);
+
+				if (ImGui::Button("Reset Defaults##Universe", ImVec2(-1, 0))) {
+					graphicsSettingsPtr->universeStarDensity = 0.5f;
+					graphicsSettingsPtr->universeStarBrightness = 1.0f;
+					graphicsSettingsPtr->universeNebulaIntensity = 0.5f;
+					graphicsSettingsPtr->universeSpeed = 0.01f;
+					graphicsSettingsPtr->universeNebulaColor1 = glm::vec3(0.5f, 0.2f, 0.8f);
+					graphicsSettingsPtr->universeNebulaColor2 = glm::vec3(0.1f, 0.5f, 0.9f);
+				}
+			}
+
+			if (!graphicsSettingsPtr->volumetricSkyEnabled) {
+				ImGui::EndDisabled();
+				ImGui::PopStyleVar();
+			}
+		}
+
 		if (ImGui::CollapsingHeader("Screen Space God Rays", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Checkbox("Enable God Rays", &graphicsSettingsPtr->godraysEnabled);
-			ImGui::Checkbox("Enable Volumetric Sky", &graphicsSettingsPtr->volumetricSkyEnabled);
 			ImGui::Separator();
 
 			if (!graphicsSettingsPtr->godraysEnabled) {
@@ -1828,27 +1894,7 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				graphicsSettingsPtr->godraysDensity = 1.0f;
 			}
 
-			ImGui::Spacing();
-			ImGui::Separator();
-			ImGui::Text("Procedural Clouds");
-			ImGui::Checkbox("Enable Clouds", &graphicsSettingsPtr->cloudsEnabled);
-			
-			if (!graphicsSettingsPtr->cloudsEnabled) {
-				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
-				ImGui::BeginDisabled();
-			}
-			
-			ImGui::SliderFloat("Cloud Density", &graphicsSettingsPtr->cloudsDensity, 0.1f, 0.9f);
-			ImGui::SliderFloat("Cloud Speed", &graphicsSettingsPtr->cloudsSpeed, 0.0f, 0.5f);
-			ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
-
-			if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
-				graphicsSettingsPtr->cloudsDensity = 0.5f;
-				graphicsSettingsPtr->cloudsSpeed = 0.05f;
-				graphicsSettingsPtr->cloudsSharpness = 0.3f;
-			}
-
-			if (!graphicsSettingsPtr->cloudsEnabled) {
+			if (!graphicsSettingsPtr->godraysEnabled) {
 				ImGui::EndDisabled();
 				ImGui::PopStyleVar();
 			}

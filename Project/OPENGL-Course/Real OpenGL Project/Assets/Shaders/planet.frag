@@ -11,19 +11,20 @@ uniform vec3 eyePosition;
 uniform float time;
 
 // Biome levels
-uniform float seaLevel = 0.45;
-uniform float sandLevel = 0.48;
-uniform float grassLevel = 0.6;
-uniform float rockLevel = 0.8;
-uniform float snowLevel = 0.9;
+uniform float seaLevel;
+uniform float sandLevel;
+uniform float grassLevel;
+uniform float rockLevel;
+uniform float snowLevel;
 
 // Noise settings
-uniform float noiseScale = 1.0;
-uniform int octaves = 6;
-uniform float persistence = 0.5;
-uniform float lacunarity = 2.0;
-uniform int seed = 0;
-uniform bool isSun = false;
+uniform float noiseScale;
+uniform int octaves;
+uniform float persistence;
+uniform float lacunarity;
+uniform int seed;
+uniform bool isSun;
+uniform float temperature; // 0.0 = Cold (Blue), 1.0 = Hot (Red)
 
 // Colors
 const vec3 deepOcean = vec3(0.0, 0.1, 0.3);
@@ -131,30 +132,36 @@ void main()
         return;
     }
     
+    // Biome colors interpolated by temperature
+    vec3 c_deep = mix(vec3(0.0, 0.1, 0.3), vec3(0.2, 0.0, 0.0), temperature);      // Cold: Deep Blue | Hot: Dark Magma
+    vec3 c_shallow = mix(vec3(0.0, 0.4, 0.6), vec3(0.8, 0.2, 0.0), temperature);   // Cold: Cyan | Hot: Lava
+    vec3 c_sand = mix(vec3(0.8, 0.7, 0.5), vec3(0.4, 0.2, 0.1), temperature);      // Cold: Sand | Hot: Scorched
+    vec3 c_grass = mix(vec3(0.2, 0.5, 0.1), vec3(0.7, 0.4, 0.1), temperature);     // Cold: Grass | Hot: Desert
+    vec3 c_rock = mix(vec3(0.4, 0.4, 0.4), vec3(0.1, 0.1, 0.1), temperature);      // Cold: Rock | Hot: Basalt
+    vec3 c_snow = mix(vec3(0.95, 0.95, 1.0), vec3(0.8, 0.6, 0.3), temperature);    // Cold: Snow | Hot: Ash/Sulfur
+
     // Biome coloring
     vec3 finalColor;
     if (h < seaLevel) {
-        finalColor = mix(deepOcean, shallowOcean, h / seaLevel);
+        finalColor = mix(c_deep, c_shallow, h / seaLevel);
     } else if (h < sandLevel) {
-        finalColor = sand;
+        finalColor = c_sand;
     } else if (h < grassLevel) {
-        finalColor = mix(sand, grass, (h - sandLevel) / (grassLevel - sandLevel));
+        finalColor = mix(c_sand, c_grass, (h - sandLevel) / (grassLevel - sandLevel));
     } else if (h < rockLevel) {
-        finalColor = mix(grass, rock, (h - grassLevel) / (rockLevel - grassLevel));
+        finalColor = mix(c_grass, c_rock, (h - grassLevel) / (rockLevel - grassLevel));
     } else if (h < snowLevel) {
-        finalColor = rock;
+        finalColor = c_rock;
     } else {
-        finalColor = snow;
+        finalColor = c_snow;
     }
 
-    // Apply seed-based color variation
-    float hueShift = fract(sin(float(seed) * 12.9898) * 43758.5453);
-    float satShift = fract(sin(float(seed) * 78.233) * 43758.5453) * 0.5 - 0.25;
-    float valShift = fract(sin(float(seed) * 37.719) * 43758.5453) * 0.4 - 0.2;
+    // Apply seed-based variation (Reduced to keep temperature identity)
+    float hueShift = (fract(sin(float(seed) * 12.9898) * 43758.5453) - 0.5) * 0.05;
+    float valShift = (fract(sin(float(seed) * 37.719) * 43758.5453) - 0.5) * 0.1;
     
     vec3 hsv = rgb2hsv(finalColor);
     hsv.x = fract(hsv.x + hueShift);
-    hsv.y = clamp(hsv.y + satShift, 0.0, 1.0);
     hsv.z = clamp(hsv.z + valShift, 0.0, 1.0);
     finalColor = hsv2rgb(hsv);
 

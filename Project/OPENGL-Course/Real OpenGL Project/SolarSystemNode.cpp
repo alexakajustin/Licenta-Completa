@@ -148,6 +148,13 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			mat->SetFloat("lacunarity", lacunDist(gen));
 			mat->SetFloat("tessLevel", 8.0f);
 			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
+
+			// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
+			float temp = 0.5f;
+			if (maxRadius > minRadius) {
+				temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
+			}
+			mat->SetFloat("temperature", temp);
 		}
 
 		p->GetTransform().SetPosition(pos);

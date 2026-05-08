@@ -2,6 +2,12 @@
 #define GRAPHICS_SETTINGS_H
 
 #include <GL/glew.h>
+#include <glm/glm.hpp>
+
+enum class SkyboxType {
+	Atmospheric = 0,
+	Universe = 1
+};
 
 struct GraphicsSettings {
 	// SSAO
@@ -30,6 +36,17 @@ struct GraphicsSettings {
 	float cloudsDensity = 0.5f;
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
+
+	// Skybox Selection
+	SkyboxType skyboxType = SkyboxType::Atmospheric;
+
+	// Universe Settings
+	float universeStarDensity = 0.5f;
+	float universeStarBrightness = 1.0f;
+	float universeNebulaIntensity = 0.5f;
+	float universeSpeed = 0.01f;
+	glm::vec3 universeNebulaColor1 = glm::vec3(0.5f, 0.2f, 0.8f);
+	glm::vec3 universeNebulaColor2 = glm::vec3(0.1f, 0.5f, 0.9f);
 
 
 	// Debug Tools

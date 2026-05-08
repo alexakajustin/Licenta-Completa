@@ -16,13 +16,13 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
-uniform float noiseScale = 1.0;
-uniform int octaves = 6;
-uniform float persistence = 0.5;
-uniform float lacunarity = 2.0;
-uniform float displacementHeight = 5.0;
-uniform float radius = 100.0;
-uniform int seed = 0;
+uniform float noiseScale;
+uniform int octaves;
+uniform float persistence;
+uniform float lacunarity;
+uniform float displacementHeight;
+uniform float radius;
+uniform int seed;
 
 // Simplex 3D Noise implementation
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }

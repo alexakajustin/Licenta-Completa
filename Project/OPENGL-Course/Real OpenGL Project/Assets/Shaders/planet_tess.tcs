@@ -13,8 +13,8 @@ out vec3 Normal_ES_in[];
 out vec3 LocalPos_ES_in[];
 
 uniform vec3 eyePosition;
-uniform float tessLevel = 8.0;
-uniform float tessDistance = 500.0;
+uniform float tessLevel;
+uniform float tessDistance;
 
 float GetTessLevel(float distance0, float distance1)
 {
