@@ -152,6 +152,7 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="AssetBrowser.cpp" />
     <ClCompile Include="AssetManager.cpp" />
+    <ClCompile Include="BeautifulErosionNode.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CascadedShadowMap.cpp" />
     <ClCompile Include="CityGridNode.cpp" />
@@ -538,6 +539,7 @@
   <ItemGroup>
     <ClInclude Include="AllOperations.h" />
     <ClInclude Include="AssetManager.h" />
+    <ClInclude Include="BeautifulErosionNode.h" />
     <ClInclude Include="BuildingGenNode.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CascadedShadowMap.h" />

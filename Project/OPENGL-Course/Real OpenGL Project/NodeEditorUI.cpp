@@ -3,6 +3,7 @@
 #include "PerlinNoiseNode.h"
 #include "SceneInputNode.h"
 #include "HydraulicErosionNode.h"
+#include "BeautifulErosionNode.h"
 #include "RiverNode.h"
 #include "ScatterNode.h"
 #include "MergeMeshNode.h"
@@ -253,6 +254,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 
 		if (ImGui::MenuItem("Perlin Noise")) newNode = new PerlinNoiseNode(graph);
 		if (ImGui::MenuItem("Hydraulic Erosion")) newNode = new HydraulicErosionNode(graph);
+		if (ImGui::MenuItem("Beautiful Erosion")) newNode = new BeautifulErosionNode(graph);
 		if (ImGui::MenuItem("River")) newNode = new RiverNode(graph);
 		if (ImGui::MenuItem("Scene Input")) newNode = new SceneInputNode(graph);
 		if (ImGui::MenuItem("Scatter")) newNode = new ScatterNode(graph);
