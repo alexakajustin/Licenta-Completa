@@ -4,6 +4,18 @@
 #include "Shader.h"
 
 Planet::Planet(const std::string& name) : GameObject(name) {
+    static Shader* sharedShader = nullptr;
+    if (!sharedShader) {
+        sharedShader = new Shader();
+        sharedShader->CreateFromFiles("Assets/Shaders/planet.vert",
+                                      "Assets/Shaders/planet_tess.tcs",
+                                      "Assets/Shaders/planet_tess.tes",
+                                      "Assets/Shaders/planet.frag");
+    }
+    Material* mat = new Material();
+    mat->SetShader(sharedShader);
+    mat->SetFloat("radius", params.radius);
+    SetMaterial(mat);
     noise = std::make_unique<Noise3D>(params.seed);
 }
 

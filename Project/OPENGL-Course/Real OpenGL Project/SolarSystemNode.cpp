@@ -33,27 +33,23 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	if (progress) progress(20.0f, "Generating Sun...");
 
-	// 1. Generate Sun
+	// 1. Generate Sun — exactly like the menu
 	if (generateSun) {
 		std::string sunName = basePrefix + "Sun";
 		Planet* sun = new Planet(sunName);
-		
 		PlanetParams pParams;
 		pParams.radius = sunScale;
 		pParams.subdivisions = 6;
-		pParams.seed = seedDist(gen);
 		sun->SetParams(pParams);
-		
+		sun->Generate();
 		sun->GetTransform().SetPosition(center);
-		sun->Generate(); 
-		
 		scene.AddObject(sun);
 		spawnedObjects.insert(sunName);
 	}
 
 	if (progress) progress(50.0f, "Generating Planets...");
 
-	// 2. Generate Planets
+	// 2. Generate Planets — exactly like the context menu: new Planet -> Generate
 	outputs[1].data.transforms.clear();
 	outputs[1].data.transforms.resize(planetCount);
 	outputs[1].data.type = PinDataType::TransformList;
@@ -62,29 +58,26 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		float r = radDist(gen);
 		float angle = angleDist(gen);
 		float s = scaleDist(gen);
-		unsigned int pSeed = seedDist(gen);
 
 		// Calculate position in orbit
 		float radAngle = glm::radians(angle);
 		glm::vec3 pos = center + glm::vec3(r * cos(radAngle), 0.0f, r * sin(radAngle));
 
-		// Generate Planet Object
 		std::string planetName = basePrefix + "Planet_" + std::to_string(i);
 		Planet* p = new Planet(planetName);
-		
+
+		// Set radius before Generate() so the mesh is generated at the right size
 		PlanetParams pParams;
 		pParams.radius = s;
-		pParams.subdivisions = 5;
-		pParams.seed = pSeed;
 		p->SetParams(pParams);
-		
-		p->GetTransform().SetPosition(pos);
+
 		p->Generate();
-		
+		p->GetTransform().SetPosition(pos);
+		p->GetTransform().SetScale(glm::vec3(1.0f)); // mesh already at correct size
+
 		scene.AddObject(p);
 		spawnedObjects.insert(planetName);
 
-		// Output transform data
 		TransformData td;
 		td.position = pos;
 		td.scale = glm::vec3(s);
@@ -110,7 +103,7 @@ void SolarSystemNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Max Radius", &maxRadius, 1.0f, 10.0f, 10000.0f);
 	ImGui::DragFloat("Min Scale", &minScale, 0.1f, 0.1f, 1000.0f);
 	ImGui::DragFloat("Max Scale", &maxScale, 0.1f, 0.1f, 1000.0f);
-	
+
 	ImGui::Checkbox("Generate Sun", &generateSun);
 	if (generateSun) {
 		ImGui::DragFloat("Sun Scale", &sunScale, 1.0f, 1.0f, 10000.0f);
