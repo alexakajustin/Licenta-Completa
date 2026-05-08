@@ -75,6 +75,19 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	outputs[1].data.transforms.clear();
 	outputs[1].data.type = PinDataType::TransformList;
 
+	std::uniform_real_distribution<float> noiseDist(0.5f, 2.5f);
+	std::uniform_int_distribution<int> octavesDist(4, 8);
+	std::uniform_real_distribution<float> persistDist(0.3f, 0.6f);
+	std::uniform_real_distribution<float> lacunDist(4.0f, 7.0f);
+
+	std::uniform_real_distribution<float> seaDist(0.2f, 0.6f);
+	std::uniform_real_distribution<float> sandGapDist(0.01f, 0.05f);
+	std::uniform_real_distribution<float> grassGapDist(0.05f, 0.2f);
+	std::uniform_real_distribution<float> rockGapDist(0.1f, 0.2f);
+	std::uniform_real_distribution<float> snowGapDist(0.05f, 0.15f);
+
+	std::uniform_real_distribution<float> dispDist(3.0f, 5.0f);
+
 	for (int i = 0; i < planetCount; ++i) {
 		float r, angle, s;
 		glm::vec3 pos;
@@ -115,18 +128,24 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		p->Generate();
 
+		float seaLvl = seaDist(gen);
+		float sandLvl = seaLvl + sandGapDist(gen);
+		float grassLvl = sandLvl + grassGapDist(gen);
+		float rockLvl = grassLvl + rockGapDist(gen);
+		float snowLvl = std::min(rockLvl + snowGapDist(gen), 1.0f);
+
 		if (Material* mat = p->GetMaterial()) {
 			mat->SetInt("isSun", 0);
-			mat->SetFloat("displacementHeight", s * 0.1f);
-			mat->SetFloat("seaLevel", 0.45f);
-			mat->SetFloat("sandLevel", 0.48f);
-			mat->SetFloat("grassLevel", 0.6f);
-			mat->SetFloat("rockLevel", 0.8f);
-			mat->SetFloat("snowLevel", 0.9f);
-			mat->SetFloat("noiseScale", 1.0f);
-			mat->SetInt("octaves", 6);
-			mat->SetFloat("persistence", 0.5f);
-			mat->SetFloat("lacunarity", 2.0f);
+			mat->SetFloat("displacementHeight", dispDist(gen));
+			mat->SetFloat("seaLevel", seaLvl);
+			mat->SetFloat("sandLevel", sandLvl);
+			mat->SetFloat("grassLevel", grassLvl);
+			mat->SetFloat("rockLevel", rockLvl);
+			mat->SetFloat("snowLevel", snowLvl);
+			mat->SetFloat("noiseScale", noiseDist(gen));
+			mat->SetInt("octaves", octavesDist(gen));
+			mat->SetFloat("persistence", persistDist(gen));
+			mat->SetFloat("lacunarity", lacunDist(gen));
 			mat->SetFloat("tessLevel", 8.0f);
 			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
 		}
