@@ -192,6 +192,9 @@
     <ClCompile Include="Planet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SolarSystemNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="External Libs\GLEW\doc\advanced.html" />
@@ -1597,6 +1600,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HydraulicErosionNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SolarSystemNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h">

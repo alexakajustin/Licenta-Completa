@@ -15,6 +15,7 @@
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
 #include "ObjectIntersectionFilterNode.h"
+#include "SolarSystemNode.h"
 #include "NodeBuilderUI.h"
 #include "SceneManager.h"
 #include "GameObject.h"
@@ -905,8 +906,9 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "Filter Transforms") node = new FilterTransformListNode(*this);
 			else if (title == "Object Filter") node = new ObjectIntersectionFilterNode(*this);
 			else if (title == "For Each") node = new ForEachNode(*this);
-		else if (title == "City Grid") node = new CityGridNode(*this);
-		else if (title == "Building Gen") node = new BuildingGenNode(*this);
+			else if (title == "City Grid") node = new CityGridNode(*this);
+			else if (title == "Building Gen") node = new BuildingGenNode(*this);
+			else if (title == "Solar System") node = new SolarSystemNode(*this);
 			else
 			{
 				// Check if it's a Custom Node
@@ -947,7 +949,8 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 		name.find("Scatter_Instanced_") != std::string::npos ||
 		name.find("Scatter_Group_") != std::string::npos ||
 		name.find("River_Water_") != std::string::npos ||
-		name.find("Lake_Water_") != std::string::npos)
+		name.find("Lake_Water_") != std::string::npos ||
+		name.find("SolarSystem_") != std::string::npos)
 		return true;
 
 	return false;

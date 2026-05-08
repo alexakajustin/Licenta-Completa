@@ -18,6 +18,7 @@
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
 #include "ObjectIntersectionFilterNode.h"
+#include "SolarSystemNode.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -259,6 +260,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("City Grid")) newNode = new CityGridNode(graph);
 		if (ImGui::MenuItem("Building Gen")) newNode = new BuildingGenNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
+		if (ImGui::MenuItem("Solar System")) newNode = new SolarSystemNode(graph);
 
 		ImGui::Separator();
 

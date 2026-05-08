@@ -214,6 +214,7 @@
     <ClCompile Include="FluidSimulation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SolarSystemNode.cpp" />
     <ClCompile Include="HydraulicErosionNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -549,6 +550,7 @@
     <ClInclude Include="FluidSimulation.h" />
     <ClInclude Include="GraphicsSettings.h" />
     <ClInclude Include="Grid2D.h" />
+    <ClInclude Include="SolarSystemNode.h" />
     <ClInclude Include="HydraulicErosionNode.h" />
     <ClInclude Include="Noise3D.h" />
     <ClInclude Include="ObjectIntersectionFilterNode.h" />
