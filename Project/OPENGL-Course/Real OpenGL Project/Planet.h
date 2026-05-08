@@ -19,6 +19,7 @@ public:
     void UpdateUniforms();
     void SetParams(const PlanetParams& params);
     const PlanetParams& GetParams() const { return params; }
+    void UseSunShader();
 
 private:
     PlanetParams params;

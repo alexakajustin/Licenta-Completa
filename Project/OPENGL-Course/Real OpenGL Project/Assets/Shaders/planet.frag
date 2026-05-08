@@ -86,13 +86,6 @@ void main()
     vec3 offset = vec3(float(seed) * 0.123, float(seed) * 0.456, float(seed) * 0.789);
     float h = fbm6(lPos * noiseScale + offset) * 0.8 + 0.1;
 
-    if (isSun) {
-        vec3 sunBright = vec3(1.0, 0.95, 0.6);
-        vec3 sunDark = vec3(1.0, 0.4, 0.0);
-        FragColor = vec4(mix(sunDark, sunBright, h), 1.0);
-        return;
-    }
-    
     // Biome colors interpolated by temperature
     vec3 c_deep = mix(vec3(0.0, 0.05, 0.2), vec3(0.2, 0.0, 0.0), temperature);      
     vec3 c_shallow = mix(vec3(0.0, 0.3, 0.5), vec3(0.8, 0.2, 0.0), temperature);   

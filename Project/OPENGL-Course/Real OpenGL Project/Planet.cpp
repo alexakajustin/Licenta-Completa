@@ -95,3 +95,17 @@ void Planet::SetParams(const PlanetParams& p) {
     params = p;
     // noise is now used mainly for seed if we do CPU stuff, but for now we rely on GPU
 }
+
+void Planet::UseSunShader() {
+    static Shader* sunShader = nullptr;
+    if (!sunShader) {
+        sunShader = new Shader();
+        sunShader->CreateFromFiles("Assets/Shaders/sun.vert",
+                                    "Assets/Shaders/sun_tess.tcs",
+                                    "Assets/Shaders/sun_tess.tes",
+                                    "Assets/Shaders/sun.frag");
+    }
+    if (GetMaterial()) {
+        GetMaterial()->SetShader(sunShader);
+    }
+}

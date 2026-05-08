@@ -45,9 +45,9 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		pParams.seed = seedDist(gen);
 		sun->SetParams(pParams);
 		sun->Generate();
+		sun->UseSunShader();
 
 		if (Material* mat = sun->GetMaterial()) {
-			mat->SetInt("isSun", 1);
 			mat->SetFloat("displacementHeight", sunScale * 0.05f);
 			mat->SetFloat("seaLevel", 0.45f);
 			mat->SetFloat("sandLevel", 0.48f);

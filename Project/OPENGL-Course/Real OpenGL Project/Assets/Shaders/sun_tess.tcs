@@ -1,0 +1,37 @@
+#version 410 core
+
+layout (vertices = 3) out;
+
+in vec3 WorldPos_CS_in[];
+in vec2 TexCoord_CS_in[];
+in vec3 Normal_CS_in[];
+in vec3 LocalPos_CS_in[];
+
+out vec3 WorldPos_ES_in[];
+out vec2 TexCoord_ES_in[];
+out vec3 Normal_ES_in[];
+out vec3 LocalPos_ES_in[];
+
+uniform vec3 eyePosition;
+uniform float tessLevel;
+uniform float tessDistance;
+
+void main()
+{
+    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+    WorldPos_ES_in[gl_InvocationID] = WorldPos_CS_in[gl_InvocationID];
+    TexCoord_ES_in[gl_InvocationID] = TexCoord_CS_in[gl_InvocationID];
+    Normal_ES_in[gl_InvocationID] = Normal_CS_in[gl_InvocationID];
+    LocalPos_ES_in[gl_InvocationID] = LocalPos_CS_in[gl_InvocationID];
+
+    if (gl_InvocationID == 0)
+    {
+        float dist = distance(eyePosition, WorldPos_CS_in[0]);
+        float level = mix(tessLevel, 1.0, clamp(dist / tessDistance, 0.0, 1.0));
+
+        gl_TessLevelOuter[0] = level;
+        gl_TessLevelOuter[1] = level;
+        gl_TessLevelOuter[2] = level;
+        gl_TessLevelInner[0] = level;
+    }
+}
