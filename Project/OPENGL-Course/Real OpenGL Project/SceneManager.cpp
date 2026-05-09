@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <thread>
 #include <unordered_set>
+#include <map>
 #include "InstancedGroup.h"
 #include "Renderer.h"
 #include "UndoActions.h"
@@ -402,6 +403,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 	std::vector<std::pair<GameObject*, bool>> debugCullingList;
 	bool debugShowCulling = (!overrideShader && graphicsSettings && graphicsSettings->debugShowCulling);
+	
+	// Precalculate projection constants for linearized depth comparison (used in occlusion culling)
+	float A_const = projection[2][2]; float B_const = projection[3][2];
+	float n_const = B_const / (A_const - 1.0f);
+	float f_const = (std::abs(A_const + 1.0f) > 0.0001f) ? (B_const / (A_const + 1.0f)) : 20000.0f;
 
 	auto RenderQueue = [&](const std::vector<GameObject*>& queue) {
 		std::vector<Batch> localBatchList;
@@ -463,54 +469,87 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							glm::vec3(bmin.x, bmax.y, bmax.z), glm::vec3(bmax.x, bmax.y, bmax.z)
 						};
 
-						glm::vec2 minNDC = glm::vec2(1.0f);
-						glm::vec2 maxNDC = glm::vec2(-1.0f);
-						bool crossesNearPlane = false;
-						float nearestDepth = 1.0f;
-
-						for (int i = 0; i < 8; ++i) {
-							glm::vec4 clipPos = prevViewProj * glm::vec4(corners[i], 1.0f);
-							if (clipPos.w < 0.01f) { crossesNearPlane = true; break; }
-							glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
-							minNDC.x = std::min(minNDC.x, ndc.x); minNDC.y = std::min(minNDC.y, ndc.y);
-							maxNDC.x = std::max(maxNDC.x, ndc.x); maxNDC.y = std::max(maxNDC.y, ndc.y);
-							float d = ndc.z * 0.5f + 0.5f; nearestDepth = std::min(nearestDepth, d);
+						// Transform to view space to handle near-plane clipping robustly
+						glm::vec3 vmin(FLT_MAX), vmax(-FLT_MAX);
+						for (int i = 0; i < 8; i++) {
+							glm::vec4 vPos = view * glm::vec4(corners[i], 1.0f);
+							vmin = glm::min(vmin, glm::vec3(vPos));
+							vmax = glm::max(vmax, glm::vec3(vPos));
 						}
 
-						if (!crossesNearPlane) {
+						if (vmin.z > -0.1f) {
+							// Entirely behind the camera
+							isCulled = true;
+						} else {
+							// Clamp the front of the bounding box to the near plane
+							vmax.z = std::min(vmax.z, -0.1f);
+
+							glm::vec3 vCorners[8] = {
+								glm::vec3(vmin.x, vmin.y, vmin.z), glm::vec3(vmax.x, vmin.y, vmin.z),
+								glm::vec3(vmin.x, vmax.y, vmin.z), glm::vec3(vmax.x, vmax.y, vmin.z),
+								glm::vec3(vmin.x, vmin.y, vmax.z), glm::vec3(vmax.x, vmin.y, vmax.z),
+								glm::vec3(vmin.x, vmax.y, vmax.z), glm::vec3(vmax.x, vmax.y, vmax.z)
+							};
+
+							glm::vec2 minNDC = glm::vec2(1.0f);
+							glm::vec2 maxNDC = glm::vec2(-1.0f);
+							float nearestDepth = 1.0f;
+
+							for (int i = 0; i < 8; ++i) {
+								glm::vec4 clipPos = projection * glm::vec4(vCorners[i], 1.0f);
+								glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+								minNDC.x = std::min(minNDC.x, ndc.x); minNDC.y = std::min(minNDC.y, ndc.y);
+								maxNDC.x = std::max(maxNDC.x, ndc.x); maxNDC.y = std::max(maxNDC.y, ndc.y);
+								float d = ndc.z * 0.5f + 0.5f; nearestDepth = std::min(nearestDepth, d);
+							}
+
 							minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f); minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
 							maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f); maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
 							glm::vec2 minUV = minNDC * 0.5f + 0.5f;
 							glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
 
-							int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-							int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
-							int endX = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-							int endY = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+							// INSET GUARD: Shrink the sampling footprint by 2 pixels on all sides to avoid 
+							// "bleeding" from the conservative max-filter downsampling of the Hi-Z map.
+							// This prevents objects whose bounding boxes slightly overlap the sky from failing the cull check.
+							int startX = std::clamp((int)(minUV.x * cpuHiZWidth) + 2, 0, cpuHiZWidth - 1);
+							int endX   = std::clamp((int)(maxUV.x * cpuHiZWidth) - 2, 0, cpuHiZWidth - 1);
+							if (startX > endX) { 
+								startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * cpuHiZWidth), 0, cpuHiZWidth - 1);
+								endX = startX;
+							}
+
+							int startY = std::clamp((int)(minUV.y * cpuHiZHeight) + 2, 0, cpuHiZHeight - 1);
+							int endY   = std::clamp((int)(maxUV.y * cpuHiZHeight) - 2, 0, cpuHiZHeight - 1);
+							if (startY > endY) { 
+								startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * cpuHiZHeight), 0, cpuHiZHeight - 1);
+								endY = startY;
+							}
 
 							float maxOccluderDepth = 0.0f;
-							int area = (endX - startX + 1) * (endY - startY + 1);
-							if (area < (cpuHiZWidth * cpuHiZHeight) / 5) {
-								for (int y = startY; y <= endY; ++y) {
-									int rowOffset = y * cpuHiZWidth;
-									for (int x = startX; x <= endX; ++x) {
-										maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[rowOffset + x]);
-									}
+							for (int y = startY; y <= endY; ++y) {
+								int rowOffset = y * cpuHiZWidth;
+								for (int x = startX; x <= endX; ++x) {
+									maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[rowOffset + x]);
 								}
-
-								float A = projection[2][2]; float B = projection[3][2];
-								float nearPlane = B / (A - 1.0f); float farPlane = B / (A + 1.0f);
-								float linNearest = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
-								float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
-								if (linNearest > linOccluder + 5.0f) isCulled = true;
 							}
+
+							// Linearize for stable comparison
+							float linNearest = (2.0f * n_const * f_const) / (f_const + n_const - (nearestDepth * 2.0f - 1.0f) * (f_const - n_const));
+							float linOccluder = (2.0f * n_const * f_const) / (f_const + n_const - (maxOccluderDepth * 2.0f - 1.0f) * (f_const - n_const));
+
+							// BULLETPROOF: Tiny 0.05m epsilon to prevent flickering (Z-fighting) 
+							if (linNearest > linOccluder + 0.05f) isCulled = true;
 						}
 					}
 				}
 			}
 
 			if (debugShowCulling) debugCullingList.push_back({ obj, isCulled });
-			if (isCulled && !debugShowCulling) continue;
+			
+			// If culled, skip the normal rendering paths.
+			// If we are in debug mode, we still continue so we don't draw the solid mesh,
+			// leaving only the red wireframe from the debug list.
+			if (isCulled) continue;
 
 			Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);
 			if (!targetShader) continue;
@@ -523,12 +562,21 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			}
 
 			if (msh && !mdl && msh->IsInstanced() && !hasLayers && !isPickingPass) {
+				bool isShadowPass = (overrideShader && renderer && (overrideShader->GetShaderID() == renderer->GetDirectionalShadowShader().GetShaderID() || overrideShader->GetShaderID() == renderer->GetTessShadowShader().GetShaderID()));
+				
 				bool found = false;
 				for (auto& b : localBatchList) {
-					if (b.mesh == msh && b.material == mat && b.texture == tex && b.normalMap == norm && b.isSelected == isSelected) {
-						b.matrices.push_back(obj->GetWorldMatrix());
-						found = true;
-						break;
+					// AGGRESSIVE SHADOW BATCHING: If it's a shadow pass, ignore material/texture for opaque objects
+					if (b.mesh == msh && b.isSelected == isSelected) {
+						if (isShadowPass) {
+							b.matrices.push_back(obj->GetWorldMatrix());
+							found = true;
+							break;
+						} else if (b.material == mat && b.texture == tex && b.normalMap == norm) {
+							b.matrices.push_back(obj->GetWorldMatrix());
+							found = true;
+							break;
+						}
 					}
 				}
 				if (!found) localBatchList.push_back({ msh, mat, tex, norm, isSelected, {obj->GetWorldMatrix()} });
@@ -893,22 +941,74 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		glUniformMatrix4fv(gizmoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
 		
-		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
-		GLint modelLoc = gizmoShader.GetModelLocation();
+		// Batch debug wireframes by color to minimize draw calls
+		struct DebugBatch {
+			std::vector<glm::mat4> matrices;
+			Mesh* mesh = nullptr;
+			Model* model = nullptr;
+		};
+		std::map<Mesh*, DebugBatch> greenMeshBatches, redMeshBatches;
+		std::map<Model*, DebugBatch> greenModelBatches, redModelBatches;
 
 		for (auto& entry : debugCullingList) {
 			GameObject* obj = entry.first;
 			bool objCulled = entry.second;
 
-			if (objCulled) glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // RED
-			else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f); // GREEN
-
-			glm::mat4 modelMat = obj->GetWorldMatrix();
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
-			
-			if (obj->GetModel()) obj->GetModel()->RenderModel(-1, -1, -1, -1);
-			else if (obj->GetMesh()) obj->GetMesh()->RenderMesh();
+			if (objCulled) {
+				if (obj->GetModel()) redModelBatches[obj->GetModel()].matrices.push_back(obj->GetWorldMatrix());
+				else if (obj->GetMesh()) redMeshBatches[obj->GetMesh()].matrices.push_back(obj->GetWorldMatrix());
+			} else {
+				if (obj->GetModel()) greenModelBatches[obj->GetModel()].matrices.push_back(obj->GetWorldMatrix());
+				else if (obj->GetMesh()) greenMeshBatches[obj->GetMesh()].matrices.push_back(obj->GetWorldMatrix());
+			}
 		}
+
+		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+		GLint modelLoc = gizmoShader.GetModelLocation();
+		GLint instLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "useInstancing");
+
+		auto DrawDebugBatch = [&](const std::map<Mesh*, DebugBatch>& batches, const glm::vec3& color) {
+			glUniform3f(colorLoc, color.r, color.g, color.b);
+			for (auto& pair : batches) {
+				const auto& b = pair.second;
+				if (b.matrices.empty()) continue;
+				
+				if (pair.first->IsInstanced()) {
+					if (instLoc != -1) glUniform1i(instLoc, 1);
+					pair.first->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
+				} else {
+					if (instLoc != -1) glUniform1i(instLoc, 0);
+					for (const auto& m : b.matrices) {
+						glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+						pair.first->RenderMesh();
+					}
+				}
+			}
+		};
+
+		// 1. Draw Green Batches (Visible)
+		DrawDebugBatch(greenMeshBatches, glm::vec3(0.0f, 1.0f, 0.0f));
+		for (auto& pair : greenModelBatches) {
+			glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f);
+			if (instLoc != -1) glUniform1i(instLoc, 0); // Models don't support instancing yet here
+			for (const auto& m : pair.second.matrices) {
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+				pair.first->RenderModel(-1, -1, -1, -1);
+			}
+		}
+
+		// 2. Draw Red Batches (Culled)
+		DrawDebugBatch(redMeshBatches, glm::vec3(1.0f, 0.0f, 0.0f));
+		for (auto& pair : redModelBatches) {
+			glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
+			if (instLoc != -1) glUniform1i(instLoc, 0);
+			for (const auto& m : pair.second.matrices) {
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+				pair.first->RenderModel(-1, -1, -1, -1);
+			}
+		}
+		
+		if (instLoc != -1) glUniform1i(instLoc, 0);
 		
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glEnable(GL_CULL_FACE);
