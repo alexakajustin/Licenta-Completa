@@ -79,7 +79,7 @@ void main()
 	
 	vec3 finalColor = v * 0.01;
 	
-	// Add a subtle star density boost if requested
+	// Add a subtle star density boost
 	finalColor *= (0.5 + starDensity * 0.5);
 
 	FragColor = vec4(finalColor, 1.0);

@@ -69,7 +69,7 @@ Dezvoltarea unui motor PCG aduce provocări pe care motoarele tradiționale le e
 
 Din punct de vedere informatic, acest lucru înseamnă că sistemul nu poate pur și simplu să trimită date brute către placa video. Au trebuit implementate constrângeri stricte de memorie și tehnici agresive de optimizare, precum *View Frustum Culling* (eliminarea obiectelor din afara razei vizuale a camerei), calcule spațiale prin Quad-trees și *Instanced Rendering* masiv, prin care mii de copaci sunt randați printr-un singur apel de desenare (*draw call*). 
 
-O altă limitare asumată a fost hardware-ul țintă. Mi-am propus ca RAMY Engine să ruleze și pe dispozitive low-end, pentru a respecta viziunea de accesibilitate. Acest lucru a necesitat implementarea unui sistem de setări grafice granulare, permițând motorului să scaleze nivelul de tessellation și rezoluția umbrelor în mod dinamic, în funcție de puterea hardware-ului pe care rulează.
+O altă limitare asumată a fost hardware-ul țintă. Mi-am propus ca RAMY Engine să ruleze și pe dispozitive low-end, pentru a respecta viziunea de accesibilitate. Acest lucru a necesitat implementarea unui sistem de setări grafice granulare, permițând motorului să scaleze dinamic distanțele de randare (LOD - Level of Detail), calitatea efectelor de ocluzie ambientală (SSAO) și să ajusteze complexitatea randării atmosferice (God Rays, Volumetric Sky), în funcție de puterea hardware-ului pe care rulează.
 
 ### 1.2.3. Tehnologii relevante și justificarea alegerilor fundamentale
 Alegerea **C++** ca limbaj principal al proiectului a fost influențată de necesități absolute, dar și de sentimente personale. În primul rând, din perspectivă tehnică, C++ este standardul de aur în industria graficii pe calculator. Performanța sa *bare-metal* (apropierea de limbajul mașină), capacitatea de a gestiona memoria manual și integrarea nativă cu OpenGL îl fac indispensabil. O simulare de fluid pentru eroziune hidraulică pe un grid de milioane de puncte necesită viteza pe care doar C++ (sau compute shaderele) o poate oferi.
@@ -77,15 +77,6 @@ Alegerea **C++** ca limbaj principal al proiectului a fost influențată de nece
 În al doilea rând, alegerea are o rezonanță profundă pentru mine. Munca cu C++ îmi este "nostalgică"; a fost limbajul care m-a introdus în lumea logicii și a programării încă de pe băncile liceului. Am simțit nevoia să mă reconectez cu rădăcinile mele tehnice, demonstrând că un limbaj adesea considerat "prea complex" de generațiile noi poate fi elegant și plin de suflet atunci când este scris cu pasiune.
 
 În privința bibliotecilor externe (*ImGui*, *Assimp*, *GLM*), selecția s-a făcut după principiul funcționalității directe. Nu am vrut să reinventez roata (*Not Invented Here syndrome*) pentru parsarea formatului `.obj` sau pentru matematica vectorială. Am vrut simplitate și stabilitate, un fundament "out-of-the-box" pe care să construiesc arhitectura RAMY. Sunt conștient că pe parcurs, odată cu extinderea motorului, unele din aceste librării ar putea fi înlocuite cu soluții personalizate hyper-optimizate, dar pentru stadiul actual al licenței, ele reprezintă un "schelet" funcțional și robust, îndeplinind perfect misiunea proiectului.
-Cea mai mare provocare pe care am întâmpinat-o, și la care lucrez constant, este optimizarea procesului de randare. Este extrem de dificil să găsesc acel "sweet spot" între performanță și calitatea vizuală atunci când sistemul trebuie să gestioneze procedural milioane de *asset*-uri simultan. 
-
-O altă constrângere majoră este diversitatea hardware-ului utilizatorilor. Mi-am propus ca RAMY Engine să nu fie un software dedicat exclusiv dispozitivelor high-end. Pentru a depăși această limitare, am implementat un sistem de setări grafice granulare, permițând motorului să ruleze stabil și pe configurații hardware mai modeste sau pe plăci video integrate (AMD sau NVIDIA), asigurând o compatibilitate *out-of-the-box* cu puține detecții necesare la lansare.
-
-**1.2.3. Tehnologii relevante**
-
-Alegerea limbajului de programare **C++** a fost influențată de două motive majore. În primul rând, C++ este standardul absolut în industria motoarelor grafice datorită vitezei de execuție și controlului asupra resurselor. În al doilea rând, alegerea are o puternică încărcătură personală; am o apreciere nostalgică pentru C++, fiind limbajul care m-a introdus în lumea programării încă din liceu. Am simțit nevoia să rămân aproape de rădăcinile mele tehnice în realizarea acestui proiect de suflet.
-
-În ceea ce privește bibliotecile externe, am optat pentru soluții precum **ImGui** și **Assimp** datorită ușurinței de utilizare și a funcționalității lor imediate. Deși sunt conștient că există alternative mai puternice sau mai optimizate pentru anumite sarcini specifice, scopul meu principal a fost construirea unui "schelet" funcțional și complet. Am prioritizat simplitatea și eficiența implementării, dorind să am un produs stabil pe care să pot construi ulterior module mai avansate.
 
 ---
 
@@ -109,23 +100,21 @@ Tendința actuală în jocurile *Open World* este utilizarea generării procedur
 
 În prezent, nu există pe piață un software de sine stătător, open-source, care să se nișeze strict pe viziunea pe care o propun prin RAMY Engine. Concurența este reprezentată în principal de:
 *   **Plugin-uri integrate:** Soluții precum *Gaia* sau *MapMagic* pentru Unity și noul framework PCG din Unreal Engine 5. Acestea sunt puternice, dar limitează utilizatorul la ecosistemul motorului respectiv.
-*   **Software-uri specializate:** *Houdini*, *World Creator* sau *Gaea*. Deși excepționale din punct de vedere tehnic, acestea sunt adesea prohibitve ca preț și au o curbă de învățare extrem de abruptă.
+*   **Software-uri specializate:** *Houdini*, *World Creator* sau *Gaea*. Deși excepționale din punct de vedere tehnic, acestea sunt adesea prohibitive ca preț și au o curbă de învățare extrem de abruptă.
 
-**2.2. Soluții existente**
+Concluzia analizei competiționale este că niciuna dintre aceste soluții nu acoperă intersecția exactă pe care RAMY Engine o propune: un motor procedural *standalone*, cu acces total la codul sursă, optimizat pentru randare în timp real și accesibil financiar oricui. Fie ești blocat într-un ecosistem comercial, fie ești expus unui instrument de offline-rendering extraordinar de puternic dar complet inaccesibil unui creator independent. RAMY nu concurează direct cu aceste giganți — ci umple golul pe care ei îl lasă, în mod deliberat sau structural, neacoperit.
 
-**2.2.1. Prezentarea soluțiilor similare și a algoritmilor fundamentali**
-
-Analiza stadiului cunoașterii nu ar fi completă fără o privire asupra matematicii fundamentale care stă la baza tuturor acestor soluții comerciale. Toate motoarele procedurale moderne se bazează pe variații ale unor algoritmi clasici:
-
-*   **Perlin Noise & Simplex Noise:** Dezvoltați de Ken Perlin, acești algoritmi generează zgomot coerent (pseudo-aleator). Spre deosebire de un generator clasic `rand()`, funcțiile de zgomot asigură o tranziție lină între valori, esențială pentru a simula forme organice precum norii sau munții. Simplex Noise este o variantă mai complexă matematic (evaluând pe un simplex, nu pe un grid pătrat), dar cu un cost computațional mult redus pentru spații N-dimensionale (3D/4D) și cu mai puține artefacte vizuale direcționale.
-*   **Zgomot Voronoi / Cellular (Worley):** Un algoritm de partiționare spațială care calculează distanța de la un punct de evaluare la cel mai apropiat punct de control dintr-un set predefinit (*feature points*). Vizual, produce o structură celulară, extrem de utilă pentru a genera texturi organice (piele de reptilă), crăpături în deșert sau rețele arhitecturale/urbane.
-*   **Fractal Brownian Motion (fBm):** Nu este un zgomot de sine stătător, ci o metodă fractală de a însuma mai multe "octave" de zgomot (ex. Simplex), reducând amplitudinea (influența) și crescând frecvența (detaliul) la fiecare iterație. Aceasta tehnică este crucială pentru adăugarea de detaliu micro-topologic peste o structură macro de bază.
-
-Aceste funcții matematice complexe sunt abstractizate masiv de soluțiile comerciale de pe piață:
+## 2.2. Soluții existente
 
 ### 2.2.1. Prezentarea și analiza critică a soluțiilor similare
 
-În peisajul actual al informaticii grafice, soluțiile de generare procedurală pot fi clasificate în două categorii majore: instrumente de autor (*authoring tools*) și motoare de rulare (*runtime engines*). RAMY Engine își propune să facă puntea între aceste două lumi.
+Analiza stadiului cunoașterii nu ar fi completă fără o privire asupra matematicii fundamentale care stă la baza tuturor soluțiilor comerciale existente. Toate motoarele procedurale moderne se bazează pe variații ale câtorva algoritmi clasici, fie că vorbim de Houdini sau de cel mai umil plugin pentru Unity.
+
+*   **Perlin Noise & Simplex Noise:** Dezvoltați de Ken Perlin, acești algoritmi generează zgomot coerent (pseudo-aleator). Spre deosebire de un generator clasic `rand()`, funcțiile de zgomot asigură o tranziție lină între valori, esențială pentru a simula forme organice precum norii sau munții. Simplex Noise este o variantă mai complexă matematic (evaluând pe un simplex, nu pe un grid pătrat), dar cu un cost computațional mult redus pentru spații N-dimensionale (3D/4D) și cu mai puține artefacte vizuale direcționale.
+*   **Zgomot Voronoi / Cellular (Worley):** Un algoritm de partiționare spațială care calculează distanța de la un punct de evaluare la cel mai apropiat punct de control dintr-un set predefinit (*feature points*). Vizual, produce o structură celulară, extrem de utilă pentru a genera texturi organice (piele de reptilă), crăpături în deșert sau rețele arhitecturale/urbane.
+*   **Fractal Brownian Motion (fBm):** Nu este un zgomot de sine stătător, ci o metodă fractală de a însuma mai multe "octave" de zgomot (ex. Simplex), reducând amplitudinea (influența) și crescând frecvența (detaliul) la fiecare iterație. Această tehnică este crucială pentru adăugarea de detaliu micro-topologic peste o structură macro de bază.
+
+Acești algoritmi fundamentali sunt, în practică, abstractizați masiv de soluțiile comerciale de pe piață. În peisajul actual al informaticii grafice, soluțiile de generare procedurală pot fi clasificate în două categorii majore: instrumente de autor (*authoring tools*) și motoare de rulare (*runtime engines*). RAMY Engine își propune să facă puntea între aceste două lumi.
 
 *   **SideFX Houdini:** Este etalonul absolut în industrie pentru fluxurile de lucru bazate pe noduri. Houdini utilizează un sistem de tip *VEX* și *Python* pentru a manipula geometria la nivel de punct. Deși extrem de puternic, complexitatea sa este adesea copleșitoare, necesitând ani de studiu pentru a atinge un nivel de competență profesională. Mai mult, natura sa proprietară înseamnă că inovațiile rămân captive în ecosistemul SideFX. Comparativ, RAMY preia filozofia de noduri a lui Houdini, dar o simplifică și o optimizează strict pentru randarea și interactivitatea în timp real în OpenGL 4.6.
 *   **World Machine și Gaea:** Aceste instrumente sunt specializate exclusiv pe generarea de hărți de înălțime (heightmaps) prin simulări geologice de înaltă fidelitate. Ele excelează în realismul eroziunii, dar rezultatul lor este unul static (o textură sau un mesh exportat). RAMY Engine aduce această putere de generare direct în interiorul pipeline-ului de randare, permițând modificarea parametrilor de eroziune în timp real, fără a fi nevoie de procese intermediare de export sau *baking*.
@@ -159,6 +148,8 @@ Lucrând timp de doi ani în Unity la un proiect procedural, am resimțit lipsa 
 3.  **Modularitatea ca formă de exprimare artistică:** Modularitatea este criteriul care asigură libertatea utilizatorului. Refuz ideea unui software rigid; consider că exprimarea artistică în universul digital constă în capacitatea creatorului de a-și defini singur regulile.
 
 # 3. CAPITOLUL 3: Proiectarea și implementarea soluției
+
+Trecerea de la viziune la cod este întotdeauna momentul în care ideile se confruntă cu realitatea dură a limitărilor hardware, a compromisurilor arhitecturale și a orelor îndelungate de depanare. Acest capitol documentează arhitectura concretă a RAMY Engine — deciziile luate, motivele din spatele lor și implicațiile tehnice ale fiecărei alegeri. Nu este o descriere abstractă a ceea ce ar putea fi construit, ci o radiografie a ceea ce există deja: un sistem funcțional, testat pe hardware real, capabil să genereze ecosisteme procedurale întregi în timp real.
 
 ## 3.1. Arhitectura sistemului
 
@@ -250,7 +241,17 @@ Totuși, am utilizat intensiv instrumente de profilare precum **RenderDoc** pent
 
 ### 3.2.3. Fundamentele matematice ale PCG în RAMY Engine
 
-Generarea procedurală în RAMY nu se bazează pe aleatorism pur, ci pe funcții matematice deterministe care permit recrearea universului virtual cu precizie matematică. Pentru a randa planete la scară reală, am implementat un sistem de *Tessellation* hardware care subdivide dinamic geometria sferei. Geometria de bază este un *Icosphere*, care oferă o distribuție uniformă a vertecșilor, evitând comprimarea la poli specifică sferelor UV.
+Generarea procedurală în RAMY nu se bazează pe aleatorism pur, ci pe funcții matematice deterministe care permit recrearea universului virtual cu precizie matematică. Aceste funcții — zgomotul Perlin, fBm, diagramele Voronoi — sunt piesele de bază din care modulele de generare construiesc totul, de la creste de munți la texturi de piele de șarpe. Matematica nu este ascunsă în spatele unui buton "Generate"; ea este expusă complet prin graful de noduri, lăsând creatorul să înțeleagă și să modifice fiecare termen din ecuație.
+
+## 3.3. Modulele de Generare Procedurală
+
+Această secțiune detaliază implementarea practică a principalelor module de generare care compun nucleul funcțional al RAMY Engine. Fiecare modul este un nod distinct în graful DAG, proiectat să poată fi conectat, înlocuit sau extins fără a afecta restul sistemului. Împreună, ele demonstrează viziunea fundamentală a proiectului: generarea unei lumi complete — de la scoarța planetară până la ultimul fir de vegetație — prin orchestrarea unui set de reguli matematice definite de creator.
+
+### 3.3.1. Descrierea Modulelor Principale
+
+#### 3.3.1.1. Generarea Planetară și Sistemul de Tessellation
+
+Pentru a randa planete la scară reală, am implementat un sistem de *Tessellation* hardware care subdivide dinamic geometria sferei direct pe GPU, fără a transfera triunghiuri suplimentare de pe CPU. Geometria de bază este un *Icosphere*, care oferă o distribuție uniformă a vertecșilor, evitând comprimarea polară specifică sferelor UV clasice — o problemă care devine vizibilă și urâtă atunci când lucrezi la scara unui corp ceresc.
 
 Fragment de cod GLSL (Tessellation Evaluation Shader):
 ```glsl
@@ -269,7 +270,7 @@ void main() {
     gl_Position = u_ProjectionView * vec4(p * (u_Radius + h), 1.0);
 }
 ```
-Nivelul de subdivizare este calculat în `Tessellation Control Shader` pe baza distanței dintre cameră și centrul geometric al fiecărui patch, asigurând un nivel de detaliu constant pe ecran (*LOD - Level of Detail*).
+Nivelul de subdivizare este calculat în `Tessellation Control Shader` pe baza distanței dintre cameră și centrul geometric al fiecărui patch, asigurând un nivel de detaliu constant pe ecran (*LOD - Level of Detail*). Această abordare permite motorului să afișeze detalii geologice fine — crăpături, canioane, creste — fără a stoca niciun vârf suplimentar în memorie atunci când camera se află departe.
 
 #### 3.3.1.2. Generarea Urbană și Arhitecturală (CityGrid)
 
@@ -322,7 +323,11 @@ Faptul că un sistem grafic atât de complex – capabil să susțină calcule m
 
 ## 4.1. Modelul de afaceri și sustenabilitatea
 
-Modelul de afaceri adoptat pentru RAMY Engine este unul atipic pentru industria software-ului comercial, fiind bazat pe principiile altruismului și al dezvoltării comunitare. Nu urmăresc obținerea unui profit material direct; scopul meu este de a oferi o unealtă celor care, din motive financiare, nu își permit licențe scumpe sau hardware de ultimă generație. Sustenabilitatea proiectului se va baza pe donații voluntare prin platforme dedicate, unde cei care apreciază munca depusă pot alege să susțină comunitatea. Această abordare elimină presiunea financiară asupra utilizatorului și transformă RAMY într-un bun comun.
+Modelul de afaceri adoptat pentru RAMY Engine este unul atipic pentru industria software-ului comercial, fiind construit pe principiile altruismului tehnic și ale dezvoltării comunitare deschise. Nu urmăresc obținerea unui profit material direct și nici nu cred că ar fi potrivit să transform un proiect de pasiune, motivat de dorința de a democratiza accesul la tehnologie, într-un vehicul de monetizare agresivă. Scopul meu fundamental este de a oferi o unealtă celor care, din motive financiare sau tehnice, nu își permit licențele costisitoare ale industriei sau hardware-ul de ultimă generație pe care multe dintre aceste unelte îl presupun.
+
+Sustenabilitatea proiectului se va baza pe un model hibrid, inspirat din ecosistemele mature ale altor proiecte open-source de succes. Pe termen scurt, contribuțiile voluntare prin platforme dedicate (Patreon, Ko-fi, GitHub Sponsors) vor acoperi costurile minime de infrastructură — găzduirea documentației, serverul de CI/CD și cheltuielile legate de achiziția de hardware suplimentar pentru testare cross-platform. Pe termen mediu, vizez oferirea unui nivel opțional de suport prioritar pentru studiourile de tip AA care aleg să integreze RAMY în pipeline-ul lor de producție, fără a compromite accesul total și gratuit al comunității indie. Această strategie de tip "freemium comunitar" menține integritatea filozofică a proiectului: codul sursă rămâne complet deschis și fără restricții, iar valoarea comercială este generată exclusiv prin servicii de consultanță și suport, nu prin impunerea unor bariere de acces.
+
+Sunt conștient că sustenabilitatea pe termen lung a unui proiect open-source de complexitate grafică depinde în mod decisiv de formarea unei comunități active de contribuitori. Din acest motiv, documentarea arhitecturii, tutorialele de contribuție și sistemul de plug-in-uri au fost proiectate de la bun început pentru a reduce bariera tehnică de intrare pentru un nou contributor.
 
 ## 4.2. Strategia de marketing și vizibilitate
 
@@ -367,6 +372,12 @@ Acest focus pe UX transformă matematica abstractă a generării procedurale în
 
 # 5. CAPITOLUL 5: Analiza rezultatelor și studiu de caz
 
+Orice arhitectură rămâne o speculație elegantă până nu este pusă față în față cu realitatea hardware-ului și cu exigențele unui utilizator real. Acest capitol prezintă rezultatele concrete ale procesului de testare și validare, cuantificând performanța motorului pe mai multe clase de dispozitive și demonstrând, printr-un studiu de caz integrat, că viziunea proiectului este nu doar viabilă, ci funcțională chiar de acum.
+
+## 5.1. Performanța și profilarea sistemului
+
+Testarea performanței unui motor procedural este o provocare în sine, deoarece variabilele sunt mult mai numeroase decât în cazul unui joc clasic cu resurse precalculate. Parametrii determinanți nu sunt doar rezoluția sau numărul de *draw calls*, ci și costul evaluării DAG-ului, latența transferurilor CPU-GPU și consumul de VRAM în scenariile cu regenerare masivă de mesh-uri. Am conceput metodologia de testare astfel încât să măsoare tocmai aceste aspecte specifice arhitecturii RAMY.
+
 ### 5.1.1. Tabele de profilare și consum de resurse
 Pentru a oferi o imagine cuantificabilă a performanței, am centralizat datele obținute în urma sesiunilor de profilare în următorul tabel:
 
@@ -397,7 +408,7 @@ O componentă esențială a validării a fost testarea "ușurinței de utilizare
 
 Acest flux reduce timpul de producție de la ore (în modelarea manuală) la secunde, permițând iterații creative rapide.
 
-## 5.2. Studiu de caz: Generarea unui mediu de tip "Arhipelag Volcanic"
+## 5.3. Studiu de caz: Generarea unui mediu de tip "Arhipelag Volcanic"
 
 Pentru a demonstra capabilitățile integrate ale motorului, am realizat un studiu de caz ce presupune generarea unui mediu complex. Procesul a urmat pașii:
 - **Pasul 1 (Morfologie):** Utilizarea unui nod de zgomot celular pentru a defini formele insulelor.
@@ -422,21 +433,35 @@ RAMY Engine nu este doar un instrument de divertisment, ci și unul educațional
 
 ## ANEXA A: Fragmente de cod sursă relevante
 
-### A.1. Structura de bază a unui Nod C++ (`BaseNode.hpp`)
+### A.1. Structura de bază a unui Nod C++ (`NodeGraph.h`)
 ```cpp
-class INode {
+class GraphNode {
 public:
-    virtual ~INode() = default;
-    virtual void Evaluate() = 0; // Logica de calcul a nodului
-    virtual void OnInterfaceRender() = 0; // Randarea in UI (ImGui)
+    int id;
+    std::string title;
+    std::vector<Pin> inputs;
+    std::vector<Pin> outputs;
+    glm::vec2 editorPos = glm::vec2(0.0f); // Poziția în editorul ImNodes
+
+    GraphNode() : id(0) {}
+    virtual ~GraphNode() = default;
+
+    // Randarea controalelor UI (ImGui) în interiorul nodului
+    virtual void RenderContent(SceneManager* scene) = 0;
+
+    using NodeProgressCallback = std::function<void(float, const std::string&)>;
     
-    void MarkDirty() { 
-        m_IsDirty = true; 
-        for(auto child : m_Children) child->MarkDirty();
-    }
-protected:
-    bool m_IsDirty = true;
-    std::vector<INode*> m_Children;
+    // Procesare: citire date de intrare, calcul, scriere în pinii de ieșire
+    virtual void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) = 0;
+
+    // Serializare și Deserializare JSON
+    virtual json Serialize() const;
+    virtual void Deserialize(const json& j);
+    
+    // Funcții utilitare pentru gestionarea conexiunilor
+    Pin* FindPin(int pinId);
+    Pin* FindInputPin(int pinId);
+    Pin* FindOutputPin(int pinId);
 };
 ```
 
