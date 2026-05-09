@@ -69,7 +69,9 @@ public:
 	// Per-frame: cull against light frustum and draw into shadow map
 	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
 		const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
-		const GraphicsSettings* gs, float time);
+		const GraphicsSettings* gs, float time,
+		GLuint hizTexture = 0, int screenWidth = 0, int screenHeight = 0,
+		const glm::mat4& cameraViewProj = glm::mat4(1.0f));
 
 	// Per-frame: cull against light sphere and draw into omni (point/spot) shadow map
 	void CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowShader,

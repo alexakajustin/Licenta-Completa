@@ -315,6 +315,10 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 		glActiveTexture(GL_TEXTURE15);
 		glBindTexture(GL_TEXTURE_2D, hizTexture);
 		glUniform1i(glGetUniformLocation(cullShaderID, "hizMap"), 15);
+
+		// In camera pass, hizViewProj matches viewProj
+		glm::mat4 vp = projection * view;
+		glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "hizViewProj"), 1, GL_FALSE, glm::value_ptr(vp));
 	} else {
 		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
 	}
@@ -574,7 +578,9 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 // =====================================================================
 void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
 	const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
-	const GraphicsSettings* gs, float time)
+	const GraphicsSettings* gs, float time,
+	GLuint hizTexture, int screenWidth, int screenHeight,
+	const glm::mat4& cameraViewProj)
 {
 	if (totalCount == 0 || !sharedMesh) return;
 
@@ -606,16 +612,42 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), 1);
 	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), finalShadowDist);
 
-	// Disable Hi-Z occlusion culling for shadow pass
-	// (the Hi-Z map is built from the camera's depth buffer, not the light's)
-	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+	// Hi-Z occlusion culling for shadow pass:
+	// If the camera can't see an object, its shadow is also invisible.
+	// We use the CAMERA's Hi-Z map (not the light's) to skip shadow rendering
+	// for camera-occluded instances. This is a major performance win in scenes
+	// with heavy occlusion (e.g., interiors, cities).
+	if (hizTexture > 0 && gs && gs->enableOcclusionCulling && screenWidth > 0 && screenHeight > 0) {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
+		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
+
+		// Extract near/far from the CAMERA's projection (embedded in cameraViewProj)
+		// We pass these separately so the Hi-Z depth comparison uses camera space
+		float A = cameraViewProj[2][2];
+		float B = cameraViewProj[3][2];
+		float nearP = B / (A - 1.0f);
+		float farP  = B / (A + 1.0f);
+		glUniform1f(glGetUniformLocation(cullShaderID, "nearPlane"), nearP);
+		glUniform1f(glGetUniformLocation(cullShaderID, "farPlane"), farP);
+
+		glActiveTexture(GL_TEXTURE15);
+		glBindTexture(GL_TEXTURE_2D, hizTexture);
+		glUniform1i(glGetUniformLocation(cullShaderID, "hizMap"), 15);
+
+		// In shadow pass, hizViewProj is the CAMERA's VP (not the light's)
+		glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "hizViewProj"), 1, GL_FALSE, glm::value_ptr(cameraViewProj));
+	} else {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+	}
 
 	// Disable sphere culling (used only by omni shadow pass)
 	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);
 
-	// Zero out screenSize to disable sub-pixel contribution culling
-	// (the light's orthographic projection has different scale than the camera)
-	glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), 0.0f, 0.0f);
+	// Zero out screenSize for sub-pixel culling only if Hi-Z is not active
+	// (Hi-Z already set screenSize above when enabled)
+	if (!(hizTexture > 0 && gs && gs->enableOcclusionCulling && screenWidth > 0 && screenHeight > 0)) {
+		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), 0.0f, 0.0f);
+	}
 
 	// Bind shadow output buffers
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);

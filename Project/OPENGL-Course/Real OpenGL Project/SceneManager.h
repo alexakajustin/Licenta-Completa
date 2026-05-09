@@ -136,6 +136,8 @@ public:
 	// Occlusion Culling Access
 	GLuint GetHiZTexture() const { return hizTexture; }
 	GLuint GetHiZDebugTexture() const { return hizDebugTexture; }
+	int GetHiZWidth() const { return hizWidth; }
+	int GetHiZHeight() const { return hizHeight; }
 	void GenerateHiZDebug(float nearPlane, float farPlane);
 
 private:

@@ -112,6 +112,12 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 		// GPU-Driven Instanced Groups
 		float time = (float)glfwGetTime();
 		auto& groups = scene.GetInstancedGroups();
+		GLuint hiz = scene.GetHiZTexture();
+		// Use camera's view-projection for Hi-Z occlusion test in shadow pass
+		glm::mat4 camVP = projection * view;
+		// Hi-Z dimensions match the camera viewport, NOT the shadow map
+		int hizW = scene.GetHiZWidth();
+		int hizH = scene.GetHiZHeight();
 		if (!groups.empty() && instancedCullShader.GetShaderID()) {
 			for (auto* group : groups) {
 				if (!group) continue;
@@ -121,7 +127,10 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 					lightProjView,
 					cameraPos,
 					gs,
-					time
+					time,
+					hiz,
+					hizW, hizH,
+					camVP
 				);
 			}
 		}

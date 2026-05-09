@@ -85,6 +85,7 @@ uniform int useHiZ;
 uniform vec2 screenSize;
 uniform float nearPlane;
 uniform float farPlane;
+uniform mat4 hizViewProj;  // Camera VP for Hi-Z projection (may differ from viewProj in shadow pass)
 layout(binding = 15) uniform sampler2D hizMap;
 
 // =====================================================================
@@ -185,18 +186,19 @@ void main()
                 vec3 ndcPos = clipPos.xyz / clipPos.w;
                 
                 // Project the 8 corners of the world-space AABB to find the screen-space bounding box
+                // Use hizViewProj (camera VP) for projection — in shadow pass, viewProj is the light's VP
                 vec3 minPos = testPos - vec3(radius);
                 vec3 maxPos = testPos + vec3(radius);
                 
                 vec4 corners[8];
-                corners[0] = viewProj * vec4(minPos.x, minPos.y, minPos.z, 1.0);
-                corners[1] = viewProj * vec4(maxPos.x, minPos.y, minPos.z, 1.0);
-                corners[2] = viewProj * vec4(minPos.x, maxPos.y, minPos.z, 1.0);
-                corners[3] = viewProj * vec4(maxPos.x, maxPos.y, minPos.z, 1.0);
-                corners[4] = viewProj * vec4(minPos.x, minPos.y, maxPos.z, 1.0);
-                corners[5] = viewProj * vec4(maxPos.x, minPos.y, maxPos.z, 1.0);
-                corners[6] = viewProj * vec4(minPos.x, maxPos.y, maxPos.z, 1.0);
-                corners[7] = viewProj * vec4(maxPos.x, maxPos.y, maxPos.z, 1.0);
+                corners[0] = hizViewProj * vec4(minPos.x, minPos.y, minPos.z, 1.0);
+                corners[1] = hizViewProj * vec4(maxPos.x, minPos.y, minPos.z, 1.0);
+                corners[2] = hizViewProj * vec4(minPos.x, maxPos.y, minPos.z, 1.0);
+                corners[3] = hizViewProj * vec4(maxPos.x, maxPos.y, minPos.z, 1.0);
+                corners[4] = hizViewProj * vec4(minPos.x, minPos.y, maxPos.z, 1.0);
+                corners[5] = hizViewProj * vec4(maxPos.x, minPos.y, maxPos.z, 1.0);
+                corners[6] = hizViewProj * vec4(minPos.x, maxPos.y, maxPos.z, 1.0);
+                corners[7] = hizViewProj * vec4(maxPos.x, maxPos.y, maxPos.z, 1.0);
                 
                 vec2 minNDC = vec2(1.0);
                 vec2 maxNDC = vec2(-1.0);
@@ -226,8 +228,10 @@ void main()
                     vec2 sizePixels = (maxUV - minUV) * screenSize;
                     float maxDim = max(sizePixels.x, sizePixels.y);
                     
-                    // Target mip level where the bounding box spans ~2x2 texels
-                    float mip = ceil(log2(max(maxDim, 1.0)));
+                    // NVIDIA-style mip selection: pick the level where the bbox
+                    // spans ~2x2 texels (not 1x1). Using maxDim/2 ensures we read
+                    // 4 distinct texels instead of the same one 4 times.
+                    float mip = ceil(log2(max(maxDim * 0.5, 1.0)));
                     
                     // Compute conservative depth of the instance nearest point
                     // Calculate the point on the bounding sphere closest to the camera
@@ -235,7 +239,7 @@ void main()
                     vec3 nearestPos = testPos + toCamera * radius;
                     
                     // Project the nearest point to get its depth
-                    vec4 nearestClip = viewProj * vec4(nearestPos, 1.0);
+                    vec4 nearestClip = hizViewProj * vec4(nearestPos, 1.0);
                     float nearestZ = nearestClip.z / nearestClip.w;
                     float nearestDepth = nearestZ * 0.5 + 0.5; // NDC to 0..1 range
                 
@@ -256,8 +260,9 @@ void main()
                     float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                     float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
                     
-                    // In linear space, 5.0m bias matches the CPU Hi-Z path
-                    if (linNearest > linOccluder + 5.0) {
+                    // In linear space, 0.5m bias is tight enough to cull behind walls
+                    // but prevents false occlusion from z-fighting at surface boundaries
+                    if (linNearest > linOccluder + 0.5) {
                         return; // Occluded!
                     }
                 }

@@ -552,7 +552,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							float linNearest = (2.0f * n_const * f_const) / (f_const + n_const - (nearestDepth * 2.0f - 1.0f) * (f_const - n_const));
 							float linOccluder = (2.0f * n_const * f_const) / (f_const + n_const - (maxOccluderDepth * 2.0f - 1.0f) * (f_const - n_const));
 
-							if (linNearest > linOccluder + 0.1f) isCulled = true;
+							if (linNearest > linOccluder + 1.0f) isCulled = true;
 						}
 					}
 				}
@@ -740,6 +740,15 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)screenWidth, (GLsizei)screenHeight);
 	}
 
+	// ================================================================
+	// Generate Hi-Z map for Occlusion Culling
+	// MUST happen after opaque pass but BEFORE instanced group culling
+	// so the Hi-Z pyramid reflects the current frame's opaque geometry.
+	// ================================================================
+	if (!overrideShader && sceneDepthTexture > 0 && gs && gs->enableOcclusionCulling) {
+		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
+	}
+
 	// 2. Sort and Render transparent objects
 	if (!transparentObjects.empty() && !overrideShader) {
 		// Painter's algorithm: Back-to-front sorting relative to camera location
@@ -761,12 +770,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		glDepthMask(GL_TRUE); // Restore depth mask
 	}
 
-	// ================================================================
-	// Generate Hi-Z map for Occlusion Culling (zero-latency from Opaque pass)
-	// ================================================================
-	if (!overrideShader && sceneDepthTexture > 0 && gs && gs->enableOcclusionCulling) {
-		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
-	}
+	// Hi-Z generation was moved above (before transparent render) to ensure
+	// the depth pyramid is ready for instanced group GPU culling below.
 
 	// ================================================================
 	// GPU-Driven Instanced Groups (grass, foliage, rocks, etc.)
@@ -2638,7 +2643,7 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 	int targetMip = 0;
 	int mipW = hizWidth;
 	int mipH = hizHeight;
-	while (mipW > 256 && targetMip < hizMipCount - 1) {
+	while (mipW > 512 && targetMip < hizMipCount - 1) {
 		mipW /= 2;
 		mipH /= 2;
 		targetMip++;
