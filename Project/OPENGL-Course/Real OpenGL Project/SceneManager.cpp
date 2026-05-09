@@ -429,6 +429,17 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glm::vec3 bmin, bmax;
 				obj->GetWorldBounds(bmin, bmax);
 
+				// GEOMETRIC SHRINK: Pull the AABB inside by 0.5m. 
+				// This fixes "Sky Poisoning" where loose AABBs overlap the sky at the 
+				// edges of the building, preventing them from being culled.
+				float shrinkAmount = 0.5f;
+				bmin += glm::vec3(shrinkAmount);
+				bmax -= glm::vec3(shrinkAmount);
+				// Ensure we didn't invert the box for tiny objects
+				if (bmin.x > bmax.x) std::swap(bmin.x, bmax.x);
+				if (bmin.y > bmax.y) std::swap(bmin.y, bmax.y);
+				if (bmin.z > bmax.z) std::swap(bmin.z, bmax.z);
+
 				bool isWater = false;
 				if (mat && mat->GetShader()) {
 					std::string vPath = mat->GetShader()->GetVertexPath();
@@ -469,60 +480,65 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							glm::vec3(bmin.x, bmax.y, bmax.z), glm::vec3(bmax.x, bmax.y, bmax.z)
 						};
 
-						// Transform to view space to handle near-plane clipping robustly
-						glm::vec3 vmin(FLT_MAX), vmax(-FLT_MAX);
-						for (int i = 0; i < 8; i++) {
-							glm::vec4 vPos = view * glm::vec4(corners[i], 1.0f);
-							vmin = glm::min(vmin, glm::vec3(vPos));
-							vmax = glm::max(vmax, glm::vec3(vPos));
-						}
+						// Robust Edge-Clipping for massive AABBs crossing the near plane
+						glm::mat4 prevView = glm::mat4(1.0f); // Fallback if we don't have separate matrices
+						// Extract a pseudo-view matrix from the view-projection for near-clipping
+						// or just use the current view as an approximation for the Z-check.
+						
+						glm::vec2 minNDC = glm::vec2(1.0f);
+						glm::vec2 maxNDC = glm::vec2(-1.0f);
+						float nearestDepth = 1.0f;
+						bool anyVisible = false;
 
-						if (vmin.z > -0.1f) {
-							// Entirely behind the camera
-							isCulled = true;
-						} else {
-							// Clamp the front of the bounding box to the near plane
-							vmax.z = std::min(vmax.z, -0.1f);
+						// Define the 12 edges of the AABB (indices into the 8 corners)
+						int edges[12][2] = {
+							{0,1}, {1,3}, {3,2}, {2,0}, // Back face
+							{4,5}, {5,7}, {7,6}, {6,4}, // Front face
+							{0,4}, {1,5}, {2,6}, {3,7}  // Connecting edges
+						};
 
-							glm::vec3 vCorners[8] = {
-								glm::vec3(vmin.x, vmin.y, vmin.z), glm::vec3(vmax.x, vmin.y, vmin.z),
-								glm::vec3(vmin.x, vmax.y, vmin.z), glm::vec3(vmax.x, vmax.y, vmin.z),
-								glm::vec3(vmin.x, vmin.y, vmax.z), glm::vec3(vmax.x, vmin.y, vmax.z),
-								glm::vec3(vmin.x, vmax.y, vmax.z), glm::vec3(vmax.x, vmax.y, vmax.z)
-							};
+						for (int i = 0; i < 12; ++i) {
+							glm::vec4 p1 = prevViewProj * glm::vec4(corners[edges[i][0]], 1.0f);
+							glm::vec4 p2 = prevViewProj * glm::vec4(corners[edges[i][1]], 1.0f);
 
-							glm::vec2 minNDC = glm::vec2(1.0f);
-							glm::vec2 maxNDC = glm::vec2(-1.0f);
-							float nearestDepth = 1.0f;
+							// Clip edge against near plane (w > 0)
+							if (p1.w < 0.01f && p2.w < 0.01f) continue; // Entire edge behind camera
 
-							for (int i = 0; i < 8; ++i) {
-								glm::vec4 clipPos = projection * glm::vec4(vCorners[i], 1.0f);
-								glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+							if (p1.w < 0.01f || p2.w < 0.01f) {
+								// Partially behind: clip to w = 0.01
+								float t = (0.01f - p1.w) / (p2.w - p1.w);
+								glm::vec4 clipped = p1 + t * (p2 - p1);
+								if (p1.w < 0.01f) p1 = clipped;
+								else p2 = clipped;
+							}
+
+							anyVisible = true;
+							auto Project = [&](glm::vec4 p) {
+								glm::vec3 ndc = glm::vec3(p) / p.w;
 								minNDC.x = std::min(minNDC.x, ndc.x); minNDC.y = std::min(minNDC.y, ndc.y);
 								maxNDC.x = std::max(maxNDC.x, ndc.x); maxNDC.y = std::max(maxNDC.y, ndc.y);
 								float d = ndc.z * 0.5f + 0.5f; nearestDepth = std::min(nearestDepth, d);
-							}
+							};
+							Project(p1); Project(p2);
+						}
 
+						if (!anyVisible) {
+							isCulled = true;
+						} else {
 							minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f); minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
 							maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f); maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
 							glm::vec2 minUV = minNDC * 0.5f + 0.5f;
 							glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
 
-							// INSET GUARD: Shrink the sampling footprint by 2 pixels on all sides to avoid 
-							// "bleeding" from the conservative max-filter downsampling of the Hi-Z map.
-							// This prevents objects whose bounding boxes slightly overlap the sky from failing the cull check.
-							int startX = std::clamp((int)(minUV.x * cpuHiZWidth) + 2, 0, cpuHiZWidth - 1);
-							int endX   = std::clamp((int)(maxUV.x * cpuHiZWidth) - 2, 0, cpuHiZWidth - 1);
-							if (startX > endX) { 
-								startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * cpuHiZWidth), 0, cpuHiZWidth - 1);
-								endX = startX;
-							}
+							int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+							int endX   = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+							int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+							int endY   = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
 
-							int startY = std::clamp((int)(minUV.y * cpuHiZHeight) + 2, 0, cpuHiZHeight - 1);
-							int endY   = std::clamp((int)(maxUV.y * cpuHiZHeight) - 2, 0, cpuHiZHeight - 1);
-							if (startY > endY) { 
-								startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * cpuHiZHeight), 0, cpuHiZHeight - 1);
-								endY = startY;
+							if (startX >= endX || startY >= endY) {
+								startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * cpuHiZWidth), 0, cpuHiZWidth - 2);
+								startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * cpuHiZHeight), 0, cpuHiZHeight - 2);
+								endX = startX + 1; endY = startY + 1;
 							}
 
 							float maxOccluderDepth = 0.0f;
@@ -533,12 +549,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 								}
 							}
 
-							// Linearize for stable comparison
 							float linNearest = (2.0f * n_const * f_const) / (f_const + n_const - (nearestDepth * 2.0f - 1.0f) * (f_const - n_const));
 							float linOccluder = (2.0f * n_const * f_const) / (f_const + n_const - (maxOccluderDepth * 2.0f - 1.0f) * (f_const - n_const));
 
-							// BULLETPROOF: Tiny 0.05m epsilon to prevent flickering (Z-fighting) 
-							if (linNearest > linOccluder + 0.05f) isCulled = true;
+							if (linNearest > linOccluder + 0.1f) isCulled = true;
 						}
 					}
 				}
@@ -1017,6 +1031,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	
 	if (!overrideShader && sceneDepthTexture != 0) {
 		prevViewProj = projection * view;
+		glFlush(); // Ensure GPU commands are issued so the Hi-Z readback starts ASAP
 	}
 }
 
