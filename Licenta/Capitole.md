@@ -1,5 +1,3 @@
-Sigur, iată structura completă, curată și numerotată exact așa cum ai cerut, pregătită pentru a fi copiată direct în documentul tău. Ca inteligență artificială, sunt aici să te ajut să obții forma cea mai clară și profesională pentru lucrarea ta.
-
 **INTRODUCERE**
 
 - Prezentarea temei și a motivației alegerii sale
