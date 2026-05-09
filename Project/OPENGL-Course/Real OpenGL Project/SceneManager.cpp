@@ -288,19 +288,26 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// ================================================================
 	// CPU Hi-Z Occlusion Culling: Map PBO from previous frame (1-frame latency)
 	// ================================================================
+	int currentHiZW = 0;
+	int currentHiZH = 0;
 	if (!overrideShader && hizPBO[0] != 0 && gs && gs->enableOcclusionCulling) {
 		int prevPBO = (currentPBO + 1) % 2;
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[prevPBO]);
 		float* ptr = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 		if (ptr) {
-			int bufferSize = cpuHiZWidth * cpuHiZHeight * sizeof(float);
-			if (cpuHiZMap.size() != cpuHiZWidth * cpuHiZHeight) {
-				cpuHiZMap.resize(cpuHiZWidth * cpuHiZHeight);
+			if (cpuHiZMap.size() != (size_t)cpuHiZWidth * cpuHiZHeight) {
+				cpuHiZMap.resize((size_t)cpuHiZWidth * cpuHiZHeight);
 			}
-			memcpy(cpuHiZMap.data(), ptr, bufferSize);
+			memcpy(cpuHiZMap.data(), ptr, cpuHiZMap.size() * sizeof(float));
 			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 		}
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	}
+
+	// Capture dimensions that match our current cpuHiZMap to avoid mismatch during resize
+	if (!cpuHiZMap.empty()) {
+		currentHiZW = cpuHiZWidth;
+		currentHiZH = cpuHiZHeight;
 	}
 
 	struct Batch {
@@ -530,22 +537,31 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							glm::vec2 minUV = minNDC * 0.5f + 0.5f;
 							glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
 
-							int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-							int endX   = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-							int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
-							int endY   = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+							// Use safe captured dimensions to prevent crash during resize
+							int startX = std::clamp((int)(minUV.x * currentHiZW), 0, std::max(0, currentHiZW - 1));
+							int endX   = std::clamp((int)(maxUV.x * currentHiZW), 0, std::max(0, currentHiZW - 1));
+							int startY = std::clamp((int)(minUV.y * currentHiZH), 0, std::max(0, currentHiZH - 1));
+							int endY   = std::clamp((int)(maxUV.y * currentHiZH), 0, std::max(0, currentHiZH - 1));
 
 							if (startX >= endX || startY >= endY) {
-								startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * cpuHiZWidth), 0, cpuHiZWidth - 2);
-								startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * cpuHiZHeight), 0, cpuHiZHeight - 2);
-								endX = startX + 1; endY = startY + 1;
+								if (currentHiZW >= 2 && currentHiZH >= 2) {
+									startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * currentHiZW), 0, currentHiZW - 2);
+									startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * currentHiZH), 0, currentHiZH - 2);
+									endX = startX + 1; endY = startY + 1;
+								} else {
+									startX = 0; startY = 0; endX = 0; endY = 0;
+								}
 							}
 
 							float maxOccluderDepth = 0.0f;
+							size_t mapSize = cpuHiZMap.size();
 							for (int y = startY; y <= endY; ++y) {
-								int rowOffset = y * cpuHiZWidth;
+								int rowOffset = y * currentHiZW;
 								for (int x = startX; x <= endX; ++x) {
-									maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[rowOffset + x]);
+									size_t idx = (size_t)rowOffset + x;
+									if (idx < mapSize) {
+										maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[idx]);
+									}
 								}
 							}
 
