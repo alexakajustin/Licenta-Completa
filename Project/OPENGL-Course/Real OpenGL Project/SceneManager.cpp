@@ -27,7 +27,7 @@
 SceneManager::SceneManager()
 	: pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
+	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
 {
 }
 
@@ -43,6 +43,7 @@ SceneManager::~SceneManager()
 	if (gizmoArrowModel) { gizmoArrowModel->ClearModel(); delete gizmoArrowModel; }
 	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
 	if (iconMesh) { iconMesh->Release(); iconMesh = nullptr; }
+	if (debugSphereMesh) { debugSphereMesh->Release(); debugSphereMesh = nullptr; }
 }
 
 // =====================================================================
@@ -399,163 +400,128 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 	}
 
+	std::vector<std::pair<GameObject*, bool>> debugCullingList;
+	bool debugShowCulling = (!overrideShader && graphicsSettings && graphicsSettings->debugShowCulling);
+
 	auto RenderQueue = [&](const std::vector<GameObject*>& queue) {
 		std::vector<Batch> localBatchList;
 
 		// 1. Collect and Render Single Objects
 		for (auto* obj : queue) {
-		Mesh* msh = obj->GetMesh();
-		Model* mdl = obj->GetModel();
-		Material* mat = obj->GetMaterial();
-		Texture* tex = obj->GetTexture();
-		Texture* norm = obj->GetNormalMap();
+			Mesh* msh = obj->GetMesh();
+			Model* mdl = obj->GetModel();
+			Material* mat = obj->GetMaterial();
+			Texture* tex = obj->GetTexture();
+			Texture* norm = obj->GetNormalMap();
 
-		if (!msh && !mdl) continue;
+			if (!msh && !mdl) continue;
 
-		// ===== MULTI-LAYER CULLING PIPELINE =====
-		if (frustum) {
-			glm::vec3 bmin, bmax;
-			obj->GetWorldBounds(bmin, bmax);
+			// ===== MULTI-LAYER CULLING PIPELINE =====
+			bool isCulled = false;
 
-			// SAFETY CHECK: If the camera is horizontally inside the box, or if the object is water,
-			// skip ALL culling. This prevents large floors/terrains from 
-			// disappearing when the camera is at the edge but still on top.
-			bool isWater = false;
-			if (mat && mat->GetShader()) {
-				std::string vPath = mat->GetShader()->GetVertexPath();
-				if (vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos) {
-					isWater = true;
-				}
-			}
+			if (frustum) {
+				glm::vec3 bmin, bmax;
+				obj->GetWorldBounds(bmin, bmax);
 
-			bool cameraInside = (cameraPos.x >= bmin.x && cameraPos.x <= bmax.x && 
-								 cameraPos.z >= bmin.z && cameraPos.z <= bmax.z);
-
-			// DISASTER RECOVERY: Disable ALL culling for the reflection pass.
-			// The reflection pass is identified by having no override shader AND no scene depth texture.
-			bool isReflection = (!overrideShader && sceneDepthTexture == 0);
-
-			if (!cameraInside && !isWater && !isReflection) 
-			{
-				// LAYER 0: Global Distance Culling (Accurate AABB distance)
-				float dx = glm::max(bmin.x - cameraPos.x, glm::max(0.0f, cameraPos.x - bmax.x));
-				float dy = glm::max(bmin.y - cameraPos.y, glm::max(0.0f, cameraPos.y - bmax.y));
-				float dz = glm::max(bmin.z - cameraPos.z, glm::max(0.0f, cameraPos.z - bmax.z));
-				float distSq = dx*dx + dy*dy + dz*dz;
-
-				float maxDist = 2000.0f;
-				if (graphicsSettings) {
-					maxDist = overrideShader ? graphicsSettings->shadowDistance : graphicsSettings->renderDistance;
-				}
-				if (distSq > maxDist * maxDist) continue;
-
-				glm::vec3 sphereCenter; float sphereRadius;
-				obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
-
-				// LAYER 1: Bounding Sphere vs Frustum
-				if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) continue;
-
-				// LAYER 2: Contribution culling (Skip sub-pixel objects)
-				if (!overrideShader && screenHeight > 0.0f) {
-					if (!Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) continue;
+				bool isWater = false;
+				if (mat && mat->GetShader()) {
+					std::string vPath = mat->GetShader()->GetVertexPath();
+					if (vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos) {
+						isWater = true;
+					}
 				}
 
-				// LAYER 3: AABB vs Frustum
-				if (!frustum->IsBoxVisible(bmin, bmax)) continue;
+				bool cameraInside = (cameraPos.x >= bmin.x && cameraPos.x <= bmax.x && 
+									 cameraPos.z >= bmin.z && cameraPos.z <= bmax.z);
 
-				// LAYER 4: CPU Hi-Z Occlusion Culling (1-frame latency)
-				if (!overrideShader && sceneDepthTexture != 0 && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
-					glm::vec3 corners[8] = {
-						glm::vec3(bmin.x, bmin.y, bmin.z),
-						glm::vec3(bmax.x, bmin.y, bmin.z),
-						glm::vec3(bmin.x, bmax.y, bmin.z),
-						glm::vec3(bmax.x, bmax.y, bmin.z),
-						glm::vec3(bmin.x, bmin.y, bmax.z),
-						glm::vec3(bmax.x, bmin.y, bmax.z),
-						glm::vec3(bmin.x, bmax.y, bmax.z),
-						glm::vec3(bmax.x, bmax.y, bmax.z)
-					};
+				bool isReflection = (!overrideShader && sceneDepthTexture == 0);
 
-					glm::vec2 minNDC = glm::vec2(1.0f);
-					glm::vec2 maxNDC = glm::vec2(-1.0f);
-					bool crossesNearPlane = false;
-					float nearestDepth = 1.0f;
+				if (!cameraInside && !isWater && !isReflection) 
+				{
+					float dx = glm::max(bmin.x - cameraPos.x, glm::max(0.0f, cameraPos.x - bmax.x));
+					float dy = glm::max(bmin.y - cameraPos.y, glm::max(0.0f, cameraPos.y - bmax.y));
+					float dz = glm::max(bmin.z - cameraPos.z, glm::max(0.0f, cameraPos.z - bmax.z));
+					float distSq = dx*dx + dy*dy + dz*dz;
 
-					for (int i = 0; i < 8; ++i) {
-						glm::vec4 clipPos = prevViewProj * glm::vec4(corners[i], 1.0f);
-						if (clipPos.w < 0.01f) {
-							crossesNearPlane = true;
-							break;
-						}
-						glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
-						minNDC.x = std::min(minNDC.x, ndc.x);
-						minNDC.y = std::min(minNDC.y, ndc.y);
-						maxNDC.x = std::max(maxNDC.x, ndc.x);
-						maxNDC.y = std::max(maxNDC.y, ndc.y);
-
-						float d = ndc.z * 0.5f + 0.5f;
-						nearestDepth = std::min(nearestDepth, d);
+					float maxDist = 2000.0f;
+					if (graphicsSettings) {
+						maxDist = overrideShader ? graphicsSettings->shadowDistance : graphicsSettings->renderDistance;
 					}
 
-					if (!crossesNearPlane) {
-						minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f);
-						minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
-						maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f);
-						maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
+					glm::vec3 sphereCenter; float sphereRadius;
+					obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
 
-						glm::vec2 minUV = minNDC * 0.5f + 0.5f;
-						glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
+					if (distSq > maxDist * maxDist) isCulled = true;
+					else if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) isCulled = true;
+					else if (!overrideShader && screenHeight > 0.0f && !Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) isCulled = true;
+					else if (!frustum->IsBoxVisible(bmin, bmax)) isCulled = true;
+					else if (!overrideShader && sceneDepthTexture != 0 && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+						glm::vec3 corners[8] = {
+							glm::vec3(bmin.x, bmin.y, bmin.z), glm::vec3(bmax.x, bmin.y, bmin.z),
+							glm::vec3(bmin.x, bmax.y, bmin.z), glm::vec3(bmax.x, bmax.y, bmin.z),
+							glm::vec3(bmin.x, bmin.y, bmax.z), glm::vec3(bmax.x, bmin.y, bmax.z),
+							glm::vec3(bmin.x, bmax.y, bmax.z), glm::vec3(bmax.x, bmax.y, bmax.z)
+						};
 
-						int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-						int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
-						int endX = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
-						int endY = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+						glm::vec2 minNDC = glm::vec2(1.0f);
+						glm::vec2 maxNDC = glm::vec2(-1.0f);
+						bool crossesNearPlane = false;
+						float nearestDepth = 1.0f;
 
-						float maxOccluderDepth = 0.0f;
-						int area = (endX - startX + 1) * (endY - startY + 1);
-						
-						// Skip testing if object covers more than 20% of the screen (it's very likely visible and too expensive to test)
-						if (area < (cpuHiZWidth * cpuHiZHeight) / 5) {
-							for (int y = startY; y <= endY; ++y) {
-								int rowOffset = y * cpuHiZWidth;
-								for (int x = startX; x <= endX; ++x) {
-									float d = cpuHiZMap[rowOffset + x];
-									maxOccluderDepth = std::max(maxOccluderDepth, d);
+						for (int i = 0; i < 8; ++i) {
+							glm::vec4 clipPos = prevViewProj * glm::vec4(corners[i], 1.0f);
+							if (clipPos.w < 0.01f) { crossesNearPlane = true; break; }
+							glm::vec3 ndc = glm::vec3(clipPos) / clipPos.w;
+							minNDC.x = std::min(minNDC.x, ndc.x); minNDC.y = std::min(minNDC.y, ndc.y);
+							maxNDC.x = std::max(maxNDC.x, ndc.x); maxNDC.y = std::max(maxNDC.y, ndc.y);
+							float d = ndc.z * 0.5f + 0.5f; nearestDepth = std::min(nearestDepth, d);
+						}
+
+						if (!crossesNearPlane) {
+							minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f); minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
+							maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f); maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
+							glm::vec2 minUV = minNDC * 0.5f + 0.5f;
+							glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
+
+							int startX = std::clamp((int)(minUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+							int startY = std::clamp((int)(minUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+							int endX = std::clamp((int)(maxUV.x * cpuHiZWidth), 0, cpuHiZWidth - 1);
+							int endY = std::clamp((int)(maxUV.y * cpuHiZHeight), 0, cpuHiZHeight - 1);
+
+							float maxOccluderDepth = 0.0f;
+							int area = (endX - startX + 1) * (endY - startY + 1);
+							if (area < (cpuHiZWidth * cpuHiZHeight) / 5) {
+								for (int y = startY; y <= endY; ++y) {
+									int rowOffset = y * cpuHiZWidth;
+									for (int x = startX; x <= endX; ++x) {
+										maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[rowOffset + x]);
+									}
 								}
-							}
 
-							float A = projection[2][2];
-							float B = projection[3][2];
-							float nearPlane = B / (A - 1.0f);
-							float farPlane = B / (A + 1.0f);
-
-							float linNearest = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
-							float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
-
-							// If the nearest point of the object is significantly further than the deepest occluder
-							// Margin set to 5.0f for safety while maintaining culling efficiency
-							if (linNearest > linOccluder + 5.0f) {
-								continue;
+								float A = projection[2][2]; float B = projection[3][2];
+								float nearPlane = B / (A - 1.0f); float farPlane = B / (A + 1.0f);
+								float linNearest = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
+								float linOccluder = (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0f - 1.0f) * (farPlane - nearPlane));
+								if (linNearest > linOccluder + 5.0f) isCulled = true;
 							}
 						}
 					}
 				}
 			}
-		}
 
-		Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);
-		if (!targetShader) continue;
+			if (debugShowCulling) debugCullingList.push_back({ obj, isCulled });
+			if (isCulled && !debugShowCulling) continue;
 
-		bool hasLayers = !obj->GetTextureLayers().empty();
-		bool isPickingPass = (overrideShader && pickingInitialized && overrideShader->GetShaderID() == pickingShader.GetShaderID());
-		
-		bool isSelected = false;
-		// Only highlight if there are multiple objects selected
-		if (!overrideShader && selectedObjs.size() > 1) {
-			isSelected = selectedObjs.find(obj) != selectedObjs.end();
-		}
+			Shader* targetShader = overrideShader ? overrideShader : ((mat && mat->GetShader()) ? mat->GetShader() : mainShader);
+			if (!targetShader) continue;
 
-		// If it's a simple instanced primitive without layers, batch it (unless it's picking pass which requires unique IDs)
+			bool hasLayers = !obj->GetTextureLayers().empty();
+			bool isPickingPass = (overrideShader && pickingInitialized && overrideShader->GetShaderID() == pickingShader.GetShaderID());
+			bool isSelected = false;
+			if (!overrideShader && selectedObjs.size() > 1) {
+				isSelected = selectedObjs.find(obj) != selectedObjs.end();
+			}
+
 			if (msh && !mdl && msh->IsInstanced() && !hasLayers && !isPickingPass) {
 				bool found = false;
 				for (auto& b : localBatchList) {
@@ -567,147 +533,104 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				}
 				if (!found) localBatchList.push_back({ msh, mat, tex, norm, isSelected, {obj->GetWorldMatrix()} });
 			} else {
-			// Render Single
-			PrepareShader(targetShader);
+				if (!isCulled) {
+					PrepareShader(targetShader);
+					bool renderAsTessellated = false;
+					if (obj->GetUseTessellation() && renderer) {
+						bool hasDispMap = false;
+						float maxTiling = 1.0f;
+						for (const auto& layer : obj->GetTextureLayers()) {
+							if (layer.displacementMap) {
+								hasDispMap = true;
+								if (layer.tiling > maxTiling) maxTiling = layer.tiling;
+							}
+						}
 
-			// === GPU TESSELLATION PATH ===
-			// Fully automatic: TES uses per-layer displacement maps/scales directly,
-			// TCS auto-computes tessellation level from maxLayerTiling.
-			bool renderAsTessellated = false;
-			if (obj->GetUseTessellation() && renderer) {
-				bool hasDispMap = false;
-				float maxTiling = 1.0f;
-				for (const auto& layer : obj->GetTextureLayers()) {
-					if (layer.displacementMap) {
-						hasDispMap = true;
-						if (layer.tiling > maxTiling) maxTiling = layer.tiling;
-					}
-				}
+						if (hasDispMap && msh) {
+							Shader* tessShaderToUse = nullptr;
+							bool isShadowPass = (overrideShader && renderer && overrideShader->GetShaderID() == renderer->GetDirectionalShadowShader().GetShaderID());
+							if (isShadowPass) tessShaderToUse = &renderer->GetTessShadowShader();
+							else if (!overrideShader) tessShaderToUse = &renderer->GetTessShader();
 
-				if (hasDispMap && msh) {
-					Shader* tessShaderToUse = nullptr;
-					
-					// Detect if we are in a shadow pass
-					bool isShadowPass = (overrideShader && renderer && overrideShader->GetShaderID() == renderer->GetDirectionalShadowShader().GetShaderID());
-					
-					if (isShadowPass) {
-						tessShaderToUse = &renderer->GetTessShadowShader();
-					} else if (!overrideShader) {
-						tessShaderToUse = &renderer->GetTessShader();
-					}
-
-					if (tessShaderToUse && tessShaderToUse->GetShaderID() != 0) {
-						renderAsTessellated = true;
-						PrepareShader(tessShaderToUse);
-						targetShader = tessShaderToUse;
-						GLuint sid = tessShaderToUse->GetShaderID();
-						
-						// Auto-set max tiling for TCS tessellation level calculation
-						GLint maxTilingLoc = glGetUniformLocation(sid, "maxLayerTiling");
-						if (maxTilingLoc != -1) glUniform1f(maxTilingLoc, maxTiling);
-
-						// For shadow tessellation, we need to manually pass the light transform
-						if (isShadowPass) {
-							GLint lightTransLoc = glGetUniformLocation(sid, "directionalLightTransform");
-							if (lightTransLoc != -1) {
-								glUniformMatrix4fv(lightTransLoc, 1, GL_FALSE, glm::value_ptr(shadowTransform));
+							if (tessShaderToUse && tessShaderToUse->GetShaderID() != 0) {
+								renderAsTessellated = true;
+								PrepareShader(tessShaderToUse);
+								targetShader = tessShaderToUse;
+								GLuint sid = tessShaderToUse->GetShaderID();
+								GLint maxTilingLoc = glGetUniformLocation(sid, "maxLayerTiling");
+								if (maxTilingLoc != -1) glUniform1f(maxTilingLoc, maxTiling);
+								if (isShadowPass) {
+									GLint lightTransLoc = glGetUniformLocation(sid, "directionalLightTransform");
+									if (lightTransLoc != -1) glUniformMatrix4fv(lightTransLoc, 1, GL_FALSE, glm::value_ptr(shadowTransform));
+								}
 							}
 						}
 					}
+
+					obj->RenderSingle(
+						targetShader->GetModelLocation(), targetShader->GetSpecularIntensityLocation(), targetShader->GetShininessLocation(),
+						glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
+						targetShader->GetTilingLocation(), targetShader->GetOffsetLocation(),
+						glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap"),
+						glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
+						glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
+						glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
+						cameraPos, graphicsSettings, targetShader->GetShaderID(), targetShader->HasTessellation()
+					);
 				}
 			}
-
-
-
-			// Upload material alpha for shadow pass dithering
-			obj->RenderSingle(
-				targetShader->GetModelLocation(),
-				targetShader->GetSpecularIntensityLocation(),
-				targetShader->GetShininessLocation(),
-				glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
-				targetShader->GetTilingLocation(),
-				targetShader->GetOffsetLocation(),
-				glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap"),
-				glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
-				glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
-				glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
-				cameraPos,
-				graphicsSettings,
-				targetShader->GetShaderID(),
-				targetShader->HasTessellation()
-			);
-		}
-	}
-
-	// 2. Render Batches
-	for (auto& b : localBatchList) {
-		if (b.matrices.empty()) continue;
-
-		Shader* targetShader = overrideShader ? overrideShader : ((b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader);
-		if (!targetShader) continue;
-
-		PrepareShader(targetShader);
-
-
-
-		if (b.material) {
-			b.material->UseMaterial(
-				targetShader->GetSpecularIntensityLocation(),
-				targetShader->GetShininessLocation(),
-				glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
-				targetShader->GetTilingLocation(),
-				targetShader->GetOffsetLocation()
-			);
-			b.material->Bind(targetShader->GetShaderID());
-
-			// Shadow shaders use materialAlpha for transparency color mapping
-			GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
-			if (alphaLoc != -1) glUniform1f(alphaLoc, b.material->GetAlpha());
-		} else {
-			glUniform1f(targetShader->GetSpecularIntensityLocation(), 0.0f);
-			glUniform1f(targetShader->GetShininessLocation(), 1.0f);
-			glUniform4f(glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
-			glUniform2f(targetShader->GetTilingLocation(), 1.0f, 1.0f);
-			glUniform2f(targetShader->GetOffsetLocation(), 0.0f, 0.0f);
-
-			GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
-			if (alphaLoc != -1) glUniform1f(alphaLoc, 1.0f);
 		}
 
-		// Apply texture overrides (Required for alpha testing in shadow pass!)
-		GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
-		GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
-		if (b.texture) {
-			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
-			if (texLoc != -1) glUniform1i(texLoc, 0);
-			b.texture->UseTexture();
-		} else {
-			if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 0);
+		// 2. Render Batches
+		for (auto& b : localBatchList) {
+			if (b.matrices.empty()) continue;
+			Shader* targetShader = overrideShader ? overrideShader : ((b.material && b.material->GetShader()) ? b.material->GetShader() : mainShader);
+			if (!targetShader) continue;
+			PrepareShader(targetShader);
+
+			if (b.material) {
+				b.material->UseMaterial(targetShader->GetSpecularIntensityLocation(), targetShader->GetShininessLocation(), glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), targetShader->GetTilingLocation(), targetShader->GetOffsetLocation());
+				b.material->Bind(targetShader->GetShaderID());
+				GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+				if (alphaLoc != -1) glUniform1f(alphaLoc, b.material->GetAlpha());
+			} else {
+				glUniform1f(targetShader->GetSpecularIntensityLocation(), 0.0f);
+				glUniform1f(targetShader->GetShininessLocation(), 1.0f);
+				glUniform4f(glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+				glUniform2f(targetShader->GetTilingLocation(), 1.0f, 1.0f);
+				glUniform2f(targetShader->GetOffsetLocation(), 0.0f, 0.0f);
+				GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+				if (alphaLoc != -1) glUniform1f(alphaLoc, 1.0f);
+			}
+
+			GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
+			GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
+			if (b.texture) {
+				if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
+				if (texLoc != -1) glUniform1i(texLoc, 0);
+				b.texture->UseTexture();
+			} else {
+				if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 0);
+			}
+
+			GLint useNormalLoc = glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap");
+			GLint normLoc = glGetUniformLocation(targetShader->GetShaderID(), "normalMap");
+			if (!overrideShader && b.normalMap) {
+				if (useNormalLoc != -1) glUniform1i(useNormalLoc, 1);
+				if (normLoc != -1) glUniform1i(normLoc, 1);
+				b.normalMap->UseNormalMap();
+			} else {
+				if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
+			}
+
+			GLint uLayerCountLoc = glGetUniformLocation(targetShader->GetShaderID(), "textureLayerCount");
+			if (uLayerCountLoc != -1) glUniform1i(uLayerCountLoc, 0);
+			GLint instLoc = glGetUniformLocation(targetShader->GetShaderID(), "useInstancing");
+			if (instLoc != -1) glUniform1i(instLoc, 1);
+			b.mesh->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
+			if (instLoc != -1) glUniform1i(instLoc, 0);
 		}
-
-		// Apply normal map overrides
-		GLint useNormalLoc = glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap");
-		GLint normLoc = glGetUniformLocation(targetShader->GetShaderID(), "normalMap");
-		if (!overrideShader && b.normalMap) {
-			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 1);
-			if (normLoc != -1) glUniform1i(normLoc, 1);
-			b.normalMap->UseNormalMap();
-		} else {
-			if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
-		}
-
-		// Explicitly disable texture layers for batched objects to prevent leakage from single-rendered objects
-		GLint uLayerCountLoc = glGetUniformLocation(targetShader->GetShaderID(), "textureLayerCount");
-		if (uLayerCountLoc != -1) glUniform1i(uLayerCountLoc, 0);
-
-		GLint instLoc = glGetUniformLocation(targetShader->GetShaderID(), "useInstancing");
-		if (instLoc != -1) glUniform1i(instLoc, 1);
-		
-		b.mesh->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
-		
-		if (instLoc != -1) glUniform1i(instLoc, 0);
-	}
-	}; // end RenderQueue
+	};
 
 	std::vector<GameObject*> opaqueObjects;
 	std::vector<GameObject*> transparentObjects;
@@ -945,14 +868,51 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			
 			// Simple debug box if we don't have a sphere mesh handy
 			glm::mat4 boxMatrix = glm::translate(glm::mat4(1.0f), center);
-			boxMatrix = glm::scale(boxMatrix, glm::vec3(radius * 2.0f));
+			float sphereScale = debugSphereMesh ? radius : radius * 2.0f;
+			boxMatrix = glm::scale(boxMatrix, glm::vec3(sphereScale));
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(boxMatrix));
 			
-			// Use iconMesh as a proxy for bounds (will show as a quad, but better than nothing)
-			if (iconMesh) iconMesh->RenderMesh();
+			// Use debugSphereMesh for accurate bounds visualization
+			if (debugSphereMesh) debugSphereMesh->RenderMesh();
+			else if (iconMesh) iconMesh->RenderMesh(); // Fallback
 		}
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glEnable(GL_CULL_FACE);
+	}
+
+	// ================================================================
+	// Debug Culling Visualization (Optimized Separate Pass)
+	// ================================================================
+	if (debugShowCulling && gizmoShader.GetShaderID() && !debugCullingList.empty()) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST); // Show everything through walls/each other
+		
+		gizmoShader.UseShader();
+		
+		glUniformMatrix4fv(gizmoShader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
+		
+		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
+		GLint modelLoc = gizmoShader.GetModelLocation();
+
+		for (auto& entry : debugCullingList) {
+			GameObject* obj = entry.first;
+			bool objCulled = entry.second;
+
+			if (objCulled) glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f); // RED
+			else glUniform3f(colorLoc, 0.0f, 1.0f, 0.0f); // GREEN
+
+			glm::mat4 modelMat = obj->GetWorldMatrix();
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
+			
+			if (obj->GetModel()) obj->GetModel()->RenderModel(-1, -1, -1, -1);
+			else if (obj->GetMesh()) obj->GetMesh()->RenderMesh();
+		}
+		
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
 	}
 	
 	if (!overrideShader && sceneDepthTexture != 0) {
@@ -1992,6 +1952,7 @@ void SceneManager::InitIcons()
 	}
 
 	CreateIconMesh();
+	debugSphereMesh = PrimitiveGenerator::CreateSphere(16, 16);
 }
 
 void SceneManager::CreateIconMesh()

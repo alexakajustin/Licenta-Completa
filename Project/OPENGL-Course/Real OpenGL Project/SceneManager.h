@@ -172,6 +172,7 @@ private:
 	int cpuHiZHeight = 0;
 	glm::mat4 prevViewProj = glm::mat4(1.0f);
 
+
 	void GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture);
 
 	// Global light state pointers
@@ -192,6 +193,7 @@ private:
 	Shader iconShader;
 	Texture* lightIconTexture;
 	Mesh* iconMesh;
+	Mesh* debugSphereMesh;
 	void CreateIconMesh();
 
 	// Gizmo resources

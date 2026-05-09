@@ -1908,6 +1908,9 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			if (ImGui::IsItemHovered())
 				ImGui::SetTooltip("Freezes the frustum used for culling to current camera position, allowing you to fly 'outside' and see what is being culled.");
 			ImGui::Checkbox("Show Wireframe", &graphicsSettingsPtr->showWireframe);
+			ImGui::Checkbox("Show Culling Debug (G=Vis, R=Cull)", &graphicsSettingsPtr->debugShowCulling);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Draws green wireframe over visible objects and red over culled ones.");
 
 			ImGui::Separator();
 			ImGui::Text("Occlusion Culling");

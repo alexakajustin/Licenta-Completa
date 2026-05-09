@@ -56,6 +56,7 @@ struct GraphicsSettings {
 	bool showWireframe = false;
 	bool enableOcclusionCulling = true;
 	bool debugShowHiZ = false;
+	bool debugShowCulling = false;
 };
 
 #endif
