@@ -1,10 +1,10 @@
-# RAMY Procedural Engine 🚀
+# RAMY Procedural Engine
 
 **RAMY Procedural Engine** is a high-performance, node-based procedural content generation (PCG) engine built from the ground up using **C++** and **OpenGL**. It is designed to empower creators with the ability to build infinite, complex, and realistic virtual worlds through a flexible and intuitive node-graph interface.
 
 ![Solar System](Licenta/Screenshots/Solar_System.png)
 
-## 🌟 Key Features
+## Key Features
 
 - **Node-Based Workflow:** Create terrain, vegetation, and entire solar systems by connecting functional nodes.
 - **Physically Based Rendering (PBR):** Realistic lighting and materials using industry-standard BRDF models.
@@ -13,7 +13,7 @@
 - **High Performance:** Massive instanced rendering and optimized GPU pipelines (View Frustum Culling, Hi-Z).
 - **Undo/Redo System:** Non-destructive editing with a robust action history.
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 - **Core:** C++17
 - **Graphics API:** OpenGL 4.3+
@@ -21,7 +21,7 @@
 - **Math:** GLM
 - **Serialization:** nlohmann/json
 
-## 📸 Showcase
+## Showcase
 
 ### Procedural Landscapes
 ![Mountain with Rivers](Licenta/Screenshots/5000x5000%20Mountain%20with%20rivers.png)
@@ -38,11 +38,10 @@
 ![Settings Window](Licenta/Screenshots/Settings_Window.png)
 *Granular graphics settings for performance scaling across different hardware.*
 
-## 📂 Project Structure
+## Project Structure
 
 - `/Project`: Source code for the OpenGL engine.
 - `/Licenta`: Academic documentation, thesis files, and screenshots.
-- `build_word.py`: Automation script for generating formal documentation.
 
 ---
 *Developed as part of an Academic Bachelor's Thesis.*
