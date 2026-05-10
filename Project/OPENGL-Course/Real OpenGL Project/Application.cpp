@@ -30,17 +30,30 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 {
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return; // Skip notification noise
 	
-	static std::string lastMessage = "";
+	struct MessageState {
+		int count;
+		double lastTime;
+	};
+	static std::map<GLuint, MessageState> messageMap;
+	double now = glfwGetTime();
 
-	if (std::string(message) == lastMessage) {
-		return;
-	} 
-	
-	lastMessage = message;
+	MessageState& state = messageMap[id];
+	state.count++;
 
-	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-		type, severity, message);
+	// Print the first occurrence immediately
+	if (state.count == 1)
+	{
+		fprintf(stderr, "GL CALLBACK: %s id = 0x%x, type = 0x%x, severity = 0x%x, message = %s\n",
+			(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), id, type, severity, message);
+		state.lastTime = now;
+	}
+	// For subsequent hits, throttle to once per second with a summary count
+	else if (now - state.lastTime > 1.0)
+	{
+		fprintf(stderr, "GL CALLBACK [x%d more]: id = 0x%x, message = %s\n", state.count - 1, id, message);
+		state.lastTime = now;
+		state.count = 1; // Reset count
+	}
 }
 
 Application::Application()
