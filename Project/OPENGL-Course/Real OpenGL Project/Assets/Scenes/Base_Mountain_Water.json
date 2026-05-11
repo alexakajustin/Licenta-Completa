@@ -1,30 +1,19 @@
 {
     "camera": {
         "front": [
-            -0.8795177936553955,
-            -0.37055742740631104,
-            -0.29855602979660034
+            -0.673380434513092,
+            -0.43051108717918396,
+            -0.601015031337738
         ],
-        "pitch": -21.75,
+        "pitch": -25.5,
         "position": [
-            971.0015258789063,
-            283.1676940917969,
-            -89.80701446533203
+            1926.6217041015625,
+            410.5489196777344,
+            41.56691360473633
         ],
-        "yaw": -161.25
+        "yaw": 221.75
     },
-    "instancedGroups": [
-        {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_50_Tree_(Root)_.inst",
-            "name": "Scatter_Instanced_50_Tree (Root)_",
-            "sourceObjectName": "Mesh_0"
-        },
-        {
-            "instanceDataPath": "Base_Mountain_Water_Scatter_Instanced_50_Tree_(Root)__1.inst",
-            "name": "Scatter_Instanced_50_Tree (Root)__1",
-            "sourceObjectName": "Mesh_1"
-        }
-    ],
+    "instancedGroups": [],
     "lights": [
         {
             "ambientIntensity": 0.4000000059604645,
@@ -46,25 +35,35 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 51,
-                "id": 55,
-                "start": 47
+                "end": 69,
+                "id": 79,
+                "start": 67
             },
             {
-                "end": 52,
-                "id": 56,
-                "start": 49
+                "end": 75,
+                "id": 80,
+                "start": 70
+            },
+            {
+                "end": 72,
+                "id": 81,
+                "start": 76
+            },
+            {
+                "end": 78,
+                "id": 82,
+                "start": 73
             }
         ],
-        "nextId": 57,
+        "nextId": 83,
         "nodes": [
             {
                 "cachedModelPath": "",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    0.0,
-                    0.0,
-                    0.0
+                    954.3944702148438,
+                    235.24488830566406,
+                    -98.79019927978516
                 ],
                 "cachedPrimitiveType": "Plane",
                 "cachedRotation": [
@@ -81,83 +80,95 @@
                 "cachedTexturePath": "",
                 "editorPos": [
                     50.0,
-                    50.0
+                    150.0
                 ],
-                "forceOriginalPrimitive": false,
+                "forceOriginalPrimitive": true,
                 "hasCachedMaterial": false,
-                "id": 46,
+                "id": 66,
                 "inputPins": [],
                 "outputPins": [
-                    47
+                    67
                 ],
                 "selectedName": "Plane",
                 "title": "Scene Input"
             },
             {
-                "cachedModelPath": "Assets\\Models\\Tree.obj",
-                "cachedNormalMapPath": "",
-                "cachedPosition": [
-                    -992.2445068359375,
-                    866.292236328125,
-                    930.2969970703125
-                ],
-                "cachedPrimitiveType": "",
-                "cachedRotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "cachedScale": [
-                    2.0,
-                    2.0,
-                    2.0
-                ],
-                "cachedTextureLayers": [],
-                "cachedTexturePath": "",
+                "amplitude": 400.0,
                 "editorPos": [
-                    50.0,
-                    250.0
-                ],
-                "forceOriginalPrimitive": true,
-                "hasCachedMaterial": false,
-                "id": 48,
-                "inputPins": [],
-                "outputPins": [
-                    49
-                ],
-                "selectedName": "Tree (Root)",
-                "title": "Scene Input"
-            },
-            {
-                "alignToNormal": false,
-                "count": 10000,
-                "createdGroupNames": [
-                    "Scatter_Instanced_50_Tree (Root)",
-                    "Scatter_Instanced_50_Tree (Root)_",
-                    "Scatter_Instanced_50_Tree (Root)__1"
-                ],
-                "deletionVolumes": [],
-                "editorPos": [
-                    300.0,
+                    250.0,
                     150.0
                 ],
-                "id": 50,
+                "frequency": 0.5,
+                "id": 68,
                 "inputPins": [
-                    51,
-                    52
+                    69
                 ],
-                "maxScale": 1.2000000476837158,
-                "minScale": 0.800000011920929,
+                "octaves": 8,
+                "offsetX": 0.0,
+                "offsetZ": 0.0,
                 "outputPins": [
-                    53,
-                    54
+                    70
                 ],
-                "randomRotation": true,
+                "persistence": 0.44999998807907104,
+                "ridged": true,
                 "seed": 42,
-                "spawnAsObjects": true,
-                "spawnedMap": {},
-                "targetParentName": "(none)",
-                "title": "Scatter"
+                "title": "Perlin Noise",
+                "useNormalDisplacement": false
+            },
+            {
+                "baseDepth": 1.0,
+                "baseWidth": 15.0,
+                "editorPos": [
+                    650.0,
+                    150.0
+                ],
+                "id": 71,
+                "inputPins": [
+                    72
+                ],
+                "lakeVolumeMultiplier": 500.0,
+                "maxSteps": 1500,
+                "outputPins": [
+                    73
+                ],
+                "smoothPasses": 8,
+                "springCount": 8,
+                "title": "River",
+                "waterOffset": 0.004999999888241291
+            },
+            {
+                "depositionConstant": 0.019999999552965164,
+                "dissolvingConstant": 0.8999999761581421,
+                "editorPos": [
+                    450.0,
+                    150.0
+                ],
+                "id": 74,
+                "inputPins": [
+                    75
+                ],
+                "outputPins": [
+                    76
+                ],
+                "rainRate": 1.0,
+                "simulationSteps": 60,
+                "smoothPasses": 0,
+                "title": "Hydraulic Erosion"
+            },
+            {
+                "editorPos": [
+                    850.0,
+                    150.0
+                ],
+                "id": 77,
+                "inputPins": [
+                    78
+                ],
+                "outputPins": [],
+                "sameAsInput": true,
+                "targetName": "(none)",
+                "title": "Output",
+                "updateMesh": true
             }
         ]
     },
@@ -173,9 +184,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    954.3944702148438,
+                    235.24488830566406,
+                    -98.79019927978516
                 ],
                 "rotation": [
                     0.0,
@@ -190,15 +201,9 @@
             }
         },
         {
-            "customMeshPath": "Base_Mountain_Water_River_Water_21.mesh",
+            "customMeshPath": "Base_Mountain_Water_River_Water_71.mesh",
             "inheritScale": true,
             "material": {
-                "clipPlane": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -248,25 +253,20 @@
                 "material_waveScale": 1.0,
                 "material_waveSpeed": 1.0,
                 "material_waveStrength": 5.0,
-                "screenSize": [
-                    0.0,
-                    0.0
-                ],
-                "selectionTint": 0.0,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
             },
             "modelPath": "",
-            "name": "River_Water_21",
+            "name": "River_Water_71",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    954.3944702148438,
+                    235.24488830566406,
+                    -98.79019927978516
                 ],
                 "rotation": [
                     0.0,
@@ -281,15 +281,9 @@
             }
         },
         {
-            "customMeshPath": "Base_Mountain_Water_Lake_Water_21.mesh",
+            "customMeshPath": "Base_Mountain_Water_Lake_Water_71.mesh",
             "inheritScale": true,
             "material": {
-                "clipPlane": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -337,27 +331,22 @@
                 "material_waterDepthScale": 0.30000001192092896,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 0.009999999776482582,
+                "material_waveSpeed": 0.9200000166893005,
                 "material_waveStrength": 0.10000000149011612,
-                "screenSize": [
-                    0.0,
-                    0.0
-                ],
-                "selectionTint": 0.0,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
             },
             "modelPath": "",
-            "name": "Lake_Water_21",
+            "name": "Lake_Water_71",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    954.3944702148438,
+                    235.24488830566406,
+                    -98.79019927978516
                 ],
                 "rotation": [
                     0.0,
@@ -373,39 +362,7 @@
         },
         {
             "inheritScale": true,
-            "modelPath": "Assets\\Models\\Tree.obj",
-            "name": "Tree (Root)",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    -992.2445068359375,
-                    866.292236328125,
-                    930.2969970703125
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
             "material": {
-                "clipPlane": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ],
                 "material.ambientColor": [
                     0.0,
                     0.0,
@@ -434,146 +391,35 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "selectionTint": 0.0,
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Mesh_0",
-            "normalMapPath": "",
-            "parent": "Tree (Root)",
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\bark_0021.jpg",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
                 ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "clipPlane": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ],
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Textures/plain.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 0.0,
-                "material.specularColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.specularIntensity": 0.5,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "selectionTint": 0.0,
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
             },
-            "modelPath": "",
-            "name": "Mesh_1",
-            "normalMapPath": "",
-            "parent": "Tree (Root)",
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "modelPath": "",
-            "name": "Scatter_Group_50_Tree (Root)",
+            "modelPath": "Assets\\Models\\statue.obj",
+            "name": "statue 3",
             "normalMapPath": "",
             "parent": "",
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    1921.1890869140625,
+                    404.8148193359375,
+                    35.93816375732422
                 ],
                 "rotation": [
                     0.0,

@@ -107,21 +107,24 @@ void main()
 	vec3 tangentW = vec3(1.0, 0.0, 0.0);
 	vec3 binormalW = vec3(0.0, 0.0, 1.0);
 	
-    // 6 Gerstner waves at different scales for rich, varied motion (Wavelengths in meters)
-	vec4 waveA = vec4(1.0, 1.0, 0.20 * actualWaveStrength, 45.0 / actualWaveScale);
-	vec4 waveB = vec4(1.0, 0.6, 0.15 * actualWaveStrength, 25.0 / actualWaveScale);
-	vec4 waveC = vec4(1.0, 1.3, 0.12 * actualWaveStrength, 15.0 / actualWaveScale);
-    vec4 waveD = vec4(0.7, 1.0, 0.10 * actualWaveStrength,  8.0 / actualWaveScale);
-    vec4 waveE = vec4(0.2, 0.8, 0.08 * actualWaveStrength,  4.0 / actualWaveScale);
-    vec4 waveF = vec4(-0.4, 0.6, 0.05 * actualWaveStrength,  2.0 / actualWaveScale);
+    // 6 Gerstner waves spread across 360° for natural, non-repetitive ocean movement
+    // Directions chosen at non-uniform angles to avoid symmetry artifacts
+    // Format: vec4(dirX, dirZ, steepness, wavelength_meters)
+	vec4 waveA = vec4( 0.95,  0.31, 0.22 * actualWaveStrength, 50.0 / actualWaveScale);  // ~18°
+	vec4 waveB = vec4(-0.42,  0.91, 0.16 * actualWaveStrength, 28.0 / actualWaveScale);  // ~115°
+	vec4 waveC = vec4(-0.87, -0.50, 0.13 * actualWaveStrength, 17.0 / actualWaveScale);  // ~210°
+    vec4 waveD = vec4( 0.34, -0.94, 0.10 * actualWaveStrength,  9.0 / actualWaveScale);  // ~290°
+    vec4 waveE = vec4( 0.71,  0.71, 0.07 * actualWaveStrength,  5.0 / actualWaveScale);  // ~45°
+    vec4 waveF = vec4(-0.26,  0.97, 0.04 * actualWaveStrength,  2.5 / actualWaveScale);  // ~105°
     
+    // Individual speed multipliers break the synchronized pulse
     vec3 waveOffset = vec3(0.0);
-    waveOffset += GerstnerWave(waveA, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
-	waveOffset += GerstnerWave(waveB, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
-	waveOffset += GerstnerWave(waveC, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
-    waveOffset += GerstnerWave(waveD, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
-    waveOffset += GerstnerWave(waveE, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
-    waveOffset += GerstnerWave(waveF, worldGridPoint, tangentW, binormalW, actualWaveSpeed);
+    waveOffset += GerstnerWave(waveA, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 1.0);
+	waveOffset += GerstnerWave(waveB, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 0.8);
+	waveOffset += GerstnerWave(waveC, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 1.2);
+    waveOffset += GerstnerWave(waveD, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 0.65);
+    waveOffset += GerstnerWave(waveE, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 1.4);
+    waveOffset += GerstnerWave(waveF, worldGridPoint, tangentW, binormalW, actualWaveSpeed * 0.9);
     
     // Edge fade based on LOCAL coordinates to smoothly flatten water near terrain edges
     float edgeFadeX = smoothstep(0.0, 0.05, 1.0 - abs(pos.x));
