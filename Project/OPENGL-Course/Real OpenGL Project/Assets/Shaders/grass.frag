@@ -148,7 +148,8 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	if(projCoords.z > 1.0) return 0.0;
 	
 	float current = projCoords.z;
-	float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.001);
+	// Adjusted for large 20000 world unit Z-range in the orthographic projection
+	float bias = max(0.00005 * (1.0 - dot(normal, -lightDir)), 0.00001);
 	
 	float shadow = 0.0;
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);

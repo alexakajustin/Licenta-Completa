@@ -612,33 +612,10 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), 1);
 	glUniform1f(glGetUniformLocation(cullShaderID, "lodDistances[0]"), finalShadowDist);
 
-	// Hi-Z occlusion culling for shadow pass:
-	// If the camera can't see an object, its shadow is also invisible.
-	// We use the CAMERA's Hi-Z map (not the light's) to skip shadow rendering
-	// for camera-occluded instances. This is a major performance win in scenes
-	// with heavy occlusion (e.g., interiors, cities).
-	if (hizTexture > 0 && gs && gs->enableOcclusionCulling && screenWidth > 0 && screenHeight > 0) {
-		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
-		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
-
-		// Extract near/far from the CAMERA's projection (embedded in cameraViewProj)
-		// We pass these separately so the Hi-Z depth comparison uses camera space
-		float A = cameraViewProj[2][2];
-		float B = cameraViewProj[3][2];
-		float nearP = B / (A - 1.0f);
-		float farP  = B / (A + 1.0f);
-		glUniform1f(glGetUniformLocation(cullShaderID, "nearPlane"), nearP);
-		glUniform1f(glGetUniformLocation(cullShaderID, "farPlane"), farP);
-
-		glActiveTexture(GL_TEXTURE15);
-		glBindTexture(GL_TEXTURE_2D, hizTexture);
-		glUniform1i(glGetUniformLocation(cullShaderID, "hizMap"), 15);
-
-		// In shadow pass, hizViewProj is the CAMERA's VP (not the light's)
-		glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "hizViewProj"), 1, GL_FALSE, glm::value_ptr(cameraViewProj));
-	} else {
-		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
-	}
+	// Hi-Z occlusion culling for shadow pass MUST BE DISABLED for directional lights!
+	// "If the camera can't see an object, its shadow is also invisible" is FALSE. 
+	// Objects behind the camera or off-screen can cast shadows into the view.
+	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
 
 	// Disable sphere culling (used only by omni shadow pass)
 	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);

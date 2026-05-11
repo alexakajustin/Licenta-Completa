@@ -303,7 +303,9 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	if(projCoords.z > 1.0) return 0.0;
 	
 	float current = projCoords.z;
-	float bias = max(0.002 * (1.0 - dot(normal, -lightDir)), 0.0005);
+	// Adjust bias for the large 20000 Z-range of the orthographic projection.
+	// We rely mostly on the normal offset bias above, so depth bias can be very small.
+	float bias = max(0.00005 * (1.0 - dot(normal, -lightDir)), 0.00001);
 	
 	float shadow = 0.0;
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
