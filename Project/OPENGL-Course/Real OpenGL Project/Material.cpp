@@ -129,7 +129,14 @@ void Material::Bind(GLuint overrideProgram)
 
 	for (auto const& [name, val] : vec4s) {
 		GLint loc = GetLoc(name);
-		if (loc != -1) glUniform4fv(loc, 1, glm::value_ptr(val));
+		if (loc != -1) {
+			while(glGetError() != GL_NO_ERROR); // clear previous errors
+			glUniform4fv(loc, 1, glm::value_ptr(val));
+			GLenum err = glGetError();
+			if (err != GL_NO_ERROR) {
+				std::cout << "[ERROR] glUniform4fv failed for vec4 uniform: " << name << " at location: " << loc << "\n";
+			}
+		}
 	}
 
 	// Bind texture parameters to high texture units (10+)

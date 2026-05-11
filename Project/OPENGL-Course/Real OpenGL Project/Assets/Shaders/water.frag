@@ -168,7 +168,7 @@ void main() {
     
     // Subsurface Scattering (Sun bleed)
     float sss = pow(max(0.0, dot(viewDir, -directionalLight.direction)), 12.0) * depthFactor;
-    lighting += material_waterColorShallow.rgb * sss * 0.4;
+    lighting += (material_waterColorShallow == vec4(0.0) ? vec3(0.4, 0.8, 0.7) : material_waterColorShallow.rgb) * sss * 0.4;
 
     for(int i=0; i<pointLightCount; i++) lighting += CalcLight(pointLights[i].base, normalize(pointLights[i].position - FragPos), worldNormal, viewDir);
     

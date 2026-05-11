@@ -46,6 +46,11 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 		fprintf(stderr, "GL CALLBACK: %s id = 0x%x, type = 0x%x, severity = 0x%x, message = %s\n",
 			(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), id, type, severity, message);
 		state.lastTime = now;
+		
+		// Break here to catch the exact cause of the glUniform4f error
+		if (std::string(message).find("glUniform4f") != std::string::npos) {
+			abort();
+		}
 	}
 	// For subsequent hits, throttle to once per second with a summary count
 	else if (now - state.lastTime > 1.0)

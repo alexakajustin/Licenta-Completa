@@ -227,7 +227,11 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	glUniform3f(uniformEyePosition, cameraPos.x, cameraPos.y, cameraPos.z);
 	
 	GLint clipPlaneLoc = glGetUniformLocation(mainShader.GetShaderID(), "clipPlane");
-	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+	if (clipPlaneLoc != -1) {
+		while(glGetError() != GL_NO_ERROR);
+		glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+		if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4f failed for clipPlane at location: " << clipPlaneLoc << " in Renderer line 230\n";
+	}
 
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
@@ -334,7 +338,11 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	// Set clip plane: render only stuff ABOVE water (y > waterHeight)
 	// Clip plane equation: 0*x + 1*y + 0*z + (-waterHeight) > 0
 	GLint clipPlaneLoc = glGetUniformLocation(mainShader.GetShaderID(), "clipPlane");
-	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 1.0f, 0.0f, -waterHeight + 0.01f);
+	if (clipPlaneLoc != -1) {
+		while(glGetError() != GL_NO_ERROR);
+		glUniform4f(clipPlaneLoc, 0.0f, 1.0f, 0.0f, -waterHeight + 0.01f);
+		if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4f failed for clipPlane at location: " << clipPlaneLoc << " in Renderer line 337\n";
+	}
 
 	mainShader.SetDirectionalLight(&mainLight);
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
@@ -369,7 +377,12 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	glDisable(GL_BLEND);
 
 	// Reset clip plane to neutral on the main shader
-	if (clipPlaneLoc != -1) glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+	if (clipPlaneLoc != -1) {
+		mainShader.UseShader(); // MUST BIND BEFORE SETTING UNIFORM
+		while(glGetError() != GL_NO_ERROR);
+		glUniform4f(clipPlaneLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+		if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4f failed for clipPlane at location: " << clipPlaneLoc << " in Renderer line 372\n";
+	}
 }
 
 Shader* Renderer::GetInstancedShader(Shader* original)

@@ -585,7 +585,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			} else {
 				glUniform1f(targetShader->GetSpecularIntensityLocation(), 0.0f);
 				glUniform1f(targetShader->GetShininessLocation(), 1.0f);
-				glUniform4f(glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+				GLint baseColorLoc = glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor");
+				if (baseColorLoc != -1) {
+					while(glGetError() != GL_NO_ERROR);
+					glUniform4f(baseColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+					if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4f failed for material.baseColor at location: " << baseColorLoc << "\n";
+				}
 				glUniform2f(targetShader->GetTilingLocation(), 1.0f, 1.0f);
 				glUniform2f(targetShader->GetOffsetLocation(), 0.0f, 0.0f);
 				GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
@@ -792,7 +797,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				if (timeLoc != -1) glUniform1f(timeLoc, time);
 
 				GLint clipLoc = glGetUniformLocation(sid, "clipPlane");
-				if (clipLoc != -1) glUniform4fv(clipLoc, 1, glm::value_ptr(clipPlane));
+				if (clipLoc != -1) {
+					while(glGetError() != GL_NO_ERROR);
+					glUniform4fv(clipLoc, 1, glm::value_ptr(clipPlane));
+					if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4fv failed for clipPlane at location: " << clipLoc << "\n";
+				}
 
 				GLint depthMapLoc = glGetUniformLocation(sid, "sceneDepthMap");
 				if (depthMapLoc != -1) {
@@ -2774,6 +2783,12 @@ void SceneManager::DispatchObjectCull(const glm::mat4& viewProj, const glm::mat4
 	GLuint numGroups = (objCount + 63) / 64;
 	glDispatchCompute(numGroups, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	// Cleanup: unbind SSBOs and deactivate compute shader to prevent
+	// interference with subsequent rendering passes
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+	glUseProgram(0);
 
 	// 6. Update state for next frame
 	lastObjectCullCount = objCount;

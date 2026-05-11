@@ -469,7 +469,12 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		// DEFAULT MATERIAL: Bind white color and identity tiling so objects are visible & not weirdly textured
 		glUniform1f(renderShader.GetSpecularIntensityLocation(), 0.1f);
 		glUniform1f(renderShader.GetShininessLocation(), 32.0f);
-		glUniform4f(glGetUniformLocation(shaderID, "material.baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+		GLint baseColorLoc = glGetUniformLocation(shaderID, "material.baseColor");
+		if (baseColorLoc != -1) {
+			while(glGetError() != GL_NO_ERROR);
+			glUniform4f(baseColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+			if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniform4f failed for material.baseColor in InstancedGroup at location: " << baseColorLoc << "\n";
+		}
 		glUniform2f(renderShader.GetTilingLocation(), 1.0f, 1.0f);
 		glUniform2f(renderShader.GetOffsetLocation(), 0.0f, 0.0f);
 	}
