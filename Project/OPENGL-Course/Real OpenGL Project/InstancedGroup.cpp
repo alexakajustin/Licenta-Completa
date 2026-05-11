@@ -79,6 +79,14 @@ void InstancedGroup::Setup(Mesh* mesh,
 	AllocateLODBuffers();
 	AllocateShadowBuffers();
 
+	// Allocate visibility buffer for two-phase occlusion culling
+	if (visibilitySSBO) { glDeleteBuffers(1, &visibilitySSBO); visibilitySSBO = 0; }
+	glGenBuffers(1, &visibilitySSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, visibilitySSBO);
+	std::vector<uint32_t> zeros(totalCount, 0);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(uint32_t) * totalCount, zeros.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
 	float totalVRAM_KB = (float)(sizeof(PackedInstance) * totalCount) / 1024.0f;
 	printf("[InstancedGroup] '%s': Uploaded %u instances (%.1f KB VRAM, %s)\n",
 		name.c_str(), totalCount, totalVRAM_KB,
@@ -322,6 +330,13 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	} else {
 		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
 	}
+
+	// Legacy single-phase mode: set phase = 2 so the shader processes all instances
+	glUniform1i(glGetUniformLocation(cullShaderID, "phase"), 2);
+	glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+
+	// Bind visibility buffer (required by shader even in legacy mode)
+	if (visibilitySSBO) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
 
 	if (useChunking) {
 		CullAndDrawChunked(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
@@ -620,6 +635,11 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	// Disable sphere culling (used only by omni shadow pass)
 	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);
 
+	// Shadow pass always uses legacy mode (no two-phase visibility)
+	glUniform1i(glGetUniformLocation(cullShaderID, "phase"), 2);
+	glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+	if (visibilitySSBO) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
+
 	// Zero out screenSize for sub-pixel culling only if Hi-Z is not active
 	// (Hi-Z already set screenSize above when enabled)
 	if (!(hizTexture > 0 && gs && gs->enableOcclusionCulling && screenWidth > 0 && screenHeight > 0)) {
@@ -755,6 +775,11 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 	// Disable Hi-Z for shadow pass
 	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
 
+	// Shadow pass always uses legacy mode (no two-phase visibility)
+	glUniform1i(glGetUniformLocation(cullShaderID, "phase"), 2);
+	glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+	if (visibilitySSBO) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
+
 	// Bind shadow output buffers
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowIndirectBuffer);
@@ -825,6 +850,7 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 void InstancedGroup::Release()
 {
 	if (instanceSSBO) { glDeleteBuffers(1, &instanceSSBO); instanceSSBO = 0; }
+	if (visibilitySSBO) { glDeleteBuffers(1, &visibilitySSBO); visibilitySSBO = 0; }
 	ReleaseLODBuffers();
 	ReleaseShadowBuffers();
 	ReleaseChunks();
@@ -838,6 +864,246 @@ void InstancedGroup::Release()
 	lastVisibleCount = 0;
 	lodCount = 1;
 	useChunking = false;
+}
+
+// =====================================================================
+// ClearVisibility — Zero out the visibility buffer at start of frame
+// =====================================================================
+void InstancedGroup::ClearVisibility()
+{
+	if (!visibilitySSBO || totalCount == 0) return;
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, visibilitySSBO);
+	GLuint zero = 0;
+	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+// =====================================================================
+// CullAndDrawPhase1 — Draw instances that were visible last frame
+// No Hi-Z test needed — these were proven visible 1 frame ago.
+// Their draw calls populate the depth buffer for Phase 2.
+// =====================================================================
+void InstancedGroup::CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader,
+	const glm::mat4& projection, const glm::mat4& view,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs)
+{
+	if (totalCount == 0 || !sharedMesh) return;
+
+	glm::mat4 viewProj = projection * view;
+
+	// ================================================================
+	// GPU Compute Shader Culling — Phase 1
+	// ================================================================
+	glUseProgram(cullShaderID);
+
+	// Reset ALL LOD indirect draw buffers
+	for (int lod = 0; lod < lodCount; lod++) {
+		Mesh* lodMesh = lodLevels[lod].mesh ? lodLevels[lod].mesh : sharedMesh;
+		DrawElementsIndirectCommand resetCmd = {};
+		resetCmd.count = lodMesh->GetIndexCount();
+		resetCmd.instanceCount = 0;
+
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, lodLevels[lod].indirectBuffer);
+		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &resetCmd);
+	}
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+	// Set uniforms
+	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
+	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
+	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
+	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
+
+	// LOD distances
+	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
+
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalMaxDist);
+	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), lodCount);
+	float dvals[3] = { finalLOD0, finalLOD1, finalLOD2 };
+	for (int i = 0; i < 3; i++) {
+		char buf[64]; snprintf(buf, sizeof(buf), "lodDistances[%d]", i);
+		glUniform1f(glGetUniformLocation(cullShaderID, buf), dvals[i]);
+	}
+
+	// Phase 1: no Hi-Z, no sphere cull
+	glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);
+	glUniform1i(glGetUniformLocation(cullShaderID, "phase"), 0); // Phase 1
+	glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), 0.0f, 0.0f);
+
+	// Bind visibility buffer
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
+
+	// Dispatch (flat or chunked)
+	if (useChunking) {
+		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
+		uint32_t chunkOffset = 0;
+		for (auto& chunk : chunks) {
+			if (!frustum.IsBoxVisible(chunk.boundsMin, chunk.boundsMax) ||
+				glm::length((chunk.boundsMin + chunk.boundsMax) * 0.5f - cameraPos) - glm::length(chunk.boundsMax - chunk.boundsMin) * 0.5f > finalMaxDist) {
+				chunkOffset += chunk.instanceCount;
+				continue;
+			}
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, chunk.ssbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), chunk.instanceCount);
+			glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), chunkOffset);
+			glDispatchCompute((chunk.instanceCount + 255) / 256, 1, 1);
+			chunkOffset += chunk.instanceCount;
+		}
+	} else {
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+		glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+		glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
+		glDispatchCompute((totalCount + 255) / 256, 1, 1);
+	}
+
+	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+
+	// Render Phase 1 results
+	RenderLODs(renderShader, projection, view, cameraPos, gs, false);
+}
+
+// =====================================================================
+// CullAndDrawPhase2 — Test previously-invisible instances against
+// the fresh Hi-Z depth buffer built from Phase 1 draws.
+// =====================================================================
+void InstancedGroup::CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader,
+	const glm::mat4& projection, const glm::mat4& view,
+	const glm::vec3& cameraPos, const GraphicsSettings* gs,
+	GLuint hizTexture, int screenWidth, int screenHeight)
+{
+	if (totalCount == 0 || !sharedMesh) return;
+
+	glm::mat4 viewProj = projection * view;
+
+	// ================================================================
+	// GPU Compute Shader Culling — Phase 2
+	// ================================================================
+	glUseProgram(cullShaderID);
+
+	// Reset ALL LOD indirect draw buffers (Phase 2 gets its own counts)
+	for (int lod = 0; lod < lodCount; lod++) {
+		Mesh* lodMesh = lodLevels[lod].mesh ? lodLevels[lod].mesh : sharedMesh;
+		DrawElementsIndirectCommand resetCmd = {};
+		resetCmd.count = lodMesh->GetIndexCount();
+		resetCmd.instanceCount = 0;
+
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, lodLevels[lod].indirectBuffer);
+		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &resetCmd);
+	}
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+	// Set uniforms
+	glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "viewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
+	glUniform3fv(glGetUniformLocation(cullShaderID, "cameraPos"), 1, glm::value_ptr(cameraPos));
+	glUniform1f(glGetUniformLocation(cullShaderID, "instanceBoundRadius"), meshBoundRadius);
+	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
+
+	// LOD distances
+	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
+	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
+	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
+
+	glUniform1f(glGetUniformLocation(cullShaderID, "maxDrawDistance"), finalMaxDist);
+	glUniform1i(glGetUniformLocation(cullShaderID, "lodCount"), lodCount);
+	float dvals[3] = { finalLOD0, finalLOD1, finalLOD2 };
+	for (int i = 0; i < 3; i++) {
+		char buf[64]; snprintf(buf, sizeof(buf), "lodDistances[%d]", i);
+		glUniform1f(glGetUniformLocation(cullShaderID, buf), dvals[i]);
+	}
+
+	// Phase 2: Hi-Z enabled
+	glUniform1i(glGetUniformLocation(cullShaderID, "useSphereCull"), 0);
+	glUniform1i(glGetUniformLocation(cullShaderID, "phase"), 1); // Phase 2
+
+	if (hizTexture > 0 && gs && gs->enableOcclusionCulling) {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 1);
+		glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
+
+		float A = projection[2][2];
+		float B = projection[3][2];
+		float nearP = B / (A - 1.0f);
+		float farP  = B / (A + 1.0f);
+		glUniform1f(glGetUniformLocation(cullShaderID, "nearPlane"), nearP);
+		glUniform1f(glGetUniformLocation(cullShaderID, "farPlane"), farP);
+
+		glActiveTexture(GL_TEXTURE15);
+		glBindTexture(GL_TEXTURE_2D, hizTexture);
+		glUniform1i(glGetUniformLocation(cullShaderID, "hizMap"), 15);
+
+		glm::mat4 vp = projection * view;
+		glUniformMatrix4fv(glGetUniformLocation(cullShaderID, "hizViewProj"), 1, GL_FALSE, glm::value_ptr(vp));
+	} else {
+		glUniform1i(glGetUniformLocation(cullShaderID, "useHiZ"), 0);
+	}
+
+	// Bind visibility buffer
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
+
+	// Contribution culling screen size
+	glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
+
+	// Dispatch (flat or chunked)
+	if (useChunking) {
+		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
+		uint32_t chunkOffset = 0;
+		for (auto& chunk : chunks) {
+			if (!frustum.IsBoxVisible(chunk.boundsMin, chunk.boundsMax) ||
+				glm::length((chunk.boundsMin + chunk.boundsMax) * 0.5f - cameraPos) - glm::length(chunk.boundsMax - chunk.boundsMin) * 0.5f > finalMaxDist) {
+				chunkOffset += chunk.instanceCount;
+				continue;
+			}
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, chunk.ssbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), chunk.instanceCount);
+			glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), chunkOffset);
+			glDispatchCompute((chunk.instanceCount + 255) / 256, 1, 1);
+			chunkOffset += chunk.instanceCount;
+		}
+	} else {
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+		glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+		glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
+		glDispatchCompute((totalCount + 255) / 256, 1, 1);
+	}
+
+	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+
+	// Render Phase 2 results
+	RenderLODs(renderShader, projection, view, cameraPos, gs, false);
 }
 
 void InstancedGroup::ReleaseLODBuffers()
@@ -1151,6 +1417,7 @@ void InstancedGroup::ReuploadGPU()
 		
 		// Release ONLY GPU buffers (SSBOs, indirect buffers) — NOT the mesh
 		if (instanceSSBO) { glDeleteBuffers(1, &instanceSSBO); instanceSSBO = 0; }
+		if (visibilitySSBO) { glDeleteBuffers(1, &visibilitySSBO); visibilitySSBO = 0; }
 		ReleaseLODBuffers();
 		ReleaseShadowBuffers();
 		ReleaseChunks();

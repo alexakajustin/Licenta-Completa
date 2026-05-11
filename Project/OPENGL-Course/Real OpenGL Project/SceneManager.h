@@ -166,7 +166,7 @@ private:
 	Shader* hizCopyShader = nullptr;
 	Shader* hizDebugShader = nullptr;
 
-	// CPU-Side Hi-Z Occlusion Culling
+	// CPU-Side Hi-Z Occlusion Culling (legacy PBO readback — kept for compatibility)
 	GLuint hizPBO[2] = { 0, 0 };
 	int currentPBO = 0;
 	std::vector<float> cpuHiZMap;
@@ -174,6 +174,16 @@ private:
 	int cpuHiZHeight = 0;
 	glm::mat4 prevViewProj = glm::mat4(1.0f);
 
+	// GPU-Driven Object Occlusion Culling (NVIDIA-style compute shader)
+	Shader* objectCullShader = nullptr;
+	GLuint objectBoundsSSBO = 0;           // Per-object AABB data uploaded each frame
+	GLuint objectVisibilitySSBO[2] = {0,0}; // Double-buffered: [writeFrame], [readFrame]
+	int objectCullWriteIdx = 0;            // Which SSBO to write to this frame
+	std::vector<uint32_t> cpuObjectVisibility; // CPU readback from previous frame
+	int lastObjectCullCount = 0;           // Number of objects tested last dispatch
+	bool objectCullReady = false;          // True after first frame (readback available)
+	void DispatchObjectCull(const glm::mat4& viewProj, const glm::mat4& projection, const glm::vec3& cameraPos,
+		int screenWidth, int screenHeight, const std::vector<GameObject*>& cullList);
 
 	void GenerateHiZMap(int screenWidth, int screenHeight, GLuint sceneDepthTexture);
 

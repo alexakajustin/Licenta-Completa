@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <thread>
 #include <unordered_set>
+#include <unordered_map>
 #include <map>
 #include "InstancedGroup.h"
 #include "Renderer.h"
@@ -45,6 +46,11 @@ SceneManager::~SceneManager()
 	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
 	if (iconMesh) { iconMesh->Release(); iconMesh = nullptr; }
 	if (debugSphereMesh) { debugSphereMesh->Release(); debugSphereMesh = nullptr; }
+
+	// Cleanup GPU-driven object occlusion culling resources
+	if (objectBoundsSSBO) glDeleteBuffers(1, &objectBoundsSSBO);
+	if (objectVisibilitySSBO[0]) glDeleteBuffers(2, objectVisibilitySSBO);
+	if (objectCullShader) { delete objectCullShader; objectCullShader = nullptr; }
 }
 
 // =====================================================================
@@ -286,29 +292,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
 {
 	// ================================================================
-	// CPU Hi-Z Occlusion Culling: Map PBO from previous frame (1-frame latency)
+	// CPU Hi-Z readback DISABLED — no longer needed since object-level
+	// occlusion culling was removed. The GPU Hi-Z for scatter instances
+	// runs entirely on the GPU and never touches the CPU.
 	// ================================================================
 	int currentHiZW = 0;
 	int currentHiZH = 0;
-	if (!overrideShader && hizPBO[0] != 0 && gs && gs->enableOcclusionCulling) {
-		int prevPBO = (currentPBO + 1) % 2;
-		glBindBuffer(GL_PIXEL_PACK_BUFFER, hizPBO[prevPBO]);
-		float* ptr = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-		if (ptr) {
-			if (cpuHiZMap.size() != (size_t)cpuHiZWidth * cpuHiZHeight) {
-				cpuHiZMap.resize((size_t)cpuHiZWidth * cpuHiZHeight);
-			}
-			memcpy(cpuHiZMap.data(), ptr, cpuHiZMap.size() * sizeof(float));
-			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-		}
-		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-	}
-
-	// Capture dimensions that match our current cpuHiZMap to avoid mismatch during resize
-	if (!cpuHiZMap.empty()) {
-		currentHiZW = cpuHiZWidth;
-		currentHiZH = cpuHiZHeight;
-	}
 
 	struct Batch {
 		Mesh* mesh;
@@ -416,6 +405,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	float n_const = B_const / (A_const - 1.0f);
 	float f_const = (std::abs(A_const + 1.0f) > 0.0001f) ? (B_const / (A_const + 1.0f)) : 20000.0f;
 
+	// GPU-Driven Object Occlusion Culling index map (declared here so the lambda captures it)
+	std::unordered_map<GameObject*, int> objectCullIndexMap;
+
 	auto RenderQueue = [&](const std::vector<GameObject*>& queue) {
 		std::vector<Batch> localBatchList;
 
@@ -479,96 +471,15 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					else if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) isCulled = true;
 					else if (!overrideShader && screenHeight > 0.0f && !Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) isCulled = true;
 					else if (!frustum->IsBoxVisible(bmin, bmax)) isCulled = true;
-					else if (!overrideShader && sceneDepthTexture != 0 && !cpuHiZMap.empty() && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
-						glm::vec3 corners[8] = {
-							glm::vec3(bmin.x, bmin.y, bmin.z), glm::vec3(bmax.x, bmin.y, bmin.z),
-							glm::vec3(bmin.x, bmax.y, bmin.z), glm::vec3(bmax.x, bmax.y, bmin.z),
-							glm::vec3(bmin.x, bmin.y, bmax.z), glm::vec3(bmax.x, bmin.y, bmax.z),
-							glm::vec3(bmin.x, bmax.y, bmax.z), glm::vec3(bmax.x, bmax.y, bmax.z)
-						};
-
-						// Robust Edge-Clipping for massive AABBs crossing the near plane
-						glm::mat4 prevView = glm::mat4(1.0f); // Fallback if we don't have separate matrices
-						// Extract a pseudo-view matrix from the view-projection for near-clipping
-						// or just use the current view as an approximation for the Z-check.
-						
-						glm::vec2 minNDC = glm::vec2(1.0f);
-						glm::vec2 maxNDC = glm::vec2(-1.0f);
-						float nearestDepth = 1.0f;
-						bool anyVisible = false;
-
-						// Define the 12 edges of the AABB (indices into the 8 corners)
-						int edges[12][2] = {
-							{0,1}, {1,3}, {3,2}, {2,0}, // Back face
-							{4,5}, {5,7}, {7,6}, {6,4}, // Front face
-							{0,4}, {1,5}, {2,6}, {3,7}  // Connecting edges
-						};
-
-						for (int i = 0; i < 12; ++i) {
-							glm::vec4 p1 = prevViewProj * glm::vec4(corners[edges[i][0]], 1.0f);
-							glm::vec4 p2 = prevViewProj * glm::vec4(corners[edges[i][1]], 1.0f);
-
-							// Clip edge against near plane (w > 0)
-							if (p1.w < 0.01f && p2.w < 0.01f) continue; // Entire edge behind camera
-
-							if (p1.w < 0.01f || p2.w < 0.01f) {
-								// Partially behind: clip to w = 0.01
-								float t = (0.01f - p1.w) / (p2.w - p1.w);
-								glm::vec4 clipped = p1 + t * (p2 - p1);
-								if (p1.w < 0.01f) p1 = clipped;
-								else p2 = clipped;
+					// GPU-Driven Occlusion Culling (NVIDIA-style compute shader)
+					// Uses previous frame's Hi-Z results with 1-frame latency.
+					else if (!isCulled && objectCullReady && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+						auto it = objectCullIndexMap.find(obj);
+						if (it != objectCullIndexMap.end()) {
+							int cullIdx = it->second;
+							if (cullIdx < (int)cpuObjectVisibility.size() && cpuObjectVisibility[cullIdx] == 0) {
+								isCulled = true;
 							}
-
-							anyVisible = true;
-							auto Project = [&](glm::vec4 p) {
-								glm::vec3 ndc = glm::vec3(p) / p.w;
-								minNDC.x = std::min(minNDC.x, ndc.x); minNDC.y = std::min(minNDC.y, ndc.y);
-								maxNDC.x = std::max(maxNDC.x, ndc.x); maxNDC.y = std::max(maxNDC.y, ndc.y);
-								float d = ndc.z * 0.5f + 0.5f; nearestDepth = std::min(nearestDepth, d);
-							};
-							Project(p1); Project(p2);
-						}
-
-						if (!anyVisible) {
-							isCulled = true;
-						} else {
-							minNDC.x = std::clamp(minNDC.x, -1.0f, 1.0f); minNDC.y = std::clamp(minNDC.y, -1.0f, 1.0f);
-							maxNDC.x = std::clamp(maxNDC.x, -1.0f, 1.0f); maxNDC.y = std::clamp(maxNDC.y, -1.0f, 1.0f);
-							glm::vec2 minUV = minNDC * 0.5f + 0.5f;
-							glm::vec2 maxUV = maxNDC * 0.5f + 0.5f;
-
-							// Use safe captured dimensions to prevent crash during resize
-							int startX = std::clamp((int)(minUV.x * currentHiZW), 0, std::max(0, currentHiZW - 1));
-							int endX   = std::clamp((int)(maxUV.x * currentHiZW), 0, std::max(0, currentHiZW - 1));
-							int startY = std::clamp((int)(minUV.y * currentHiZH), 0, std::max(0, currentHiZH - 1));
-							int endY   = std::clamp((int)(maxUV.y * currentHiZH), 0, std::max(0, currentHiZH - 1));
-
-							if (startX >= endX || startY >= endY) {
-								if (currentHiZW >= 2 && currentHiZH >= 2) {
-									startX = std::clamp((int)((minUV.x + maxUV.x) * 0.5f * currentHiZW), 0, currentHiZW - 2);
-									startY = std::clamp((int)((minUV.y + maxUV.y) * 0.5f * currentHiZH), 0, currentHiZH - 2);
-									endX = startX + 1; endY = startY + 1;
-								} else {
-									startX = 0; startY = 0; endX = 0; endY = 0;
-								}
-							}
-
-							float maxOccluderDepth = 0.0f;
-							size_t mapSize = cpuHiZMap.size();
-							for (int y = startY; y <= endY; ++y) {
-								int rowOffset = y * currentHiZW;
-								for (int x = startX; x <= endX; ++x) {
-									size_t idx = (size_t)rowOffset + x;
-									if (idx < mapSize) {
-										maxOccluderDepth = std::max(maxOccluderDepth, cpuHiZMap[idx]);
-									}
-								}
-							}
-
-							float linNearest = (2.0f * n_const * f_const) / (f_const + n_const - (nearestDepth * 2.0f - 1.0f) * (f_const - n_const));
-							float linOccluder = (2.0f * n_const * f_const) / (f_const + n_const - (maxOccluderDepth * 2.0f - 1.0f) * (f_const - n_const));
-
-							if (linNearest > linOccluder + 1.0f) isCulled = true;
 						}
 					}
 				}
@@ -747,6 +658,29 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		}
 	}
 
+	// ================================================================
+	// GPU-Driven Object Occlusion Culling
+	// Dispatch compute shader to test all objects against the Hi-Z pyramid.
+	// Uses previous frame's Hi-Z (already in VRAM) with 1-frame latency readback.
+	// ================================================================
+	std::vector<GameObject*> allCullObjects;
+
+	if (!overrideShader && graphicsSettings && graphicsSettings->enableOcclusionCulling && hizTexture != 0) {
+		// Build flat list of all objects for culling (opaque + transparent)
+		allCullObjects.reserve(opaqueObjects.size() + transparentObjects.size());
+		for (auto* obj : opaqueObjects) allCullObjects.push_back(obj);
+		for (auto* obj : transparentObjects) allCullObjects.push_back(obj);
+
+		// Build lookup map: GameObject* → index in cull list
+		for (int i = 0; i < (int)allCullObjects.size(); i++) {
+			objectCullIndexMap[allCullObjects[i]] = i;
+		}
+
+		// Dispatch compute + read back previous frame's results
+		glm::mat4 vp = projection * view;
+		DispatchObjectCull(vp, projection, cameraPos, (int)screenWidth, (int)screenHeight, allCullObjects);
+	}
+
 	// 1. Render all opaque objects normally (writes depth)
 	RenderQueue(opaqueObjects);
 
@@ -816,24 +750,24 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		// are thin double-sided geometry that must be visible from both sides.
 		glDisable(GL_CULL_FACE);
 
+		// Determine if we can do two-phase occlusion culling:
+		// Need a valid depth texture + occlusion culling enabled in settings
+		bool useTwoPhase = (sceneDepthTexture != 0 && graphicsSettings && graphicsSettings->enableOcclusionCulling);
+
+		// ================================================================
+		// Helper lambda: bind all lighting/material uniforms for a group's shader
+		// ================================================================
 		Shader* lastShader = nullptr;
-
-		for (auto* group : instancedGroups) {
-			if (!group) continue;
-
-			// Resolve the correct shader for this group's material
-			// We try to inherit the original fragment shader while using our instanced vertex logic
+		auto BindShaderState = [&](InstancedGroup* group) -> Shader* {
 			Shader* targetRenderShader = instancedRenderShader;
 			if (renderer && group->GetMaterial() && group->GetMaterial()->GetShader()) {
 				targetRenderShader = renderer->GetInstancedShader(group->GetMaterial()->GetShader());
 			}
 
-			// Only bind lighting if the shader has changed (optimization)
 			if (targetRenderShader != lastShader) {
 				targetRenderShader->UseShader();
 				GLuint sid = targetRenderShader->GetShaderID();
 
-				// Bind eye position for specular/point light calculations
 				GLint eyeLoc = targetRenderShader->GetEyePositionLocation();
 				if (eyeLoc != -1) glUniform3f(eyeLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 
@@ -877,7 +811,6 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				GLint screenSizeLoc = glGetUniformLocation(sid, "screenSize");
 				if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1] / projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
-				// Pass shadow distance to instanced shader for percentage-based fade
 				if (dLight) {
 					GLint sdLoc = glGetUniformLocation(sid, "shadowDistance");
 					if (sdLoc != -1) {
@@ -885,7 +818,6 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						float shadowFar = splits.empty() ? dLight->GetShadowFrustumSize() : splits.back();
 						glUniform1f(sdLoc, shadowFar);
 					}
-					// Also pass shadow color map for instanced objects
 					dLight->GetShadowMap()->ReadColor(GL_TEXTURE20);
 					GLint scmLoc = glGetUniformLocation(sid, "directionalShadowColorMap");
 					if (scmLoc != -1) glUniform1i(scmLoc, 20);
@@ -893,16 +825,66 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				
 				lastShader = targetRenderShader;
 			}
+			return targetRenderShader;
+		};
 
-			group->CullAndDraw(
-				cullShader->GetShaderID(),
-				*targetRenderShader,
-				projection, view, cameraPos,
-				gs ? gs : graphicsSettings,
-				false,
-				(sceneDepthTexture == 0 ? 0 : hizTexture),
-				(int)screenWidth, (int)screenHeight
-			);
+		if (useTwoPhase) {
+			// ================================================================
+			// TWO-PHASE FROSTBITE-STYLE GPU OCCLUSION CULLING
+			// ================================================================
+
+			// Step 0: Clear visibility buffers (mark all invisible for this frame)
+			for (auto* group : instancedGroups) {
+				if (group) group->ClearVisibility();
+			}
+
+			// Step 1: Phase 1 — Draw last-frame-visible instances (populates depth buffer)
+			for (auto* group : instancedGroups) {
+				if (!group) continue;
+				Shader* targetRenderShader = BindShaderState(group);
+				group->CullAndDrawPhase1(
+					cullShader->GetShaderID(),
+					*targetRenderShader,
+					projection, view, cameraPos,
+					graphicsSettings
+				);
+			}
+
+			// Step 2: Rebuild Hi-Z pyramid from the depth buffer populated by Phase 1
+			glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+			GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
+
+			// Step 3: Phase 2 — Test remaining instances against the fresh Hi-Z
+			lastShader = nullptr; // Force shader re-bind after compute shader usage
+			for (auto* group : instancedGroups) {
+				if (!group) continue;
+				Shader* targetRenderShader = BindShaderState(group);
+				group->CullAndDrawPhase2(
+					cullShader->GetShaderID(),
+					*targetRenderShader,
+					projection, view, cameraPos,
+					graphicsSettings,
+					hizTexture,
+					(int)screenWidth, (int)screenHeight
+				);
+			}
+		} else {
+			// ================================================================
+			// LEGACY SINGLE-PHASE MODE (reflection pass, or OC disabled)
+			// ================================================================
+			for (auto* group : instancedGroups) {
+				if (!group) continue;
+				Shader* targetRenderShader = BindShaderState(group);
+				group->CullAndDraw(
+					cullShader->GetShaderID(),
+					*targetRenderShader,
+					projection, view, cameraPos,
+					gs ? gs : graphicsSettings,
+					false,
+					(sceneDepthTexture == 0 ? 0 : hizTexture),
+					(int)screenWidth, (int)screenHeight
+				);
+			}
 		}
 
 		glEnable(GL_CULL_FACE);
@@ -2689,6 +2671,114 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 
 	// Swap PBO index for the next frame
 	currentPBO = (currentPBO + 1) % 2;
+}
+
+// =====================================================================
+// GPU-Driven Object Occlusion Culling (NVIDIA-style)
+// Dispatches a compute shader that tests each object's AABB against
+// the Hi-Z depth pyramid. Results are written to a small SSBO and
+// read back with 1-frame latency using double buffering.
+// =====================================================================
+void SceneManager::DispatchObjectCull(const glm::mat4& viewProj, const glm::mat4& projection, const glm::vec3& cameraPos,
+	int screenWidth, int screenHeight, const std::vector<GameObject*>& cullList)
+{
+	if (hizTexture == 0 || cullList.empty() || screenWidth <= 0 || screenHeight <= 0) return;
+
+	// 1. Initialize shader on first use
+	if (!objectCullShader) {
+		objectCullShader = new Shader();
+		objectCullShader->CreateComputeShader("Assets/Shaders/object_cull.glsl");
+		if (!objectCullShader->GetShaderID()) {
+			printf("[ObjectCull] Failed to compile object_cull.glsl!\n");
+			delete objectCullShader;
+			objectCullShader = nullptr;
+			return;
+		}
+	}
+
+	int objCount = (int)cullList.size();
+
+	// 2. Allocate/resize SSBOs if needed
+	int boundsSize = objCount * (int)sizeof(float) * 8; // 2x vec4 per object
+	int visSize = objCount * (int)sizeof(uint32_t);
+
+	if (objectBoundsSSBO == 0) {
+		glGenBuffers(1, &objectBoundsSSBO);
+	}
+
+	// Resize bounds SSBO (streamed every frame)
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectBoundsSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, boundsSize, nullptr, GL_DYNAMIC_DRAW);
+
+	// Allocate double-buffered visibility SSBOs on first use or resize
+	for (int i = 0; i < 2; i++) {
+		if (objectVisibilitySSBO[i] == 0) {
+			glGenBuffers(1, &objectVisibilitySSBO[i]);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[i]);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, visSize, nullptr, GL_DYNAMIC_READ);
+		} else if (objCount != lastObjectCullCount) {
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[i]);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, visSize, nullptr, GL_DYNAMIC_READ);
+		}
+	}
+
+	// 3. Read back PREVIOUS frame's results (1-frame latency, zero stall)
+	int readIdx = 1 - objectCullWriteIdx;
+	if (objectCullReady && lastObjectCullCount > 0) {
+		cpuObjectVisibility.resize(lastObjectCullCount);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[readIdx]);
+		glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, lastObjectCullCount * sizeof(uint32_t), cpuObjectVisibility.data());
+	}
+
+	// 4. Upload current frame's object AABBs
+	struct GPUBounds { float bmin[4]; float bmax[4]; };
+	std::vector<GPUBounds> boundsData(objCount);
+
+	for (int i = 0; i < objCount; i++) {
+		glm::vec3 bmin, bmax;
+		cullList[i]->GetWorldBounds(bmin, bmax);
+		boundsData[i].bmin[0] = bmin.x; boundsData[i].bmin[1] = bmin.y; boundsData[i].bmin[2] = bmin.z; boundsData[i].bmin[3] = 0.0f;
+		boundsData[i].bmax[0] = bmax.x; boundsData[i].bmax[1] = bmax.y; boundsData[i].bmax[2] = bmax.z; boundsData[i].bmax[3] = 0.0f;
+	}
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectBoundsSSBO);
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, boundsSize, boundsData.data());
+
+	// 5. Dispatch compute shader
+	objectCullShader->UseShader();
+	GLuint sid = objectCullShader->GetShaderID();
+
+	glUniform1ui(glGetUniformLocation(sid, "objectCount"), (GLuint)objCount);
+	glUniformMatrix4fv(glGetUniformLocation(sid, "viewProjTM"), 1, GL_FALSE, glm::value_ptr(viewProj));
+	glUniform2f(glGetUniformLocation(sid, "viewSize"), (float)screenWidth, (float)screenHeight);
+	glUniform1f(glGetUniformLocation(sid, "viewCullThreshold"), 1.0f);
+
+	// Extract near/far planes from projection matrix for linearized depth comparison
+	float A = projection[2][2];
+	float B = projection[3][2];
+	float nearP = B / (A - 1.0f);
+	float farP  = (std::abs(A + 1.0f) > 0.0001f) ? (B / (A + 1.0f)) : 20000.0f;
+	glUniform1f(glGetUniformLocation(sid, "nearPlane"), nearP);
+	glUniform1f(glGetUniformLocation(sid, "farPlane"), farP);
+
+	// Bind Hi-Z texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, hizTexture);
+	glUniform1i(glGetUniformLocation(sid, "depthTex"), 0);
+
+	// Bind SSBOs
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, objectBoundsSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, objectVisibilitySSBO[objectCullWriteIdx]);
+
+	// Dispatch
+	GLuint numGroups = (objCount + 63) / 64;
+	glDispatchCompute(numGroups, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	// 6. Update state for next frame
+	lastObjectCullCount = objCount;
+	objectCullWriteIdx = 1 - objectCullWriteIdx;
+	objectCullReady = true;
 }
 
 void SceneManager::GenerateHiZDebug(float nearPlane, float farPlane)

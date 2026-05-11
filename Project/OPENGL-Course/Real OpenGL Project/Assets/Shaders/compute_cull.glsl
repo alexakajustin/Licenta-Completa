@@ -85,8 +85,21 @@ uniform int useHiZ;
 uniform vec2 screenSize;
 uniform float nearPlane;
 uniform float farPlane;
+uniform uint instanceOffset;  // For chunked dispatch: maps local id to global visibility index
 uniform mat4 hizViewProj;  // Camera VP for Hi-Z projection (may differ from viewProj in shadow pass)
 layout(binding = 15) uniform sampler2D hizMap;
+
+// Two-Phase Occlusion Culling
+// phase 0 = Phase 1: only draw instances that were visible last frame (skip Hi-Z)
+// phase 1 = Phase 2: only test instances that were NOT visible, using fresh Hi-Z
+// phase 2 = Legacy single-phase mode (no visibility buffer, original behavior)
+uniform int phase;
+
+// Binding 7: Per-instance visibility from previous frame (persistent across frames)
+// 0 = was not visible last frame, 1 = was visible last frame
+layout(std430, binding = 7) buffer VisibilityBuffer {
+    uint visibility[];
+};
 
 // =====================================================================
 // Utility: Apply Euler Rotation (Z -> X -> Y order, matching C++ Transform)
@@ -135,6 +148,14 @@ void main()
     // We must rotate the meshBoundsCenter by the instance's rotation before scaling and adding to pos.
     vec3 rotatedCenter = rotateEulerZYX(meshBoundsCenter, inst.rotAndFlags.xyz);
     vec3 testPos = pos + rotatedCenter * scale;
+
+    // ------- Two-Phase Visibility Check -------
+    // Phase 0: Only process instances that were visible last frame
+    // Phase 1: Only process instances that were NOT visible last frame
+    // Phase 2: Process all instances (legacy single-phase mode)
+    uint globalId = id + instanceOffset;  // Map local chunk id to global visibility index
+    if (phase == 0 && visibility[globalId] == 0u) return;  // Phase 1: skip if wasn't visible
+    if (phase == 1 && visibility[globalId] == 1u) return;  // Phase 2: skip if already drawn in Phase 1
 
     // ------- Distance Culling -------
     float dist = distance(testPos, cameraPos);
@@ -231,7 +252,10 @@ void main()
                     // NVIDIA-style mip selection: pick the level where the bbox
                     // spans ~2x2 texels (not 1x1). Using maxDim/2 ensures we read
                     // 4 distinct texels instead of the same one 4 times.
-                    float mip = ceil(log2(max(maxDim * 0.5, 1.0)));
+                    // Pick mip where bbox spans <= 1 texel, so 4 corner samples
+                    // cover the full 2x2 texel footprint. The old * 0.5 caused
+                    // the bbox to span 2+ texels, missing center texels (false occlusion).
+                    float mip = ceil(log2(max(maxDim, 1.0)));
                     
                     // Compute conservative depth of the instance nearest point
                     // Calculate the point on the bounding sphere closest to the camera
@@ -298,5 +322,10 @@ void main()
         // LOD 0: Closest — full density, full detail
         uint idx = atomicAdd(instanceCountLOD0, 1);
         visibleLOD0[idx] = inst;
+    }
+
+    // Mark this instance as visible for the NEXT frame's Phase 1
+    if (phase != 2) {
+        visibility[globalId] = 1u;
     }
 }

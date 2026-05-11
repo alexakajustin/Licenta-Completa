@@ -60,11 +60,27 @@ public:
 		const std::vector<TextureLayer>& textureLayers = {});
 
 	// Per-frame: cull on GPU and draw visible instances (camera pass)
+	// Legacy single-phase mode (still used for reflection pass, etc.)
 	void CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 		const glm::mat4& projection, const glm::mat4& view,
 		const glm::vec3& cameraPos, const GraphicsSettings* gs,
 		bool isShadowPass = false, GLuint hizTexture = 0,
 		int screenWidth = 0, int screenHeight = 0);
+
+	// Two-phase occlusion culling (Frostbite-style)
+	// Phase 1: Draw instances that were visible last frame (no Hi-Z needed)
+	void CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader,
+		const glm::mat4& projection, const glm::mat4& view,
+		const glm::vec3& cameraPos, const GraphicsSettings* gs);
+
+	// Phase 2: Test remaining instances against fresh Hi-Z, draw survivors
+	void CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader,
+		const glm::mat4& projection, const glm::mat4& view,
+		const glm::vec3& cameraPos, const GraphicsSettings* gs,
+		GLuint hizTexture, int screenWidth, int screenHeight);
+
+	// Clear visibility buffer at start of frame (all instances marked invisible)
+	void ClearVisibility();
 
 	// Per-frame: cull against light frustum and draw into shadow map
 	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
@@ -135,6 +151,9 @@ private:
 	// Shadow pass resources (separate from camera LOD)
 	GLuint shadowVisibleSSBO = 0;
 	GLuint shadowIndirectBuffer = 0;
+
+	// Two-phase occlusion culling: per-instance visibility from previous frame
+	GLuint visibilitySSBO = 0;
 
 	// Shared resources
 	Mesh* sharedMesh = nullptr;
