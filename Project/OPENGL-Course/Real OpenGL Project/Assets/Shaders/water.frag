@@ -84,8 +84,15 @@ vec3 GetPremiumNormal() {
     vec2 tc = FragPos.xz * 0.1 * tiling; // Use world space for lakes to prevent stretching
     float t = time * moveSpeed;
     
+    // Sample normal map - detect if texture is missing (returns black -> vec3(-1) after remap)
+    vec3 rawSample = texture(material_waterNormalMap, tc).rgb;
+    if (dot(rawSample, rawSample) < 0.001) {
+        // No normal map bound — fall back to geometric Gerstner normal from vertex shader
+        return normalize(NormalWorld);
+    }
+    
     // Iterative blending of 3 normal layers at different scales
-    vec3 n0 = texture(material_waterNormalMap, tc + vec2(t * 0.02, t * 0.01)).rgb * 2.0 - 1.0;
+    vec3 n0 = rawSample * 2.0 - 1.0;
     vec3 n1 = texture(material_waterNormalMap, tc * 2.5 + vec2(-t * 0.03, t * 0.02)).rgb * 2.0 - 1.0;
     vec3 n2 = texture(material_waterNormalMap, tc * 6.0 + vec2(t * 0.05, -t * 0.04)).rgb * 2.0 - 1.0;
     

@@ -1583,14 +1583,28 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 										if (lastDot != std::string::npos) {
 											fPath = fPath.substr(0, lastDot) + ".frag";
 										}
-
 										if (vPath == "Assets/Shaders/shader.vert") {
 											mat->SetShader(scene.GetMainShader());
 										} else {
-											Shader* s = new Shader();
-											// Assuming .frag exists with same name
-											s->CreateFromFiles(vPath.c_str(), fPath.c_str());
-											mat->SetShader(s);
+											// Try auto-loading a matching .mat file (e.g. water.vert -> Water.mat)
+											std::filesystem::path shaderP(vPath);
+											std::string stem = shaderP.stem().string();
+											if (!stem.empty()) stem[0] = toupper(stem[0]);
+											std::string matPath = "Assets/Materials/" + stem + ".mat";
+											
+											Material* loadedMat = nullptr;
+											if (std::filesystem::exists(matPath)) {
+												loadedMat = Material::LoadFromFile(matPath);
+											}
+											
+											if (loadedMat) {
+												selected->SetMaterial(loadedMat);
+												printf("[EditorUI] Auto-loaded material: %s\n", matPath.c_str());
+											} else {
+												Shader* s = new Shader();
+												s->CreateFromFiles(vPath.c_str(), fPath.c_str());
+												mat->SetShader(s);
+											}
 										}
 									}
 									if (isSelected) ImGui::SetItemDefaultFocus();

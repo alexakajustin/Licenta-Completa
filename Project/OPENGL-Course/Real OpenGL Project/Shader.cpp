@@ -436,7 +436,10 @@ void Shader::DiscoverUniforms()
 			n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
 			n == "theTexture" || n == "normalMap" || n == "farPlane" ||
 			n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
-			n == "textureLayerCount")
+			n == "textureLayerCount" ||
+			n == "clipPlane" || n == "screenSize" || n == "selectionTint" ||
+			n == "refractionMap" || n == "reflectionMap" || n == "sceneDepthMap" ||
+			n == "viewMatrix" || n == "materialAlpha")
 			continue;
 
 		if (prop.type == UniformType::Unknown || prop.type == UniformType::Mat4 || prop.type == UniformType::Sampler2D) 
