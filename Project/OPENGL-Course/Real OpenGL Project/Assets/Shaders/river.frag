@@ -212,13 +212,13 @@ void main() {
     // Spout's RGB extinction: 1/(1 + extinction * distance)
     // Extinction vec3(0.3, 0.7, 0.9) = red absorbed fast, blue survives
     vec3 extinction = vec3(0.3, 0.7, 0.9);
-    float depthScale = material_waterDepthScale == 0.0 ? 2.0 : material_waterDepthScale;
+    float depthScale = material_waterDepthScale == 0.0 ? 0.3 : material_waterDepthScale;
     vec3 cExtinction = 1.0 / (1.0 + extinction * depthDiff * depthScale);
     float absorption = exp(-depthDiff * depthScale * 0.3);
     
     // Water color gradient
-    vec3 deepCol    = material_waterColorDeep == vec4(0.0)    ? vec3(0.01, 0.06, 0.15)  : material_waterColorDeep.rgb;
-    vec3 shallowCol = material_waterColorShallow == vec4(0.0) ? vec3(0.15, 0.55, 0.50)  : material_waterColorShallow.rgb;
+    vec3 deepCol    = material_waterColorDeep == vec4(0.0)    ? vec3(0.012, 0.149, 0.349) : material_waterColorDeep.rgb;
+    vec3 shallowCol = material_waterColorShallow == vec4(0.0) ? vec3(0.051, 0.6, 0.749)   : material_waterColorShallow.rgb;
     vec3 waterTint = mix(deepCol, shallowCol, absorption);
     
     // ─── 3. Refraction ───
@@ -239,21 +239,9 @@ void main() {
     float NdotV = max(dot(worldNormal, viewDir), 0.0);
     float fresnel = Schlick(NdotV, 0.02); // Water IOR ~1.33 -> R0 ≈ 0.02
     
-    vec3 reflectedColor = texture(reflectionMap, screenUV + worldNormal.xz * 0.025).rgb;
-    // If no reflection map, use sky approximation
-    if (dot(reflectedColor, reflectedColor) < 0.0001) {
-        vec3 reflDir = reflect(-viewDir, worldNormal);
-        float skyBlend = clamp(reflDir.y, 0.0, 1.0);
-        vec3 skyHorizon = vec3(0.45, 0.50, 0.55);
-        vec3 skyTop     = vec3(0.55, 0.65, 0.80);
-        reflectedColor = mix(skyHorizon, skyTop, skyBlend);
-        // Sun reflection
-        float sunRefl = pow(max(dot(reflDir, sunDir), 0.0), 256.0);
-        reflectedColor += directionalLight.base.colour * sunRefl * 0.8;
-    }
-    
-    // Fresnel blend
-    vec3 baseWater = mix(refractedColor, reflectedColor, fresnel);
+    // Reflections removed per user request. 
+    // We blend slightly with the shallow tint at glancing angles to keep the water from looking flat.
+    vec3 baseWater = mix(refractedColor, shallowCol, fresnel * 0.5);
     
     // ─── 5. Caustics ───
     vec3 rawCaustic = texture(material_causticsMap, TexCoord * 2.0).rgb;
