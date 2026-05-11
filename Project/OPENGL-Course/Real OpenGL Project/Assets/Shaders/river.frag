@@ -255,20 +255,26 @@ void main() {
     }
     
     // ─── 6. Foam ───
+    // Only apply foam where there's actual terrain beneath (real shoreline),
+    // NOT where two river meshes overlap (depthDiff ≈ 0 from z-fighting).
+    // A minimum depth of 0.05 filters out water-on-water overlap artifacts.
     float foamDist = material_foamDistance == 0.0 ? 0.5 : material_foamDistance;
     vec3 foamCol = material_foamColor == vec4(0.0) ? vec3(0.9, 0.95, 1.0) : material_foamColor.rgb;
     
-    // Use dudv texture if available, otherwise procedural (UV-based flow)
-    float foamNoise;
-    vec3 dudvSample = texture(material_dudvMap, TexCoord * 4.0).rgb;
-    if (dot(dudvSample, dudvSample) > 0.001) {
-        foamNoise = texture(material_dudvMap, TexCoord * vec2(4.0, 8.0) + vec2(0.0, -time * 0.2)).r;
-    } else {
-        foamNoise = FBM(TexCoord * vec2(5.0, 20.0) + vec2(0.0, -time * 2.0));
+    float foamMask = 0.0;
+    if (depthDiff > 0.05 && depthDiff < foamDist) {
+        // Use dudv texture if available, otherwise procedural (UV-based flow)
+        float foamNoise;
+        vec3 dudvSample = texture(material_dudvMap, TexCoord * 4.0).rgb;
+        if (dot(dudvSample, dudvSample) > 0.001) {
+            foamNoise = texture(material_dudvMap, TexCoord * vec2(4.0, 8.0) + vec2(0.0, -time * 0.2)).r;
+        } else {
+            foamNoise = FBM(TexCoord * vec2(5.0, 20.0) + vec2(0.0, -time * 2.0));
+        }
+        
+        foamMask = smoothstep(foamDist, 0.05, depthDiff) * smoothstep(0.35, 0.65, foamNoise);
     }
-    
-    float foamMask = smoothstep(foamDist, 0.0, depthDiff) * smoothstep(0.35, 0.65, foamNoise);
-    baseWater = mix(baseWater, foamCol, foamMask * 0.55);
+    baseWater = mix(baseWater, foamCol, foamMask * 0.4);
     
     // ─── 7. Lighting ───
     // Diffuse
@@ -308,11 +314,14 @@ void main() {
     finalColor += directionalLight.base.colour * sunFlare * 0.03;
     
     // ─── 8. Edge Softening ───
-    float alpha = smoothstep(0.0, 0.15, depthDiff);
+    float alpha = smoothstep(0.0, 0.3, depthDiff);
     
     // Selection tint
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
     finalColor += vec3(0.5, 0.4, 0.0) * selected;
 
-    colour = vec4(finalColor, alpha);
+    // Clamp the maximum opacity to the material's alpha (e.g. 0.85)
+    // This allows overlapping river meshes to blend into each other instead of 
+    // rendering as hard, opaque overlapping planes (which look 'floating').
+    colour = vec4(finalColor, clamp(alpha, 0.0, 0.85));
 }
