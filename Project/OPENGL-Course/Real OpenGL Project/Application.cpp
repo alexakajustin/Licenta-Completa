@@ -24,6 +24,8 @@
 #include "SceneSerializer.h"
 #include <iostream>
 #include <map>
+#include <fstream>
+#include "External Libs/nlohmann/json.hpp"
 
 // OpenGL Debug Callback
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -74,6 +76,8 @@ Application::~Application()
 
 bool Application::Init()
 {
+	LoadGraphicsSettings();
+
 	// Window
 	mainWindow = Window(1920, 1080);
 	mainWindow.Initialise();
@@ -755,6 +759,8 @@ void Application::Run()
 			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, progressCallback);
 		}
 	}
+
+	SaveGraphicsSettings();
 }
 
 void Application::InitViewportFBO()
@@ -994,6 +1000,117 @@ void Application::RenderQuad()
 	glBindVertexArray(quadVAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
+}
+
+void Application::LoadGraphicsSettings()
+{
+	std::ifstream file("graphics_settings.json");
+	if (!file.is_open()) return;
+
+	nlohmann::json j;
+	try {
+		file >> j;
+		
+		if (j.contains("ssaoEnabled")) graphicsSettings.ssaoEnabled = j["ssaoEnabled"];
+		if (j.contains("ssaoRadius")) graphicsSettings.ssaoRadius = j["ssaoRadius"];
+		if (j.contains("ssaoBias")) graphicsSettings.ssaoBias = j["ssaoBias"];
+		if (j.contains("ssaoIntensity")) graphicsSettings.ssaoIntensity = j["ssaoIntensity"];
+		if (j.contains("ssaoKernelSize")) graphicsSettings.ssaoKernelSize = j["ssaoKernelSize"];
+		if (j.contains("ssaoBlurSize")) graphicsSettings.ssaoBlurSize = j["ssaoBlurSize"];
+
+		if (j.contains("lod0Distance")) graphicsSettings.lod0Distance = j["lod0Distance"];
+		if (j.contains("lod1Distance")) graphicsSettings.lod1Distance = j["lod1Distance"];
+		if (j.contains("lod2Distance")) graphicsSettings.lod2Distance = j["lod2Distance"];
+		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
+		if (j.contains("shadowDistance")) graphicsSettings.shadowDistance = j["shadowDistance"];
+
+		if (j.contains("godraysEnabled")) graphicsSettings.godraysEnabled = j["godraysEnabled"];
+		if (j.contains("godraysDecay")) graphicsSettings.godraysDecay = j["godraysDecay"];
+		if (j.contains("godraysDensity")) graphicsSettings.godraysDensity = j["godraysDensity"];
+
+		if (j.contains("volumetricSkyEnabled")) graphicsSettings.volumetricSkyEnabled = j["volumetricSkyEnabled"];
+		if (j.contains("cloudsEnabled")) graphicsSettings.cloudsEnabled = j["cloudsEnabled"];
+		if (j.contains("cloudsDensity")) graphicsSettings.cloudsDensity = j["cloudsDensity"];
+		if (j.contains("cloudsSpeed")) graphicsSettings.cloudsSpeed = j["cloudsSpeed"];
+		if (j.contains("cloudsSharpness")) graphicsSettings.cloudsSharpness = j["cloudsSharpness"];
+
+		if (j.contains("skyboxType")) graphicsSettings.skyboxType = (SkyboxType)j["skyboxType"];
+
+		if (j.contains("universeStarDensity")) graphicsSettings.universeStarDensity = j["universeStarDensity"];
+		if (j.contains("universeStarBrightness")) graphicsSettings.universeStarBrightness = j["universeStarBrightness"];
+		if (j.contains("universeNebulaIntensity")) graphicsSettings.universeNebulaIntensity = j["universeNebulaIntensity"];
+		if (j.contains("universeSpeed")) graphicsSettings.universeSpeed = j["universeSpeed"];
+		
+		if (j.contains("universeNebulaColor1")) {
+			auto& c = j["universeNebulaColor1"];
+			graphicsSettings.universeNebulaColor1 = glm::vec3(c[0], c[1], c[2]);
+		}
+		if (j.contains("universeNebulaColor2")) {
+			auto& c = j["universeNebulaColor2"];
+			graphicsSettings.universeNebulaColor2 = glm::vec3(c[0], c[1], c[2]);
+		}
+
+		if (j.contains("debugLODColoring")) graphicsSettings.debugLODColoring = j["debugLODColoring"];
+		if (j.contains("debugShowBounds")) graphicsSettings.debugShowBounds = j["debugShowBounds"];
+		if (j.contains("debugFreezeCulling")) graphicsSettings.debugFreezeCulling = j["debugFreezeCulling"];
+		if (j.contains("showWireframe")) graphicsSettings.showWireframe = j["showWireframe"];
+		if (j.contains("enableOcclusionCulling")) graphicsSettings.enableOcclusionCulling = j["enableOcclusionCulling"];
+		if (j.contains("debugShowHiZ")) graphicsSettings.debugShowHiZ = j["debugShowHiZ"];
+		if (j.contains("debugShowCulling")) graphicsSettings.debugShowCulling = j["debugShowCulling"];
+	} catch (const std::exception& e) {
+		printf("Failed to load graphics settings: %s\n", e.what());
+	}
+}
+
+void Application::SaveGraphicsSettings()
+{
+	nlohmann::json j;
+	
+	j["ssaoEnabled"] = graphicsSettings.ssaoEnabled;
+	j["ssaoRadius"] = graphicsSettings.ssaoRadius;
+	j["ssaoBias"] = graphicsSettings.ssaoBias;
+	j["ssaoIntensity"] = graphicsSettings.ssaoIntensity;
+	j["ssaoKernelSize"] = graphicsSettings.ssaoKernelSize;
+	j["ssaoBlurSize"] = graphicsSettings.ssaoBlurSize;
+
+	j["lod0Distance"] = graphicsSettings.lod0Distance;
+	j["lod1Distance"] = graphicsSettings.lod1Distance;
+	j["lod2Distance"] = graphicsSettings.lod2Distance;
+	j["renderDistance"] = graphicsSettings.renderDistance;
+	j["shadowDistance"] = graphicsSettings.shadowDistance;
+
+	j["godraysEnabled"] = graphicsSettings.godraysEnabled;
+	j["godraysDecay"] = graphicsSettings.godraysDecay;
+	j["godraysDensity"] = graphicsSettings.godraysDensity;
+
+	j["volumetricSkyEnabled"] = graphicsSettings.volumetricSkyEnabled;
+	j["cloudsEnabled"] = graphicsSettings.cloudsEnabled;
+	j["cloudsDensity"] = graphicsSettings.cloudsDensity;
+	j["cloudsSpeed"] = graphicsSettings.cloudsSpeed;
+	j["cloudsSharpness"] = graphicsSettings.cloudsSharpness;
+
+	j["skyboxType"] = (int)graphicsSettings.skyboxType;
+
+	j["universeStarDensity"] = graphicsSettings.universeStarDensity;
+	j["universeStarBrightness"] = graphicsSettings.universeStarBrightness;
+	j["universeNebulaIntensity"] = graphicsSettings.universeNebulaIntensity;
+	j["universeSpeed"] = graphicsSettings.universeSpeed;
+	
+	j["universeNebulaColor1"] = { graphicsSettings.universeNebulaColor1.x, graphicsSettings.universeNebulaColor1.y, graphicsSettings.universeNebulaColor1.z };
+	j["universeNebulaColor2"] = { graphicsSettings.universeNebulaColor2.x, graphicsSettings.universeNebulaColor2.y, graphicsSettings.universeNebulaColor2.z };
+
+	j["debugLODColoring"] = graphicsSettings.debugLODColoring;
+	j["debugShowBounds"] = graphicsSettings.debugShowBounds;
+	j["debugFreezeCulling"] = graphicsSettings.debugFreezeCulling;
+	j["showWireframe"] = graphicsSettings.showWireframe;
+	j["enableOcclusionCulling"] = graphicsSettings.enableOcclusionCulling;
+	j["debugShowHiZ"] = graphicsSettings.debugShowHiZ;
+	j["debugShowCulling"] = graphicsSettings.debugShowCulling;
+
+	std::ofstream file("graphics_settings.json");
+	if (file.is_open()) {
+		file << j.dump(4);
+	}
 }
 
 void Application::SetupModernTheme()

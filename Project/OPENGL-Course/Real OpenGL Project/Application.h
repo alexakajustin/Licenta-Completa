@@ -37,6 +37,8 @@ private:
 	void LoadResources();
 	void SetupScene();
 	void UpdateProjection();
+	void LoadGraphicsSettings();
+	void SaveGraphicsSettings();
 
 	// Core systems
 	Window mainWindow;
