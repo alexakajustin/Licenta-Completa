@@ -73,33 +73,39 @@ void main() {
     // Step 1: Project all 8 corners for frustum + sub-pixel cull
     // ---------------------------------------------------------------
     vec4 hPositions[8];
-    vec3 clipmin, clipmax;
-    uint clipbits;
+    vec3 clipmin = vec3(1e10);
+    vec3 clipmax = vec3(-1e10);
+    uint clipbits = 0xFFFFFFFFu; // Start with all bits set
+    bool anyBehindCamera = false;
 
-    hPositions[0] = viewProjTM * getBoxCorner(bboxMin, bboxMax, 0);
-    clipmin  = hPositions[0].xyz / hPositions[0].w;
-    clipmax  = clipmin;
-    clipbits = getCullBits(hPositions[0]);
-
-    for (int n = 1; n < 8; n++) {
+    for (int n = 0; n < 8; n++) {
         hPositions[n] = viewProjTM * getBoxCorner(bboxMin, bboxMax, n);
-        vec3 ab = hPositions[n].xyz / hPositions[n].w;
-        clipmin  = min(clipmin, ab);
-        clipmax  = max(clipmax, ab);
+        
+        // Update frustum cull bits (Intersection: all corners must be outside SAME plane)
         clipbits &= getCullBits(hPositions[n]);
+
+        if (hPositions[n].w > 0.0) {
+            vec3 ndc = hPositions[n].xyz / hPositions[n].w;
+            clipmin = min(clipmin, ndc);
+            clipmax = max(clipmax, ndc);
+        } else {
+            anyBehindCamera = true;
+        }
     }
 
-    // Frustum cull: if all corners are on the wrong side of any plane → culled
+    // Frustum cull: if all corners are on the wrong side of any plane -> culled
     if (clipbits != 0u) {
         visibility[id] = 0u;
         return;
     }
 
-    // Sub-pixel cull: if the AABB is smaller than the threshold → culled
-    vec2 dim = (clipmax.xy - clipmin.xy) * 0.5 * viewSize;
-    if (max(dim.x, dim.y) < viewCullThreshold) {
-        visibility[id] = 0u;
-        return;
+    // Sub-pixel cull: only if all corners are in front of camera
+    if (!anyBehindCamera) {
+        vec2 dim = (clipmax.xy - clipmin.xy) * 0.5 * viewSize;
+        if (max(dim.x, dim.y) < viewCullThreshold) {
+            visibility[id] = 0u;
+            return;
+        }
     }
 
     // ---------------------------------------------------------------
@@ -138,12 +144,12 @@ void main() {
         // Sample Hi-Z at this corner's screen position
         float hiZDepth = textureLod(depthTex, uv, sampleMip).r;
 
-        // Linearized comparison: 0.5m bias prevents z-fighting
+        // Linearized comparison: 1.0m bias prevents z-fighting and accounts for dynamic surfaces
         float linCorner = linearizeDepth(cornerDepth01);
         float linHiZ    = linearizeDepth(hiZDepth);
 
-        // If this corner is in front of (or near) the occluder → visible
-        if (linCorner <= linHiZ + 0.5) {
+        // If this corner is in front of (or near) the occluder -> visible
+        if (linCorner <= linHiZ + 1.0) {
             allOccluded = false;
             break;
         }
@@ -162,7 +168,7 @@ void main() {
                 float hiZC = textureLod(depthTex, uvC, sampleMip).r;
                 float linC = linearizeDepth(depthC);
                 float linH = linearizeDepth(hiZC);
-                if (linC <= linH + 0.5) {
+                if (linC <= linH + 1.0) {
                     allOccluded = false;
                 }
             }

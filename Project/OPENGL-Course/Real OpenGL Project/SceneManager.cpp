@@ -428,10 +428,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glm::vec3 bmin, bmax;
 				obj->GetWorldBounds(bmin, bmax);
 
-				// GEOMETRIC SHRINK: Pull the AABB inside by 0.5m. 
-				// This fixes "Sky Poisoning" where loose AABBs overlap the sky at the 
-				// edges of the building, preventing them from being culled.
-				float shrinkAmount = 0.5f;
+				// GEOMETRIC SHRINK: Pull the AABB inside by a tiny amount (2cm). 
+				// This helps with precision issues without culling thin objects like trees.
+				float shrinkAmount = 0.02f;
 				bmin += glm::vec3(shrinkAmount);
 				bmax -= glm::vec3(shrinkAmount);
 				// Ensure we didn't invert the box for tiny objects
@@ -670,7 +669,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// ================================================================
 	std::vector<GameObject*> allCullObjects;
 
-	if (!overrideShader && graphicsSettings && graphicsSettings->enableOcclusionCulling && hizTexture != 0) {
+	if (!overrideShader && sceneDepthTexture != 0 && graphicsSettings && graphicsSettings->enableOcclusionCulling && hizTexture != 0) {
 		// Build flat list of all objects for culling (opaque + transparent)
 		allCullObjects.reserve(opaqueObjects.size() + transparentObjects.size());
 		for (auto* obj : opaqueObjects) allCullObjects.push_back(obj);
@@ -2720,23 +2719,28 @@ void SceneManager::DispatchObjectCull(const glm::mat4& viewProj, const glm::mat4
 	glBufferData(GL_SHADER_STORAGE_BUFFER, boundsSize, nullptr, GL_DYNAMIC_DRAW);
 
 	// Allocate double-buffered visibility SSBOs on first use or resize
+	bool bufferResized = false;
 	for (int i = 0; i < 2; i++) {
 		if (objectVisibilitySSBO[i] == 0) {
 			glGenBuffers(1, &objectVisibilitySSBO[i]);
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[i]);
 			glBufferData(GL_SHADER_STORAGE_BUFFER, visSize, nullptr, GL_DYNAMIC_READ);
+			bufferResized = true;
 		} else if (objCount != lastObjectCullCount) {
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[i]);
 			glBufferData(GL_SHADER_STORAGE_BUFFER, visSize, nullptr, GL_DYNAMIC_READ);
+			bufferResized = true;
 		}
 	}
 
 	// 3. Read back PREVIOUS frame's results (1-frame latency, zero stall)
 	int readIdx = 1 - objectCullWriteIdx;
-	if (objectCullReady && lastObjectCullCount > 0) {
+	if (objectCullReady && lastObjectCullCount > 0 && !bufferResized) {
 		cpuObjectVisibility.resize(lastObjectCullCount);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, objectVisibilitySSBO[readIdx]);
 		glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, lastObjectCullCount * sizeof(uint32_t), cpuObjectVisibility.data());
+	} else if (bufferResized) {
+		cpuObjectVisibility.assign(objCount, 1);
 	}
 
 	// 4. Upload current frame's object AABBs

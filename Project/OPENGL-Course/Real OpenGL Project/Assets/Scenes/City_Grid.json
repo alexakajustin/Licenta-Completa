@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.6498663425445557,
-            -0.46561452746391296,
-            -0.600730299949646
+            -0.5032773017883301,
+            -0.4694715738296509,
+            -0.7254711389541626
         ],
-        "pitch": -27.75,
+        "pitch": -28.0,
         "position": [
-            -52.051658630371094,
-            42.500003814697266,
-            52.051658630371094
+            194.45347595214844,
+            276.72314453125,
+            290.28082275390625
         ],
-        "yaw": -42.75
+        "yaw": -124.75
     },
     "instancedGroups": [],
     "lights": [
@@ -50,7 +50,7 @@
                 "start": 6
             }
         ],
-        "nextId": 24,
+        "nextId": 34,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -150,33 +150,6 @@
         ]
     },
     "objects": [
-        {
-            "customMeshPath": "City_Grid_City_Ground.mesh",
-            "inheritScale": true,
-            "modelPath": "",
-            "name": "City_Ground",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "Plane",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    120.0,
-                    1.0,
-                    120.0
-                ]
-            }
-        },
         {
             "customMeshPath": "City_Grid_City_Roads_3.mesh",
             "inheritScale": true,
