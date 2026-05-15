@@ -728,6 +728,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// ================================================================
 	if (!overrideShader && sceneDepthTexture > 0 && gs && gs->enableOcclusionCulling) {
 		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
+		lastShaderID = 0; // Force PrepareShader to re-bind after compute shader usage
 	}
 
 	// 2. Sort and Render transparent objects
@@ -2726,6 +2727,9 @@ void SceneManager::GenerateHiZMap(int screenWidth, int screenHeight, GLuint scen
 
 	// Swap PBO index for the next frame
 	currentPBO = (currentPBO + 1) % 2;
+
+	// Clean up: unbind compute shader so it doesn't leak into subsequent render passes
+	glUseProgram(0);
 }
 
 // =====================================================================
