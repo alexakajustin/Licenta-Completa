@@ -38,6 +38,7 @@ public:
 
 	glm::vec3 GetMinBound() const { return minBound; }
 	glm::vec3 GetMaxBound() const { return maxBound; }
+	std::string GetPath() const { return filePath; }
 	bool HasTextures() const {
 		for (auto* tex : textureList) if (tex != nullptr) return true;
 		return false;

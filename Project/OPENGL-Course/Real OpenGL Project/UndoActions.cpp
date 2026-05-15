@@ -422,3 +422,64 @@ std::string ReparentAction::GetDescription() const
 {
 	return "Reparent " + (object ? object->GetName() : "?");
 }
+
+// =====================================================================
+// InspectorObjectAction
+// =====================================================================
+
+#include "SceneSerializer.h"
+
+InspectorObjectAction::InspectorObjectAction(SceneManager* scene, int objectIndex,
+	const std::string& beforeJson, const std::string& afterJson,
+	const std::string& desc)
+	: scene(scene), objectIndex(objectIndex), beforeJson(beforeJson), afterJson(afterJson), description(desc)
+{
+}
+
+void InspectorObjectAction::Undo()
+{
+	auto& objects = scene->GetObjects();
+	if (objectIndex < 0 || objectIndex >= (int)objects.size()) return;
+
+	SceneSerializer::RestoreObject(objects[objectIndex], beforeJson, scene);
+	printf("[Undo] %s\n", description.c_str());
+}
+
+void InspectorObjectAction::Redo()
+{
+	auto& objects = scene->GetObjects();
+	if (objectIndex < 0 || objectIndex >= (int)objects.size()) return;
+
+	SceneSerializer::RestoreObject(objects[objectIndex], afterJson, scene);
+	printf("[Redo] %s\n", description.c_str());
+}
+
+// =====================================================================
+// InspectorLightAction
+// =====================================================================
+
+InspectorLightAction::InspectorLightAction(SceneManager* scene, int lightIndex,
+	const std::string& beforeJson, const std::string& afterJson,
+	const std::string& desc)
+	: scene(scene), lightIndex(lightIndex), beforeJson(beforeJson), afterJson(afterJson), description(desc)
+{
+}
+
+void InspectorLightAction::Undo()
+{
+	auto& lights = scene->GetLights();
+	if (lightIndex < 0 || lightIndex >= (int)lights.size()) return;
+
+	SceneSerializer::RestoreLight(lights[lightIndex], beforeJson);
+	printf("[Undo] %s\n", description.c_str());
+}
+
+void InspectorLightAction::Redo()
+{
+	auto& lights = scene->GetLights();
+	if (lightIndex < 0 || lightIndex >= (int)lights.size()) return;
+
+	SceneSerializer::RestoreLight(lights[lightIndex], afterJson);
+	printf("[Redo] %s\n", description.c_str());
+}
+

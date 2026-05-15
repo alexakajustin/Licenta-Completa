@@ -24,6 +24,7 @@
 #include "SceneSerializer.h"
 #include "UndoActions.h"
 #include "Planet.h"
+#include "External Libs/nlohmann/json.hpp"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -438,6 +439,19 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 	RenderHierarchy(scene, bufferHeight, camera);
 	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, camera, inputHandler);
 	RenderInspector(scene, bufferWidth, bufferHeight);
+
+	// === Global Undo/Redo (works from ANY window) ===
+	if (!ImGui::GetIO().WantTextInput) { // Don't intercept when typing in text fields
+		if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z)) {
+			scene.GetUndoManager().Undo();
+		}
+		if (ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z)) {
+			scene.GetUndoManager().Redo();
+		}
+		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y)) {
+			scene.GetUndoManager().Redo();
+		}
+	}
 }
 
 
@@ -1123,20 +1137,6 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 			{
 				scene.Paste();
 			}
-
-			// Undo/Redo
-			if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
-			{
-				scene.GetUndoManager().Undo();
-			}
-			if (ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
-			{
-				scene.GetUndoManager().Redo();
-			}
-			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
-			{
-				scene.GetUndoManager().Redo();
-			}
 		}
 
 		// Right-click context menu
@@ -1311,6 +1311,24 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	{
 		windowState.CheckMaximize(2);
 
+		// === Generic Undo Snapshot: Capture state when user FIRST starts editing ANY widget ===
+		{
+			bool anyActive = ImGui::IsAnyItemActive();
+			if (anyActive && !inspectorIsEditing) {
+				// First frame of interaction — take a single "before" snapshot
+				inspectorIsEditing = true;
+				inspectorSnapshotObjIndex = -1;
+				inspectorSnapshotLightIndex = -1;
+				if (showObjectInspector && selectedObj >= 0 && selectedObj < (int)objects.size()) {
+					inspectorSnapshotObjIndex = selectedObj;
+					inspectorBeforeSnapshot = SceneSerializer::SnapshotObject(objects[selectedObj]);
+				}
+				else if (showLightInspector && selectedLight >= 0 && selectedLight < (int)lights.size()) {
+					inspectorSnapshotLightIndex = selectedLight;
+					inspectorBeforeSnapshot = SceneSerializer::SnapshotLight(lights[selectedLight]);
+				}
+			}
+		}
 
 		if (showObjectInspector)
 		{
@@ -1336,40 +1354,9 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			// --- Transform (collapsible) ---
 			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				// Capture before-state when user starts editing
-				if (!inspectorEditingTransform && ImGui::IsItemActive()) {
-					// Will be caught below
-				}
-
-				// Snapshot before first edit
-				bool anyActive = false;
-				
 				DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f);
-				anyActive |= ImGui::IsItemActive();
 				DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f);
-				anyActive |= ImGui::IsItemActive();
 				DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
-				anyActive |= ImGui::IsItemActive();
-
-				if (anyActive && !inspectorEditingTransform) {
-					// User just started editing — snapshot the before state
-					inspectorEditingTransform = true;
-					inspectorTransformBeforePos = transform.GetPosition();
-					inspectorTransformBeforeRot = transform.GetRotation();
-					inspectorTransformBeforeScale = transform.GetScale();
-				}
-				else if (!anyActive && inspectorEditingTransform) {
-					// User stopped editing — push undo if values changed
-					inspectorEditingTransform = false;
-					if (inspectorTransformBeforePos != transform.GetPosition() ||
-						inspectorTransformBeforeRot != transform.GetRotation() ||
-						inspectorTransformBeforeScale != transform.GetScale())
-					{
-						std::vector<TransformSnapshot> before = {{ selected, inspectorTransformBeforePos, inspectorTransformBeforeRot, inspectorTransformBeforeScale }};
-						std::vector<TransformSnapshot> after = {{ selected, transform.GetPosition(), transform.GetRotation(), transform.GetScale() }};
-						scene.GetUndoManager().PushAction(std::make_unique<TransformAction>("Inspector Transform", before, after));
-					}
-				}
 			}
 
 			Planet* planet = dynamic_cast<Planet*>(selected);
@@ -1749,6 +1736,35 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 					ImGui::Separator();
 					ImGui::SliderFloat("Spot Edge", light->GetSpotEdgePtr(), 0.0f, 90.0f);
 				}
+			}
+		}
+
+		// === Generic Undo Snapshot: Compare and push when editing ends ===
+		{
+			// Only push when no item is active AND the mouse is released
+			if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(0) && inspectorIsEditing) {
+				inspectorIsEditing = false;
+				if (inspectorSnapshotObjIndex >= 0 && inspectorSnapshotObjIndex < (int)objects.size()) {
+					std::string afterSnapshot = SceneSerializer::SnapshotObject(objects[inspectorSnapshotObjIndex]);
+					if (afterSnapshot != inspectorBeforeSnapshot) {
+						std::string objName = objects[inspectorSnapshotObjIndex]->GetName();
+						scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
+							&scene, inspectorSnapshotObjIndex,
+							inspectorBeforeSnapshot, afterSnapshot,
+							"Edit " + objName));
+					}
+				}
+				else if (inspectorSnapshotLightIndex >= 0 && inspectorSnapshotLightIndex < (int)lights.size()) {
+					std::string afterSnapshot = SceneSerializer::SnapshotLight(lights[inspectorSnapshotLightIndex]);
+					if (afterSnapshot != inspectorBeforeSnapshot) {
+						std::string lightName = lights[inspectorSnapshotLightIndex]->GetName();
+						scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
+							&scene, inspectorSnapshotLightIndex,
+							inspectorBeforeSnapshot, afterSnapshot,
+							"Edit " + lightName));
+					}
+				}
+				inspectorBeforeSnapshot.clear();
 			}
 		}
 

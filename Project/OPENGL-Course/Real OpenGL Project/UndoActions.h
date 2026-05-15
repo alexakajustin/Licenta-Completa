@@ -214,3 +214,50 @@ private:
 	glm::vec3 oldLocalPos, oldLocalRot, oldLocalScale;
 	glm::vec3 newLocalPos, newLocalRot, newLocalScale;
 };
+
+// =====================================================================
+// InspectorObjectAction — Generic Undo/Redo for ANY object property
+//   Uses JSON snapshots via SceneSerializer::SnapshotObject/RestoreObject
+// =====================================================================
+class InspectorObjectAction : public UndoAction
+{
+public:
+	InspectorObjectAction(SceneManager* scene, int objectIndex,
+		const std::string& beforeJson, const std::string& afterJson,
+		const std::string& desc = "Inspector Change");
+
+	void Undo() override;
+	void Redo() override;
+	std::string GetDescription() const override { return description; }
+
+private:
+	SceneManager* scene;
+	int objectIndex;
+	std::string beforeJson;
+	std::string afterJson;
+	std::string description;
+};
+
+// =====================================================================
+// InspectorLightAction — Generic Undo/Redo for ANY light property
+//   Uses JSON snapshots via SceneSerializer::SnapshotLight/RestoreLight
+// =====================================================================
+class InspectorLightAction : public UndoAction
+{
+public:
+	InspectorLightAction(SceneManager* scene, int lightIndex,
+		const std::string& beforeJson, const std::string& afterJson,
+		const std::string& desc = "Light Change");
+
+	void Undo() override;
+	void Redo() override;
+	std::string GetDescription() const override { return description; }
+
+private:
+	SceneManager* scene;
+	int lightIndex;
+	std::string beforeJson;
+	std::string afterJson;
+	std::string description;
+};
+

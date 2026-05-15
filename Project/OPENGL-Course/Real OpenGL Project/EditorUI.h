@@ -116,11 +116,12 @@ private:
 	SceneAction pendingSceneAction = SceneAction::None;
 	std::string pendingScenePath;
 
-	// Inspector transform undo tracking
-	bool inspectorEditingTransform = false;
-	glm::vec3 inspectorTransformBeforePos;
-	glm::vec3 inspectorTransformBeforeRot;
-	glm::vec3 inspectorTransformBeforeScale;
+	// Inspector generic undo tracking (captures full object/light state as JSON)
+	bool inspectorIsEditing = false;
+	std::string inspectorBeforeSnapshot; // JSON string captured when editing starts
+	int inspectorSnapshotObjIndex = -1;  // Which object was being edited (-1 = none)
+	int inspectorSnapshotLightIndex = -1; // Which light was being edited (-1 = none)
+	unsigned int inspectorLastActiveID = 0; // To track if we switched widgets
 
 private:
 

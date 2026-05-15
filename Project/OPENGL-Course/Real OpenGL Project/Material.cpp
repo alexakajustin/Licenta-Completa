@@ -221,6 +221,7 @@ Material* Material::LoadFromFile(const std::string& path)
 		mat->SetShader(s);
 	}
 
+	mat->SetPath(path);
 	return mat;
 }
 

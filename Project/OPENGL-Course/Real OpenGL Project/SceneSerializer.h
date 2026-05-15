@@ -10,6 +10,8 @@ class SpotLight;
 class Texture;
 class Material;
 class Camera;
+class GameObject;
+class LightObject;
 
 using SceneProgressCallback = std::function<void(float, float, const std::string&)>;
 
@@ -25,6 +27,17 @@ public:
 		Texture* defaultTexture, Material* defaultMaterial,
 		Camera* camera = nullptr,
 		SceneProgressCallback progressCallback = nullptr);
+
+	// =====================================================================
+	// In-Memory Snapshots (for Undo/Redo — no disk I/O)
+	// Returns/accepts compact JSON strings to avoid exposing nlohmann in header
+	// =====================================================================
+	
+	static std::string SnapshotObject(GameObject* obj);
+	static void RestoreObject(GameObject* obj, const std::string& jsonStr, SceneManager* scene = nullptr);
+
+	static std::string SnapshotLight(LightObject* light);
+	static void RestoreLight(LightObject* light, const std::string& jsonStr);
 
 	// Native Win32 file dialogs
 	static std::string OpenFileDialog(

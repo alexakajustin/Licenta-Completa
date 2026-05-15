@@ -1006,3 +1006,209 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 	return true;
 }
+
+// =====================================================================
+// In-Memory Snapshots (for Undo/Redo)
+// =====================================================================
+
+std::string SceneSerializer::SnapshotObject(GameObject* obj)
+{
+	json j;
+	if (!obj) return j.dump();
+
+	j["name"] = obj->GetName();
+
+	// Transform
+	const Transform& t = obj->GetTransform();
+	j["pos"] = { t.GetPosition().x, t.GetPosition().y, t.GetPosition().z };
+	j["rot"] = { t.GetRotation().x, t.GetRotation().y, t.GetRotation().z };
+	j["scl"] = { t.GetScale().x, t.GetScale().y, t.GetScale().z };
+
+	// Tessellation
+	j["tess_enabled"] = obj->GetUseTessellation();
+	j["tess_level"] = obj->GetTessLevel();
+	j["tess_dist"] = obj->GetTessDistance();
+	j["tess_disp_scale"] = obj->GetTessDisplacementScale();
+	j["tess_disp_bias"] = obj->GetTessDisplacementBias();
+
+	// Material (value properties only — no textures/shaders)
+	Material* mat = obj->GetMaterial();
+	if (mat) {
+		json mj;
+		for (auto const& [name, val] : mat->GetFloats()) mj["f"][name] = val;
+		for (auto const& [name, val] : mat->GetInts())   mj["i"][name] = val;
+		for (auto const& [name, val] : mat->GetVec2s())  mj["v2"][name] = { val.x, val.y };
+		for (auto const& [name, val] : mat->GetVec3s())  mj["v3"][name] = { val.x, val.y, val.z };
+		for (auto const& [name, val] : mat->GetVec4s())  mj["v4"][name] = { val.x, val.y, val.z, val.w };
+		j["mat"] = mj;
+	}
+
+	// Texture layer value properties (no texture pointers)
+	if (!obj->GetTextureLayers().empty()) {
+		json layers = json::array();
+		for (const auto& layer : obj->GetTextureLayers()) {
+			json lj;
+			lj["blend"] = (int)layer.blendMode;
+			lj["opacity"] = layer.opacity;
+			lj["tiling"] = layer.tiling;
+			lj["hMin"] = layer.heightMin;
+			lj["hMax"] = layer.heightMax;
+			lj["sMin"] = layer.slopeMin;
+			lj["sMax"] = layer.slopeMax;
+			lj["invert"] = layer.invert;
+			lj["dispScale"] = layer.displacementScale;
+			layers.push_back(lj);
+		}
+		j["layers"] = layers;
+	}
+
+	// Planet params
+	Planet* planet = dynamic_cast<Planet*>(obj);
+	if (planet) {
+		PlanetParams p = planet->GetParams();
+		j["planet_sub"] = p.subdivisions;
+		j["planet_seed"] = (int)p.seed;
+		j["planet_radius"] = p.radius;
+	}
+
+	return j.dump();
+}
+
+void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr, SceneManager* scene)
+{
+	if (!obj || jsonStr.empty()) return;
+	json j = json::parse(jsonStr);
+
+	// Name
+	if (j.contains("name")) obj->SetName(j["name"].get<std::string>());
+
+	// Transform
+	if (j.contains("pos")) {
+		auto& p = j["pos"];
+		obj->GetTransform().SetPosition(glm::vec3(p[0].get<float>(), p[1].get<float>(), p[2].get<float>()));
+	}
+	if (j.contains("rot")) {
+		auto& r = j["rot"];
+		obj->GetTransform().SetRotation(glm::vec3(r[0].get<float>(), r[1].get<float>(), r[2].get<float>()));
+	}
+	if (j.contains("scl")) {
+		auto& s = j["scl"];
+		obj->GetTransform().SetScale(glm::vec3(s[0].get<float>(), s[1].get<float>(), s[2].get<float>()));
+	}
+	obj->SetDirty();
+
+	// Tessellation
+	if (j.contains("tess_enabled")) obj->SetUseTessellation(j["tess_enabled"].get<bool>());
+	if (j.contains("tess_level")) obj->SetTessLevel(j["tess_level"].get<float>());
+	if (j.contains("tess_dist")) obj->SetTessDistance(j["tess_dist"].get<float>());
+	if (j.contains("tess_disp_scale")) obj->SetTessDisplacementScale(j["tess_disp_scale"].get<float>());
+	if (j.contains("tess_disp_bias")) obj->SetTessDisplacementBias(j["tess_disp_bias"].get<float>());
+
+	// Material values
+	Material* mat = obj->GetMaterial();
+	if (mat && j.contains("mat")) {
+		auto& mj = j["mat"];
+		if (mj.contains("f")) for (auto it = mj["f"].begin(); it != mj["f"].end(); ++it) mat->SetFloat(it.key(), it.value().get<float>());
+		if (mj.contains("i")) for (auto it = mj["i"].begin(); it != mj["i"].end(); ++it) mat->SetInt(it.key(), it.value().get<int>());
+		if (mj.contains("v2")) for (auto it = mj["v2"].begin(); it != mj["v2"].end(); ++it) mat->SetVec2(it.key(), glm::vec2(it.value()[0], it.value()[1]));
+		if (mj.contains("v3")) for (auto it = mj["v3"].begin(); it != mj["v3"].end(); ++it) mat->SetVec3(it.key(), glm::vec3(it.value()[0], it.value()[1], it.value()[2]));
+		if (mj.contains("v4")) for (auto it = mj["v4"].begin(); it != mj["v4"].end(); ++it) mat->SetVec4(it.key(), glm::vec4(it.value()[0], it.value()[1], it.value()[2], it.value()[3]));
+	}
+
+	// Texture layer values
+	if (j.contains("layers")) {
+		auto& layers = obj->GetTextureLayers();
+		auto& jLayers = j["layers"];
+		for (int i = 0; i < (int)jLayers.size() && i < (int)layers.size(); i++) {
+			auto& lj = jLayers[i];
+			if (lj.contains("blend")) layers[i].blendMode = (LayerBlendMode)lj["blend"].get<int>();
+			if (lj.contains("opacity")) layers[i].opacity = lj["opacity"].get<float>();
+			if (lj.contains("tiling")) layers[i].tiling = lj["tiling"].get<float>();
+			if (lj.contains("hMin")) layers[i].heightMin = lj["hMin"].get<float>();
+			if (lj.contains("hMax")) layers[i].heightMax = lj["hMax"].get<float>();
+			if (lj.contains("sMin")) layers[i].slopeMin = lj["sMin"].get<float>();
+			if (lj.contains("sMax")) layers[i].slopeMax = lj["sMax"].get<float>();
+			if (lj.contains("invert")) layers[i].invert = lj["invert"].get<bool>();
+			if (lj.contains("dispScale")) layers[i].displacementScale = lj["dispScale"].get<float>();
+		}
+	}
+
+	// Planet
+	Planet* planet = dynamic_cast<Planet*>(obj);
+	if (planet && j.contains("planet_sub")) {
+		PlanetParams p = planet->GetParams();
+		p.subdivisions = j["planet_sub"].get<int>();
+		p.seed = (unsigned int)j["planet_seed"].get<int>();
+		p.radius = j["planet_radius"].get<float>();
+		planet->SetParams(p);
+		planet->Generate();
+		planet->UpdateUniforms();
+	}
+}
+
+std::string SceneSerializer::SnapshotLight(LightObject* light)
+{
+	json j;
+	if (!light) return j.dump();
+
+	j["name"] = light->GetName();
+	j["type"] = (int)light->GetLightType();
+
+	if (light->GetColorPtr()) {
+		glm::vec3& c = *light->GetColorPtr();
+		j["color"] = { c.x, c.y, c.z };
+	}
+	if (light->GetAmbientIntensityPtr()) j["ambient"] = *light->GetAmbientIntensityPtr();
+	if (light->GetDiffuseIntensityPtr()) j["diffuse"] = *light->GetDiffuseIntensityPtr();
+	if (light->GetPositionPtr()) {
+		glm::vec3& p = *light->GetPositionPtr();
+		j["pos"] = { p.x, p.y, p.z };
+	}
+	if (light->GetDirectionPtr()) {
+		glm::vec3& d = *light->GetDirectionPtr();
+		j["dir"] = { d.x, d.y, d.z };
+	}
+	if (light->GetPitchPtr()) j["pitch"] = *light->GetPitchPtr();
+	if (light->GetYawPtr()) j["yaw"] = *light->GetYawPtr();
+	if (light->GetConstantPtr()) j["constant"] = *light->GetConstantPtr();
+	if (light->GetLinearPtr()) j["linear"] = *light->GetLinearPtr();
+	if (light->GetExponentPtr()) j["exponent"] = *light->GetExponentPtr();
+	if (light->GetSpotEdgePtr()) j["spotEdge"] = *light->GetSpotEdgePtr();
+
+	return j.dump();
+}
+
+void SceneSerializer::RestoreLight(LightObject* light, const std::string& jsonStr)
+{
+	if (!light || jsonStr.empty()) return;
+	json j = json::parse(jsonStr);
+
+	if (j.contains("name")) light->SetName(j["name"].get<std::string>());
+
+	if (j.contains("color") && light->GetColorPtr()) {
+		auto& c = j["color"];
+		*light->GetColorPtr() = glm::vec3(c[0].get<float>(), c[1].get<float>(), c[2].get<float>());
+	}
+	if (j.contains("ambient") && light->GetAmbientIntensityPtr()) *light->GetAmbientIntensityPtr() = j["ambient"].get<float>();
+	if (j.contains("diffuse") && light->GetDiffuseIntensityPtr()) *light->GetDiffuseIntensityPtr() = j["diffuse"].get<float>();
+	if (j.contains("pos") && light->GetPositionPtr()) {
+		auto& p = j["pos"];
+		*light->GetPositionPtr() = glm::vec3(p[0].get<float>(), p[1].get<float>(), p[2].get<float>());
+	}
+	if (j.contains("dir") && light->GetDirectionPtr()) {
+		auto& d = j["dir"];
+		*light->GetDirectionPtr() = glm::vec3(d[0].get<float>(), d[1].get<float>(), d[2].get<float>());
+	}
+	if (j.contains("pitch") && light->GetPitchPtr()) *light->GetPitchPtr() = j["pitch"].get<float>();
+	if (j.contains("yaw") && light->GetYawPtr()) *light->GetYawPtr() = j["yaw"].get<float>();
+	if (j.contains("constant") && light->GetConstantPtr()) *light->GetConstantPtr() = j["constant"].get<float>();
+	if (j.contains("linear") && light->GetLinearPtr()) *light->GetLinearPtr() = j["linear"].get<float>();
+	if (j.contains("exponent") && light->GetExponentPtr()) *light->GetExponentPtr() = j["exponent"].get<float>();
+	if (j.contains("spotEdge") && light->GetSpotEdgePtr()) *light->GetSpotEdgePtr() = j["spotEdge"].get<float>();
+
+	// For directional lights, update direction vector from restored pitch/yaw
+	if (light->GetLightType() == LightType::Directional && light->GetDirectionalLight()) {
+		light->GetDirectionalLight()->UpdateDirectionFromEuler();
+	}
+}
+

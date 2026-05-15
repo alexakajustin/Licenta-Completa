@@ -18,6 +18,8 @@ public:
 	void SetShader(Shader* shader);
 	void InitializeDefaultsFromShader();
 	Shader* GetShader() const { return shader; }
+	std::string GetPath() const { return path; }
+	void SetPath(const std::string& p) { path = p; }
 
 	void Bind(GLuint overrideProgram = 0);
 	void UseMaterial(GLint specularIntensityLocation, GLint shininessLocation, GLint colorLocation, GLint tilingLocation, GLint offsetLocation); 
@@ -85,6 +87,7 @@ private:
 	std::map<std::string, std::string> texturePaths;
 	std::map<std::string, Texture*> textures;
 	bool needsDefaultSync = false;
+	std::string path;
 
 	mutable std::map<std::string, GLint> uniformLocations;
 	mutable std::map<GLuint, std::map<std::string, GLint>> overrideUniformLocations;
