@@ -116,12 +116,14 @@ private:
 	SceneAction pendingSceneAction = SceneAction::None;
 	std::string pendingScenePath;
 
-	// Inspector generic undo tracking (captures full object/light state as JSON)
+	// Inspector undo tracking
 	bool inspectorIsEditing = false;
-	std::string inspectorBeforeSnapshot; // JSON string captured when editing starts
-	int inspectorSnapshotObjIndex = -1;  // Which object was being edited (-1 = none)
-	int inspectorSnapshotLightIndex = -1; // Which light was being edited (-1 = none)
-	unsigned int inspectorLastActiveID = 0; // To track if we switched widgets
+	std::string inspectorBeforeSnapshot;
+	int inspectorSnapshotObjIndex = -1;
+	int inspectorSnapshotLightIndex = -1;
+	unsigned int inspectorLastActiveID = 0;
+	void* inspectorLastMatPtr = nullptr;
+	void* inspectorLastModelPtr = nullptr;
 
 private:
 

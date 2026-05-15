@@ -1018,6 +1018,27 @@ std::string SceneSerializer::SnapshotObject(GameObject* obj)
 
 	j["name"] = obj->GetName();
 
+	// Component assignments
+	j["has_model"] = (obj->GetModel() != nullptr);
+	if (obj->GetModel()) j["model_path"] = obj->GetModel()->GetPath();
+	
+	j["has_texture"] = (obj->GetTexture() != nullptr);
+	if (obj->GetTexture()) j["texture_path"] = obj->GetTexture()->GetFileLocation();
+	
+	j["has_normal"] = (obj->GetNormalMap() != nullptr);
+	if (obj->GetNormalMap()) j["normal_path"] = obj->GetNormalMap()->GetFileLocation();
+	
+	Material* mat = obj->GetMaterial();
+	j["has_material"] = (mat != nullptr);
+	if (mat) {
+		if (!mat->GetPath().empty()) {
+			j["material_path"] = mat->GetPath();
+		} else if (mat->GetShader()) {
+			j["material_shader_v"] = mat->GetShader()->GetVertexPath();
+			j["material_shader_f"] = mat->GetShader()->GetFragmentPath();
+		}
+	}
+
 	// Transform
 	const Transform& t = obj->GetTransform();
 	j["pos"] = { t.GetPosition().x, t.GetPosition().y, t.GetPosition().z };
@@ -1032,7 +1053,7 @@ std::string SceneSerializer::SnapshotObject(GameObject* obj)
 	j["tess_disp_bias"] = obj->GetTessDisplacementBias();
 
 	// Material (value properties only — no textures/shaders)
-	Material* mat = obj->GetMaterial();
+	mat = obj->GetMaterial();
 	if (mat) {
 		json mj;
 		for (auto const& [name, val] : mat->GetFloats()) mj["f"][name] = val;
@@ -1057,6 +1078,8 @@ std::string SceneSerializer::SnapshotObject(GameObject* obj)
 			lj["sMax"] = layer.slopeMax;
 			lj["invert"] = layer.invert;
 			lj["dispScale"] = layer.displacementScale;
+			lj["tex"] = layer.texturePath;
+			lj["norm"] = layer.normalMapPath;
 			layers.push_back(lj);
 		}
 		j["layers"] = layers;
@@ -1081,6 +1104,65 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 
 	// Name
 	if (j.contains("name")) obj->SetName(j["name"].get<std::string>());
+
+	// Model assignment
+	if (j.contains("has_model") && !j["has_model"].get<bool>()) {
+		obj->SetModel(nullptr);
+	} else if (j.contains("model_path")) {
+		std::string path = j["model_path"].get<std::string>();
+		if (!path.empty() && (!obj->GetModel() || obj->GetModel()->GetPath() != path)) {
+			obj->SetModel(AssetManager::Get().GetModel(path));
+		}
+	}
+
+	// Texture assignments
+	if (j.contains("has_texture") && !j["has_texture"].get<bool>()) {
+		obj->SetTexture(nullptr);
+	} else if (j.contains("texture_path")) {
+		std::string path = j["texture_path"].get<std::string>();
+		if (!path.empty() && (!obj->GetTexture() || std::string(obj->GetTexture()->GetFileLocation()) != path)) {
+			Texture* tex = new Texture(path.c_str());
+			if (tex->LoadTextureA()) obj->SetTexture(tex); else delete tex;
+		}
+	}
+
+	if (j.contains("has_normal") && !j["has_normal"].get<bool>()) {
+		obj->SetNormalMap(nullptr);
+	} else if (j.contains("normal_path")) {
+		std::string path = j["normal_path"].get<std::string>();
+		if (!path.empty() && (!obj->GetNormalMap() || std::string(obj->GetNormalMap()->GetFileLocation()) != path)) {
+			Texture* tex = new Texture(path.c_str());
+			if (tex->LoadTextureA()) obj->SetNormalMap(tex); else delete tex;
+		}
+	}
+
+	// Material assignment
+	if (j.contains("has_material") && !j["has_material"].get<bool>()) {
+		obj->SetMaterial(nullptr);
+	} else {
+		if (j.contains("material_path")) {
+			std::string path = j["material_path"].get<std::string>();
+			if (!path.empty() && (!obj->GetMaterial() || obj->GetMaterial()->GetPath() != path)) {
+				obj->SetMaterial(Material::LoadFromFile(path));
+			}
+		} else if (j.contains("material_shader_v") && j.contains("material_shader_f")) {
+			std::string v = j["material_shader_v"];
+			std::string f = j["material_shader_f"];
+			Material* currentMat = obj->GetMaterial();
+			
+			// Only replace the material if the shader paths are actually different
+			if (!currentMat || !currentMat->GetShader() || 
+				currentMat->GetShader()->GetVertexPath() != v || 
+				currentMat->GetShader()->GetFragmentPath() != f) 
+			{
+				Material* newMat = new Material();
+				Shader* s = new Shader();
+				s->CreateFromFiles(v.c_str(), f.c_str());
+				newMat->SetShader(s);
+				obj->SetMaterial(newMat);
+			}
+		}
+	}
 
 	// Transform
 	if (j.contains("pos")) {
@@ -1119,7 +1201,8 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 	if (j.contains("layers")) {
 		auto& layers = obj->GetTextureLayers();
 		auto& jLayers = j["layers"];
-		for (int i = 0; i < (int)jLayers.size() && i < (int)layers.size(); i++) {
+		layers.resize(jLayers.size());
+		for (int i = 0; i < (int)jLayers.size(); i++) {
 			auto& lj = jLayers[i];
 			if (lj.contains("blend")) layers[i].blendMode = (LayerBlendMode)lj["blend"].get<int>();
 			if (lj.contains("opacity")) layers[i].opacity = lj["opacity"].get<float>();
@@ -1130,6 +1213,21 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 			if (lj.contains("sMax")) layers[i].slopeMax = lj["sMax"].get<float>();
 			if (lj.contains("invert")) layers[i].invert = lj["invert"].get<bool>();
 			if (lj.contains("dispScale")) layers[i].displacementScale = lj["dispScale"].get<float>();
+			
+			if (lj.contains("tex")) {
+				std::string tPath = lj["tex"].get<std::string>();
+				if (!tPath.empty() && layers[i].texturePath != tPath) {
+					Texture* tex = new Texture(tPath.c_str());
+					if (tex->LoadTextureA()) { layers[i].texture = tex; layers[i].texturePath = tPath; } else delete tex;
+				}
+			}
+			if (lj.contains("norm")) {
+				std::string nPath = lj["norm"].get<std::string>();
+				if (!nPath.empty() && layers[i].normalMapPath != nPath) {
+					Texture* tex = new Texture(nPath.c_str());
+					if (tex->LoadTextureA()) { layers[i].normalMap = tex; layers[i].normalMapPath = nPath; } else delete tex;
+				}
+			}
 		}
 	}
 

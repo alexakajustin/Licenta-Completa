@@ -1311,17 +1311,48 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	{
 		windowState.CheckMaximize(2);
 
-		// === Generic Undo Snapshot: Capture state when user FIRST starts editing ANY widget ===
+		// === Generic Undo Snapshot: Capture state when user starts editing ANY widget ===
 		{
 			bool anyActive = ImGui::IsAnyItemActive();
+			unsigned int currentActiveID = ImGui::GetActiveID();
+			
+			GameObject* currentObj = (showObjectInspector && selectedObj >= 0 && selectedObj < (int)objects.size()) ? objects[selectedObj] : nullptr;
+			void* currentMatPtr = currentObj ? currentObj->GetMaterial() : nullptr;
+			void* currentModelPtr = currentObj ? currentObj->GetModel() : nullptr;
+
+			// 1. If we switched widgets OR if the underlying component pointers changed (e.g. material added)
+			// we must finalize the current session and start a new one to ensure snapshots are accurate.
+			bool componentChanged = (inspectorIsEditing && (currentMatPtr != inspectorLastMatPtr || currentModelPtr != inspectorLastModelPtr));
+			
+			if (inspectorIsEditing && (componentChanged || (currentActiveID != 0 && currentActiveID != inspectorLastActiveID))) {
+				if (inspectorSnapshotObjIndex >= 0 && inspectorSnapshotObjIndex < (int)objects.size()) {
+					std::string afterSnapshot = SceneSerializer::SnapshotObject(objects[inspectorSnapshotObjIndex]);
+					if (afterSnapshot != inspectorBeforeSnapshot) {
+						scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
+							&scene, inspectorSnapshotObjIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Object"));
+					}
+				} else if (inspectorSnapshotLightIndex >= 0 && inspectorSnapshotLightIndex < (int)lights.size()) {
+					std::string afterSnapshot = SceneSerializer::SnapshotLight(lights[inspectorSnapshotLightIndex]);
+					if (afterSnapshot != inspectorBeforeSnapshot) {
+						scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
+							&scene, inspectorSnapshotLightIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Light"));
+					}
+				}
+				inspectorIsEditing = false;
+				inspectorBeforeSnapshot.clear();
+			}
+
+			// 2. Start new snapshot if a widget is active (or just became active due to a component change)
 			if (anyActive && !inspectorIsEditing) {
-				// First frame of interaction — take a single "before" snapshot
 				inspectorIsEditing = true;
+				inspectorLastActiveID = currentActiveID;
+				inspectorLastMatPtr = currentMatPtr;
+				inspectorLastModelPtr = currentModelPtr;
 				inspectorSnapshotObjIndex = -1;
 				inspectorSnapshotLightIndex = -1;
-				if (showObjectInspector && selectedObj >= 0 && selectedObj < (int)objects.size()) {
+				if (currentObj) {
 					inspectorSnapshotObjIndex = selectedObj;
-					inspectorBeforeSnapshot = SceneSerializer::SnapshotObject(objects[selectedObj]);
+					inspectorBeforeSnapshot = SceneSerializer::SnapshotObject(currentObj);
 				}
 				else if (showLightInspector && selectedLight >= 0 && selectedLight < (int)lights.size()) {
 					inspectorSnapshotLightIndex = selectedLight;
@@ -1739,39 +1770,36 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			}
 		}
 
-		// === Generic Undo Snapshot: Compare and push when editing ends ===
+		// Drag-drop target for models (whole inspector area)
+		if (ImGui::BeginDragDropTarget()) {
+			HandleAssetDrop(scene);
+			ImGui::EndDragDropTarget();
+		}
+
+		// === Inspector Undo: Compare and push when editing ends ===
 		{
+			bool anyActive = ImGui::IsAnyItemActive();
 			// Only push when no item is active AND the mouse is released
-			if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(0) && inspectorIsEditing) {
-				inspectorIsEditing = false;
+			// This prevents spam from complex widgets where 'active' might flicker
+			if (!anyActive && !ImGui::IsMouseDown(0) && inspectorIsEditing) {
 				if (inspectorSnapshotObjIndex >= 0 && inspectorSnapshotObjIndex < (int)objects.size()) {
 					std::string afterSnapshot = SceneSerializer::SnapshotObject(objects[inspectorSnapshotObjIndex]);
 					if (afterSnapshot != inspectorBeforeSnapshot) {
-						std::string objName = objects[inspectorSnapshotObjIndex]->GetName();
 						scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
-							&scene, inspectorSnapshotObjIndex,
-							inspectorBeforeSnapshot, afterSnapshot,
-							"Edit " + objName));
+							&scene, inspectorSnapshotObjIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Object"));
 					}
 				}
 				else if (inspectorSnapshotLightIndex >= 0 && inspectorSnapshotLightIndex < (int)lights.size()) {
 					std::string afterSnapshot = SceneSerializer::SnapshotLight(lights[inspectorSnapshotLightIndex]);
 					if (afterSnapshot != inspectorBeforeSnapshot) {
-						std::string lightName = lights[inspectorSnapshotLightIndex]->GetName();
 						scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
-							&scene, inspectorSnapshotLightIndex,
-							inspectorBeforeSnapshot, afterSnapshot,
-							"Edit " + lightName));
+							&scene, inspectorSnapshotLightIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Light"));
 					}
 				}
+				inspectorIsEditing = false;
+				inspectorLastActiveID = 0;
 				inspectorBeforeSnapshot.clear();
 			}
-		}
-
-		// Drag-drop target for models (whole inspector area)
-		if (ImGui::BeginDragDropTarget()) {
-			HandleAssetDrop(scene);
-			ImGui::EndDragDropTarget();
 		}
 	}
 	ImGui::End();
