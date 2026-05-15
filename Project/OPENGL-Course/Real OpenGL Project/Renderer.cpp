@@ -91,6 +91,8 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
 
 	// 2. Loop through each cascade and render
+	glDisable(GL_CULL_FACE); // Disable culling so single-sided geometry casts shadows
+	
 	for (GLuint i = 0; i < csm->GetCascadeCount(); i++)
 	{
 		csm->WriteLayer(i);
@@ -137,6 +139,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_CULL_FACE); // Re-enable culling
 }
 
 void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene, const GraphicsSettings* gs)
