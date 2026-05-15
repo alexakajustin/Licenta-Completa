@@ -376,9 +376,9 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			glUniform1i(uLayerCount, count);
 
 			// Texture unit scheme: diffuse, normal, displacement per layer
-			static const int diffuseUnits[4]      = { 10, 12, 14, 0 };
-			static const int normalUnits[4]       = { 11, 13, 15, 1 };
-			static const int displacementUnits[4] = { 16, 17, 18, 19 };
+			static const int diffuseUnits[8]      = { 10, 12, 24, 29, 31, 34, 37, 40 };
+			static const int normalUnits[8]       = { 11, 13, 28, 30, 32, 35, 38, 41 };
+			static const int displacementUnits[8] = { 16, 17, 18, 19, 33, 36, 39, 42 };
 
 			for (int i = 0; i < count; i++)
 			{

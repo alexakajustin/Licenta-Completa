@@ -33,7 +33,7 @@ uniform mat4 model;
 uniform vec3 eyePosition;
 
 // ========== Same texture layer uniforms as shader.frag ==========
-const int MAX_TEXTURE_LAYERS = 4;
+const int MAX_TEXTURE_LAYERS = 8;
 
 struct TextureLayerData {
 	int blendMode;
@@ -88,6 +88,30 @@ float getDisplacement(vec2 uv) {
 	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1) {
 		float h = texture(layerDisplacementMaps[3], uv * layerData[3].tiling).r;
 		totalDisp += h * layerData[3].displacementScale;
+	}
+
+	// Layer 4
+	if (textureLayerCount > 4 && layerData[4].hasDisplacementMap == 1) {
+		float h = texture(layerDisplacementMaps[4], uv * layerData[4].tiling).r;
+		totalDisp += h * layerData[4].displacementScale;
+	}
+
+	// Layer 5
+	if (textureLayerCount > 5 && layerData[5].hasDisplacementMap == 1) {
+		float h = texture(layerDisplacementMaps[5], uv * layerData[5].tiling).r;
+		totalDisp += h * layerData[5].displacementScale;
+	}
+
+	// Layer 6
+	if (textureLayerCount > 6 && layerData[6].hasDisplacementMap == 1) {
+		float h = texture(layerDisplacementMaps[6], uv * layerData[6].tiling).r;
+		totalDisp += h * layerData[6].displacementScale;
+	}
+
+	// Layer 7
+	if (textureLayerCount > 7 && layerData[7].hasDisplacementMap == 1) {
+		float h = texture(layerDisplacementMaps[7], uv * layerData[7].tiling).r;
+		totalDisp += h * layerData[7].displacementScale;
 	}
 
 	return totalDisp;
