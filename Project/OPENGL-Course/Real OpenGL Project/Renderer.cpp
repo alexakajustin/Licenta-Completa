@@ -241,10 +241,30 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
 	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
 	if (!cascadedMatrices.empty()) {
-		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "directionalLightTransform"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
-		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
+		for (size_t i = 0; i < cascadedMatrices.size(); ++i) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
+			GLint mLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
+			if (mLoc != -1) {
+				while(glGetError() != GL_NO_ERROR);
+				glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(cascadedMatrices[i]));
+				if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
+			}
+		}
+		for (size_t i = 0; i < cascadedSplits.size(); ++i) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
+			GLint sLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
+			if (sLoc != -1) glUniform1f(sLoc, cascadedSplits[i]);
+		}
 	}
-	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
+	
+	GLint vLoc = glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix");
+	if (vLoc != -1) {
+		while(glGetError() != GL_NO_ERROR);
+		glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(view));
+		if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for viewMatrix at location: " << vLoc << "\n";
+	}
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
 	mainLight.GetShadowMap()->ReadColor(GL_TEXTURE20);
@@ -351,10 +371,30 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
 	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
 	if (!cascadedMatrices.empty()) {
-		glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "directionalLightTransform"), (GLsizei)cascadedMatrices.size(), GL_FALSE, glm::value_ptr(cascadedMatrices[0]));
-		glUniform1fv(glGetUniformLocation(mainShader.GetShaderID(), "cascadeSplits"), (GLsizei)cascadedSplits.size(), &cascadedSplits[0]);
+		for (size_t i = 0; i < cascadedMatrices.size(); ++i) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
+			GLint mLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
+			if (mLoc != -1) {
+				while(glGetError() != GL_NO_ERROR);
+				glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(cascadedMatrices[i]));
+				if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
+			}
+		}
+		for (size_t i = 0; i < cascadedSplits.size(); ++i) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
+			GLint sLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
+			if (sLoc != -1) glUniform1f(sLoc, cascadedSplits[i]);
+		}
 	}
-	glUniformMatrix4fv(glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(reflectedView));
+	
+	GLint vLoc = glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix");
+	if (vLoc != -1) {
+		while(glGetError() != GL_NO_ERROR);
+		glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(reflectedView));
+		if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for viewMatrix at location: " << vLoc << "\n";
+	}
 
 	mainLight.GetShadowMap()->Read(GL_TEXTURE3);
 	mainLight.GetShadowMap()->ReadColor(GL_TEXTURE20);
@@ -513,6 +553,9 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 	} else {
 		hybrid->CreateFromString(vSource.c_str(), fSource.c_str());
 	}
+
+	extern std::unordered_map<GLuint, std::string> g_ShaderNames;
+	g_ShaderNames[hybrid->GetShaderID()] = "Instanced Hybrid: " + cacheKey;
 
 	printf("[Renderer] Created 'Instancified' hybrid: %s%s\n", cacheKey.c_str(), hasTess ? " (Tessellation)" : "");
 	

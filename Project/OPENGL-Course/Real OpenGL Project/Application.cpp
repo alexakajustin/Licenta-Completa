@@ -27,6 +27,11 @@
 #include <fstream>
 #include "External Libs/nlohmann/json.hpp"
 
+#include <unordered_map>
+#include <string>
+
+std::unordered_map<GLuint, std::string> g_ShaderNames;
+
 // OpenGL Debug Callback
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -42,12 +47,29 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 	MessageState& state = messageMap[id];
 	state.count++;
 
+	// Fetch current shader info for debugging
+	GLint currentProgram = 0;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+	std::string shaderName = "Unknown/None";
+	if (currentProgram != 0 && g_ShaderNames.count(currentProgram)) {
+		shaderName = g_ShaderNames[currentProgram];
+	}
+
 	// Print the first occurrence immediately
 	if (state.count == 1)
 	{
-		fprintf(stderr, "GL CALLBACK: %s id = 0x%x, type = 0x%x, severity = 0x%x, message = %s\n",
-			(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), id, type, severity, message);
+		fprintf(stderr, "GL CALLBACK: %s id = 0x%x, type = 0x%x, severity = 0x%x\n  [Active Shader %d: %s]\n  Message = %s\n",
+			(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), id, type, severity, currentProgram, shaderName.c_str(), message);
 		state.lastTime = now;
+		
+		// On the FIRST occurrence of the glUniformMatrix4fv error, dump all registered shaders
+		if (id == 0x4b6) {
+			fprintf(stderr, "\n=== SHADER REGISTRY DUMP (g_ShaderNames) ===\n");
+			for (auto& [sid, sname] : g_ShaderNames) {
+				fprintf(stderr, "  Program %u: [%s]\n", sid, sname.c_str());
+			}
+			fprintf(stderr, "=== END DUMP ===\n\n");
+		}
 		
 		// Break here to catch the exact cause of the glUniform4f error
 		if (std::string(message).find("glUniform4f") != std::string::npos) {
@@ -57,7 +79,8 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 	// For subsequent hits, throttle to once per second with a summary count
 	else if (now - state.lastTime > 1.0)
 	{
-		fprintf(stderr, "GL CALLBACK [x%d more]: id = 0x%x, message = %s\n", state.count - 1, id, message);
+		fprintf(stderr, "GL CALLBACK [x%d more]: id = 0x%x\n  [Active Shader %d: %s]\n  Message = %s\n", 
+			state.count - 1, id, currentProgram, shaderName.c_str(), message);
 		state.lastTime = now;
 		state.count = 1; // Reset count
 	}

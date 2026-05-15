@@ -317,6 +317,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			s->UseShader();
 			lastShaderID = s->GetShaderID();
 
+			// Prevent state leakage from batch rendering
+			GLint useInstLoc = glGetUniformLocation(s->GetShaderID(), "useInstancing");
+			if (useInstLoc != -1) glUniform1i(useInstLoc, 0);
+
 			// Upload Globals
 			GLint projLoc = s->GetProjectionLocation();
 			GLint viewLoc = s->GetViewLocation();
@@ -368,11 +372,32 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					const auto& matrices = dLight->GetCascadedLightMatrices();
 					const auto& splits = dLight->GetCascadeSplitDistances();
 					if (!matrices.empty()) {
-						glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "directionalLightTransform"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
-						glUniform1fv(glGetUniformLocation(s->GetShaderID(), "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
+						// Upload each matrix and split distance individually to prevent GL_INVALID_OPERATION
+						// if the shader compiler optimizes out unused array elements.
+						for (size_t i = 0; i < matrices.size(); ++i) {
+							char buf[64];
+							snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
+							GLint mLoc = glGetUniformLocation(s->GetShaderID(), buf);
+							if (mLoc != -1) {
+								while(glGetError() != GL_NO_ERROR);
+								glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(matrices[i]));
+								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
+							}
+						}
+						for (size_t i = 0; i < splits.size(); ++i) {
+							char buf[64];
+							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
+							GLint sLoc = glGetUniformLocation(s->GetShaderID(), buf);
+							if (sLoc != -1) glUniform1f(sLoc, splits[i]);
+						}
 					}
 					// View matrix for depth calculation
-					glUniformMatrix4fv(glGetUniformLocation(s->GetShaderID(), "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
+					GLint vLoc = glGetUniformLocation(s->GetShaderID(), "viewMatrix");
+					if (vLoc != -1) {
+						while(glGetError() != GL_NO_ERROR);
+						glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(view));
+						if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for viewMatrix at location: " << vLoc << "\n";
+					}
 
 					// Bind shadow maps for main pass shaders
 					s->SetDirectionalShadowMap(3);
@@ -472,7 +497,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					else if (!frustum->IsBoxVisible(bmin, bmax)) isCulled = true;
 					// GPU-Driven Occlusion Culling (NVIDIA-style compute shader)
 					// Uses previous frame's Hi-Z results with 1-frame latency.
-					else if (!isCulled && objectCullReady && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+					// CRITICAL: We must NOT apply camera-based occlusion culling during override shader passes (like shadow maps).
+					// Shadow casting objects must be rendered into the shadow map even if they are occluded from the player's view.
+					else if (!overrideShader && !isCulled && objectCullReady && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
 						auto it = objectCullIndexMap.find(obj);
 						if (it != objectCullIndexMap.end()) {
 							int cullIdx = it->second;
@@ -781,10 +808,30 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					const auto& matrices = dLight->GetCascadedLightMatrices();
 					const auto& splits = dLight->GetCascadeSplitDistances();
 					if (!matrices.empty()) {
-						glUniformMatrix4fv(glGetUniformLocation(sid, "directionalLightTransform"), (GLsizei)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0]));
-						glUniform1fv(glGetUniformLocation(sid, "cascadeSplits"), (GLsizei)splits.size(), &splits[0]);
+						for (size_t i = 0; i < matrices.size(); ++i) {
+							char buf[64];
+							snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
+							GLint mLoc = glGetUniformLocation(sid, buf);
+							if (mLoc != -1) {
+								while(glGetError() != GL_NO_ERROR);
+								glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(matrices[i]));
+								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
+							}
+						}
+						for (size_t i = 0; i < splits.size(); ++i) {
+							char buf[64];
+							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
+							GLint sLoc = glGetUniformLocation(sid, buf);
+							if (sLoc != -1) glUniform1f(sLoc, splits[i]);
+						}
 					}
-					glUniformMatrix4fv(glGetUniformLocation(sid, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(view));
+					
+					GLint vLoc = glGetUniformLocation(sid, "viewMatrix");
+					if (vLoc != -1) {
+						while(glGetError() != GL_NO_ERROR);
+						glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(view));
+						if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for viewMatrix at location: " << vLoc << "\n";
+					}
 					
 					dLight->GetShadowMap()->Read(GL_TEXTURE3);
 					targetRenderShader->SetDirectionalShadowMap(3);

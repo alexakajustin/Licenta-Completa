@@ -1,4 +1,7 @@
 #include "Shader.h"
+#include <unordered_map>
+#include <string>
+extern std::unordered_map<GLuint, std::string> g_ShaderNames;
 
 Shader::Shader()
 {
@@ -132,6 +135,8 @@ void Shader::CreateComputeShader(const char* computePath)
 		return;
 	}
 
+	// Register compute shaders too (they bypass CompileProgram)
+	g_ShaderNames[shaderID] = std::string("Compute: ") + computePath;
 	printf("[Shader] Compute shader compiled successfully: %s (ID: %u)\n", computePath, shaderID);
 }
 
@@ -243,6 +248,8 @@ void Shader::Validate()
 }
 
 
+
+
 void Shader::CompileProgram()
 {
 	GLint result = 0;
@@ -259,6 +266,14 @@ void Shader::CompileProgram()
 		ClearShader();
 		return;
 	}
+
+	// Register for advanced debugging
+	std::string name = vertexPath;
+	if (!fragmentPath.empty()) name += " | " + fragmentPath;
+	if (isComputeShader) name = "Compute: " + vertexPath;
+	if (name.empty()) name = "(CreateFromString)";
+	g_ShaderNames[shaderID] = name;
+	printf("[ShaderRegistry] ID %u -> %s\n", shaderID, name.c_str());
 
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformProjection = glGetUniformLocation(shaderID, "projection");

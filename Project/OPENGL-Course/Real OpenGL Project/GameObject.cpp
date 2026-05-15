@@ -483,18 +483,28 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	}
 
 	if (meshToRender) {
-		if (texture) {
+		Texture* activeTexture = texture;
+		if (!activeTexture && !textureLayers.empty()) {
+			activeTexture = textureLayers[0].texture;
+		}
+
+		if (activeTexture) {
 			glUniform1i(uniformUseDiffuseTexture, 1);
 			glUniform1i(uniformDiffuseTexture, 0);
-			texture->UseTexture();
+			activeTexture->UseTexture();
 		} else {
 			glUniform1i(uniformUseDiffuseTexture, 0);
 		}
 
-		if (normalMap) {
+		Texture* activeNormal = normalMap;
+		if (!activeNormal && !textureLayers.empty()) {
+			activeNormal = textureLayers[0].normalMap;
+		}
+
+		if (activeNormal) {
 			glUniform1i(uniformUseNormalMap, 1);
 			glUniform1i(uniformNormalMap, 1);
-			normalMap->UseNormalMap();
+			activeNormal->UseNormalMap();
 		} else {
 			glUniform1i(uniformUseNormalMap, 0);
 		}
