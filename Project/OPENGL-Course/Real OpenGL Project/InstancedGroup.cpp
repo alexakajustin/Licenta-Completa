@@ -479,11 +479,17 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		glUniform2f(renderShader.GetOffsetLocation(), 0.0f, 0.0f);
 	}
 
+	// Always upload alpha for shadow pass if material exists
+	if (isShadowPass && material) {
+		GLint alphaLoc = glGetUniformLocation(shaderID, "materialAlpha");
+		if (alphaLoc != -1) glUniform1f(alphaLoc, material->GetAlpha());
+	}
+
 	// Bind textures
 	GLint useDiffuseLoc = glGetUniformLocation(shaderID, "useDiffuseTexture");
 	GLint useNormalLoc = glGetUniformLocation(shaderID, "useNormalMap");
 
-	if (!isShadowPass && texture) {
+	if (texture) {
 		if (useDiffuseLoc != -1) glUniform1i(useDiffuseLoc, 1);
 		glUniform1i(glGetUniformLocation(shaderID, "theTexture"), 0);
 		texture->UseTexture();

@@ -91,12 +91,16 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
 
 	// 2. Loop through each cascade and render
-	glDisable(GL_CULL_FACE); // Disable culling so single-sided geometry casts shadows
-	
+	glDisable(GL_CULL_FACE);   // Disable culling for single-sided objects (chairs, table tops)
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);      // Ensure depth writing is ON
+	glDepthFunc(GL_LESS);
+	glDisable(GL_BLEND);       // No blending for shadow map generation
+
 	for (GLuint i = 0; i < csm->GetCascadeCount(); i++)
 	{
 		csm->WriteLayer(i);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to 0.0 (no occlusion)
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 		glm::mat4 lightProjView = matrices[i];
@@ -109,7 +113,7 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 		// Render regular objects
 		float sw = (float)light->GetShadowMap()->GetShadowWidth();
 		float sh = (float)light->GetShadowMap()->GetShadowHeight();
-		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, &dirFrustum, &directionalShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), lightProjView);
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr, &directionalShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), lightProjView, gs);
 
 		// GPU-Driven Instanced Groups
 		float time = (float)glfwGetTime();
@@ -187,6 +191,8 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene, const G
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
 }
 
 void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,

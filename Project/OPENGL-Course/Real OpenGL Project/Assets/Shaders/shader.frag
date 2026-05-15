@@ -292,9 +292,9 @@ float random(vec3 seed, int i){
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
 	// Normal Offset Bias: Offset world position along normal to prevent acne
-	// Distant cascades need larger offsets because their texels cover more area
-	// Increased base from 0.2 to 0.5 to handle steep mountain slopes with the wide Z-range
-	float offsetScale = 0.5 * (layer + 1); 
+	// Normal Offset Bias: Offset world position along normal to prevent acne.
+	// We use a small offset (0.1m) which is now effective due to the improved Z-range.
+	float offsetScale = 0.1 * (layer + 1); 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
 	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
@@ -304,9 +304,8 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	if(projCoords.z > 1.0) return 0.0;
 	
 	float current = projCoords.z;
-	// Depth bias scaled for the 20000-unit Z-range orthographic projection.
-	// Steep slopes (dot ≈ 0) get more bias to fight acne on mountainsides.
-	float bias = max(0.0003 * (1.0 - dot(normal, -lightDir)), 0.00005);
+	// Depth bias scaled for the 2000-unit Z-range orthographic projection.
+	float bias = max(0.0005 * (1.0 - dot(normal, -lightDir)), 0.00005);
 	
 	float shadow = 0.0;
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
