@@ -15,6 +15,7 @@ struct GraphicsSettings;
 class SceneManager;
 class Camera;
 class GameObject;
+class LightObject;
 class NodeGraph;
 class InputHandler;
 
@@ -116,14 +117,22 @@ private:
 	SceneAction pendingSceneAction = SceneAction::None;
 	std::string pendingScenePath;
 
-	// Inspector undo tracking
+	// Inspector undo tracking (continuous drag widgets)
 	bool inspectorIsEditing = false;
 	std::string inspectorBeforeSnapshot;
-	int inspectorSnapshotObjIndex = -1;
-	int inspectorSnapshotLightIndex = -1;
+	GameObject* inspectorSnapshotObj = nullptr;
+	LightObject* inspectorSnapshotLight = nullptr;
 	unsigned int inspectorLastActiveID = 0;
 	void* inspectorLastMatPtr = nullptr;
 	void* inspectorLastModelPtr = nullptr;
+
+	// Explicit undo for discrete operations (buttons, drag-drops, combos)
+	// Call SnapshotBeforeChange() BEFORE the modification, then CommitChange() AFTER.
+	std::string discreteBeforeSnapshot;
+	GameObject* discreteSnapshotObj = nullptr;
+	LightObject* discreteSnapshotLight = nullptr;
+	void SnapshotBeforeChange(SceneManager& scene);
+	void CommitChange(SceneManager& scene, const std::string& desc);
 
 private:
 

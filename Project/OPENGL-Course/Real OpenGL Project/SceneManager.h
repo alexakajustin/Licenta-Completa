@@ -218,8 +218,9 @@ private:
 	bool isBoxSelecting = false;
 	
 	struct InitialState {
-		glm::vec3 position; // World position
-		glm::vec3 rotation; // Euler angles
+		glm::vec3 worldPosition;
+		glm::vec3 localPosition;
+		glm::vec3 localRotation;
 	};
 	std::map<GameObject*, InitialState> dragInitialObjectStates;
 	std::map<LightObject*, glm::vec3> dragInitialLightPositions;

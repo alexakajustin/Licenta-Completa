@@ -2340,7 +2340,11 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 					for (int idx : selectedObjectIndices) {
 						if (idx >= 0 && idx < (int)objects.size()) {
 							GameObject* obj = objects[idx];
-							dragInitialObjectStates[obj] = { glm::vec3(obj->GetWorldMatrix()[3]), obj->GetTransform().GetRotation() };
+							dragInitialObjectStates[obj] = { 
+								glm::vec3(obj->GetWorldMatrix()[3]), 
+								obj->GetTransform().GetPosition(), 
+								obj->GetTransform().GetRotation() 
+							};
 						}
 					}
 					// Anchor point for the main gizmo
@@ -2389,7 +2393,11 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 				for (int idx : selectedObjectIndices) {
 					if (idx >= 0 && idx < (int)objects.size()) {
 						GameObject* obj = objects[idx];
-						dragInitialObjectStates[obj] = { glm::vec3(obj->GetWorldMatrix()[3]), obj->GetTransform().GetRotation() };
+						dragInitialObjectStates[obj] = { 
+							glm::vec3(obj->GetWorldMatrix()[3]), 
+							obj->GetTransform().GetPosition(), 
+							obj->GetTransform().GetRotation() 
+						};
 					}
 				}
 
@@ -2431,7 +2439,7 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 					if (!dragInitialObjectStates.empty()) {
 						std::vector<TransformSnapshot> before, after;
 						for (auto const& [obj, state] : dragInitialObjectStates) {
-							before.push_back({ obj, state.position, state.rotation, obj->GetTransform().GetScale() });
+							before.push_back({ obj, state.localPosition, state.localRotation, obj->GetTransform().GetScale() });
 							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
 						}
 						undoManager.PushAction(std::make_unique<TransformAction>("Move Object", before, after));
@@ -2452,7 +2460,7 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 					if (!dragInitialObjectStates.empty()) {
 						std::vector<TransformSnapshot> before, after;
 						for (auto const& [obj, state] : dragInitialObjectStates) {
-							before.push_back({ obj, state.position, state.rotation, obj->GetTransform().GetScale() });
+							before.push_back({ obj, state.localPosition, state.localRotation, obj->GetTransform().GetScale() });
 							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
 						}
 						undoManager.PushAction(std::make_unique<TransformAction>("Rotate Object", before, after));
@@ -2500,7 +2508,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 			}
 			if (parentMoved) continue;
 
-			glm::vec3 newPos = state.position + worldDelta;
+			glm::vec3 newPos = state.worldPosition + worldDelta;
 
 			if (obj->GetParent()) {
 				glm::mat4 parentWorld = obj->GetParent()->GetWorldMatrix();
@@ -2562,7 +2570,7 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 			}
 			if (parentRotated) continue;
 
-			obj->GetTransform().SetRotation(state.rotation + rotationDelta);
+			obj->GetTransform().SetRotation(state.localRotation + rotationDelta);
 		}
 	}
 }

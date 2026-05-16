@@ -107,11 +107,7 @@ void DeleteObjectsAction::Undo()
 	for (auto& entry : deletedEntries) {
 		if (!entry.object) continue;
 		if (entry.parent) {
-			// Directly set parent pointer without triggering world-position preservation
-			// since we're restoring to exact original local transforms
-			entry.object->AddChild(entry.object); // No-op for self, but...
-			// Actually, we should just restore the parent link manually
-			// The object's local transform was preserved from before deletion
+			entry.parent->AddChild(entry.object);
 		}
 	}
 
@@ -271,12 +267,12 @@ void DeleteLightsAction::Undo()
 
 void DeleteLightsAction::Redo()
 {
-	// Re-delete: find lights by name and delete them
+	// Re-delete: find lights by pointer (stable, unlike name-based lookup)
 	for (int i = (int)deletedEntries.size() - 1; i >= 0; i--) {
 		auto& entry = deletedEntries[i];
 		auto& lights = scene->GetLights();
 		for (int j = (int)lights.size() - 1; j >= 0; j--) {
-			if (lights[j]->GetName() == entry.name) {
+			if (lights[j] == entry.light) {
 				scene->DeleteLight(j);
 				break;
 			}
@@ -429,28 +425,31 @@ std::string ReparentAction::GetDescription() const
 
 #include "SceneSerializer.h"
 
-InspectorObjectAction::InspectorObjectAction(SceneManager* scene, int objectIndex,
+InspectorObjectAction::InspectorObjectAction(SceneManager* scene, GameObject* object,
 	const std::string& beforeJson, const std::string& afterJson,
 	const std::string& desc)
-	: scene(scene), objectIndex(objectIndex), beforeJson(beforeJson), afterJson(afterJson), description(desc)
+	: scene(scene), object(object), beforeJson(beforeJson), afterJson(afterJson), description(desc)
 {
 }
 
 void InspectorObjectAction::Undo()
 {
+	if (!object) return;
+	// Verify the object is still in the scene
 	auto& objects = scene->GetObjects();
-	if (objectIndex < 0 || objectIndex >= (int)objects.size()) return;
+	if (std::find(objects.begin(), objects.end(), object) == objects.end()) return;
 
-	SceneSerializer::RestoreObject(objects[objectIndex], beforeJson, scene);
+	SceneSerializer::RestoreObject(object, beforeJson, scene);
 	printf("[Undo] %s\n", description.c_str());
 }
 
 void InspectorObjectAction::Redo()
 {
+	if (!object) return;
 	auto& objects = scene->GetObjects();
-	if (objectIndex < 0 || objectIndex >= (int)objects.size()) return;
+	if (std::find(objects.begin(), objects.end(), object) == objects.end()) return;
 
-	SceneSerializer::RestoreObject(objects[objectIndex], afterJson, scene);
+	SceneSerializer::RestoreObject(object, afterJson, scene);
 	printf("[Redo] %s\n", description.c_str());
 }
 
@@ -458,28 +457,30 @@ void InspectorObjectAction::Redo()
 // InspectorLightAction
 // =====================================================================
 
-InspectorLightAction::InspectorLightAction(SceneManager* scene, int lightIndex,
+InspectorLightAction::InspectorLightAction(SceneManager* scene, LightObject* light,
 	const std::string& beforeJson, const std::string& afterJson,
 	const std::string& desc)
-	: scene(scene), lightIndex(lightIndex), beforeJson(beforeJson), afterJson(afterJson), description(desc)
+	: scene(scene), light(light), beforeJson(beforeJson), afterJson(afterJson), description(desc)
 {
 }
 
 void InspectorLightAction::Undo()
 {
+	if (!light) return;
 	auto& lights = scene->GetLights();
-	if (lightIndex < 0 || lightIndex >= (int)lights.size()) return;
+	if (std::find(lights.begin(), lights.end(), light) == lights.end()) return;
 
-	SceneSerializer::RestoreLight(lights[lightIndex], beforeJson);
+	SceneSerializer::RestoreLight(light, beforeJson);
 	printf("[Undo] %s\n", description.c_str());
 }
 
 void InspectorLightAction::Redo()
 {
+	if (!light) return;
 	auto& lights = scene->GetLights();
-	if (lightIndex < 0 || lightIndex >= (int)lights.size()) return;
+	if (std::find(lights.begin(), lights.end(), light) == lights.end()) return;
 
-	SceneSerializer::RestoreLight(lights[lightIndex], afterJson);
+	SceneSerializer::RestoreLight(light, afterJson);
 	printf("[Redo] %s\n", description.c_str());
 }
 

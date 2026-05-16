@@ -1080,6 +1080,7 @@ std::string SceneSerializer::SnapshotObject(GameObject* obj)
 			lj["dispScale"] = layer.displacementScale;
 			lj["tex"] = layer.texturePath;
 			lj["norm"] = layer.normalMapPath;
+			lj["disp"] = layer.displacementMapPath;
 			layers.push_back(lj);
 		}
 		j["layers"] = layers;
@@ -1227,6 +1228,15 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 					Texture* tex = new Texture(nPath.c_str());
 					if (tex->LoadTextureA()) { layers[i].normalMap = tex; layers[i].normalMapPath = nPath; } else delete tex;
 				}
+				else if (nPath.empty()) { layers[i].normalMap = nullptr; layers[i].normalMapPath = ""; }
+			}
+			if (lj.contains("disp")) {
+				std::string dPath = lj["disp"].get<std::string>();
+				if (!dPath.empty() && layers[i].displacementMapPath != dPath) {
+					Texture* tex = new Texture(dPath.c_str());
+					if (tex->LoadTextureGrayscale()) { layers[i].displacementMap = tex; layers[i].displacementMapPath = dPath; } else delete tex;
+				}
+				else if (dPath.empty()) { layers[i].displacementMap = nullptr; layers[i].displacementMapPath = ""; }
 			}
 		}
 	}

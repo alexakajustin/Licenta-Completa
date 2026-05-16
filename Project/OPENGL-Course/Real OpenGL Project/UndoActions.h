@@ -222,7 +222,7 @@ private:
 class InspectorObjectAction : public UndoAction
 {
 public:
-	InspectorObjectAction(SceneManager* scene, int objectIndex,
+	InspectorObjectAction(SceneManager* scene, GameObject* object,
 		const std::string& beforeJson, const std::string& afterJson,
 		const std::string& desc = "Inspector Change");
 
@@ -232,7 +232,7 @@ public:
 
 private:
 	SceneManager* scene;
-	int objectIndex;
+	GameObject* object;
 	std::string beforeJson;
 	std::string afterJson;
 	std::string description;
@@ -245,7 +245,7 @@ private:
 class InspectorLightAction : public UndoAction
 {
 public:
-	InspectorLightAction(SceneManager* scene, int lightIndex,
+	InspectorLightAction(SceneManager* scene, LightObject* light,
 		const std::string& beforeJson, const std::string& afterJson,
 		const std::string& desc = "Light Change");
 
@@ -255,7 +255,7 @@ public:
 
 private:
 	SceneManager* scene;
-	int lightIndex;
+	LightObject* light;
 	std::string beforeJson;
 	std::string afterJson;
 	std::string description;

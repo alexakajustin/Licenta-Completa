@@ -28,6 +28,8 @@
 #include <filesystem>
 #include <set>
 #include <cstring>
+#include <algorithm>
+#include <cstring>
 
 #include <GL/glew.h>
 
@@ -235,9 +237,6 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 			scene.InstantiateModel(path, spawnPos);
 		}
 		else if (isMaterial || ext == ".mat") {
-			// If we dropped on a specific object window (handled by Hierarchy/Inspector), 
-			// it usually handles the application itself. This global helper is for 
-			// general instantiation or "current selection" application.
 			Material* loadedMat = Material::LoadFromFile(pathStr);
 			if (loadedMat) {
 				int sel = scene.GetSelectedIndex();
@@ -247,6 +246,52 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 			}
 		}
 	}
+}
+
+// =====================================================================
+// Explicit Undo Helpers for Discrete Operations
+// =====================================================================
+
+void EditorUI::SnapshotBeforeChange(SceneManager& scene)
+{
+	int selObj = scene.GetSelectedIndex();
+	int selLight = scene.GetSelectedLightIndex();
+	auto& objects = scene.GetObjects();
+	auto& lights = scene.GetLights();
+
+	discreteSnapshotObj = nullptr;
+	discreteSnapshotLight = nullptr;
+	discreteBeforeSnapshot.clear();
+
+	if (selObj >= 0 && selObj < (int)objects.size()) {
+		discreteSnapshotObj = objects[selObj];
+		discreteBeforeSnapshot = SceneSerializer::SnapshotObject(discreteSnapshotObj);
+	}
+	else if (selLight >= 0 && selLight < (int)lights.size()) {
+		discreteSnapshotLight = lights[selLight];
+		discreteBeforeSnapshot = SceneSerializer::SnapshotLight(discreteSnapshotLight);
+	}
+}
+
+void EditorUI::CommitChange(SceneManager& scene, const std::string& desc)
+{
+	if (discreteSnapshotObj) {
+		std::string afterSnapshot = SceneSerializer::SnapshotObject(discreteSnapshotObj);
+		if (afterSnapshot != discreteBeforeSnapshot) {
+			scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
+				&scene, discreteSnapshotObj, discreteBeforeSnapshot, afterSnapshot, desc));
+		}
+	}
+	else if (discreteSnapshotLight) {
+		std::string afterSnapshot = SceneSerializer::SnapshotLight(discreteSnapshotLight);
+		if (afterSnapshot != discreteBeforeSnapshot) {
+			scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
+				&scene, discreteSnapshotLight, discreteBeforeSnapshot, afterSnapshot, desc));
+		}
+	}
+	discreteSnapshotObj = nullptr;
+	discreteSnapshotLight = nullptr;
+	discreteBeforeSnapshot.clear();
 }
 
 void EditorUI::WindowState::CheckMaximize(int windowID)
@@ -1311,7 +1356,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	{
 		windowState.CheckMaximize(2);
 
-		// === Generic Undo Snapshot: Capture state when user starts editing ANY widget ===
+		// === Generic Undo Snapshot: Capture state when user starts editing continuous widgets ===
 		{
 			bool anyActive = ImGui::IsAnyItemActive();
 			unsigned int currentActiveID = ImGui::GetActiveID();
@@ -1320,42 +1365,20 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			void* currentMatPtr = currentObj ? currentObj->GetMaterial() : nullptr;
 			void* currentModelPtr = currentObj ? currentObj->GetModel() : nullptr;
 
-			// 1. If we switched widgets OR if the underlying component pointers changed (e.g. material added)
-			// we must finalize the current session and start a new one to ensure snapshots are accurate.
-			bool componentChanged = (inspectorIsEditing && (currentMatPtr != inspectorLastMatPtr || currentModelPtr != inspectorLastModelPtr));
-			
-			if (inspectorIsEditing && (componentChanged || (currentActiveID != 0 && currentActiveID != inspectorLastActiveID))) {
-				if (inspectorSnapshotObjIndex >= 0 && inspectorSnapshotObjIndex < (int)objects.size()) {
-					std::string afterSnapshot = SceneSerializer::SnapshotObject(objects[inspectorSnapshotObjIndex]);
-					if (afterSnapshot != inspectorBeforeSnapshot) {
-						scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
-							&scene, inspectorSnapshotObjIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Object"));
-					}
-				} else if (inspectorSnapshotLightIndex >= 0 && inspectorSnapshotLightIndex < (int)lights.size()) {
-					std::string afterSnapshot = SceneSerializer::SnapshotLight(lights[inspectorSnapshotLightIndex]);
-					if (afterSnapshot != inspectorBeforeSnapshot) {
-						scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
-							&scene, inspectorSnapshotLightIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Light"));
-					}
-				}
-				inspectorIsEditing = false;
-				inspectorBeforeSnapshot.clear();
-			}
-
-			// 2. Start new snapshot if a widget is active (or just became active due to a component change)
+			// Start new snapshot when a widget becomes active
 			if (anyActive && !inspectorIsEditing) {
 				inspectorIsEditing = true;
 				inspectorLastActiveID = currentActiveID;
 				inspectorLastMatPtr = currentMatPtr;
 				inspectorLastModelPtr = currentModelPtr;
-				inspectorSnapshotObjIndex = -1;
-				inspectorSnapshotLightIndex = -1;
+				inspectorSnapshotObj = nullptr;
+				inspectorSnapshotLight = nullptr;
 				if (currentObj) {
-					inspectorSnapshotObjIndex = selectedObj;
+					inspectorSnapshotObj = currentObj;
 					inspectorBeforeSnapshot = SceneSerializer::SnapshotObject(currentObj);
 				}
 				else if (showLightInspector && selectedLight >= 0 && selectedLight < (int)lights.size()) {
-					inspectorSnapshotLightIndex = selectedLight;
+					inspectorSnapshotLight = lights[selectedLight];
 					inspectorBeforeSnapshot = SceneSerializer::SnapshotLight(lights[selectedLight]);
 				}
 			}
@@ -1445,16 +1468,18 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 							std::string ext = path.extension().string();
 							for (auto& c : ext) c = tolower(c);
 							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								SnapshotBeforeChange(scene);
 								Texture* newTex = new Texture(pathStr);
 								if (newTex->LoadTextureA()) {
 									layer.texture = newTex;
 									layer.texturePath = pathStr;
+									CommitChange(scene, "Set Layer Diffuse");
 								} else { delete newTex; }
 							}
 						}
 						ImGui::EndDragDropTarget();
 					}
-					if (layerTex) { ImGui::SameLine(); if (ImGui::SmallButton("X##CD")) { layer.texture = nullptr; layer.texturePath = ""; } }
+					if (layerTex) { ImGui::SameLine(); if (ImGui::SmallButton("X##CD")) { SnapshotBeforeChange(scene); layer.texture = nullptr; layer.texturePath = ""; CommitChange(scene, "Clear Layer Diffuse"); } }
 
 					// --- Normal map slot ---
 					ImGui::Text("Normal");
@@ -1472,16 +1497,18 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 							std::string ext = path.extension().string();
 							for (auto& c : ext) c = tolower(c);
 							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								SnapshotBeforeChange(scene);
 								Texture* newTex = new Texture(pathStr);
 								if (newTex->LoadTextureA()) {
 									layer.normalMap = newTex;
 									layer.normalMapPath = pathStr;
+									CommitChange(scene, "Set Layer Normal");
 								} else { delete newTex; }
 							}
 						}
 						ImGui::EndDragDropTarget();
 					}
-					if (layerNorm) { ImGui::SameLine(); if (ImGui::SmallButton("X##CN")) { layer.normalMap = nullptr; layer.normalMapPath = ""; } }
+					if (layerNorm) { ImGui::SameLine(); if (ImGui::SmallButton("X##CN")) { SnapshotBeforeChange(scene); layer.normalMap = nullptr; layer.normalMapPath = ""; CommitChange(scene, "Clear Layer Normal"); } }
 
 					// --- Displacement map slot ---
 					ImGui::Text("Displace");
@@ -1499,16 +1526,18 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 							std::string ext = path.extension().string();
 							for (auto& c : ext) c = tolower(c);
 							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga") {
+								SnapshotBeforeChange(scene);
 								Texture* newTex = new Texture(pathStr);
 								if (newTex->LoadTextureGrayscale()) {
 									layer.displacementMap = newTex;
 									layer.displacementMapPath = pathStr;
+									CommitChange(scene, "Set Layer Displacement");
 								} else { delete newTex; }
 							}
 						}
 						ImGui::EndDragDropTarget();
 					}
-					if (layerDisp) { ImGui::SameLine(); if (ImGui::SmallButton("X##CDP")) { layer.displacementMap = nullptr; layer.displacementMapPath = ""; } }
+					if (layerDisp) { ImGui::SameLine(); if (ImGui::SmallButton("X##CDP")) { SnapshotBeforeChange(scene); layer.displacementMap = nullptr; layer.displacementMapPath = ""; CommitChange(scene, "Clear Layer Displacement"); } }
 
 					// Blend mode dropdown
 					const char* blendModes[] = { "Normal", "Height", "Slope", "Height+Slope" };
@@ -1538,14 +1567,18 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 
 				if (removeIdx >= 0) {
+					SnapshotBeforeChange(scene);
 					selected->RemoveTextureLayer(removeIdx);
+					CommitChange(scene, "Remove Layer");
 				}
 
 				ImGui::Separator();
 				if ((int)layers.size() < MAX_TEXTURE_LAYERS) {
 					if (ImGui::Button("+ Add Layer")) {
+						SnapshotBeforeChange(scene);
 						TextureLayer newLayer;
 						selected->AddTextureLayer(newLayer);
+						CommitChange(scene, "Add Layer");
 					}
 				} else {
 					ImGui::TextDisabled("Max %d layers", MAX_TEXTURE_LAYERS);
@@ -1694,12 +1727,14 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 					if (previewTexture) {
 						ImGui::Image((ImTextureID)(intptr_t)previewTexture, ImVec2(PREVIEW_SIZE, PREVIEW_SIZE), ImVec2(0, 1), ImVec2(1, 0));
 					}
-					if (ImGui::Button("X##ClearMaterial")) selected->SetMaterial(nullptr);
+					if (ImGui::Button("X##ClearMaterial")) { SnapshotBeforeChange(scene); selected->SetMaterial(nullptr); CommitChange(scene, "Clear Material"); }
 				} else {
 					ImGui::TextDisabled("No Material");
 					if (ImGui::Button("Add Material")) {
+						SnapshotBeforeChange(scene);
 						Material* newMat = new Material(scene.GetMainShader());
 						selected->SetMaterial(newMat);
+						CommitChange(scene, "Add Material");
 					}
 				}
 				
@@ -1709,7 +1744,9 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 						const char* matPath = (const char*)payload->Data;
 						Material* loadedMat = Material::LoadFromFile(matPath);
 						if (loadedMat) {
+							SnapshotBeforeChange(scene);
 							selected->SetMaterial(loadedMat);
+							CommitChange(scene, "Apply Material");
 							printf("Applied material %s\n", matPath);
 						}
 					}
@@ -1776,29 +1813,35 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			ImGui::EndDragDropTarget();
 		}
 
-		// === Inspector Undo: Compare and push when editing ends ===
+		// === Inspector Undo: Finalize when editing ends (single unified finalization) ===
 		{
 			bool anyActive = ImGui::IsAnyItemActive();
-			// Only push when no item is active AND the mouse is released
-			// This prevents spam from complex widgets where 'active' might flicker
 			if (!anyActive && !ImGui::IsMouseDown(0) && inspectorIsEditing) {
-				if (inspectorSnapshotObjIndex >= 0 && inspectorSnapshotObjIndex < (int)objects.size()) {
-					std::string afterSnapshot = SceneSerializer::SnapshotObject(objects[inspectorSnapshotObjIndex]);
-					if (afterSnapshot != inspectorBeforeSnapshot) {
-						scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
-							&scene, inspectorSnapshotObjIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Object"));
+				if (inspectorSnapshotObj) {
+					auto& objs = scene.GetObjects();
+					if (std::find(objs.begin(), objs.end(), inspectorSnapshotObj) != objs.end()) {
+						std::string afterSnapshot = SceneSerializer::SnapshotObject(inspectorSnapshotObj);
+						if (afterSnapshot != inspectorBeforeSnapshot) {
+							scene.GetUndoManager().PushAction(std::make_unique<InspectorObjectAction>(
+								&scene, inspectorSnapshotObj, inspectorBeforeSnapshot, afterSnapshot, "Edit Object"));
+						}
 					}
 				}
-				else if (inspectorSnapshotLightIndex >= 0 && inspectorSnapshotLightIndex < (int)lights.size()) {
-					std::string afterSnapshot = SceneSerializer::SnapshotLight(lights[inspectorSnapshotLightIndex]);
-					if (afterSnapshot != inspectorBeforeSnapshot) {
-						scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
-							&scene, inspectorSnapshotLightIndex, inspectorBeforeSnapshot, afterSnapshot, "Edit Light"));
+				else if (inspectorSnapshotLight) {
+					auto& lts = scene.GetLights();
+					if (std::find(lts.begin(), lts.end(), inspectorSnapshotLight) != lts.end()) {
+						std::string afterSnapshot = SceneSerializer::SnapshotLight(inspectorSnapshotLight);
+						if (afterSnapshot != inspectorBeforeSnapshot) {
+							scene.GetUndoManager().PushAction(std::make_unique<InspectorLightAction>(
+								&scene, inspectorSnapshotLight, inspectorBeforeSnapshot, afterSnapshot, "Edit Light"));
+						}
 					}
 				}
 				inspectorIsEditing = false;
 				inspectorLastActiveID = 0;
 				inspectorBeforeSnapshot.clear();
+				inspectorSnapshotObj = nullptr;
+				inspectorSnapshotLight = nullptr;
 			}
 		}
 	}
