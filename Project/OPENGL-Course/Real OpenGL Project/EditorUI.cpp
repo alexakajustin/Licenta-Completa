@@ -231,7 +231,7 @@ void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
 		std::string ext = path.extension().string();
 		for (auto& c : ext) c = tolower(c);
 
-		if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae")) {
+		if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf" || ext == ".glb")) {
 			scene.InstantiateModel(path, spawnPos);
 		}
 		else if (isMaterial || ext == ".mat") {
@@ -908,7 +908,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				std::string ext = path.extension().string();
 				for (auto& c : ext) c = tolower(c);
 
-				if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae")) {
+				if (isAsset && (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf" || ext == ".glb")) {
 					// Calculate world position from mouse ray
 					ImVec2 mousePos = ImGui::GetMousePos();
 					ImVec2 winPos = ImGui::GetWindowPos();
