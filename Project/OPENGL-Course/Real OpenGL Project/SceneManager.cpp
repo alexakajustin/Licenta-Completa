@@ -1972,7 +1972,8 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
-	// Gizmo picking
+	// Gizmo picking - Clear depth AGAIN so gizmo is ALWAYS on top of icons
+	glClear(GL_DEPTH_BUFFER_BIT);
 	glm::vec3 gizmoPos;
 	if (GetGizmoPosition(gizmoPos))
 	{
@@ -2236,6 +2237,9 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 	glDepthFunc(GL_LESS);
 	glDepthMask(GL_TRUE);
 	glDisable(GL_CULL_FACE);
+
+	// Clear depth buffer so the gizmo renders on top of EVERYTHING (including light icons)
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	gizmoShader.UseShader();
 	
