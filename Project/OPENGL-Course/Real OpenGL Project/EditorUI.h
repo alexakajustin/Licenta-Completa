@@ -41,7 +41,7 @@ public:
 
 private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
-	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera);
+	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera, bool focusSelection = false, int targetIndex = -1);
 	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
 	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr);
 

@@ -62,6 +62,9 @@ public:
 	void SetInheritScale(bool inherit) { inheritScale = inherit; }
 	bool GetInheritScale() const { return inheritScale; }
 
+	void SetVisible(bool visible) { isVisible = visible; }
+	bool GetVisible() const { return isVisible; }
+
 	// Render this object
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
@@ -157,6 +160,7 @@ private:
 	std::string modelSourcePath;  // File path for model-based objects
 	
 	bool saveInScene = true;
+	bool isVisible = true;
 
 	// CPU Caching for Performance
 	glm::mat4 cachedWorldMatrix = glm::mat4(1.0f);

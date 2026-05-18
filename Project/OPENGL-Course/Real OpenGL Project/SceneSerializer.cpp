@@ -141,6 +141,7 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		objJson["name"] = obj->GetName();
 		objJson["primitiveType"] = obj->GetPrimitiveType();
 		objJson["modelPath"] = obj->GetModelSourcePath();
+		objJson["isVisible"] = obj->GetVisible();
 
 		// Transform
 		const Transform& t = obj->GetTransform();
@@ -487,6 +488,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 			std::string primType = objJson.value("primitiveType", "");
 			std::string modelPath = objJson.value("modelPath", "");
+			obj->SetVisible(objJson.value("isVisible", true));
 
 			// Recreate mesh based on primitiveType
 			if (primType == "Plane")       obj->SetMesh(PrimitiveGenerator::CreatePlane());

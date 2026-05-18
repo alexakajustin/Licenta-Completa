@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.3228033185005188,
-            -0.7313537001609802,
-            -0.6007660031318665
+            -0.17679820954799652,
+            -0.5262139439582825,
+            -0.8317699432373047
         ],
-        "pitch": -47.0,
+        "pitch": -31.75,
         "position": [
-            3.249807357788086,
-            3.903766393661499,
-            3.7564964294433594
+            2.4907732009887695,
+            4.331353187561035,
+            4.931907653808594
         ],
-        "yaw": 601.75
+        "yaw": 618.0
     },
     "instancedGroups": [],
     "lights": [
@@ -65,7 +65,7 @@
                 "start": 271
             }
         ],
-        "nextId": 273,
+        "nextId": 293,
         "nodes": [
             {
                 "doorHeight": 2.4000000953674316,
@@ -654,7 +654,7 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -1.66432523727417,
+                    -5.233463287353516,
                     5.478752613067627,
                     0.3194143772125244
                 ],
@@ -848,7 +848,7 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -3.5971665382385254,
+                    -6.480630874633789,
                     5.072449207305908,
                     1.6031233072280884
                 ],
@@ -1288,7 +1288,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -1345,7 +1347,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -1402,124 +1406,12 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_2",
-            "normalMapPath": "",
-            "parent": "Stove (Root)",
-            "parentIndex": 17,
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    0.020378809422254562,
-                    0.020378809422254562,
-                    0.020378809422254562,
-                    1.0
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 72.25,
-                "material.specularColor": [
-                    0.020378809422254562,
-                    0.020378809422254562,
-                    0.020378809422254562
-                ],
-                "material.specularIntensity": 0.25,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ]
-            },
-            "modelPath": "",
-            "name": "Mesh_3",
-            "normalMapPath": "",
-            "parent": "Stove (Root)",
-            "parentIndex": 17,
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    0.800000011920929,
-                    0.800000011920929,
-                    0.800000011920929,
-                    1.0
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 25.0,
-                "material.specularColor": [
-                    0.800000011920929,
-                    0.800000011920929,
-                    0.800000011920929
-                ],
-                "material.specularIntensity": 0.25,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ]
-            },
-            "modelPath": "",
-            "name": "Mesh_4",
             "normalMapPath": "",
             "parent": "Stove (Root)",
             "parentIndex": 17,
@@ -1573,7 +1465,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_5",
@@ -1630,7 +1524,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_6",
@@ -1687,7 +1583,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_7",
@@ -1744,7 +1642,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_8",
@@ -1801,7 +1701,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_9",
@@ -1858,7 +1760,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_10",
@@ -1869,8 +1773,8 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
+                    -3.0517578125e-05,
+                    -102.34976196289063,
                     0.0
                 ],
                 "rotation": [
@@ -1923,7 +1827,7 @@
                     47.86700439453125
                 ],
                 "rotation": [
-                    -0.0,
+                    0.0,
                     0.0,
                     0.0
                 ],

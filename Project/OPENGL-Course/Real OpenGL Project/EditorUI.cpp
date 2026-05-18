@@ -1145,11 +1145,16 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 				ImGui::EndDragDropTarget();
 			}
 
+			static int lastSelectedObjIdx = -1;
+			int currentSelectedObjIdx = scene.GetSelectedIndex();
+			bool focusSelection = (currentSelectedObjIdx != lastSelectedObjIdx && currentSelectedObjIdx != -1);
+			lastSelectedObjIdx = currentSelectedObjIdx;
+
 			for (int i = 0; i < (int)objects.size(); i++)
 			{
 				// Only start recursive draw from roots
 				if (objects[i]->GetParent() == nullptr) {
-					RenderHierarchyRecursive(scene, objects[i], i, camera);
+					RenderHierarchyRecursive(scene, objects[i], i, camera, focusSelection, currentSelectedObjIdx);
 				}
 			}
 		}
@@ -1237,7 +1242,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 	ImGui::End();
 }
 
-void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera)
+void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera, bool focusSelection, int targetIndex)
 {
 	if (!obj) return;
 
@@ -1247,7 +1252,29 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 	if (scene.IsObjectSelected(index)) flags |= ImGuiTreeNodeFlags_Selected;
 	if (obj->GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf;
 
+	if (focusSelection && targetIndex != -1) {
+		auto& allObjs = scene.GetObjects();
+		if (targetIndex >= 0 && targetIndex < (int)allObjs.size()) {
+			GameObject* targetObj = allObjs[targetIndex];
+			bool isAncestor = false;
+			GameObject* p = targetObj->GetParent();
+			while (p) {
+				if (p == obj) { isAncestor = true; break; }
+				p = p->GetParent();
+			}
+			if (isAncestor) {
+				ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+			}
+		}
+	}
+
+	if (!obj->GetVisible()) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 	bool isNodeOpen = ImGui::TreeNodeEx(obj->GetName().c_str(), flags);
+	if (!obj->GetVisible()) ImGui::PopStyleColor();
+
+	if (focusSelection && index == targetIndex) {
+		ImGui::SetScrollHereY(0.5f);
+	}
 
 	// Selection logic
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
@@ -1320,7 +1347,7 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 			}
 
 			if (childIndex != -1) {
-				RenderHierarchyRecursive(scene, child, childIndex, camera);
+				RenderHierarchyRecursive(scene, child, childIndex, camera, focusSelection, targetIndex);
 			}
 		}
 		ImGui::TreePop();
@@ -1414,6 +1441,12 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			char nameBuf[128];
 			strncpy_s(nameBuf, sizeof(nameBuf), selected->GetName().c_str(), _TRUNCATE);
 			
+			bool isVis = selected->GetVisible();
+			if (ImGui::Checkbox("##Visibility", &isVis)) {
+				selected->SetVisible(isVis);
+			}
+			ImGui::SameLine();
+
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
 			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
 			{
