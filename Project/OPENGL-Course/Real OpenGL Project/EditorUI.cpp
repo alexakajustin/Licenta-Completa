@@ -1443,7 +1443,12 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			
 			bool isVis = selected->GetVisible();
 			if (ImGui::Checkbox("##Visibility", &isVis)) {
-				selected->SetVisible(isVis);
+				auto& selectedIndices = scene.GetSelectedObjectIndices();
+				for (int idx : selectedIndices) {
+					if (idx >= 0 && idx < (int)objects.size()) {
+						objects[idx]->SetVisible(isVis);
+					}
+				}
 			}
 			ImGui::SameLine();
 
