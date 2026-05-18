@@ -207,6 +207,7 @@ private:
 	Texture* lightIconTexture;
 	Mesh* iconMesh;
 	Mesh* debugSphereMesh;
+	Mesh* debugCubeMesh;
 	void CreateIconMesh();
 
 	// Gizmo resources

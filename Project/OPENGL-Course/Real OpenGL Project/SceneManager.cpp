@@ -29,7 +29,7 @@
 SceneManager::SceneManager()
 	: pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
+	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), debugCubeMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
 {
 }
 
@@ -46,6 +46,7 @@ SceneManager::~SceneManager()
 	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
 	if (iconMesh) { iconMesh->Release(); iconMesh = nullptr; }
 	if (debugSphereMesh) { debugSphereMesh->Release(); debugSphereMesh = nullptr; }
+	if (debugCubeMesh) { debugCubeMesh->Release(); debugCubeMesh = nullptr; }
 
 	// Cleanup GPU-driven object occlusion culling resources
 	if (objectBoundsSSBO) glDeleteBuffers(1, &objectBoundsSSBO);
@@ -991,21 +992,77 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		glUniformMatrix4fv(gizmoShader.GetViewLocation(), 1, GL_FALSE, glm::value_ptr(view));
 		GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
 		GLint modelLoc = gizmoShader.GetModelLocation();
-		glUniform3f(colorLoc, 0.0f, 1.0f, 1.0f); // Cyan for bounds
+
+		// Recursive visual bounds drawing helper
+		std::function<void(GameObject*, const glm::vec3&)> drawVisualBounds = [&](GameObject* obj, const glm::vec3& color) {
+			if (!obj) return;
+
+			if (obj->GetModel() || obj->GetMesh() || obj->HasCustomMesh()) {
+				glm::vec3 localMin(0.0f), localMax(0.0f);
+				if (obj->GetModel() && !obj->HasCustomMesh()) {
+					localMin = obj->GetModel()->GetMinBound();
+					localMax = obj->GetModel()->GetMaxBound();
+				}
+				else if (obj->HasCustomMesh()) {
+					if (obj->GetCPUMeshData().GetVertexCount() > 0) {
+						obj->GetCPUMeshData().GetBounds(localMin, localMax);
+					}
+				}
+				else if (obj->GetMesh()) {
+					obj->GetMesh()->GetBounds(localMin, localMax);
+				}
+
+				glm::mat4 world = obj->GetWorldMatrix();
+				glm::vec3 corners[8] = {
+					{localMin.x, localMin.y, localMin.z}, {localMax.x, localMin.y, localMin.z},
+					{localMin.x, localMax.y, localMin.z}, {localMin.x, localMin.y, localMax.z},
+					{localMax.x, localMax.y, localMin.z}, {localMax.x, localMin.y, localMax.z},
+					{localMin.x, localMax.y, localMax.z}, {localMax.x, localMax.y, localMax.z},
+				};
+
+				glm::vec3 worldMin(1e10f), worldMax(-1e10f);
+				for (int i = 0; i < 8; i++) {
+					glm::vec3 worldCorner = glm::vec3(world * glm::vec4(corners[i], 1.0f));
+					worldMin = glm::min(worldMin, worldCorner);
+					worldMax = glm::max(worldMax, worldCorner);
+				}
+
+				if (worldMin.x < 1e9f) {
+					glm::vec3 center = (worldMin + worldMax) * 0.5f;
+					glm::vec3 size = worldMax - worldMin;
+
+					glm::mat4 boxMatrix = glm::translate(glm::mat4(1.0f), center);
+					boxMatrix = glm::scale(boxMatrix, size);
+					glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(boxMatrix));
+
+					glUniform3f(colorLoc, color.r, color.g, color.b);
+					if (debugCubeMesh) debugCubeMesh->RenderMesh();
+				}
+			}
+
+			for (auto* child : obj->GetChildren()) {
+				drawVisualBounds(child, color);
+			}
+		};
 
 		for (auto* obj : objects) {
+			// 1. Draw parent bounding sphere in Cyan
+			glUniform3f(colorLoc, 0.0f, 1.0f, 1.0f);
 			glm::vec3 center; float radius;
 			obj->GetWorldBoundingSphere(center, radius);
-			
-			// Simple debug box if we don't have a sphere mesh handy
-			glm::mat4 boxMatrix = glm::translate(glm::mat4(1.0f), center);
+			glm::mat4 sphereMatrix = glm::translate(glm::mat4(1.0f), center);
 			float sphereScale = debugSphereMesh ? radius : radius * 2.0f;
-			boxMatrix = glm::scale(boxMatrix, glm::vec3(sphereScale));
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(boxMatrix));
-			
-			// Use debugSphereMesh for accurate bounds visualization
+			sphereMatrix = glm::scale(sphereMatrix, glm::vec3(sphereScale));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereMatrix));
 			if (debugSphereMesh) debugSphereMesh->RenderMesh();
-			else if (iconMesh) iconMesh->RenderMesh(); // Fallback
+
+			// 2. Draw root visual bounding box in Yellow
+			drawVisualBounds(obj, glm::vec3(1.0f, 1.0f, 0.0f));
+
+			// 3. Draw child visual bounding boxes recursively in Green
+			for (auto* child : obj->GetChildren()) {
+				drawVisualBounds(child, glm::vec3(0.0f, 1.0f, 0.0f));
+			}
 		}
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glEnable(GL_CULL_FACE);
@@ -2138,6 +2195,7 @@ void SceneManager::InitIcons()
 
 	CreateIconMesh();
 	debugSphereMesh = PrimitiveGenerator::CreateSphere(16, 16);
+	debugCubeMesh = PrimitiveGenerator::CreateCube();
 }
 
 void SceneManager::CreateIconMesh()

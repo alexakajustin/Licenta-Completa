@@ -628,6 +628,63 @@ void InteriorGenNode::BuildStructuralMesh(
 	}
 }
 
+// Helper to find the precise visual world bounds of an object and its hierarchy, ignoring empty/dummy nodes
+static bool GetVisualWorldBounds(GameObject* obj, glm::vec3& outMin, glm::vec3& outMax) {
+	if (!obj) return false;
+
+	glm::vec3 worldMin(1e10f), worldMax(-1e10f);
+	bool hasAnyMesh = false;
+
+	// 1. Check if this node has geometry
+	if (obj->GetModel() || obj->GetMesh() || obj->HasCustomMesh()) {
+		glm::vec3 localMin(0.0f), localMax(0.0f);
+		if (obj->GetModel() && !obj->HasCustomMesh()) {
+			localMin = obj->GetModel()->GetMinBound();
+			localMax = obj->GetModel()->GetMaxBound();
+		}
+		else if (obj->HasCustomMesh()) {
+			if (obj->GetCPUMeshData().GetVertexCount() > 0) {
+				obj->GetCPUMeshData().GetBounds(localMin, localMax);
+			}
+		}
+		else if (obj->GetMesh()) {
+			obj->GetMesh()->GetBounds(localMin, localMax);
+		}
+
+		glm::mat4 world = obj->GetWorldMatrix();
+		glm::vec3 corners[8] = {
+			{localMin.x, localMin.y, localMin.z}, {localMax.x, localMin.y, localMin.z},
+			{localMin.x, localMax.y, localMin.z}, {localMin.x, localMin.y, localMax.z},
+			{localMax.x, localMax.y, localMin.z}, {localMax.x, localMin.y, localMax.z},
+			{localMin.x, localMax.y, localMax.z}, {localMax.x, localMax.y, localMax.z},
+		};
+
+		for (int i = 0; i < 8; i++) {
+			glm::vec3 worldCorner = glm::vec3(world * glm::vec4(corners[i], 1.0f));
+			worldMin = glm::min(worldMin, worldCorner);
+			worldMax = glm::max(worldMax, worldCorner);
+		}
+		hasAnyMesh = true;
+	}
+
+	// 2. Check children recursively
+	for (auto* child : obj->GetChildren()) {
+		glm::vec3 cMin, cMax;
+		if (GetVisualWorldBounds(child, cMin, cMax)) {
+			worldMin = glm::min(worldMin, cMin);
+			worldMax = glm::max(worldMax, cMax);
+			hasAnyMesh = true;
+		}
+	}
+
+	if (hasAnyMesh) {
+		outMin = worldMin;
+		outMax = worldMax;
+		return true;
+	}
+	return false;
+}
+
 // Helper to find the geometric center and scaled/rotated size of an object's bounds in its own local space.
 // This is used to counteract FBX assets whose pivots are not at their geometric center (e.g. at the foot of the bed).
 static void GetObjectLocalBoundsInfo(GameObject* obj, glm::vec3 scale, glm::vec3 euler, glm::vec3& outCenter, glm::vec3& outSize) {
@@ -650,7 +707,7 @@ static void GetObjectLocalBoundsInfo(GameObject* obj, glm::vec3 scale, glm::vec3
 	obj->SetDirty(); // Forces bounds and matrix recomputation
 	
 	glm::vec3 minB, maxB;
-	obj->GetWorldBounds(minB, maxB);
+	bool hasBounds = GetVisualWorldBounds(obj, minB, maxB);
 	
 	// Restore transform
 	obj->SetParent(oldParent);
@@ -659,7 +716,7 @@ static void GetObjectLocalBoundsInfo(GameObject* obj, glm::vec3 scale, glm::vec3
 	obj->GetTransform().SetScale(oldScl);
 	obj->SetDirty();
 	
-	if (minB.x > 1e9f || maxB.x < -1e9f) {
+	if (!hasBounds || minB.x > 1e9f || maxB.x < -1e9f) {
 		outCenter = glm::vec3(0.0f);
 		outSize = glm::vec3(1.0f);
 		return;
@@ -695,12 +752,9 @@ static void GetObjectLocalBoundsInfo(GameObject* obj, glm::vec3 scale, glm::vec3
 static glm::vec3 GetObjectAABBSize(GameObject* obj, glm::vec3 defaultVal) {
 	if (!obj) return defaultVal;
 	
-	// Query the recursive world bounds which include all children and relative transforms
+	// Query the recursive visual world bounds which ignore dummy nodes/pivot helpers
 	glm::vec3 minB, maxB;
-	obj->GetWorldBounds(minB, maxB);
-
-	// Fallback check in case the object has invalid/infinite bounds
-	if (minB.x > 1e9f || maxB.x < -1e9f) {
+	if (!GetVisualWorldBounds(obj, minB, maxB)) {
 		return defaultVal;
 	}
 

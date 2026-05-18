@@ -2074,7 +2074,7 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 		if (ImGui::CollapsingHeader("Debug Visualizers", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Checkbox("LOD Coloring (R=0, G=1, B=2)", &graphicsSettingsPtr->debugLODColoring);
-			ImGui::Checkbox("Show Bounding Spheres", &graphicsSettingsPtr->debugShowBounds);
+			ImGui::Checkbox("Show Bounding Boxes & Spheres", &graphicsSettingsPtr->debugShowBounds);
 			ImGui::Checkbox("Freeze Culling Frustum", &graphicsSettingsPtr->debugFreezeCulling);
 			if (ImGui::IsItemHovered())
 				ImGui::SetTooltip("Freezes the frustum used for culling to current camera position, allowing you to fly 'outside' and see what is being culled.");

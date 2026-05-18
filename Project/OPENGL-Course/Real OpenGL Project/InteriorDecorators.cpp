@@ -206,62 +206,154 @@ void BathroomDecorator::Decorate(
 	// 1. Toilet — try all walls
 	if (toiletSize.x > 0.0f)
 	{
+		float toiletScale = 1.0f;
+		float tDepth = toiletSize.z;
+		float tWidth = toiletSize.x;
+
+		// Adaptive scale for toilet to fit the room perfectly
+		if (tDepth + 0.1f > room.GetWidth()) toiletScale = std::min(toiletScale, (room.GetWidth() - 0.1f) / tDepth);
+		if (tWidth + 0.1f > room.GetDepth()) toiletScale = std::min(toiletScale, (room.GetDepth() - 0.1f) / tWidth);
+		toiletScale = std::max(0.4f, toiletScale); // Sanity lower limit
+
+		float scaledDepth = tDepth * toiletScale;
+		float scaledWidth = tWidth * toiletScale;
+
 		for (int w = 0; w < 4; w++)
 		{
 			// Swap footprint X/Z for side walls because the object is rotated 90 degrees
 			glm::vec2 toiletHalf = (w == 0 || w == 1) ? 
-				glm::vec2(toiletSize.z * 0.5f, toiletSize.x * 0.5f) : 
-				glm::vec2(toiletSize.x * 0.5f, toiletSize.z * 0.5f);
+				glm::vec2(scaledDepth * 0.5f, scaledWidth * 0.5f) : 
+				glm::vec2(scaledWidth * 0.5f, scaledDepth * 0.5f);
 
 			glm::vec2 toiletXZ;
 			// The offset from the wall is always the local Z half-size
-			if (occ.TryPlaceAlongWall(w, toiletHalf, toiletSize.z * 0.5f + 0.05f, toiletXZ, 0.05f))
+			if (occ.TryPlaceAlongWall(w, toiletHalf, scaledDepth * 0.5f + 0.05f, toiletXZ, 0.05f))
 			{
 				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
-					toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "toilet");
+					toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(toiletScale), "toilet");
 				break;
 			}
 		}
 	}
 
-	// 2. Bathtub — try all walls
+	// 2. Bathtub — try all walls, rotations, and scales iteratively!
 	if (bathtubSize.x > 0.0f)
 	{
 		bool placed = false;
 		
-		// Make it perfectly rotation-agnostic! Depth is always the smaller dimension.
 		float actualDepth = std::min(bathtubSize.x, bathtubSize.z);
 		float actualLength = std::max(bathtubSize.x, bathtubSize.z);
 
-		for (int i = 0; i < 4; i++)
+		// We will try scaling down from 1.0 to 0.3 to find a perfect fit!
+		for (float bathScale = 1.0f; bathScale >= 0.3f && !placed; bathScale -= 0.05f)
 		{
-			// Prioritize Wall 1 (Right wall) as requested by the user
-			int w = (i + 1) % 4;
+			// Scaled sizes
+			glm::vec3 scaledSize = bathtubSize * bathScale;
 
-			glm::vec2 bathHalf = (w == 0 || w == 1) ? 
-				glm::vec2(actualDepth * 0.5f, actualLength * 0.5f) : 
-				glm::vec2(actualLength * 0.5f, actualDepth * 0.5f);
+			auto getBathWorldAABB = [&](glm::vec2 center, float yaw) -> std::pair<glm::vec2, glm::vec2> {
+				float hX = scaledSize.x * 0.5f;
+				float hZ = scaledSize.z * 0.5f;
+				
+				glm::vec2 corners[4] = {
+					{-hX, -hZ}, {hX, -hZ},
+					{-hX, hZ}, {hX, hZ}
+				};
+				
+				float rad = glm::radians(yaw);
+				float cosA = cos(rad);
+				float sinA = sin(rad);
+				
+				glm::vec2 minW(1e10f), maxW(-1e10f);
+				for (int i = 0; i < 4; i++) {
+					glm::vec2 rotated(
+						corners[i].x * cosA - corners[i].y * sinA,
+						corners[i].x * sinA + corners[i].y * cosA
+					);
+					glm::vec2 worldPoint = center + rotated;
+					minW = glm::min(minW, worldPoint);
+					maxW = glm::max(maxW, worldPoint);
+				}
+				return {minW, maxW};
+			};
 
-			glm::vec2 bathXZ;
-			if (occ.TryPlaceAlongWall(w, bathHalf, actualDepth * 0.5f + 0.01f, bathXZ, 0.01f, 0.2f, true))
+			auto isValidPlacement = [&](glm::vec2 center, float yaw, float padding) -> bool {
+				auto [minW, maxW] = getBathWorldAABB(center, yaw);
+				
+				// 1. Check room wall bounds with safety margin
+				if (minW.x < room.minBounds.x + 0.02f || maxW.x > room.maxBounds.x - 0.02f) return false;
+				if (minW.y < room.minBounds.z + 0.02f || maxW.y > room.maxBounds.z - 0.02f) return false;
+				
+				// 2. Check overlap with other placed props
+				glm::vec2 size = maxW - minW;
+				glm::vec2 halfSize = size * 0.5f;
+				glm::vec2 centerW = (minW + maxW) * 0.5f;
+				
+				return occ.CanPlace(centerW, halfSize, padding);
+			};
+
+			// We try walls: Wall 1 (Right), Wall 0 (Left), Wall 2 (Top), Wall 3 (Bottom)
+			int wallPriority[4] = { 1, 0, 2, 3 };
+
+			for (int wIdx = 0; wIdx < 4 && !placed; wIdx++)
 			{
-				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
-					bathXZ, bathHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
-				placed = true;
-				break;
+				int w = wallPriority[wIdx];
+
+				// Prioritize rotations based on wall direction
+				std::vector<float> yaws;
+				if (w == 0 || w == 1) {
+					// For side walls (Z-aligned), we want the longer side aligned with Z.
+					if (scaledSize.x >= scaledSize.z) {
+						yaws = { 90.0f, -90.0f, 0.0f, 180.0f };
+					} else {
+						yaws = { 0.0f, 180.0f, 90.0f, -90.0f };
+					}
+				} else {
+					// For top/bottom walls (X-aligned), we want the longer side aligned with X.
+					if (scaledSize.x >= scaledSize.z) {
+						yaws = { 0.0f, 180.0f, 90.0f, -90.0f };
+					} else {
+						yaws = { 90.0f, -90.0f, 0.0f, 180.0f };
+					}
+				}
+
+				for (float yaw : yaws)
+				{
+					// Get footprint AABB size at this rotation
+					auto [minW, maxW] = getBathWorldAABB(glm::vec2(0.0f), yaw);
+					glm::vec2 rotatedSize = maxW - minW;
+					glm::vec2 bathHalf = rotatedSize * 0.5f;
+
+					float wallOffset = (w == 0 || w == 1) ? (bathHalf.x + 0.01f) : (bathHalf.y + 0.01f);
+
+					glm::vec2 bathXZ;
+					if (occ.TryPlaceAlongWall(w, bathHalf, wallOffset, bathXZ, 0.01f, 0.1f, true))
+					{
+						if (isValidPlacement(bathXZ, yaw, 0.01f))
+						{
+							AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
+								bathXZ, bathHalf, floorY, glm::vec3(0.0f, yaw, 0.0f), glm::vec3(bathScale), "bathtub");
+							placed = true;
+							break;
+						}
+					}
+				}
 			}
 		}
 
 		if (!placed)
 		{
-			// The room is mathematically too small for the length of the bathtub.
-			// We will forcefully snap it flush against Wall 1 (+X, right wall) and center it vertically.
-			float wallOffset = actualDepth * 0.5f + 0.01f;
-			float cornerOffset = actualLength * 0.5f + 0.01f;
+			// Fallback: force snap against wall 1 with scaled size
+			float bathScale = 0.5f;
+			glm::vec3 scaledSize = bathtubSize * bathScale;
+			float scaledDepth = std::min(scaledSize.x, scaledSize.z);
+			float scaledLength = std::max(scaledSize.x, scaledSize.z);
+
+			float wallOffset = scaledDepth * 0.5f + 0.01f;
+			float cornerOffset = scaledLength * 0.5f + 0.01f;
 			glm::vec2 forceXZ(room.maxBounds.x - wallOffset, room.maxBounds.z - cornerOffset);
 			
 			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
-				forceXZ, glm::vec2(actualDepth * 0.5f, actualLength * 0.5f), floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
+				forceXZ, glm::vec2(scaledDepth * 0.5f, scaledLength * 0.5f), floorY, glm::vec3(0.0f, -90.0f, 0.0f), glm::vec3(bathScale), "bathtub");
 		}
 	}
 }
