@@ -413,8 +413,11 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	{
 		uiState.CheckMaximize(3);
 
+		// Choose which asset list to display early so we process deferred thumbnails for it
+		std::vector<AssetInfo>& displayAssets = isSearching ? searchResults : currentAssets;
+
 		// Update deferred thumbnails
-		for (auto& asset : currentAssets) {
+		for (auto& asset : displayAssets) {
 			if (asset.type == AssetType::Model) {
 				std::string pStr = asset.path.string();
 				
@@ -643,8 +646,8 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 		ImGui::Separator();
 
-		// Choose which asset list to display
-		std::vector<AssetInfo>& displayAssets = isSearching ? searchResults : currentAssets;
+		// displayAssets is already chosen at the top of the function
+
 
 		float cellSize = 100.0f;
 		float padding = 16.0f;
