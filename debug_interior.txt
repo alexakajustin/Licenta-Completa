@@ -2,5 +2,5 @@
 Bed: bed
   Source Transform: Pos(1.798, -0.90833, -3.74581) Rot(0, 0, 0) Scl(1, 1, 1)
   Calculated AABB Size: 1 x 1 x 1
-Desk: desk
-  Calculated AABB Size: 1 x 1 x 1
+Desk: little_glass_table (Root)
+  Calculated AABB Size: 0.914861 x 1.21412 x 0.933488

@@ -115,6 +115,15 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 	j["nodeGraph"] = graphJson;
 
 	// ========== Serialize Objects (The "Results") ==========
+	std::map<GameObject*, int> ptrToSavedIndex;
+	int indexCounter = 0;
+	for (auto* obj : scene.GetObjects()) {
+		GameObject* root = obj;
+		while (root->GetParent()) root = root->GetParent();
+		if (!root->GetSaveInScene() || !obj->GetSaveInScene()) continue;
+		ptrToSavedIndex[obj] = indexCounter++;
+	}
+
 	json objectsArray = json::array();
 	for (auto* obj : scene.GetObjects())
 	{
@@ -151,6 +160,11 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 
 		// Hierarchy
 		objJson["parent"] = obj->GetParent() ? obj->GetParent()->GetName() : "";
+		if (obj->GetParent() && ptrToSavedIndex.count(obj->GetParent())) {
+			objJson["parentIndex"] = ptrToSavedIndex[obj->GetParent()];
+		} else {
+			objJson["parentIndex"] = -1;
+		}
 		objJson["inheritScale"] = obj->GetInheritScale();
 
 		// Textures
@@ -431,8 +445,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		if (progressCallback) progressCallback(40.0f, 0.0f, "Instantiating Objects (Parallel)...");
 		
 		int objCount = (int)j["objects"].size();
-		std::map<std::string, GameObject*> objectMap;
-		std::mutex mapMutex;
+		std::vector<GameObject*> loadedObjects(objCount, nullptr);
 
 		// Pass 1: Parallel instantiation using all available cores
 		const int chunkSize = 100;
@@ -441,7 +454,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		for (int i = 0; i < objCount; i += chunkSize)
 		{
 			int end = (std::min)(i + chunkSize, objCount);
-			futures.push_back(std::async(std::launch::async, [i, end, &j, &objectMap, &mapMutex]() {
+			futures.push_back(std::async(std::launch::async, [i, end, &j, &loadedObjects]() {
 				for (int k = i; k < end; k++) {
 					auto& objJson = j["objects"][k];
 					std::string name = objJson.value("name", "Object");
@@ -451,8 +464,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					if (primType == "Planet") obj = new Planet(name);
 					else obj = new GameObject(name);
 					
-					std::lock_guard<std::mutex> lock(mapMutex);
-					objectMap[name] = obj;
+					loadedObjects[k] = obj;
 				}
 			}));
 		}
@@ -465,11 +477,12 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		std::map<std::string, Texture*> localTextureCache;
 		std::map<std::string, Material*> localMaterialCache;
 
-		for (auto& objJson : j["objects"])
+		for (int k = 0; k < objCount; k++)
 		{
+			auto& objJson = j["objects"][k];
 			objIndex++;
 			std::string name = objJson.value("name", "Object");
-			GameObject* obj = objectMap[name];
+			GameObject* obj = loadedObjects[k];
 			if (!obj) continue;
 
 			std::string primType = objJson.value("primitiveType", "");
@@ -711,63 +724,70 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		for (int i = 0; i < (int)objects.size(); i++)
 		{
 			auto& objJson = j["objects"][i];
+			int parentIndex = objJson.value("parentIndex", -1);
 			std::string parentName = objJson.value("parent", "");
 			if (parentName.empty()) parentName = objJson.value("parentName", ""); // Handle both naming conventions
 
-			if (!parentName.empty() && objectMap.count(parentName))
+			GameObject* parent = nullptr;
+			if (parentIndex >= 0 && parentIndex < objCount) {
+				parent = loadedObjects[parentIndex];
+			} else if (!parentName.empty()) {
+				// Fallback to name search for backward compatibility with old saves
+				for (auto* o : loadedObjects) {
+					if (o && o->GetName() == parentName) { parent = o; break; }
+				}
+			}
+
+			if (parent && parent != loadedObjects[i])
 			{
-				GameObject* parent = objectMap[parentName];
-				if (parent && parent != objects[i])
+				parent->AddChild(loadedObjects[i]);
+
+				// MODULAR RE-LINKING: If this is a child of a modular model, re-attach its specific mesh
+				std::string sourcePath = parent->GetModelSourcePath();
+				if (!sourcePath.empty() && !loadedObjects[i]->GetMesh() && !loadedObjects[i]->GetModel())
 				{
-					parent->AddChild(objects[i]);
-
-					// MODULAR RE-LINKING: If this is a child of a modular model, re-attach its specific mesh
-					std::string sourcePath = parent->GetModelSourcePath();
-					if (!sourcePath.empty() && !objects[i]->GetMesh() && !objects[i]->GetModel())
+					Model* parentModel = AssetManager::Get().GetModel(sourcePath);
+					if (parentModel) 
 					{
-						Model* parentModel = AssetManager::Get().GetModel(sourcePath);
-						if (parentModel) 
-						{
-							// Optimize mesh lookup by indexing the model once
-							if (modelMeshIndexCache.find(parentModel) == modelMeshIndexCache.end()) {
-								auto& indexMap = modelMeshIndexCache[parentModel];
-								for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
-									indexMap[parentModel->GetMeshNames()[m]] = m;
-								}
-							}
-
-							std::string targetName = objects[i]->GetName();
-							size_t suffixPos = targetName.find(" (");
-							if (suffixPos != std::string::npos) targetName = targetName.substr(0, suffixPos);
-
+						// Optimize mesh lookup by indexing the model once
+						if (modelMeshIndexCache.find(parentModel) == modelMeshIndexCache.end()) {
 							auto& indexMap = modelMeshIndexCache[parentModel];
-							size_t meshIdx = size_t(-1);
-
-							if (indexMap.count(targetName)) {
-								meshIdx = indexMap[targetName];
-							} else {
-								// Fallback to "Mesh_X" check
-								if (targetName.find("Mesh_") == 0) {
-									try { meshIdx = std::stoull(targetName.substr(5)); } catch (...) {}
-								}
+							for (size_t m = 0; m < parentModel->GetMeshCount(); m++) {
+								indexMap[parentModel->GetMeshNames()[m]] = m;
 							}
+						}
 
-							if (meshIdx < parentModel->GetMeshCount()) {
-								objects[i]->SetMesh(parentModel->GetMesh(meshIdx));
-								
-								// Inherit textures/layers if missing
-								if (objects[i]->GetTextureLayers().empty()) {
-									unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)meshIdx);
-									Texture* diffuse = parentModel->GetTexture(matIdx);
-									Texture* normal = parentModel->GetNormalMap(matIdx);
-									if (diffuse || normal) {
-										TextureLayer layer;
-										layer.texture = diffuse;
-										layer.normalMap = normal;
-										layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
-										layer.normalMapPath = normal ? normal->GetFileLocation() : "";
-										objects[i]->AddTextureLayer(layer);
-									}
+						std::string targetName = loadedObjects[i]->GetName();
+						size_t suffixPos = targetName.find(" (");
+						if (suffixPos != std::string::npos) targetName = targetName.substr(0, suffixPos);
+
+						auto& indexMap = modelMeshIndexCache[parentModel];
+						size_t meshIdx = size_t(-1);
+
+						if (indexMap.count(targetName)) {
+							meshIdx = indexMap[targetName];
+						} else {
+							// Fallback to "Mesh_X" check
+							if (targetName.find("Mesh_") == 0) {
+								try { meshIdx = std::stoull(targetName.substr(5)); } catch (...) {}
+							}
+						}
+
+						if (meshIdx < parentModel->GetMeshCount()) {
+							loadedObjects[i]->SetMesh(parentModel->GetMesh(meshIdx));
+							
+							// Inherit textures/layers if missing
+							if (loadedObjects[i]->GetTextureLayers().empty()) {
+								unsigned int matIdx = parentModel->GetMaterialIndex((unsigned int)meshIdx);
+								Texture* diffuse = parentModel->GetTexture(matIdx);
+								Texture* normal = parentModel->GetNormalMap(matIdx);
+								if (diffuse || normal) {
+									TextureLayer layer;
+									layer.texture = diffuse;
+									layer.normalMap = normal;
+									layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
+									layer.normalMapPath = normal ? normal->GetFileLocation() : "";
+									loadedObjects[i]->AddTextureLayer(layer);
 								}
 							}
 						}

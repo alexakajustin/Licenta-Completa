@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.9839025139808655,
-            -0.11320321261882782,
-            0.13827848434448242
+            -0.3655514717102051,
+            -0.5519369840621948,
+            -0.7494916319847107
         ],
-        "pitch": -6.5,
+        "pitch": -33.5,
         "position": [
-            11.614523887634277,
-            3.1693990230560303,
-            -1.6059664487838745
+            12.211337089538574,
+            43.68916702270508,
+            17.113576889038086
         ],
-        "yaw": -188.0
+        "yaw": -116.0
     },
     "instancedGroups": [],
     "lights": [
@@ -50,7 +50,7 @@
                 "start": 155
             }
         ],
-        "nextId": 171,
+        "nextId": 199,
         "nodes": [
             {
                 "doorHeight": 2.4000000953674316,
@@ -186,38 +186,23 @@
                 "title": "Scene Input"
             },
             {
-                "cachedMatColor": [
-                    0.0,
-                    0.9900991916656494,
-                    1.0
-                ],
-                "cachedMatOffset": [
-                    0.0,
-                    0.0
-                ],
-                "cachedMatShininess": 32.0,
-                "cachedMatSpecular": 0.5,
-                "cachedMatTiling": [
-                    1.0,
-                    1.0
-                ],
-                "cachedModelPath": "",
+                "cachedModelPath": "Assets\\Models\\Bedroom\\Models\\Interior\\Tv_01.fbx",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    1.7979989051818848,
-                    -0.908329963684082,
-                    -3.7458090782165527
+                    8.113439559936523,
+                    2.293086051940918,
+                    -0.1329505443572998
                 ],
-                "cachedPrimitiveType": "Cube",
+                "cachedPrimitiveType": "",
                 "cachedRotation": [
+                    -90.0,
                     0.0,
-                    0.0,
-                    0.0
+                    180.0
                 ],
                 "cachedScale": [
-                    1.0,
-                    1.0,
-                    1.0
+                    0.03999999910593033,
+                    0.03999999910593033,
+                    0.03999999910593033
                 ],
                 "cachedTextureLayers": [],
                 "cachedTexturePath": "",
@@ -226,13 +211,13 @@
                     790.0
                 ],
                 "forceOriginalPrimitive": true,
-                "hasCachedMaterial": true,
+                "hasCachedMaterial": false,
                 "id": 154,
                 "inputPins": [],
                 "outputPins": [
                     155
                 ],
-                "selectedName": "tv",
+                "selectedName": "Tv_01 (Root)",
                 "title": "Scene Input"
             }
         ]
@@ -425,12 +410,12 @@
                 "rotation": [
                     -90.0,
                     0.0,
-                    0.0
+                    180.0
                 ],
                 "scale": [
-                    0.10000000149011612,
-                    0.10000000149011612,
-                    0.10000000149011612
+                    0.03999999910593033,
+                    0.03999999910593033,
+                    0.03999999910593033
                 ]
             }
         },
@@ -448,7 +433,6 @@
                     0.5879999995231628,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Bedroom/Models/Textures/Misc/StandardTexture_1k/TextureComposition_Packed_BaseColour_01.png",
                 "material.offset": [
                     0.0,
                     0.0
@@ -513,17 +497,16 @@
             "inheritScale": true,
             "material": {
                 "material.ambientColor": [
-                    0.5879999995231628,
-                    0.5879999995231628,
-                    0.5879999995231628
+                    0.0,
+                    0.0,
+                    0.0
                 ],
                 "material.baseColor": [
-                    0.5879999995231628,
-                    0.5879999995231628,
-                    0.5879999995231628,
-                    1.0
+                    0.0,
+                    0.9306931495666504,
+                    1.0,
+                    0.8196078538894653
                 ],
-                "material.diffuseMap": "Assets/Models/Bedroom/Models/Textures/Misc/StandardTexture_1k/TextureComposition_Packed_BaseColour_01.png",
                 "material.offset": [
                     0.0,
                     0.0
@@ -565,6 +548,144 @@
                     "tiling": 1.0
                 }
             ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "modelPath": "Assets\\Models\\Livingroom\\glass_table\\little_glass_table.FBX",
+            "name": "little_glass_table (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -1.66432523727417,
+                    -0.13783502578735352,
+                    0.3194143772125244
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.10000000149011612,
+                    0.10000000149011612,
+                    0.10000000149011612
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_0",
+            "normalMapPath": "",
+            "parent": "little_glass_table (Root)",
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "material": {
+                "material.ambientColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "material.baseColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_1",
+            "normalMapPath": "",
+            "parent": "little_glass_table (Root)",
+            "primitiveType": "",
             "texturePath": "",
             "transform": {
                 "position": [
