@@ -42,11 +42,13 @@ void SceneInputNode::RenderContent(SceneManager* scene)
 		for (int i = 0; i < (int)objects.size(); i++)
 		{
 			bool isSelected = (selectedIndex == i);
+			ImGui::PushID(i);
 			if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
 			{
 				selectedIndex = i;
 				selectedName = objects[i]->GetName();
 			}
+			ImGui::PopID();
 		}
 		ImGui::EndCombo();
 	}

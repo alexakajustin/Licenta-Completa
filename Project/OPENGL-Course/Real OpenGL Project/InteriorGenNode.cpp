@@ -738,8 +738,8 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	glm::vec3 stoveSize = GetObjectAABBSize(stoveSrcObj, glm::vec3(0.8f, 0.9f, 0.6f));
 	glm::vec3 fridgeSize = GetObjectAABBSize(fridgeSrcObj, glm::vec3(0.8f, 1.8f, 0.7f));
 	glm::vec3 sinkSize = GetObjectAABBSize(sinkSrcObj, glm::vec3(0.9f, 0.9f, 0.6f));
-	glm::vec3 toiletSize = GetObjectAABBSize(toiletSrcObj, glm::vec3(0.5f, 0.8f, 0.7f));
-	glm::vec3 bathtubSize = GetObjectAABBSize(bathtubSrcObj, glm::vec3(0.8f, 0.6f, 1.7f));
+	glm::vec3 toiletSize = GetObjectAABBSize(toiletSrcObj, glm::vec3(0.0f));
+	glm::vec3 bathtubSize = GetObjectAABBSize(bathtubSrcObj, glm::vec3(0.0f));
 
 	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s (Size: %.2f x %.2f x %.2f)\n", bedSrcObj->GetName().c_str(), bedSize.x, bedSize.y, bedSize.z);
 	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s (Size: %.2f x %.2f x %.2f)\n", deskSrcObj->GetName().c_str(), deskSize.x, deskSize.y, deskSize.z);
@@ -969,19 +969,37 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				else if (prop.category == "washing_machine") sourceObj = toiletSrcObj; // reuse bathroom input
 				else if (prop.category == "cabinet") sourceObj = sinkSrcObj; // reuse sink input as fallback
 
+				if (prop.category == "debug_fail_bathtub")
+				{
+					GameObject* gizmo = new GameObject(prefix + "DEBUG_FAILED_BATHTUB");
+					gizmo->SetParent(bldRoot);
+					
+					gizmo->GetTransform().SetPosition(prop.position);
+					gizmo->GetTransform().SetScale(glm::vec3(0.5f));
+					gizmo->SetMesh(PrimitiveGenerator::CreateCube());
+
+					Material* redMat = new Material();
+					redMat->SetColor(glm::vec4(1.0f, 0.0f, 0.0f, 0.8f));
+					gizmo->SetMaterial(redMat);
+
+					scene.AddObject(gizmo);
+					continue;
+				}
+
 				if (sourceObj)
 				{
 					// 1. Create a placement wrapper GameObject
 					std::string wrapName = prefix + prop.category + "_" + std::to_string(propId++) + "_placement";
 					GameObject* wrapObj = new GameObject(wrapName);
 					
+					// Parent placement wrapper to building root FIRST!
+					wrapObj->SetParent(bldRoot);
+					
 					// Set its transform to the clean procedural placement parameters
 					wrapObj->GetTransform().SetPosition(prop.position);
 					wrapObj->GetTransform().SetRotation(prop.rotation);
 					wrapObj->GetTransform().SetScale(prop.scale);
 					
-					// Parent placement wrapper to building root!
-					wrapObj->SetParent(bldRoot);
 					scene.AddObject(wrapObj);
 
 					// 2. Clone the source object

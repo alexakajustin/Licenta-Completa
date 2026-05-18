@@ -204,29 +204,53 @@ void BathroomDecorator::Decorate(
 	auto wallYaw = [](int w) -> float { return (w==0)?90.0f:(w==1)?-90.0f:(w==2)?0.0f:180.0f; };
 
 	// 1. Toilet — try all walls
-	glm::vec2 toiletHalf(toiletSize.x * 0.5f, toiletSize.z * 0.5f);
-	glm::vec2 toiletXZ;
-	for (int w = 0; w < 4; w++)
+	if (toiletSize.x > 0.0f)
 	{
-		// the offset from the wall is the size perpendicular to it
-		if (occ.TryPlaceAlongWall(w, toiletHalf, toiletSize.z * 0.5f + 0.05f, toiletXZ))
+		for (int w = 0; w < 4; w++)
 		{
-			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
-				toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "toilet");
-			break;
+			// Swap footprint X/Z for side walls because the object is rotated 90 degrees
+			glm::vec2 toiletHalf = (w == 0 || w == 1) ? 
+				glm::vec2(toiletSize.z * 0.5f, toiletSize.x * 0.5f) : 
+				glm::vec2(toiletSize.x * 0.5f, toiletSize.z * 0.5f);
+
+			glm::vec2 toiletXZ;
+			// The offset from the wall is always the local Z half-size
+			if (occ.TryPlaceAlongWall(w, toiletHalf, toiletSize.z * 0.5f + 0.05f, toiletXZ, 0.05f))
+			{
+				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
+					toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "toilet");
+				break;
+			}
 		}
 	}
 
 	// 2. Bathtub — try all walls
-	glm::vec2 bathHalf(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f);
-	glm::vec2 bathXZ;
-	for (int w = 0; w < 4; w++)
+	if (bathtubSize.x > 0.0f)
 	{
-		if (occ.TryPlaceAlongWall(w, bathHalf, bathtubSize.z * 0.5f + 0.05f, bathXZ))
+		bool placed = false;
+		for (int w = 0; w < 4; w++)
 		{
+			glm::vec2 bathHalf = (w == 0 || w == 1) ? 
+				glm::vec2(bathtubSize.z * 0.5f, bathtubSize.x * 0.5f) : 
+				glm::vec2(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f);
+
+			glm::vec2 bathXZ;
+			if (occ.TryPlaceAlongWall(w, bathHalf, bathtubSize.z * 0.5f + 0.05f, bathXZ, 0.05f))
+			{
+				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
+					bathXZ, bathHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "bathtub");
+				placed = true;
+				break;
+			}
+		}
+
+		if (!placed)
+		{
+			// The room is mathematically too small, but the user demanded it spawn regardless of location!
+			// We will just drop it in the exact center of the room and let it clip through the walls if necessary.
+			glm::vec2 roomCenter = (glm::vec2(room.minBounds.x, room.minBounds.z) + glm::vec2(room.maxBounds.x, room.maxBounds.z)) * 0.5f;
 			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
-				bathXZ, bathHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "bathtub");
-			break;
+				roomCenter, glm::vec2(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f), floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
 		}
 	}
 }
