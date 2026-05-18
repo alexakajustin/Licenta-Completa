@@ -371,8 +371,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 				}
 			}
 
-			int count = (int)textureLayers.size();
-			if (count > MAX_TEXTURE_LAYERS) count = MAX_TEXTURE_LAYERS;
+			int count = 0;
+			for (int li = 0; li < (int)textureLayers.size() && li < MAX_TEXTURE_LAYERS; li++) {
+				if (textureLayers[li].texture) count = li + 1; else break;
+			}
 			glUniform1i(uLayerCount, count);
 
 			// Texture unit scheme: diffuse, normal, displacement per layer

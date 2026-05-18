@@ -105,8 +105,26 @@ void Model::LoadModelGPU()
 	}
 
 	// Load textures (GPU side)
-	for (auto* tex : textureList) {
-		if (tex) tex->LoadTextureGPU();
+	for (size_t ti = 0; ti < textureList.size(); ti++) {
+		if (textureList[ti]) {
+			textureList[ti]->LoadTextureGPU();
+		}
+	}
+	// Fallback: replace any texture that failed to load with plain.png
+	static Texture* plainFallback = nullptr;
+	for (size_t ti = 0; ti < textureList.size(); ti++) {
+		if (!textureList[ti] || textureList[ti]->GetTextureID() == 0) {
+			if (!plainFallback) {
+				plainFallback = new Texture("Assets/Textures/plain.png");
+				plainFallback->LoadTexture(); // Sync load on main thread (GL context available)
+			}
+			textureList[ti] = plainFallback;
+			// Also force material color to white
+			if (ti < materialList.size() && materialList[ti]) {
+				materialList[ti]->SetColor(glm::vec3(1.0f));
+			}
+			printf("[Model GPU] Texture[%d] replaced with plain.png fallback (GPU ID: %u)\n", (int)ti, plainFallback->GetTextureID());
+		}
 	}
 	for (auto* tex : normalMapList) {
 		if (tex) tex->LoadTextureGPU();
@@ -386,7 +404,7 @@ void Model::LoadMaterials(const aiScene* scene)
 				}
 			}
 		}
-		// Removed the plain.png fallback so models without textures just use their diffuse color
+
 
 		// Load Normal/Bump Map from Assimp
 		if (!normalMapList[i])
