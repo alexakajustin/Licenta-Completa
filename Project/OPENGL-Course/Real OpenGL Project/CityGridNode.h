@@ -58,8 +58,7 @@ public:
 	json Serialize() const override;
 	void Deserialize(const json& j) override;
 
-private:
-	// City Parameters
+	// City Parameters (public for template configuration)
 	float citySize = 100.0f;          // Total city extent (square, world units)
 	float roadWidth = 6.0f;           // Width of each road
 	float roadSpacingX = 30.0f;       // Distance between roads in X
@@ -70,6 +69,8 @@ private:
 	float residentialProbability = 0.5f; // 0..1, probability of residential vs commercial
 	int parkRate = 8;                 // 1 in N plots become parks (0 = no parks)
 	int seed = 42;                    // Random seed
+
+private:
 
 	// Texture tiling
 	float roadTexScale = 1.0f;

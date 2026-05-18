@@ -38,4 +38,4 @@ struct TextureLayer {
 	std::string displacementMapPath;
 };
 
-static const int MAX_TEXTURE_LAYERS = 8;
+static const int MAX_TEXTURE_LAYERS = 5;

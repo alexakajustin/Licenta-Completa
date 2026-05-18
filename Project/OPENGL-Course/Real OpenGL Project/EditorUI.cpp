@@ -21,6 +21,7 @@
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
 #include "BeautifulErosionNode.h"
+#include "InteriorGenNode.h"
 #include "SceneSerializer.h"
 #include "UndoActions.h"
 #include "Planet.h"
@@ -889,6 +890,24 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				// Position camera for city overview
 				if (camera) {
 					camera->SetPositionAndLookAt(glm::vec3(0.0f, 0.0f, 0.0f), 85.0f);
+				}
+			}
+
+			if (ImGui::MenuItem("Procedural Interior"))
+			{
+				// Clear the scene
+				nodeGraph.Clear();
+				// Create the standalone InteriorGenNode
+				InteriorGenNode* interiors = new InteriorGenNode(nodeGraph);
+
+				// Layout position (center)
+				interiors->editorPos = glm::vec2(300, 150);
+
+				nodeGraph.AddNode(interiors);
+
+				// Position camera close for detailed interior viewing
+				if (camera) {
+					camera->SetPositionAndLookAt(glm::vec3(0.0f, 5.0f, 0.0f), 30.0f);
 				}
 			}
 			ImGui::EndMenu();

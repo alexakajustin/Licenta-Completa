@@ -100,7 +100,7 @@ uniform bool debugLODColoring;
 uniform vec3 lodDebugColor;
 
 // ========== Texture Layers ==========
-const int MAX_TEXTURE_LAYERS = 8;
+const int MAX_TEXTURE_LAYERS = 5;
 
 struct TextureLayerData {
 	int blendMode;       // 0=Normal, 1=Height, 2=Slope, 3=HeightSlope

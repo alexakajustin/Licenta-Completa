@@ -15,6 +15,7 @@
 #include "ForEachNode.h"
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
+#include "InteriorGenNode.h"
 #include "ObjectIntersectionFilterNode.h"
 #include "SolarSystemNode.h"
 #include "NodeBuilderUI.h"
@@ -910,6 +911,7 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 			else if (title == "For Each") node = new ForEachNode(*this);
 			else if (title == "City Grid") node = new CityGridNode(*this);
 			else if (title == "Building Gen") node = new BuildingGenNode(*this);
+			else if (title == "Interior Gen") node = new InteriorGenNode(*this);
 			else if (title == "Solar System") node = new SolarSystemNode(*this);
 			else
 			{
@@ -952,7 +954,9 @@ bool NodeGraph::IsObjectGenerated(const std::string& name) const
 		name.find("Scatter_Group_") != std::string::npos ||
 		name.find("River_Water_") != std::string::npos ||
 		name.find("Lake_Water_") != std::string::npos ||
-		name.find("SolarSystem_") != std::string::npos)
+		name.find("SolarSystem_") != std::string::npos ||
+		name.find("Interior_") != std::string::npos ||
+		name.find("City_Interiors_") != std::string::npos)
 		return true;
 
 	return false;

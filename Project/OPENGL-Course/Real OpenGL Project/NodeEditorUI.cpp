@@ -18,6 +18,7 @@
 #include "ForEachNode.h"
 #include "CityGridNode.h"
 #include "BuildingGenNode.h"
+#include "InteriorGenNode.h"
 #include "ObjectIntersectionFilterNode.h"
 #include "SolarSystemNode.h"
 
@@ -261,6 +262,7 @@ void NodeEditorUI::HandleEditorInteractions(NodeGraph& graph)
 		if (ImGui::MenuItem("Merge Mesh")) newNode = new MergeMeshNode(graph);
 		if (ImGui::MenuItem("City Grid")) newNode = new CityGridNode(graph);
 		if (ImGui::MenuItem("Building Gen")) newNode = new BuildingGenNode(graph);
+		if (ImGui::MenuItem("Interior Gen")) newNode = new InteriorGenNode(graph);
 		if (ImGui::MenuItem("Output")) newNode = new OutputNode(graph);
 		if (ImGui::MenuItem("Solar System")) newNode = new SolarSystemNode(graph);
 
