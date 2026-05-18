@@ -94,13 +94,17 @@ bool AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 {
 	if (thumbnailFBO == 0) return false;
 
-	// === GLOBAL 32-BIT MEMORY SAFETY ===
-	// If RAM is nearly full (>1.8GB), skip thumbnail generation to avoid crash
+	// === GLOBAL MEMORY SAFETY ===
+	// Skip thumbnail generation to avoid crash if RAM is critically low
 	PROCESS_MEMORY_COUNTERS_EX pmc;
 	if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
 	{
 		size_t usedBytes = pmc.PrivateUsage;
-		const size_t CRITICAL_THRESHOLD = (size_t)(1800 * 1024 * 1024); // 1.8GB
+#ifdef _WIN64
+		const size_t CRITICAL_THRESHOLD = (size_t)(16000ULL * 1024ULL * 1024ULL); // 16 GB limit for 64-bit
+#else
+		const size_t CRITICAL_THRESHOLD = (size_t)(1800 * 1024 * 1024); // 1.8GB limit for 32-bit
+#endif
 		if (usedBytes > CRITICAL_THRESHOLD) {
 			printf("[AssetBrowser] RAM critical (%.0f MB used). Skipping thumbnail for safety: %s\n", usedBytes / (1024.0f * 1024.0f), modelPath.string().c_str());
 			thumbnailGenerationMap[modelPath.string()] = true; // Mark as "done/skipped" so we don't spam the console/RAM check
@@ -680,6 +684,15 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 						searchResults.clear();
 						ImGui::PopID();
 						break; 
+					} else if (isSearching) {
+						// If searching, double clicking a file jumps to its parent directory
+						currentAssetPath = displayAssets[i].path.parent_path();
+						RefreshAssetList();
+						searchBuffer[0] = '\0';
+						isSearching = false;
+						searchResults.clear();
+						ImGui::PopID();
+						break;
 					}
 				}
 			}
@@ -709,21 +722,41 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				
 				// Show "Loading..." overlay for models that haven't generated their thumbnail yet
 				if (displayAssets[i].type == AssetType::Model) {
-					if (thumbnailGenerationMap.find(displayAssets[i].path.string()) == thumbnailGenerationMap.end()) {
-						Model* model = AssetManager::Get().GetModel(displayAssets[i].path.string(), false);
+					std::string pStr = displayAssets[i].path.string();
+					if (thumbnailGenerationMap.find(pStr) == thumbnailGenerationMap.end()) {
+						Model* model = AssetManager::Get().GetModel(pStr, false);
 						if (model && !model->IsReady() && !model->IsFailed()) {
 							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
 							char progStr[32];
 							float prog = model->GetLoadProgress();
 							snprintf(progStr, sizeof(progStr), "%d%%", (int)(prog * 100));
 							
-							// Style the progress bar to look nice inside the thumbnail
 							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
 							ImGui::ProgressBar(prog, ImVec2(cellSize - 10, 15), progStr);
 							ImGui::PopStyleColor();
 						} else {
 							ImGui::SetCursorPos(ImVec2(startPos.x + 10, startPos.y + cellSize / 2 - 5));
 							ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Queued...");
+						}
+					} else {
+						// It was attempted. Was it a failure?
+						Model* model = AssetManager::Get().GetModel(pStr, false);
+						if (model && model->IsFailed()) {
+							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
+							ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Failed");
+						} else {
+							// If RAM is critical, it was skipped
+							PROCESS_MEMORY_COUNTERS_EX pmc;
+							if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
+#ifdef _WIN64
+								if (pmc.PrivateUsage > (size_t)(15500ULL * 1024ULL * 1024ULL)) {
+#else
+								if (pmc.PrivateUsage > (size_t)(1700 * 1024 * 1024)) {
+#endif
+									ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
+									ImGui::TextColored(ImVec4(0.8f, 0.4f, 0.4f, 1.0f), "RAM Limit");
+								}
+							}
 						}
 					}
 				}
