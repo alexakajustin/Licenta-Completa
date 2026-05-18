@@ -101,6 +101,7 @@ public:
 	void CreateGameObject(const std::string& type, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void DeleteGameObject(int index);
+	void DeleteGameObject(GameObject* obj);
 	void CreateLight(LightType type, glm::vec3 spawnPos = glm::vec3(0.0f));
 	void DeleteLight(int index);
 

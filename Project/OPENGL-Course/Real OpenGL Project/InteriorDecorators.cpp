@@ -72,7 +72,10 @@ void OfficeDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	glm::vec3 roomMin = room.minBounds;
@@ -187,7 +190,10 @@ void BathroomDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	glm::vec3 roomMin = room.minBounds;
 	float floorY = roomMin.y;
@@ -233,7 +239,10 @@ void CorridorDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	float ceilingY = room.maxBounds.y - 0.02f;
 	float centerX = (room.minBounds.x + room.maxBounds.x) * 0.5f;
@@ -260,7 +269,10 @@ void BedroomDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
@@ -454,43 +466,101 @@ void KitchenDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	float floorY = room.minBounds.y;
-	float counterH = 0.9f, counterD = 0.6f;
+	glm::vec3 roomMin = room.minBounds;
+	glm::vec3 roomMax = room.maxBounds;
+	float roomW = room.GetWidth();
+	float roomD = room.GetDepth();
 
-	// Counter along -Z wall
-	float counterLen = room.GetWidth() - 0.4f; // small gap from side walls
-	float counterX = (room.minBounds.x + room.maxBounds.x) * 0.5f;
-	float counterZ = room.minBounds.z + 0.2f + counterD * 0.5f;
+	// =====================================================================
+	// Smart Side-by-Side Layout with Adaptive Scaling
+	// =====================================================================
+	// Layout order along -Z wall: [Stove] [gap] [Sink] [gap] [Fridge]
+	// Each item's width is the X dimension of its AABB.
 
-	// Mock kitchen counters removed to keep the room blank unless populated by proper node inputs.
+	float gap = 0.15f; // gap between adjacent appliances
+	float margin = 0.2f; // gap from side walls
 
-	// 1. High-fidelity Stove (placed on left counter end)
-	float stoveX = counterX - counterLen * 0.28f;
-	AddProp(props, "Assets/Models/Kitchen/Models/Stove.fbx", glm::vec3(stoveX, floorY, counterZ + 0.05f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "stove");
+	float totalW = stoveSize.x + sinkSize.x + fridgeSize.x + gap * 2.0f + margin * 2.0f;
+	float availW = roomW;
 
-	// 2. High-fidelity Kitchen Sink (sits centrally in the counter)
-	AddProp(props, "Assets/Models/Kitchen/Models/sink.fbx", glm::vec3(counterX, floorY, counterZ + 0.05f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "sink");
+	// Adaptive scale: shrink everything proportionally if it doesn't fit
+	float scale = 1.0f;
+	if (totalW > availW) {
+		scale = availW / totalW;
+	}
 
-	// 3. High-fidelity Fridge (placed on right counter end)
-	float fridgeX = counterX + counterLen * 0.32f;
-	AddProp(props, "Assets/Models/Kitchen/Models/Fridge.fbx", glm::vec3(fridgeX, floorY, counterZ + 0.05f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "fridge");
+	float sStoveW = stoveSize.x * scale;
+	float sSinkW = sinkSize.x * scale;
+	float sFridgeW = fridgeSize.x * scale;
+	float sGap = gap * scale;
+	float sMargin = margin * scale;
 
-	// 4. Microwave and Toaster placed on the countertop
-	AddProp(props, "Assets/Models/Kitchen/Models/Microwave.fbx", glm::vec3(counterX + counterLen * 0.14f, floorY + counterH + 0.02f, counterZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.9f), "appliances");
-	AddProp(props, "Assets/Models/Kitchen/Models/Toaster.fbx", glm::vec3(counterX - counterLen * 0.12f, floorY + counterH + 0.02f, counterZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.9f), "appliances");
+	// Total used width after scaling
+	float usedW = sMargin + sStoveW + sGap + sSinkW + sGap + sFridgeW + sMargin;
 
-	// 5. Kitchen Table and Chairs (if space is wide enough)
-	if (room.GetDepth() > 3.0f)
+	// Center the appliance row in the room
+	float centerX = (roomMin.x + roomMax.x) * 0.5f;
+	float rowStartX = centerX - usedW * 0.5f;
+
+	// X positions (center of each appliance)
+	float stoveX = rowStartX + sMargin + sStoveW * 0.5f;
+	float sinkX  = stoveX + sStoveW * 0.5f + sGap + sSinkW * 0.5f;
+	float fridgeX = sinkX + sSinkW * 0.5f + sGap + sFridgeW * 0.5f;
+
+	// Z position: flush against -Z wall, offset by half the deepest item's depth
+	float maxDepth = std::max({ stoveSize.z, sinkSize.z, fridgeSize.z }) * scale;
+	float counterZ = roomMin.z + maxDepth * 0.5f + 0.05f;
+
+	// 1. Stove
+	AddProp(props, "Assets/Models/Kitchen/Models/Stove.fbx",
+		glm::vec3(stoveX, floorY, counterZ),
+		glm::vec3(0.0f), glm::vec3(scale), "stove");
+
+	// 2. Sink
+	AddProp(props, "Assets/Models/Kitchen/Models/sink.fbx",
+		glm::vec3(sinkX, floorY, counterZ),
+		glm::vec3(0.0f), glm::vec3(scale), "sink");
+
+	// 3. Fridge
+	AddProp(props, "Assets/Models/Kitchen/Models/Fridge.fbx",
+		glm::vec3(fridgeX, floorY, counterZ),
+		glm::vec3(0.0f), glm::vec3(scale), "fridge");
+
+	// 4. Microwave and Toaster on countertop (placed between stove and sink, sink and fridge)
+	float counterH = 0.9f * scale;
+	AddProp(props, "Assets/Models/Kitchen/Models/Microwave.fbx",
+		glm::vec3((stoveX + sinkX) * 0.5f, floorY + counterH + 0.02f, counterZ),
+		glm::vec3(0.0f), glm::vec3(0.9f * scale), "appliances");
+	AddProp(props, "Assets/Models/Kitchen/Models/Toaster.fbx",
+		glm::vec3((sinkX + fridgeX) * 0.5f, floorY + counterH + 0.02f, counterZ),
+		glm::vec3(0.0f), glm::vec3(0.9f * scale), "appliances");
+
+	// 5. Kitchen Table and Chairs (only if there is enough depth in front of the counter)
+	float counterFrontZ = counterZ + maxDepth * 0.5f; // front edge of appliances
+	float tableDepthNeeded = 1.5f; // table + chair clearance
+	float remainingD = roomMax.z - counterFrontZ;
+
+	if (remainingD > tableDepthNeeded + 0.5f)
 	{
-		float tableZ = counterZ + 1.7f;
+		float tableZ = counterFrontZ + 0.8f + tableDepthNeeded * 0.5f;
 		// Table
-		AddProp(props, "Assets/Models/Kitchen/Models/Table.fbx", glm::vec3(counterX, floorY, tableZ), glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "desk");
+		AddProp(props, "Assets/Models/Kitchen/Models/Table.fbx",
+			glm::vec3(centerX, floorY, tableZ),
+			glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "desk");
 		// Chair Left
-		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx", glm::vec3(counterX - 0.6f, floorY, tableZ), glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "chair");
+		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx",
+			glm::vec3(centerX - 0.6f * scale, floorY, tableZ),
+			glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "chair");
 		// Chair Right
-		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx", glm::vec3(counterX + 0.6f, floorY, tableZ), glm::vec3(0.0f, -90.0f, 0.0f), glm::vec3(1.0f), "chair");
+		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx",
+			glm::vec3(centerX + 0.6f * scale, floorY, tableZ),
+			glm::vec3(0.0f, -90.0f, 0.0f), glm::vec3(scale), "chair");
 	}
 }
 
@@ -506,7 +576,10 @@ void LobbyDecorator::Decorate(
 	float floorHeight,
 	glm::vec3 bedSize,
 	glm::vec3 deskSize,
-	glm::vec3 tvSize)
+	glm::vec3 tvSize,
+	glm::vec3 stoveSize,
+	glm::vec3 fridgeSize,
+	glm::vec3 sinkSize)
 {
 	float floorY = room.minBounds.y;
 	glm::vec3 roomMin = room.minBounds;

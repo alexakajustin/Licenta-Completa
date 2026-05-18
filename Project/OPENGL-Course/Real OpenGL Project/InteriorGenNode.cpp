@@ -91,9 +91,15 @@ InteriorGenNode::InteriorGenNode(NodeGraph& graph)
 	Pin bedIn(graph.NextPinId(), PinDataType::Mesh, "Bed Model");
 	Pin deskIn(graph.NextPinId(), PinDataType::Mesh, "Desk Model");
 	Pin tvIn(graph.NextPinId(), PinDataType::Mesh, "TV Model");
+	Pin stoveIn(graph.NextPinId(), PinDataType::Mesh, "Stove Model");
+	Pin fridgeIn(graph.NextPinId(), PinDataType::Mesh, "Fridge Model");
+	Pin sinkIn(graph.NextPinId(), PinDataType::Mesh, "Sink Model");
 	inputs.push_back(bedIn);
 	inputs.push_back(deskIn);
 	inputs.push_back(tvIn);
+	inputs.push_back(stoveIn);
+	inputs.push_back(fridgeIn);
+	inputs.push_back(sinkIn);
 }
 
 // =====================================================================
@@ -716,14 +722,23 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	GameObject* bedSrcObj = (inputs.size() > 1 && inputs[1].data.type == PinDataType::Mesh) ? inputs[1].data.sourceObject : nullptr;
 	GameObject* deskSrcObj = (inputs.size() > 2 && inputs[2].data.type == PinDataType::Mesh) ? inputs[2].data.sourceObject : nullptr;
 	GameObject* tvSrcObj = (inputs.size() > 3 && inputs[3].data.type == PinDataType::Mesh) ? inputs[3].data.sourceObject : nullptr;
+	GameObject* stoveSrcObj = (inputs.size() > 4 && inputs[4].data.type == PinDataType::Mesh) ? inputs[4].data.sourceObject : nullptr;
+	GameObject* fridgeSrcObj = (inputs.size() > 5 && inputs[5].data.type == PinDataType::Mesh) ? inputs[5].data.sourceObject : nullptr;
+	GameObject* sinkSrcObj = (inputs.size() > 6 && inputs[6].data.type == PinDataType::Mesh) ? inputs[6].data.sourceObject : nullptr;
 
 	glm::vec3 bedSize = GetObjectAABBSize(bedSrcObj, glm::vec3(1.6f, 0.8f, 2.0f));
 	glm::vec3 deskSize = GetObjectAABBSize(deskSrcObj, glm::vec3(1.2f, 0.75f, 0.6f));
 	glm::vec3 tvSize = GetObjectAABBSize(tvSrcObj, glm::vec3(0.9f, 0.6f, 0.2f));
+	glm::vec3 stoveSize = GetObjectAABBSize(stoveSrcObj, glm::vec3(0.8f, 0.9f, 0.6f));
+	glm::vec3 fridgeSize = GetObjectAABBSize(fridgeSrcObj, glm::vec3(0.8f, 1.8f, 0.7f));
+	glm::vec3 sinkSize = GetObjectAABBSize(sinkSrcObj, glm::vec3(0.9f, 0.9f, 0.6f));
 
 	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s (Size: %.2f x %.2f x %.2f)\n", bedSrcObj->GetName().c_str(), bedSize.x, bedSize.y, bedSize.z);
 	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s (Size: %.2f x %.2f x %.2f)\n", deskSrcObj->GetName().c_str(), deskSize.x, deskSize.y, deskSize.z);
 	if (tvSrcObj) printf("[InteriorGenNode] Connected TV: %s (Size: %.2f x %.2f x %.2f)\n", tvSrcObj->GetName().c_str(), tvSize.x, tvSize.y, tvSize.z);
+	if (stoveSrcObj) printf("[InteriorGenNode] Connected Stove: %s (Size: %.2f x %.2f x %.2f)\n", stoveSrcObj->GetName().c_str(), stoveSize.x, stoveSize.y, stoveSize.z);
+	if (fridgeSrcObj) printf("[InteriorGenNode] Connected Fridge: %s (Size: %.2f x %.2f x %.2f)\n", fridgeSrcObj->GetName().c_str(), fridgeSize.x, fridgeSize.y, fridgeSize.z);
+	if (sinkSrcObj) printf("[InteriorGenNode] Connected Sink: %s (Size: %.2f x %.2f x %.2f)\n", sinkSrcObj->GetName().c_str(), sinkSize.x, sinkSize.y, sinkSize.z);
 
 	// Write debugging information to a file in the workspace
 	{
@@ -811,7 +826,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		BuildStructuralMesh(interior, plotMat, meshBuckets);
 
 		// Furniture decoration
-		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj)
+		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj)
 		{
 			std::mt19937 decorRng(seed + (int)i + 13337);
 			for (const auto& room : interior.rooms)
@@ -819,7 +834,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				auto decorator = CreateDecoratorForRoom(room.type);
 				if (decorator)
 				{
-					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize);
+					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize);
 				}
 			}
 		}
@@ -901,7 +916,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 
 	// Phase 3b: Instantiate high-fidelity props as GameObjects
-	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj)
+	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj)
 	{
 		int propId = 0;
 		for (size_t i = 0; i < interiors.size(); i++)
@@ -924,6 +939,9 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				if (prop.category == "bed") sourceObj = bedSrcObj;
 				else if (prop.category == "desk") sourceObj = deskSrcObj;
 				else if (prop.category == "tv") sourceObj = tvSrcObj;
+				else if (prop.category == "stove") sourceObj = stoveSrcObj;
+				else if (prop.category == "fridge") sourceObj = fridgeSrcObj;
+				else if (prop.category == "sink") sourceObj = sinkSrcObj;
 
 				if (sourceObj)
 				{

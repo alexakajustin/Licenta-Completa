@@ -521,70 +521,86 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 			}
 		}
 
-		// Perform async recursive search when query changes
+		static float searchDebounceTimer = 0.0f;
+		static bool searchDebouncePending = false;
+
 		if (searchChanged) {
-			std::string query(searchBuffer);
-			if (query.length() > 0) {
-				isSearching = true;
-				searchPending = true;
-				lastSearchQuery = query;
-
-				// Increment generation to discard any old running threads
-				int generation = ++currentSearchGeneration;
-
-				// Launch filesystem scan on detached background thread (NO blocking on destruction!)
-				std::filesystem::path searchRoot = currentAssetPath;
-				std::thread([this, searchRoot, query, generation]() {
-					std::vector<AssetInfo> results;
-					std::string lowerQuery = query;
-					std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), [](unsigned char c){ return std::tolower(c); });
-
-					try {
-						for (const auto& entry : std::filesystem::recursive_directory_iterator(searchRoot)) {
-							// If a new search was started, abort this one early
-							if (this->currentSearchGeneration != generation) return;
-
-							if (entry.is_directory()) continue;
-
-							std::string filename = entry.path().filename().string();
-							std::string lowerName = filename;
-							std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c){ return std::tolower(c); });
-
-							if (lowerName.find(lowerQuery) == std::string::npos) continue;
-
-							std::string ext = entry.path().extension().string();
-							for (auto& c : ext) c = tolower(c);
-
-							AssetInfo info;
-							info.name = filename;
-							info.path = entry.path();
-							info.thumbnail = nullptr; // Resolved on main thread
-
-							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
-								info.type = AssetType::Texture;
-							else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf")
-								info.type = AssetType::Model;
-							else if (ext == ".mat")
-								info.type = AssetType::MaterialAsset;
-							else
-								continue;
-
-							results.push_back(info);
-						}
-					} catch (...) {}
-
-					// If this is still the active search, post results
-					if (this->currentSearchGeneration == generation) {
-						std::lock_guard<std::mutex> lock(this->searchMutex);
-						this->asyncSearchResults = results;
-						this->searchPending = false;
-					}
-				}).detach();
-			} else {
+			searchDebounceTimer = 0.0f;
+			searchDebouncePending = true;
+			
+			// If the user completely cleared the text, process it instantly
+			if (strlen(searchBuffer) == 0) {
 				isSearching = false;
 				searchPending = false;
 				searchResults.clear();
 				currentSearchGeneration++; // abort active searches
+				searchDebouncePending = false;
+			}
+		}
+
+		if (searchDebouncePending) {
+			searchDebounceTimer += ImGui::GetIO().DeltaTime;
+			if (searchDebounceTimer >= 0.4f) { // 400ms debounce
+				searchDebouncePending = false;
+
+				std::string query(searchBuffer);
+				if (query.length() > 0) {
+					isSearching = true;
+					searchPending = true;
+					lastSearchQuery = query;
+
+					// Increment generation to discard any old running threads
+					int generation = ++currentSearchGeneration;
+
+					// Launch filesystem scan on detached background thread (NO blocking on destruction!)
+					std::filesystem::path searchRoot = currentAssetPath;
+					std::thread([this, searchRoot, query, generation]() {
+						std::vector<AssetInfo> results;
+						std::string lowerQuery = query;
+						std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), [](unsigned char c){ return std::tolower(c); });
+
+						try {
+							for (const auto& entry : std::filesystem::recursive_directory_iterator(searchRoot)) {
+								// If a new search was started, abort this one early
+								if (this->currentSearchGeneration != generation) return;
+
+								if (entry.is_directory()) continue;
+
+								std::string filename = entry.path().filename().string();
+								std::string lowerName = filename;
+								std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c){ return std::tolower(c); });
+
+								if (lowerName.find(lowerQuery) == std::string::npos) continue;
+
+								std::string ext = entry.path().extension().string();
+								for (auto& c : ext) c = std::tolower(c);
+
+								AssetInfo info;
+								info.name = filename;
+								info.path = entry.path();
+								info.thumbnail = nullptr; // Resolved on main thread
+
+								if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
+									info.type = AssetType::Texture;
+								else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf")
+									info.type = AssetType::Model;
+								else if (ext == ".mat")
+									info.type = AssetType::MaterialAsset;
+								else
+									continue;
+
+								results.push_back(info);
+							}
+						} catch (...) {}
+
+						// If this is still the active search, post results
+						if (this->currentSearchGeneration == generation) {
+							std::lock_guard<std::mutex> lock(this->searchMutex);
+							this->asyncSearchResults = results;
+							this->searchPending = false;
+						}
+					}).detach();
+				}
 			}
 		}
 

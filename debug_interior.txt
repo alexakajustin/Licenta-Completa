@@ -3,7 +3,7 @@ Bed: bed1 1
   Source Transform: Pos(2.34699, 7.07393, -3.0723) Rot(-90, 0, 0) Scl(0.03, 0.015, 0.015)
   Calculated AABB Size: 1.97327 x 0.440454 x 2.7636
 Desk: Table 11
-  Calculated AABB Size: 1.00398 x 1.10556 x 2.14564
+  Calculated AABB Size: 2.14564 x 1.10556 x 1.00398
 
 === BedroomDecorator::Decorate ===
   Room Bounds: (-5.88, -5.88) to (1.01802, -0.795657)

@@ -11,9 +11,35 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 {
 	if (progress) progress(0.0f, "Cleaning up old solar system...");
 
-	// Clean up old spawned objects
+	// Cache previous states of existing spawned planets/sun to preserve manual inspector customizations
+	std::map<std::string, glm::vec3> savedPositions;
+	std::map<std::string, glm::vec3> savedRotations;
+	std::map<std::string, glm::vec3> savedScales;
+	std::map<std::string, PlanetParams> savedPlanetParams;
+	std::map<std::string, Material*> savedMaterials;
+
 	for (const auto& name : spawnedObjects) {
-		scene.RemoveObject(name);
+		GameObject* existing = nullptr;
+		for (auto* obj : scene.GetObjects()) {
+			if (obj && obj->GetName() == name) {
+				existing = obj;
+				break;
+			}
+		}
+		if (existing) {
+			savedPositions[name] = existing->GetTransform().GetPosition();
+			savedRotations[name] = existing->GetTransform().GetRotation();
+			savedScales[name] = existing->GetTransform().GetScale();
+			savedMaterials[name] = existing->GetMaterial();
+			if (Planet* pr = dynamic_cast<Planet*>(existing)) {
+				savedPlanetParams[name] = pr->GetParams();
+			}
+
+			// Clean detach to avoid accidental deletion
+			existing->SetMaterial(nullptr);
+
+			scene.RemoveObject(name);
+		}
 	}
 	spawnedObjects.clear();
 
@@ -40,33 +66,55 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		std::string sunName = basePrefix + "Sun";
 		Planet* sun = new Planet(sunName);
 		PlanetParams pParams;
-		pParams.radius = sunScale;
-		pParams.subdivisions = 6;
-		pParams.seed = seedDist(gen);
+		if (savedPlanetParams.count(sunName)) {
+			pParams = savedPlanetParams[sunName];
+		} else {
+			pParams.radius = sunScale;
+			pParams.subdivisions = 6;
+			pParams.seed = seedDist(gen);
+		}
 		sun->SetParams(pParams);
-		sun->Generate();
-		sun->UseSunShader();
 
-		if (Material* mat = sun->GetMaterial()) {
-			mat->SetFloat("displacementHeight", sunScale * 0.05f);
-			mat->SetFloat("seaLevel", 0.45f);
-			mat->SetFloat("sandLevel", 0.48f);
-			mat->SetFloat("grassLevel", 0.6f);
-			mat->SetFloat("rockLevel", 0.8f);
-			mat->SetFloat("snowLevel", 0.9f);
-			mat->SetFloat("noiseScale", 1.0f);
-			mat->SetInt("octaves", 6);
-			mat->SetFloat("persistence", 0.5f);
-			mat->SetFloat("lacunarity", 2.0f);
-			mat->SetFloat("tessLevel", 8.0f);
-			mat->SetFloat("tessDistance", sunScale * 5.0f + 200.0f);
+		if (savedMaterials.count(sunName) && savedMaterials[sunName]) {
+			sun->SetMaterial(savedMaterials[sunName]);
 		}
 
-		sun->GetTransform().SetPosition(center);
+		sun->Generate();
+
+		if (!savedMaterials.count(sunName)) {
+			sun->UseSunShader();
+			if (Material* mat = sun->GetMaterial()) {
+				mat->SetFloat("displacementHeight", pParams.radius * 0.05f);
+				mat->SetFloat("seaLevel", 0.45f);
+				mat->SetFloat("sandLevel", 0.48f);
+				mat->SetFloat("grassLevel", 0.6f);
+				mat->SetFloat("rockLevel", 0.8f);
+				mat->SetFloat("snowLevel", 0.9f);
+				mat->SetFloat("noiseScale", 1.0f);
+				mat->SetInt("octaves", 6);
+				mat->SetFloat("persistence", 0.5f);
+				mat->SetFloat("lacunarity", 2.0f);
+				mat->SetFloat("tessLevel", 8.0f);
+				mat->SetFloat("tessDistance", pParams.radius * 5.0f + 200.0f);
+			}
+		}
+
+		if (savedPositions.count(sunName)) {
+			sun->GetTransform().SetPosition(savedPositions[sunName]);
+		} else {
+			sun->GetTransform().SetPosition(center);
+		}
+		if (savedRotations.count(sunName)) {
+			sun->GetTransform().SetRotation(savedRotations[sunName]);
+		}
+		if (savedScales.count(sunName)) {
+			sun->GetTransform().SetScale(savedScales[sunName]);
+		}
+
 		scene.AddObject(sun);
 		spawnedObjects.insert(sunName);
 		
-		generatedSpheres.push_back({center, sunScale});
+		generatedSpheres.push_back({sun->GetTransform().GetPosition(), pParams.radius});
 	}
 
 	if (progress) progress(50.0f, "Generating Planets...");
@@ -122,51 +170,72 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		// Set radius before Generate() so the mesh is generated at the right size
 		PlanetParams pParams;
-		pParams.radius = s;
-		pParams.seed = seedDist(gen);
+		if (savedPlanetParams.count(planetName)) {
+			pParams = savedPlanetParams[planetName];
+		} else {
+			pParams.radius = s;
+			pParams.seed = seedDist(gen);
+		}
 		p->SetParams(pParams);
+
+		if (savedMaterials.count(planetName) && savedMaterials[planetName]) {
+			p->SetMaterial(savedMaterials[planetName]);
+		}
 
 		p->Generate();
 
-		float seaLvl = seaDist(gen);
-		float sandLvl = seaLvl + sandGapDist(gen);
-		float grassLvl = sandLvl + grassGapDist(gen);
-		float rockLvl = grassLvl + rockGapDist(gen);
-		float snowLvl = std::min(rockLvl + snowGapDist(gen), 1.0f);
+		if (!savedMaterials.count(planetName)) {
+			float seaLvl = seaDist(gen);
+			float sandLvl = seaLvl + sandGapDist(gen);
+			float grassLvl = sandLvl + grassGapDist(gen);
+			float rockLvl = grassLvl + rockGapDist(gen);
+			float snowLvl = std::min(rockLvl + snowGapDist(gen), 1.0f);
 
-		if (Material* mat = p->GetMaterial()) {
-			mat->SetInt("isSun", 0);
-			mat->SetFloat("displacementHeight", dispDist(gen));
-			mat->SetFloat("seaLevel", seaLvl);
-			mat->SetFloat("sandLevel", sandLvl);
-			mat->SetFloat("grassLevel", grassLvl);
-			mat->SetFloat("rockLevel", rockLvl);
-			mat->SetFloat("snowLevel", snowLvl);
-			mat->SetFloat("noiseScale", noiseDist(gen));
-			mat->SetInt("octaves", octavesDist(gen));
-			mat->SetFloat("persistence", persistDist(gen));
-			mat->SetFloat("lacunarity", lacunDist(gen));
-			mat->SetFloat("tessLevel", 8.0f);
-			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
+			if (Material* mat = p->GetMaterial()) {
+				mat->SetInt("isSun", 0);
+				mat->SetFloat("displacementHeight", dispDist(gen));
+				mat->SetFloat("seaLevel", seaLvl);
+				mat->SetFloat("sandLevel", sandLvl);
+				mat->SetFloat("grassLevel", grassLvl);
+				mat->SetFloat("rockLevel", rockLvl);
+				mat->SetFloat("snowLevel", snowLvl);
+				mat->SetFloat("noiseScale", noiseDist(gen));
+				mat->SetInt("octaves", octavesDist(gen));
+				mat->SetFloat("persistence", persistDist(gen));
+				mat->SetFloat("lacunarity", lacunDist(gen));
+				mat->SetFloat("tessLevel", 8.0f);
+				mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
 
-			// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
-			float temp = 0.5f;
-			if (maxRadius > minRadius) {
-				temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
+				// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
+				float temp = 0.5f;
+				if (maxRadius > minRadius) {
+					temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
+				}
+				mat->SetFloat("temperature", temp);
 			}
-			mat->SetFloat("temperature", temp);
 		}
 
-		p->GetTransform().SetPosition(pos);
-		p->GetTransform().SetScale(glm::vec3(1.0f)); // mesh already at correct size
+		if (savedPositions.count(planetName)) {
+			p->GetTransform().SetPosition(savedPositions[planetName]);
+		} else {
+			p->GetTransform().SetPosition(pos);
+		}
+		if (savedRotations.count(planetName)) {
+			p->GetTransform().SetRotation(savedRotations[planetName]);
+		}
+		if (savedScales.count(planetName)) {
+			p->GetTransform().SetScale(savedScales[planetName]);
+		} else {
+			p->GetTransform().SetScale(glm::vec3(1.0f));
+		}
 
 		scene.AddObject(p);
 		spawnedObjects.insert(planetName);
 
 		TransformData td;
-		td.position = pos;
-		td.scale = glm::vec3(s);
-		td.rotation = glm::vec3(0.0f);
+		td.position = p->GetTransform().GetPosition();
+		td.scale = p->GetTransform().GetScale();
+		td.rotation = p->GetTransform().GetRotation();
 		td.normal = glm::vec3(0, 1, 0);
 		outputs[1].data.transforms.push_back(td);
 

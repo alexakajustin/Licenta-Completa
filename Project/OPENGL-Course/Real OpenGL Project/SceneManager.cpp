@@ -59,7 +59,11 @@ SceneManager::~SceneManager()
 
 void SceneManager::AddObject(GameObject* obj)
 {
-	if (obj) objects.push_back(obj);
+	if (!obj) return;
+	// Prevent duplicate pointers which cause double-frees during Clear()
+	if (std::find(objects.begin(), objects.end(), obj) == objects.end()) {
+		objects.push_back(obj);
+	}
 }
 
 void SceneManager::RemoveObject(const std::string& name)
@@ -230,9 +234,14 @@ void SceneManager::DeleteSelectedLights()
 void SceneManager::DeleteGameObject(int index)
 {
 	if (index < 0 || index >= (int)objects.size()) return;
+	DeleteGameObject(objects[index]);
+}
 
-	GameObject* obj = objects[index];
+void SceneManager::DeleteGameObject(GameObject* obj)
+{
+	if (!obj) return;
 
+	// Handle Scatter instanced groups cleanup
 	std::string name = obj->GetName();
 	if (name.find("Scatter_Group_") == 0) {
 		std::string idStr = name.substr(14);
@@ -247,33 +256,37 @@ void SceneManager::DeleteGameObject(int index)
 		for (const auto& groupName : toRemove) {
 			RemoveInstancedGroup(groupName);
 		}
-	}	// Recursive deletion: delete all children first
-	// We make a copy of the children vector because deleting a child 
-	// will modify the original vector via the destructor/parent detachment
+	}
+
+	// Recursive deletion: delete all children first (pointer-based, no index shifting issues)
 	std::vector<GameObject*> childrenCopy = obj->GetChildren();
 	for (auto* child : childrenCopy) {
-		// Find child index in global list
-		auto it = std::find(objects.begin(), objects.end(), child);
-		if (it != objects.end()) {
-			DeleteGameObject((int)(it - objects.begin()));
+		DeleteGameObject(child);
+	}
+
+	// Now delete 'obj' itself — find its CURRENT position in the list
+	// (safe because child deletions above may have shifted indices)
+	auto it = std::find(objects.begin(), objects.end(), obj);
+	if (it != objects.end()) {
+		int index = (int)(it - objects.begin());
+		objects.erase(it);
+		delete obj;
+
+		// Update selection indices
+		std::vector<int> newSelection;
+		for (int selIdx : selectedObjectIndices) {
+			if (selIdx == index) continue;
+			if (selIdx > index) newSelection.push_back(selIdx - 1);
+			else newSelection.push_back(selIdx);
 		}
+		selectedObjectIndices = newSelection;
+
+		if (selectedObjectIndices.empty()) activeDragAxis = 0;
 	}
-
-	// Now delete 'obj' itself
-	// Destructor will handle parent detachment
-	delete obj;
-	objects.erase(objects.begin() + index);
-
-	// Update selection indices
-	std::vector<int> newSelection;
-	for (int selIdx : selectedObjectIndices) {
-		if (selIdx == index) continue;
-		if (selIdx > index) newSelection.push_back(selIdx - 1);
-		else newSelection.push_back(selIdx);
+	else {
+		// Object not in scene list, just free it
+		delete obj;
 	}
-	selectedObjectIndices = newSelection;
-
-	if (selectedObjectIndices.empty()) activeDragAxis = 0;
 }
 
 GameObject* SceneManager::FindObject(const std::string& name)

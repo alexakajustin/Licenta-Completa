@@ -51,7 +51,10 @@ public:
 		float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)
 	) = 0;
 
 protected:
@@ -70,7 +73,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 class BathroomDecorator : public IInteriorDecorator
@@ -80,7 +86,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 class CorridorDecorator : public IInteriorDecorator
@@ -90,7 +99,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 class BedroomDecorator : public IInteriorDecorator
@@ -100,7 +112,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 class KitchenDecorator : public IInteriorDecorator
@@ -110,7 +125,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 class LobbyDecorator : public IInteriorDecorator
@@ -120,7 +138,10 @@ public:
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
+		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
+		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
 };
 
 // =====================================================================

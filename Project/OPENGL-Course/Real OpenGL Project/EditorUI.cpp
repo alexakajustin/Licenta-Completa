@@ -180,8 +180,9 @@ void EditorUI::DrawVec2Control(const std::string& label, float& v1, float& v2, c
 	ImGui::PopID();
 }
 
-void EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue, float speed)
+bool EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue, float speed)
 {
+	bool changed = false;
 	ImGui::PushID(label.c_str());
 
 	ImGui::Text(label.c_str());
@@ -195,28 +196,30 @@ void EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 	
 	// X
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-	ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.2f");
+	if (ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.2f")) changed = true;
 	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.x = resetValue;
+	if (ImGui::IsItemClicked(1)) { values.x = resetValue; changed = true; }
 	
 	ImGui::SameLine(0, 5);
 	
 	// Y
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
-	ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.2f");
+	if (ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.2f")) changed = true;
 	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.y = resetValue;
+	if (ImGui::IsItemClicked(1)) { values.y = resetValue; changed = true; }
 	
 	ImGui::SameLine(0, 5);
 	
 	// Z
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
-	ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.2f");
+	if (ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.2f")) changed = true;
 	ImGui::PopStyleColor();
-	if (ImGui::IsItemClicked(1)) values.z = resetValue;
+	if (ImGui::IsItemClicked(1)) { values.z = resetValue; changed = true; }
 
 	ImGui::PopItemWidth();
 	ImGui::PopID();
+
+	return changed;
 }
 
 void EditorUI::HandleAssetDrop(SceneManager& scene, glm::vec3 spawnPos)
@@ -1427,9 +1430,14 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			// --- Transform (collapsible) ---
 			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f);
-				DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f);
-				DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f);
+				bool changed = false;
+				if (DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f)) changed = true;
+				if (DrawVec3Control("Rotation", *transform.GetRotationPtr(), 0.0f, 1.0f)) changed = true;
+				if (DrawVec3Control("Scale", *transform.GetScalePtr(), 1.0f, 0.01f)) changed = true;
+
+				if (changed) {
+					selected->SetDirty();
+				}
 			}
 
 			Planet* planet = dynamic_cast<Planet*>(selected);
@@ -1699,6 +1707,11 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 								float val = mat->GetFloat(name);
 								if (ImGui::DragFloat(name.c_str(), &val, 0.01f)) {
 									mat->SetFloat(name, val);
+									if (name == "radius" && planet) {
+										PlanetParams p = planet->GetParams();
+										p.radius = val;
+										planet->SetParams(p);
+									}
 								}
 								// Defer heavy CPU mesh rebuild until the user finishes dragging to prevent lag
 								if (ImGui::IsItemDeactivatedAfterEdit() && name == "radius" && planet) {

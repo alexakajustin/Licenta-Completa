@@ -15,7 +15,7 @@
     "lod0Distance": 500.0,
     "lod1Distance": 1000.0,
     "lod2Distance": 1500.0,
-    "renderDistance": 1000.0,
+    "renderDistance": 2000.0,
     "shadowDistance": 500.0,
     "showWireframe": false,
     "skyboxType": 0,

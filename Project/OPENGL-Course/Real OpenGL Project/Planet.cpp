@@ -36,7 +36,10 @@ Planet::~Planet() {}
 
 void Planet::Generate() {
     Material* mat = GetMaterial();
-    float r = mat ? mat->GetFloat("radius") : params.radius;
+    if (mat) {
+        mat->SetFloat("radius", params.radius);
+    }
+    float r = params.radius;
     if (r <= 0.0f) r = 100.0f;
 
     MeshData data = PrimitiveGenerator::GetIcosphereData(params.subdivisions);
