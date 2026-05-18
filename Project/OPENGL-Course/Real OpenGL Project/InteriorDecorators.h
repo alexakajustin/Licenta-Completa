@@ -48,7 +48,10 @@ public:
 		std::vector<PropPlacement>& props,
 		const InteriorRoom& room,
 		std::mt19937& rng,
-		float floorHeight
+		float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)
 	) = 0;
 
 protected:
@@ -64,42 +67,60 @@ class OfficeDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 class BathroomDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 class CorridorDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 class BedroomDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 class KitchenDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 class LobbyDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
-		std::mt19937& rng, float floorHeight) override;
+		std::mt19937& rng, float floorHeight,
+		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
+		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
+		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f)) override;
 };
 
 // =====================================================================

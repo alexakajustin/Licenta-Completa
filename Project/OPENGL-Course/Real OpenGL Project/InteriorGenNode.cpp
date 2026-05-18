@@ -15,6 +15,7 @@
 #include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
+#include <fstream>
 
 // Bounding box/color helpers removed. All furniture generation has been simplified to modular empty rooms.
 
@@ -171,7 +172,7 @@ void InteriorGenNode::Deserialize(const json& j)
 // MakeWallBox — UV-scaled cube primitive (same pattern as BuildingGenNode)
 // =====================================================================
 
-MeshData InteriorGenNode::MakeWallBox(glm::vec3 center, glm::vec3 halfExtents, float uvScale) const
+MeshData InteriorGenNode::MakeWallBox(glm::mat4 plotMat, glm::vec3 center, glm::vec3 halfExtents, float uvScale) const
 {
 	static const MeshData baseCube = PrimitiveGenerator::GetCubeData();
 	MeshData cube = baseCube;
@@ -200,7 +201,7 @@ MeshData InteriorGenNode::MakeWallBox(glm::vec3 center, glm::vec3 halfExtents, f
 		}
 	}
 
-	glm::mat4 xform = glm::translate(glm::mat4(1.0f), center);
+	glm::mat4 xform = glm::translate(plotMat, center);
 	xform = glm::scale(xform, halfExtents * 2.0f);
 	cube.TransformBy(xform);
 	return cube;
@@ -524,6 +525,7 @@ BuildingInterior InteriorGenNode::GenerateBuildingInterior(
 
 void InteriorGenNode::BuildStructuralMesh(
 	const BuildingInterior& interior,
+	glm::mat4 plotMat,
 	std::map<int, MeshData>& meshBuckets) const
 {
 	// Floor and ceiling slabs per room
@@ -550,7 +552,7 @@ void InteriorGenNode::BuildStructuralMesh(
 			floorSize.z += interior.wallThickness;
 		}
 
-		meshBuckets[floorMat].Append(MakeWallBox(
+		meshBuckets[floorMat].Append(MakeWallBox(plotMat, 
 			glm::vec3(center.x, room.minBounds.y - interior.floorThickness * 0.5f, center.z),
 			glm::vec3(floorSize.x * 0.5f, interior.floorThickness * 0.5f, floorSize.z * 0.5f),
 			2.0f));
@@ -558,7 +560,7 @@ void InteriorGenNode::BuildStructuralMesh(
 		// Ceiling slab
 		if (generateCeiling)
 		{
-			meshBuckets[MAT_CEILING].Append(MakeWallBox(
+			meshBuckets[MAT_CEILING].Append(MakeWallBox(plotMat, 
 				glm::vec3(center.x, room.maxBounds.y + interior.floorThickness * 0.5f, center.z),
 				glm::vec3(size.x * 0.5f, interior.floorThickness * 0.5f, size.z * 0.5f),
 				2.0f));
@@ -572,7 +574,7 @@ void InteriorGenNode::BuildStructuralMesh(
 		{
 			glm::vec3 center = (wall.minBounds + wall.maxBounds) * 0.5f;
 			glm::vec3 half = (wall.maxBounds - wall.minBounds) * 0.5f;
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(center, half, 2.0f));
+			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
 		}
 
 		// Outside walls (Perimeter NSEW)
@@ -590,30 +592,116 @@ void InteriorGenNode::BuildStructuralMesh(
 			float centerY = (floorY + ceilY) * 0.5f;
 
 			// North Wall (at maxZ)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(
+			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
 				glm::vec3((minX + maxX) * 0.5f, centerY, maxZ - wThick * 0.5f),
 				glm::vec3((maxX - minX) * 0.5f, wallH, wThick * 0.5f),
 				2.0f));
 
 			// South Wall (at minZ)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(
+			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
 				glm::vec3((minX + maxX) * 0.5f, centerY, minZ + wThick * 0.5f),
 				glm::vec3((maxX - minX) * 0.5f, wallH, wThick * 0.5f),
 				2.0f));
 
 			// East Wall (at maxX)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(
+			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
 				glm::vec3(maxX - wThick * 0.5f, centerY, (minZ + maxZ) * 0.5f),
 				glm::vec3(wThick * 0.5f, wallH, (maxZ - minZ) * 0.5f),
 				2.0f));
 
 			// West Wall (at minX)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(
+			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
 				glm::vec3(minX + wThick * 0.5f, centerY, (minZ + maxZ) * 0.5f),
 				glm::vec3(wThick * 0.5f, wallH, (maxZ - minZ) * 0.5f),
 				2.0f));
 		}
 	}
+}
+
+// Helper to find the geometric center and scaled/rotated size of an object's bounds in its own local space.
+// This is used to counteract FBX assets whose pivots are not at their geometric center (e.g. at the foot of the bed).
+static void GetObjectLocalBoundsInfo(GameObject* obj, glm::vec3 scale, glm::vec3 euler, glm::vec3& outCenter, glm::vec3& outSize) {
+	if (!obj) {
+		outCenter = glm::vec3(0.0f);
+		outSize = glm::vec3(1.0f);
+		return;
+	}
+	
+	// Temporarily save transform
+	glm::vec3 oldPos = obj->GetTransform().GetPosition();
+	glm::vec3 oldRot = obj->GetTransform().GetRotation();
+	glm::vec3 oldScl = obj->GetTransform().GetScale();
+	GameObject* oldParent = obj->GetParent();
+	
+	obj->SetParent(nullptr);
+	obj->GetTransform().SetPosition(glm::vec3(0.0f));
+	obj->GetTransform().SetRotation(glm::vec3(0.0f));
+	obj->GetTransform().SetScale(glm::vec3(1.0f));
+	obj->SetDirty(); // Forces bounds and matrix recomputation
+	
+	glm::vec3 minB, maxB;
+	obj->GetWorldBounds(minB, maxB);
+	
+	// Restore transform
+	obj->SetParent(oldParent);
+	obj->GetTransform().SetPosition(oldPos);
+	obj->GetTransform().SetRotation(oldRot);
+	obj->GetTransform().SetScale(oldScl);
+	obj->SetDirty();
+	
+	if (minB.x > 1e9f || maxB.x < -1e9f) {
+		outCenter = glm::vec3(0.0f);
+		outSize = glm::vec3(1.0f);
+		return;
+	}
+
+	// 1. Unscaled, unrotated center
+	outCenter = (minB + maxB) * 0.5f;
+
+	// 2. Compute rotated and scaled AABB size
+	glm::mat4 rMat(1.0f);
+	rMat = glm::rotate(rMat, glm::radians(euler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	rMat = glm::rotate(rMat, glm::radians(euler.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	rMat = glm::rotate(rMat, glm::radians(euler.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	glm::vec3 corners[8] = {
+		{minB.x, minB.y, minB.z}, {maxB.x, minB.y, minB.z},
+		{minB.x, maxB.y, minB.z}, {minB.x, minB.y, maxB.z},
+		{maxB.x, maxB.y, minB.z}, {maxB.x, minB.y, maxB.z},
+		{minB.x, maxB.y, maxB.z}, {maxB.x, maxB.y, maxB.z},
+	};
+
+	glm::vec3 rotMin(1e10f), rotMax(-1e10f);
+	for (int i = 0; i < 8; i++) {
+		glm::vec3 scaled = corners[i] * scale;
+		glm::vec3 rotated = glm::vec3(rMat * glm::vec4(scaled, 1.0f));
+		rotMin = glm::min(rotMin, rotated);
+		rotMax = glm::max(rotMax, rotated);
+	}
+	outSize = rotMax - rotMin;
+}
+
+// Helper to compute a GameObject's AABB size in parent/room space based on its recursively computed world bounds
+static glm::vec3 GetObjectAABBSize(GameObject* obj, glm::vec3 defaultVal) {
+	if (!obj) return defaultVal;
+	
+	// Query the recursive world bounds which include all children and relative transforms
+	glm::vec3 minB, maxB;
+	obj->GetWorldBounds(minB, maxB);
+
+	// Fallback check in case the object has invalid/infinite bounds
+	if (minB.x > 1e9f || maxB.x < -1e9f) {
+		return defaultVal;
+	}
+
+	glm::vec3 size = maxB - minB;
+
+	// Sanity checks to ensure we never return degenerate dimensions
+	if (size.x < 0.01f) size.x = defaultVal.x;
+	if (size.y < 0.01f) size.y = defaultVal.y;
+	if (size.z < 0.01f) size.z = defaultVal.z;
+
+	return size;
 }
 
 // =====================================================================
@@ -629,9 +717,38 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	GameObject* deskSrcObj = (inputs.size() > 2 && inputs[2].data.type == PinDataType::Mesh) ? inputs[2].data.sourceObject : nullptr;
 	GameObject* tvSrcObj = (inputs.size() > 3 && inputs[3].data.type == PinDataType::Mesh) ? inputs[3].data.sourceObject : nullptr;
 
-	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s\n", bedSrcObj->GetName().c_str());
-	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s\n", deskSrcObj->GetName().c_str());
-	if (tvSrcObj) printf("[InteriorGenNode] Connected TV: %s\n", tvSrcObj->GetName().c_str());
+	glm::vec3 bedSize = GetObjectAABBSize(bedSrcObj, glm::vec3(1.6f, 0.8f, 2.0f));
+	glm::vec3 deskSize = GetObjectAABBSize(deskSrcObj, glm::vec3(1.2f, 0.75f, 0.6f));
+	glm::vec3 tvSize = GetObjectAABBSize(tvSrcObj, glm::vec3(0.9f, 0.6f, 0.2f));
+
+	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s (Size: %.2f x %.2f x %.2f)\n", bedSrcObj->GetName().c_str(), bedSize.x, bedSize.y, bedSize.z);
+	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s (Size: %.2f x %.2f x %.2f)\n", deskSrcObj->GetName().c_str(), deskSize.x, deskSize.y, deskSize.z);
+	if (tvSrcObj) printf("[InteriorGenNode] Connected TV: %s (Size: %.2f x %.2f x %.2f)\n", tvSrcObj->GetName().c_str(), tvSize.x, tvSize.y, tvSize.z);
+
+	// Write debugging information to a file in the workspace
+	{
+		std::ofstream f("C:\\Users\\Justin\\Desktop\\Licenta-Completa\\debug_interior.txt", std::ios::trunc);
+		if (f.is_open()) {
+			f << "=== Interior Gen Debug ===\n";
+			if (bedSrcObj) {
+				f << "Bed: " << bedSrcObj->GetName() << "\n";
+				glm::vec3 s = bedSrcObj->GetTransform().GetScale();
+				glm::vec3 r = bedSrcObj->GetTransform().GetRotation();
+				glm::vec3 p = bedSrcObj->GetTransform().GetPosition();
+				f << "  Source Transform: Pos(" << p.x << ", " << p.y << ", " << p.z 
+				  << ") Rot(" << r.x << ", " << r.y << ", " << r.z 
+				  << ") Scl(" << s.x << ", " << s.y << ", " << s.z << ")\n";
+				f << "  Calculated AABB Size: " << bedSize.x << " x " << bedSize.y << " x " << bedSize.z << "\n";
+			} else {
+				f << "Bed: None connected\n";
+			}
+			if (deskSrcObj) {
+				f << "Desk: " << deskSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << deskSize.x << " x " << deskSize.y << " x " << deskSize.z << "\n";
+			}
+			f.close();
+		}
+	}
 
 	TransformList plots;
 	if (inputs.empty() || inputs[0].data.type != PinDataType::TransformList || inputs[0].data.transforms.empty())
@@ -684,8 +801,14 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		auto& interior = interiors[i];
 		if (interior.rooms.empty()) continue;
 
+		glm::mat4 plotMat(1.0f);
+		plotMat = glm::translate(plotMat, plots[i].position);
+		plotMat = glm::rotate(plotMat, glm::radians(plots[i].rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		plotMat = glm::rotate(plotMat, glm::radians(plots[i].rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		plotMat = glm::rotate(plotMat, glm::radians(plots[i].rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
 		// Structural geometry (floors, ceilings, walls)
-		BuildStructuralMesh(interior, meshBuckets);
+		BuildStructuralMesh(interior, plotMat, meshBuckets);
 
 		// Furniture decoration
 		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj)
@@ -696,7 +819,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				auto decorator = CreateDecoratorForRoom(room.type);
 				if (decorator)
 				{
-					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight);
+					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize);
 				}
 			}
 		}
@@ -784,6 +907,17 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		for (size_t i = 0; i < interiors.size(); i++)
 		{
 			auto& interior = interiors[i];
+
+			// Create a building root wrapper specifically to hold all placement wrappers for this building.
+			// This matches the plot's world position and rotation without any scaling!
+			std::string bldRootName = prefix + "BuildingRoot_" + std::to_string(i);
+			GameObject* bldRoot = new GameObject(bldRootName);
+			bldRoot->GetTransform().SetPosition(plots[i].position);
+			bldRoot->GetTransform().SetRotation(plots[i].rotation);
+			bldRoot->GetTransform().SetScale(glm::vec3(1.0f));
+			bldRoot->SetParent(root);
+			scene.AddObject(bldRoot);
+
 			for (const auto& prop : interior.props)
 			{
 				GameObject* sourceObj = nullptr;
@@ -793,29 +927,50 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 				if (sourceObj)
 				{
-					// Clean and robust: Clone the entire hierarchy from the scene source!
-					std::string cloneName = prefix + prop.category + "_" + std::to_string(propId++);
-					GameObject* propObj = sourceObj->Clone(cloneName);
+					// 1. Create a placement wrapper GameObject
+					std::string wrapName = prefix + prop.category + "_" + std::to_string(propId++) + "_placement";
+					GameObject* wrapObj = new GameObject(wrapName);
+					
+					// Set its transform to the clean procedural placement parameters
+					wrapObj->GetTransform().SetPosition(prop.position);
+					wrapObj->GetTransform().SetRotation(prop.rotation);
+					wrapObj->GetTransform().SetScale(prop.scale);
+					
+					// Parent placement wrapper to building root!
+					wrapObj->SetParent(bldRoot);
+					scene.AddObject(wrapObj);
 
-					// Combine source transform (model correction) with procedural placement transform
-					glm::mat4 localMatrix(1.0f);
-					glm::vec3 srcRot = sourceObj->GetTransform().GetRotation();
-					glm::vec3 srcScl = sourceObj->GetTransform().GetScale();
-					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.y), glm::vec3(0.0f, 1.0f, 0.0f));
-					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.x), glm::vec3(1.0f, 0.0f, 0.0f));
-					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.z), glm::vec3(0.0f, 0.0f, 1.0f));
-					localMatrix = glm::scale(localMatrix, srcScl);
+					// 2. Clone the source object
+					GameObject* propObj = sourceObj->Clone(wrapName + "_model");
+					
+					// Parent it to the placement wrapper
+					propObj->SetParent(wrapObj);
+					
+					// Overwrite local transform to maintain exact source rotation and scale corrections without any matrix extraction skew!
+					// Calculate the offset required to center the mesh, since FBX pivots are often not perfectly centered.
+					glm::vec3 scale = sourceObj->GetTransform().GetScale();
+					glm::vec3 euler = sourceObj->GetTransform().GetRotation();
+					
+					glm::mat4 rMat(1.0f);
+					rMat = glm::rotate(rMat, glm::radians(euler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+					rMat = glm::rotate(rMat, glm::radians(euler.x), glm::vec3(1.0f, 0.0f, 0.0f));
+					rMat = glm::rotate(rMat, glm::radians(euler.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-					glm::mat4 placementMatrix(1.0f);
-					placementMatrix = glm::translate(placementMatrix, prop.position);
-					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-					placementMatrix = glm::scale(placementMatrix, prop.scale);
+					glm::vec3 localCenter, localRotSize;
+					GetObjectLocalBoundsInfo(sourceObj, scale, euler, localCenter, localRotSize);
+					
+					// 1. Shift the object so its geometric center is precisely at (0,0,0) in the wrapper
+					glm::vec3 pivotCorrection = -glm::vec3(rMat * glm::vec4(localCenter * scale, 1.0f));
+					
+					// 2. We want the X and Z axes centered, but we want the Y axis to rest on the floor.
+					// Since the center is at 0, the bottom of the bounds is at -localRotSize.y / 2.
+					// So we push it UP by localRotSize.y / 2 to perfectly align the bottom to Y=0!
+					pivotCorrection.y += localRotSize.y * 0.5f;
 
-					glm::mat4 finalMatrix = placementMatrix * localMatrix;
-					propObj->GetTransform().SetFromMatrix(finalMatrix);
-					propObj->SetParent(root);
+					propObj->GetTransform().SetPosition(pivotCorrection);
+					propObj->GetTransform().SetRotation(euler);
+					propObj->GetTransform().SetScale(scale);
+					propObj->SetDirty();
 
 					// Recursively register all cloned GameObjects to the scene so they are rendered and cleaned up correctly!
 					std::function<void(GameObject*)> registerRecursive = [&](GameObject* obj) {

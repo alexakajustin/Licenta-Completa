@@ -77,8 +77,9 @@ private:
 		std::mt19937& rng) const;
 
 	// Mesh generation helpers
-	MeshData MakeWallBox(glm::vec3 center, glm::vec3 halfExtents, float uvScale = 1.0f) const;
+	MeshData MakeWallBox(glm::mat4 plotMat, glm::vec3 center, glm::vec3 halfExtents, float uvScale = 1.0f) const;
 	void BuildStructuralMesh(
 		const BuildingInterior& interior,
+		glm::mat4 plotMat,
 		std::map<int, MeshData>& meshBuckets) const;
 };

@@ -1,0 +1,14 @@
+=== Interior Gen Debug ===
+Bed: bed1 1
+  Source Transform: Pos(2.34699, 7.07393, -3.0723) Rot(-90, 0, 0) Scl(0.03, 0.015, 0.015)
+  Calculated AABB Size: 1.97327 x 0.440454 x 2.7636
+Desk: Table 11
+  Calculated AABB Size: 1.00398 x 1.10556 x 2.14564
+
+=== BedroomDecorator::Decorate ===
+  Room Bounds: (-5.88, -5.88) to (1.01802, -0.795657)
+  Room Size: Width=6.89802, Depth=5.08434
+  Incoming Bed Size: 1.97327 x 2.7636
+  Parsed Bed Dimensions: Len=2.7636, W=1.97327
+  Bed Wall: 0 (reqLength=2.7636, reqWidth=1.97327)
+  Calculated Scale Factor: 1
