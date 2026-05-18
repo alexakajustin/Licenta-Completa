@@ -162,7 +162,7 @@ void EditorUI::DrawVec2Control(const std::string& label, float& v1, float& v2, c
 
 	// Val 1
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-	std::string fmt1 = label1 + ":%.2f";
+	std::string fmt1 = label1 + ":%.4f";
 	ImGui::DragFloat("##V1", &v1, speed, 0.0f, 0.0f, fmt1.c_str());
 	ImGui::PopStyleColor();
 	if (ImGui::IsItemClicked(1)) v1 = resetValue;
@@ -171,7 +171,7 @@ void EditorUI::DrawVec2Control(const std::string& label, float& v1, float& v2, c
 
 	// Val 2
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
-	std::string fmt2 = label2 + ":%.2f";
+	std::string fmt2 = label2 + ":%.4f";
 	ImGui::DragFloat("##V2", &v2, speed, 0.0f, 0.0f, fmt2.c_str());
 	ImGui::PopStyleColor();
 	if (ImGui::IsItemClicked(1)) v2 = resetValue;
@@ -196,7 +196,7 @@ bool EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 	
 	// X
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-	if (ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.2f")) changed = true;
+	if (ImGui::DragFloat("##X", &values.x, speed, 0.0f, 0.0f, "X:%.4f")) changed = true;
 	ImGui::PopStyleColor();
 	if (ImGui::IsItemClicked(1)) { values.x = resetValue; changed = true; }
 	
@@ -204,7 +204,7 @@ bool EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 	
 	// Y
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
-	if (ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.2f")) changed = true;
+	if (ImGui::DragFloat("##Y", &values.y, speed, 0.0f, 0.0f, "Y:%.4f")) changed = true;
 	ImGui::PopStyleColor();
 	if (ImGui::IsItemClicked(1)) { values.y = resetValue; changed = true; }
 	
@@ -212,7 +212,7 @@ bool EditorUI::DrawVec3Control(const std::string& label, glm::vec3& values, floa
 	
 	// Z
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
-	if (ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.2f")) changed = true;
+	if (ImGui::DragFloat("##Z", &values.z, speed, 0.0f, 0.0f, "Z:%.4f")) changed = true;
 	ImGui::PopStyleColor();
 	if (ImGui::IsItemClicked(1)) { values.z = resetValue; changed = true; }
 

@@ -25,6 +25,28 @@ static void AddProp(
 	props.push_back(p);
 }
 
+// Occupancy-aware version: registers XZ footprint after placing
+static void AddPropOcc(
+	std::vector<PropPlacement>& props,
+	RoomOccupancy& occ,
+	const std::string& path,
+	glm::vec2 xzCenter,
+	glm::vec2 xzHalfSize,
+	float y,
+	glm::vec3 rot,
+	glm::vec3 scale,
+	const std::string& cat)
+{
+	PropPlacement p;
+	p.modelPath = path;
+	p.position = glm::vec3(xzCenter.x, y, xzCenter.y);
+	p.rotation = rot;
+	p.scale = scale;
+	p.category = cat;
+	props.push_back(p);
+	occ.Register(xzCenter, xzHalfSize);
+}
+
 MeshData IInteriorDecorator::MakeBox(glm::vec3 center, glm::vec3 halfExtents, float uvScale)
 {
 	static const MeshData baseCube = PrimitiveGenerator::GetCubeData();
@@ -78,103 +100,78 @@ void OfficeDecorator::Decorate(
 	glm::vec3 sinkSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
-	glm::vec3 roomMin = room.minBounds;
-	glm::vec3 roomMax = room.maxBounds;
-	float floorY = roomMin.y;
-	float centerX = (roomMin.x + roomMax.x) * 0.5f;
-	float centerZ = (roomMin.z + roomMax.z) * 0.5f;
+	float floorY = room.minBounds.y;
 
-	float roomW = room.GetWidth();
-	float roomD = room.GetDepth();
+	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
+	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
 
-	// Custom desk size
-	float deskW = deskSize.x;
-	float deskD = deskSize.z;
-	float deskH = deskSize.y;
+	float deskW = deskSize.x, deskD = deskSize.z, deskH = deskSize.y;
 
-	// Randomly choose wall for the desk (0 = -X, 1 = +X, 2 = -Z, 3 = +Z)
-	std::uniform_int_distribution<int> wallDist(0, 3);
-	int deskWall = wallDist(rng);
-
-	// Adaptive scale to prevent clipping through opposite walls
+	// Adaptive scale
 	float scaleFactor = 1.0f;
-	float reqLength = (deskWall < 2) ? deskD : deskW;
-	float reqWidth = (deskWall < 2) ? deskW : deskD;
-	
-	if (reqLength + 0.4f > roomD) {
-		scaleFactor = std::min(scaleFactor, (roomD - 0.4f) / reqLength);
-	}
-	if (reqWidth + 0.4f > roomW) {
-		scaleFactor = std::min(scaleFactor, (roomW - 0.4f) / reqWidth);
-	}
+	if (deskW + 0.4f > room.GetWidth()) scaleFactor = std::min(scaleFactor, (room.GetWidth() - 0.4f) / deskW);
+	if (deskD + 0.4f > room.GetDepth()) scaleFactor = std::min(scaleFactor, (room.GetDepth() - 0.4f) / deskD);
+	float fDW = deskW * scaleFactor, fDD = deskD * scaleFactor;
 
-	glm::vec3 finalScale = glm::vec3(scaleFactor);
-	float finalDeskW = deskW * scaleFactor;
-	float finalDeskD = deskD * scaleFactor;
+	// Try each wall for the desk using occupancy
+	std::uniform_int_distribution<int> wallDist(0, 3);
+	int startWall = wallDist(rng);
+	glm::vec2 deskXZ;
+	bool deskPlaced = false;
 
-	glm::vec3 deskPos(0.0f);
-	float deskYaw = 0.0f;
-	std::uniform_real_distribution<float> jitter(-0.1f, 0.1f);
-	float jVal = jitter(rng);
-
-	if (deskWall == 0) // -X wall (left)
+	for (int attempt = 0; attempt < 4 && !deskPlaced; attempt++)
 	{
-		deskPos.x = roomMin.x + 0.2f + finalDeskD * 0.5f;
-		deskPos.z = centerZ + jVal;
-		deskYaw = 90.0f;
-	}
-	else if (deskWall == 1) // +X wall (right)
-	{
-		deskPos.x = roomMax.x - 0.2f - finalDeskD * 0.5f;
-		deskPos.z = centerZ + jVal;
-		deskYaw = -90.0f;
-	}
-	else if (deskWall == 2) // -Z wall (front)
-	{
-		deskPos.x = centerX + jVal;
-		deskPos.z = roomMin.z + 0.2f + finalDeskD * 0.5f;
-		deskYaw = 0.0f;
-	}
-	else // +Z wall (back)
-	{
-		deskPos.x = centerX + jVal;
-		deskPos.z = roomMax.z - 0.2f - finalDeskD * 0.5f;
-		deskYaw = 180.0f;
-	}
-	deskPos.y = floorY;
+		int wall = (startWall + attempt) % 4;
+		// For walls 0,1 (X walls): item depth goes into X, width along Z
+		// For walls 2,3 (Z walls): item depth goes into Z, width along X
+		glm::vec2 halfSize = (wall < 2) ? glm::vec2(fDD * 0.5f, fDW * 0.5f) : glm::vec2(fDW * 0.5f, fDD * 0.5f);
+		float wallOff = ((wall < 2) ? fDD : fDD) * 0.5f + 0.15f;
+		if (occ.TryPlaceAlongWall(wall, halfSize, wallOff, deskXZ))
+		{
+			deskPlaced = true;
+			float deskYaw = (wall == 0) ? 90.0f : (wall == 1) ? -90.0f : (wall == 2) ? 0.0f : 180.0f;
+			std::uniform_real_distribution<float> rotJ(-4.0f, 4.0f);
+			float finalYaw = deskYaw + rotJ(rng);
 
-	std::uniform_real_distribution<float> rotJitter(-4.0f, 4.0f);
-	float finalDeskYaw = deskYaw + rotJitter(rng);
+			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Iron_Wooden_Table.fbx",
+				deskXZ, halfSize, floorY, glm::vec3(0.0f, finalYaw, 0.0f), glm::vec3(scaleFactor), "desk");
 
-	// 1. Custom Desk placement
-	AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Iron_Wooden_Table.fbx", deskPos, glm::vec3(0.0f, finalDeskYaw, 0.0f), finalScale, "desk");
+			// Chair in front of desk
+			glm::vec3 fwd(sin(glm::radians(deskYaw)), 0.0f, cos(glm::radians(deskYaw)));
+			glm::vec2 chairXZ = deskXZ + glm::vec2(fwd.x, fwd.z) * (fDD * 0.5f + 0.4f * scaleFactor);
+			glm::vec2 chairHalf(0.25f * scaleFactor);
+			if (occ.CanPlace(chairXZ, chairHalf))
+			{
+				AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Chair.fbx",
+					chairXZ, chairHalf, floorY, glm::vec3(0.0f, deskYaw + 180.0f + rotJ(rng), 0.0f), glm::vec3(scaleFactor), "chair");
+			}
 
-	// 2. Chair positioned facing the desk
-	glm::vec3 deskForward = glm::vec3(sin(glm::radians(deskYaw)), 0.0f, cos(glm::radians(deskYaw)));
-	glm::vec3 chairPos = deskPos + deskForward * (finalDeskD * 0.5f + 0.45f * scaleFactor);
-	float chairYaw = deskYaw + 180.0f + rotJitter(rng);
-	AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx", chairPos, glm::vec3(0.0f, chairYaw, 0.0f), finalScale, "chair");
+			// Monitor on desk
+			if (prob(rng) > 0.4f)
+			{
+				AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx",
+					glm::vec3(deskXZ.x, floorY + deskH * scaleFactor, deskXZ.y),
+					glm::vec3(0.0f, finalYaw, 0.0f), glm::vec3(0.7f * scaleFactor), "monitor");
+			}
 
-	// 3. High-fidelity Screen/TV Monitor on top of the desk
-	if (prob(rng) > 0.4f)
-	{
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx", deskPos + glm::vec3(0.0f, deskH * scaleFactor, 0.0f), glm::vec3(0.0f, finalDeskYaw, 0.0f), glm::vec3(0.7f * scaleFactor), "monitor");
-	}
+			// Rug under desk (no occupancy needed — it's flat)
+			if (prob(rng) > 0.3f)
+			{
+				AddProp(props, "Assets/Models/Bedroom/Models/Interior/Rug_01.fbx",
+					glm::vec3(deskXZ.x, floorY + 0.005f, deskXZ.y),
+					glm::vec3(0.0f, finalYaw, 0.0f), glm::vec3(0.6f * scaleFactor, 1.0f, 0.6f * scaleFactor), "rug");
+			}
 
-	// 4. Rug under the desk
-	if (prob(rng) > 0.3f)
-	{
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Rug_01.fbx", deskPos + glm::vec3(0.0f, 0.005f, 0.0f), glm::vec3(0.0f, finalDeskYaw, 0.0f), glm::vec3(0.6f * scaleFactor, 1.0f, 0.6f * scaleFactor), "rug");
-	}
-
-	// 5. Adjacent cabinet next to the desk if space allows
-	glm::vec3 deskRight = glm::vec3(cos(glm::radians(deskYaw)), 0.0f, -sin(glm::radians(deskYaw)));
-	glm::vec3 cabinetPos = deskPos + deskRight * (finalDeskW * 0.5f + 0.4f * scaleFactor);
-	float cabSize = 0.5f * scaleFactor;
-	if (cabinetPos.x - cabSize > roomMin.x && cabinetPos.x + cabSize < roomMax.x &&
-		cabinetPos.z - cabSize > roomMin.z && cabinetPos.z + cabSize < roomMax.z)
-	{
-		AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Drawer.fbx", cabinetPos, glm::vec3(0.0f, finalDeskYaw, 0.0f), finalScale, "cabinet");
+			// Cabinet next to desk
+			glm::vec3 right(cos(glm::radians(deskYaw)), 0.0f, -sin(glm::radians(deskYaw)));
+			glm::vec2 cabXZ = deskXZ + glm::vec2(right.x, right.z) * (fDW * 0.5f + 0.4f * scaleFactor);
+			glm::vec2 cabHalf(0.3f * scaleFactor);
+			if (occ.CanPlace(cabXZ, cabHalf))
+			{
+				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Drawer.fbx",
+					cabXZ, cabHalf, floorY, glm::vec3(0.0f, finalYaw, 0.0f), glm::vec3(scaleFactor), "cabinet");
+			}
+		}
 	}
 }
 
@@ -195,35 +192,44 @@ void BathroomDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize)
 {
-	glm::vec3 roomMin = room.minBounds;
-	float floorY = roomMin.y;
+	float floorY = room.minBounds.y;
+	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
+	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
 
-	// Toilet (against -Z wall, left side)
-	float toiletX = roomMin.x + 0.5f;
-	float toiletZ = roomMin.z + 0.35f;
-
-	// 1. High-fidelity Toilet Set (Set02.fbx)
-	AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx", glm::vec3(toiletX, floorY, toiletZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "toilet");
-
-	// Sink (against +X wall)
-	float sinkX = room.maxBounds.x - 0.35f;
-	float sinkZ = (roomMin.z + room.maxBounds.z) * 0.5f;
-
-	// 2. High-fidelity Bathroom Sink (Set01.fbx)
-	AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_props_Set01.fbx", glm::vec3(sinkX, floorY, sinkZ), glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "sink");
-
-	// 3. Washing Machine next to sink
-	float wmZ = sinkZ - 0.8f;
-	if (wmZ > roomMin.z + 0.4f)
+	// 1. Toilet — try -Z wall first, then others
+	glm::vec2 toiletHalf(0.3f, 0.35f);
+	glm::vec2 toiletXZ;
+	if (occ.TryPlaceAlongWall(2, toiletHalf, 0.35f, toiletXZ))
 	{
-		AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Washing_Machine.fbx", glm::vec3(sinkX, floorY, wmZ), glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "washing_machine");
+		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
+			toiletXZ, toiletHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "toilet");
 	}
 
-	// 4. Wooden Rack next to toilet
-	float rackZ = toiletZ + 0.8f;
-	if (rackZ < room.maxBounds.z - 0.4f)
+	// 2. Sink — try +X wall
+	glm::vec2 sinkHalf(0.3f, 0.3f);
+	glm::vec2 sinkXZ;
+	if (occ.TryPlaceAlongWall(1, sinkHalf, 0.35f, sinkXZ))
 	{
-		AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Wooden_Rack.fbx", glm::vec3(toiletX, floorY, rackZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "cabinet");
+		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_props_Set01.fbx",
+			sinkXZ, sinkHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "sink");
+
+		// 3. Washing Machine — next to sink on same wall
+		glm::vec2 wmHalf(0.35f, 0.35f);
+		glm::vec2 wmXZ;
+		if (occ.TryPlaceAlongWall(1, wmHalf, 0.35f, wmXZ))
+		{
+			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Washing_Machine.fbx",
+				wmXZ, wmHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "washing_machine");
+		}
+	}
+
+	// 4. Wooden Rack — try a corner
+	glm::vec2 rackHalf(0.25f, 0.2f);
+	glm::vec2 rackXZ;
+	if (occ.TryPlaceInCorner(rackHalf, rackXZ, 0.35f))
+	{
+		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Wooden_Rack.fbx",
+			rackXZ, rackHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "cabinet");
 	}
 }
 
@@ -276,182 +282,86 @@ void BedroomDecorator::Decorate(
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
-	glm::vec3 roomMin = room.minBounds;
-	glm::vec3 roomMax = room.maxBounds;
-	float centerX = (roomMin.x + roomMax.x) * 0.5f;
-	float centerZ = (roomMin.z + roomMax.z) * 0.5f;
 
-	float roomW = room.GetWidth();
-	float roomD = room.GetDepth();
+	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
+	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
 
-	// Custom bed size
 	float bedLen = std::max(bedSize.x, bedSize.z);
 	float bedW = std::min(bedSize.x, bedSize.z);
+	float sf = 1.0f;
+	if (bedLen + 0.4f > room.GetDepth()) sf = std::min(sf, (room.GetDepth() - 0.4f) / bedLen);
+	if (bedW + 0.4f > room.GetWidth()) sf = std::min(sf, (room.GetWidth() - 0.4f) / bedW);
+	float fBL = bedLen * sf, fBW = bedW * sf;
 
-	// Randomly choose wall for the bed (0 = -Z, 1 = +Z, 2 = -X, 3 = +X)
+	// 1. Bed — try walls using occupancy
 	std::uniform_int_distribution<int> wallDist(0, 3);
-	int bedWall = wallDist(rng);
+	int startWall = wallDist(rng);
+	glm::vec2 bedXZ;
+	bool bedPlaced = false;
 
-	// Adaptive scale to prevent clipping through opposite walls
-	float scaleFactor = 1.0f;
-	float reqLength = (bedWall < 2) ? bedLen : bedW;
-	float reqWidth = (bedWall < 2) ? bedW : bedLen;
-
-	if (reqLength + 0.4f > roomD) {
-		scaleFactor = std::min(scaleFactor, (roomD - 0.4f) / reqLength);
-	}
-	if (reqWidth + 0.4f > roomW) {
-		scaleFactor = std::min(scaleFactor, (roomW - 0.4f) / reqWidth);
-	}
-
-	// Write decorator choices to the debug file
+	for (int attempt = 0; attempt < 4 && !bedPlaced; attempt++)
 	{
-		std::ofstream f("C:\\Users\\Justin\\Desktop\\Licenta-Completa\\debug_interior.txt", std::ios::app);
-		if (f.is_open()) {
-			f << "\n=== BedroomDecorator::Decorate ===\n";
-			f << "  Room Bounds: (" << roomMin.x << ", " << roomMin.z << ") to (" << roomMax.x << ", " << roomMax.z << ")\n";
-			f << "  Room Size: Width=" << roomW << ", Depth=" << roomD << "\n";
-			f << "  Incoming Bed Size: " << bedSize.x << " x " << bedSize.z << "\n";
-			f << "  Parsed Bed Dimensions: Len=" << bedLen << ", W=" << bedW << "\n";
-			f << "  Bed Wall: " << bedWall << " (reqLength=" << reqLength << ", reqWidth=" << reqWidth << ")\n";
-			f << "  Calculated Scale Factor: " << scaleFactor << "\n";
-			f.close();
-		}
-	}
-
-	glm::vec3 finalBedScale = glm::vec3(scaleFactor);
-	float finalBedLen = bedLen * scaleFactor;
-	float finalBedW = bedW * scaleFactor;
-
-	glm::vec3 bedPos(0.0f);
-	float bedYaw = 0.0f;
-
-	// Slight layout jitter for lived-in realism! (Safe range to prevent wall clipping)
-	std::uniform_real_distribution<float> jitter(-0.02f, 0.02f);
-	float jX = jitter(rng);
-	float jZ = jitter(rng);
-
-	if (bedWall == 0) // -Z wall (front)
-	{
-		bedPos.x = centerX + jX;
-		bedPos.z = roomMin.z + 0.15f + finalBedLen * 0.5f;
-		bedYaw = 0.0f;
-	}
-	else if (bedWall == 1) // +Z wall (back)
-	{
-		bedPos.x = centerX + jX;
-		bedPos.z = roomMax.z - 0.15f - finalBedLen * 0.5f;
-		bedYaw = 180.0f;
-	}
-	else if (bedWall == 2) // -X wall (left)
-	{
-		bedPos.x = roomMin.x + 0.15f + finalBedLen * 0.5f;
-		bedPos.z = centerZ + jZ;
-		bedYaw = 90.0f;
-	}
-	else // +X wall (right)
-	{
-		bedPos.x = roomMax.x - 0.15f - finalBedLen * 0.5f;
-		bedPos.z = centerZ + jZ;
-		bedYaw = -90.0f;
-	}
-	bedPos.y = floorY;
-
-	std::uniform_real_distribution<float> rotJitter(-3.0f, 3.0f);
-	float finalBedYaw = bedYaw + rotJitter(rng);
-
-	// 1. High-fidelity Bed placement
-	AddProp(props, "Assets/Models/Bedroom/Models/Interior/Bed_01.fbx", bedPos, glm::vec3(0.0f, finalBedYaw, 0.0f), finalBedScale, "bed");
-
-	// 2. High-fidelity Rug under the bed
-	if (prob(rng) > 0.2f) {
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Rug_01.fbx", bedPos + glm::vec3(0.0f, 0.005f, 0.0f), glm::vec3(0.0f, finalBedYaw + 90.0f, 0.0f), finalBedScale, "rug");
-	}
-
-	// 3. Nightstand (Drawer) placed correctly next to the bed head
-	float drawerSize = 0.5f * scaleFactor;
-	glm::vec3 drawerPos(0.0f);
-	int side = (prob(rng) > 0.5f) ? 1 : -1;
-
-	glm::vec3 bedForward = glm::vec3(sin(glm::radians(bedYaw)), 0.0f, cos(glm::radians(bedYaw)));
-	glm::vec3 bedRight = glm::vec3(cos(glm::radians(bedYaw)), 0.0f, -sin(glm::radians(bedYaw)));
-
-	glm::vec3 bedHeadPos = bedPos - bedForward * (finalBedLen * 0.5f);
-	drawerPos = bedHeadPos + bedRight * ((float)side * (finalBedW * 0.5f + drawerSize * 0.5f + 0.1f));
-
-	if (drawerPos.x - drawerSize > roomMin.x && drawerPos.x + drawerSize < roomMax.x &&
-		drawerPos.z - drawerSize > roomMin.z && drawerPos.z + drawerSize < roomMax.z)
-	{
-		AddProp(props, "Assets/Models/Bathroom/Model/Bathroom_props_set/Drawer.fbx", drawerPos, glm::vec3(0.0f, finalBedYaw, 0.0f), glm::vec3(0.8f * scaleFactor), "cabinet");
-
-		// Place a Night Light on top!
-		if (prob(rng) > 0.3f) {
-			AddProp(props, "Assets/Models/Bedroom/Models/Interior/NightLight_01.fbx", drawerPos + glm::vec3(0.0f, 0.65f * scaleFactor, 0.0f), glm::vec3(0.0f, finalBedYaw, 0.0f), glm::vec3(scaleFactor), "lamp");
-		}
-	}
-
-	// 4. Desk opposite the bed
-	float deskW = deskSize.x;
-	float deskD = deskSize.z;
-	float deskScale = 1.0f;
-
-	glm::vec3 deskPos = bedPos + bedForward * (roomD * 0.5f + finalBedLen * 0.5f);
-	if (bedWall == 0) deskPos.z = roomMax.z - (deskD * 0.5f + 0.05f);
-	else if (bedWall == 1) deskPos.z = roomMin.z + (deskD * 0.5f + 0.05f);
-	else if (bedWall == 2) deskPos.x = roomMax.x - (deskD * 0.5f + 0.05f);
-	else deskPos.x = roomMin.x + (deskD * 0.5f + 0.05f);
-
-	float deskOppSpace = (bedWall < 2) ? roomW : roomD;
-	if (deskW + 0.4f > deskOppSpace) {
-		deskScale = std::min(deskScale, (deskOppSpace - 0.4f) / deskW);
-	}
-
-	// Desk effective width and depth in WORLD space depends on orientation!
-	float deskWorldX = (bedWall < 2) ? (deskW * deskScale) : (deskD * deskScale);
-	float deskWorldZ = (bedWall < 2) ? (deskD * deskScale) : (deskW * deskScale);
-
-	// Ensure the desk fits perfectly within the room's X and Z bounds without clipping adjacent walls
-	if (deskPos.x - deskWorldX * 0.5f >= roomMin.x && deskPos.x + deskWorldX * 0.5f <= roomMax.x &&
-		deskPos.z - deskWorldZ * 0.5f >= roomMin.z && deskPos.z + deskWorldZ * 0.5f <= roomMax.z)
-	{
-		float deskYaw = bedYaw + 180.0f;
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/TvStand_01.fbx", deskPos, glm::vec3(0.0f, deskYaw, 0.0f), glm::vec3(deskScale), "desk");
-		
-		// Place the TV on top of the desk/stand!
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx", deskPos + glm::vec3(0.0f, deskSize.y * deskScale, 0.0f), glm::vec3(0.0f, deskYaw, 0.0f), glm::vec3(deskScale), "tv");
-	}
-
-	// 5. Cupboard/Closet in a corner
-	glm::vec3 closetPos(0.0f);
-	float closetYaw = 0.0f;
-	bool hasCloset = false;
-	std::vector<int> corners = { 0, 1, 2, 3 };
-	std::shuffle(corners.begin(), corners.end(), rng);
-
-	for (int c : corners)
-	{
-		glm::vec3 corner(0.0f);
-		if (c == 0) { corner = glm::vec3(roomMin.x + 0.5f, floorY, roomMin.z + 0.5f); closetYaw = 45.0f; }
-		else if (c == 1) { corner = glm::vec3(roomMax.x - 0.5f, floorY, roomMin.z + 0.5f); closetYaw = -45.0f; }
-		else if (c == 2) { corner = glm::vec3(roomMin.x + 0.5f, floorY, roomMax.z - 0.5f); closetYaw = 135.0f; }
-		else { corner = glm::vec3(roomMax.x - 0.5f, floorY, roomMax.z - 0.5f); closetYaw = -135.0f; }
-
-		// Don't spawn on top of the bed
-		if (glm::distance(corner, bedPos) > finalBedLen * 0.5f + 1.0f)
+		int wall = (startWall + attempt) % 4;
+		glm::vec2 halfSize = (wall < 2) ? glm::vec2(fBL * 0.5f, fBW * 0.5f) : glm::vec2(fBW * 0.5f, fBL * 0.5f);
+		float wallOff = ((wall < 2) ? fBL : fBL) * 0.5f + 0.15f;
+		if (occ.TryPlaceAlongWall(wall, halfSize, wallOff, bedXZ))
 		{
-			closetPos = corner;
-			hasCloset = true;
-			break;
+			bedPlaced = true;
+			float bedYaw = (wall == 0) ? 90.0f : (wall == 1) ? -90.0f : (wall == 2) ? 0.0f : 180.0f;
+
+			AddPropOcc(props, occ, "Assets/Models/Bedroom/Models/Interior/Bed_01.fbx",
+				bedXZ, halfSize, floorY, glm::vec3(0.0f, bedYaw, 0.0f), glm::vec3(sf), "bed");
+
+			// Rug under bed
+			if (prob(rng) > 0.2f)
+				AddProp(props, "Assets/Models/Bedroom/Models/Interior/Rug_01.fbx",
+					glm::vec3(bedXZ.x, floorY + 0.005f, bedXZ.y), glm::vec3(0.0f, bedYaw + 90.0f, 0.0f), glm::vec3(sf), "rug");
+
+			// 2. Nightstand next to bed head
+			glm::vec3 fwd(sin(glm::radians(bedYaw)), 0.0f, cos(glm::radians(bedYaw)));
+			glm::vec3 right(cos(glm::radians(bedYaw)), 0.0f, -sin(glm::radians(bedYaw)));
+			int side = (prob(rng) > 0.5f) ? 1 : -1;
+			glm::vec2 headXZ = bedXZ - glm::vec2(fwd.x, fwd.z) * (fBL * 0.5f);
+			glm::vec2 nightXZ = headXZ + glm::vec2(right.x, right.z) * ((float)side * (fBW * 0.5f + 0.35f * sf));
+			glm::vec2 nightHalf(0.25f * sf);
+
+			if (occ.CanPlace(nightXZ, nightHalf))
+			{
+				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Drawer.fbx",
+					nightXZ, nightHalf, floorY, glm::vec3(0.0f, bedYaw, 0.0f), glm::vec3(0.8f * sf), "cabinet");
+				if (prob(rng) > 0.3f)
+					AddProp(props, "Assets/Models/Bedroom/Models/Interior/NightLight_01.fbx",
+						glm::vec3(nightXZ.x, floorY + 0.65f * sf, nightXZ.y), glm::vec3(0.0f, bedYaw, 0.0f), glm::vec3(sf), "lamp");
+			}
+
+			// 3. TV Stand on opposite wall
+			int oppWall = (wall < 2) ? (1 - wall) : (wall == 2 ? 3 : 2);
+			glm::vec2 tvHalf(deskSize.x * 0.5f, deskSize.z * 0.5f);
+			glm::vec2 tvXZ;
+			if (occ.TryPlaceAlongWall(oppWall, tvHalf, deskSize.z * 0.5f + 0.1f, tvXZ))
+			{
+				float deskYaw = bedYaw + 180.0f;
+				AddPropOcc(props, occ, "Assets/Models/Bedroom/Models/Interior/TvStand_01.fbx",
+					tvXZ, tvHalf, floorY, glm::vec3(0.0f, deskYaw, 0.0f), glm::vec3(1.0f), "desk");
+				AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx",
+					glm::vec3(tvXZ.x, floorY + deskSize.y, tvXZ.y), glm::vec3(0.0f, deskYaw, 0.0f), glm::vec3(1.0f), "tv");
+			}
 		}
 	}
 
-	if (hasCloset)
-	{
-		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Cupboard_a_01.fbx", closetPos, glm::vec3(0.0f, closetYaw, 0.0f), glm::vec3(1.0f), "closet");
-	}
+	// 4. Closet — try corners
+	glm::vec2 closetHalf(0.4f, 0.3f);
+	glm::vec2 closetXZ;
+	if (occ.TryPlaceInCorner(closetHalf, closetXZ, 0.5f))
+		AddPropOcc(props, occ, "Assets/Models/Bedroom/Models/Interior/Cupboard_a_01.fbx",
+			closetXZ, closetHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "closet");
 
-	// 6. Standing Lamp in a cozy corner
-	AddProp(props, "Assets/Models/Bedroom/Models/Interior/StandingLamp_01.fbx", glm::vec3(roomMin.x + 0.4f, floorY, roomMin.z + 0.4f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(1.0f), "lamp");
+	// 5. Standing Lamp — try corners
+	glm::vec2 lampHalf(0.15f);
+	glm::vec2 lampXZ;
+	if (occ.TryPlaceInCorner(lampHalf, lampXZ, 0.3f))
+		AddPropOcc(props, occ, "Assets/Models/Bedroom/Models/Interior/StandingLamp_01.fbx",
+			lampXZ, lampHalf, floorY, glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(1.0f), "lamp");
 }
 
 // =====================================================================
@@ -475,65 +385,43 @@ void KitchenDecorator::Decorate(
 	glm::vec3 roomMin = room.minBounds;
 	glm::vec3 roomMax = room.maxBounds;
 	float roomW = room.GetWidth();
-	float roomD = room.GetDepth();
 
-	// =====================================================================
+	RoomOccupancy occ(glm::vec2(roomMin.x, roomMin.z), glm::vec2(roomMax.x, roomMax.z));
+
 	// Smart Side-by-Side Layout with Adaptive Scaling
-	// =====================================================================
-	// Layout order along -Z wall: [Stove] [gap] [Sink] [gap] [Fridge]
-	// Each item's width is the X dimension of its AABB.
-
-	float gap = 0.15f; // gap between adjacent appliances
-	float margin = 0.2f; // gap from side walls
-
+	float gap = 0.15f, margin = 0.2f;
 	float totalW = stoveSize.x + sinkSize.x + fridgeSize.x + gap * 2.0f + margin * 2.0f;
-	float availW = roomW;
+	float scale = (totalW > roomW) ? roomW / totalW : 1.0f;
 
-	// Adaptive scale: shrink everything proportionally if it doesn't fit
-	float scale = 1.0f;
-	if (totalW > availW) {
-		scale = availW / totalW;
-	}
-
-	float sStoveW = stoveSize.x * scale;
-	float sSinkW = sinkSize.x * scale;
-	float sFridgeW = fridgeSize.x * scale;
-	float sGap = gap * scale;
-	float sMargin = margin * scale;
-
-	// Total used width after scaling
+	float sStoveW = stoveSize.x * scale, sSinkW = sinkSize.x * scale, sFridgeW = fridgeSize.x * scale;
+	float sGap = gap * scale, sMargin = margin * scale;
 	float usedW = sMargin + sStoveW + sGap + sSinkW + sGap + sFridgeW + sMargin;
 
-	// Center the appliance row in the room
 	float centerX = (roomMin.x + roomMax.x) * 0.5f;
 	float rowStartX = centerX - usedW * 0.5f;
 
-	// X positions (center of each appliance)
 	float stoveX = rowStartX + sMargin + sStoveW * 0.5f;
 	float sinkX  = stoveX + sStoveW * 0.5f + sGap + sSinkW * 0.5f;
 	float fridgeX = sinkX + sSinkW * 0.5f + sGap + sFridgeW * 0.5f;
 
-	// Z position: flush against -Z wall, offset by half the deepest item's depth
 	float maxDepth = std::max({ stoveSize.z, sinkSize.z, fridgeSize.z }) * scale;
 	float counterZ = roomMin.z + maxDepth * 0.5f + 0.05f;
 
-	// 1. Stove
-	AddProp(props, "Assets/Models/Kitchen/Models/Stove.fbx",
-		glm::vec3(stoveX, floorY, counterZ),
-		glm::vec3(0.0f), glm::vec3(scale), "stove");
+	// Register and place appliances
+	AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Stove.fbx",
+		glm::vec2(stoveX, counterZ), glm::vec2(sStoveW * 0.5f, stoveSize.z * scale * 0.5f),
+		floorY, glm::vec3(0.0f), glm::vec3(scale), "stove");
 
-	// 2. Sink
-	AddProp(props, "Assets/Models/Kitchen/Models/sink.fbx",
-		glm::vec3(sinkX, floorY, counterZ),
-		glm::vec3(0.0f), glm::vec3(scale), "sink");
+	AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/sink.fbx",
+		glm::vec2(sinkX, counterZ), glm::vec2(sSinkW * 0.5f, sinkSize.z * scale * 0.5f),
+		floorY, glm::vec3(0.0f), glm::vec3(scale), "sink");
 
-	// 3. Fridge
-	AddProp(props, "Assets/Models/Kitchen/Models/Fridge.fbx",
-		glm::vec3(fridgeX, floorY, counterZ),
-		glm::vec3(0.0f), glm::vec3(scale), "fridge");
+	AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Fridge.fbx",
+		glm::vec2(fridgeX, counterZ), glm::vec2(sFridgeW * 0.5f, fridgeSize.z * scale * 0.5f),
+		floorY, glm::vec3(0.0f), glm::vec3(scale), "fridge");
 
-	// 4. Microwave and Toaster on countertop (placed between stove and sink, sink and fridge)
-	float counterH = 0.9f * scale;
+	// Microwave/Toaster — use actual stove height instead of hardcoded 0.9
+	float counterH = stoveSize.y * scale;
 	AddProp(props, "Assets/Models/Kitchen/Models/Microwave.fbx",
 		glm::vec3((stoveX + sinkX) * 0.5f, floorY + counterH + 0.02f, counterZ),
 		glm::vec3(0.0f), glm::vec3(0.9f * scale), "appliances");
@@ -541,26 +429,33 @@ void KitchenDecorator::Decorate(
 		glm::vec3((sinkX + fridgeX) * 0.5f, floorY + counterH + 0.02f, counterZ),
 		glm::vec3(0.0f), glm::vec3(0.9f * scale), "appliances");
 
-	// 5. Kitchen Table and Chairs (only if there is enough depth in front of the counter)
-	float counterFrontZ = counterZ + maxDepth * 0.5f; // front edge of appliances
-	float tableDepthNeeded = 1.5f; // table + chair clearance
+	// Kitchen Table and Chairs — only if occupancy allows
+	float counterFrontZ = counterZ + maxDepth * 0.5f;
+	float tableDepthNeeded = 1.5f;
 	float remainingD = roomMax.z - counterFrontZ;
 
 	if (remainingD > tableDepthNeeded + 0.5f)
 	{
 		float tableZ = counterFrontZ + 0.8f + tableDepthNeeded * 0.5f;
-		// Table
-		AddProp(props, "Assets/Models/Kitchen/Models/Table.fbx",
-			glm::vec3(centerX, floorY, tableZ),
-			glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "desk");
-		// Chair Left
-		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx",
-			glm::vec3(centerX - 0.6f * scale, floorY, tableZ),
-			glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "chair");
-		// Chair Right
-		AddProp(props, "Assets/Models/Kitchen/Models/Chair.fbx",
-			glm::vec3(centerX + 0.6f * scale, floorY, tableZ),
-			glm::vec3(0.0f, -90.0f, 0.0f), glm::vec3(scale), "chair");
+		glm::vec2 tableXZ(centerX, tableZ);
+		glm::vec2 tableHalf(0.5f * scale, 0.4f * scale);
+
+		if (occ.CanPlace(tableXZ, tableHalf))
+		{
+			AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Table.fbx",
+				tableXZ, tableHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "desk");
+
+			glm::vec2 chairHalf(0.25f * scale);
+			glm::vec2 chairL(centerX - 0.6f * scale, tableZ);
+			if (occ.CanPlace(chairL, chairHalf))
+				AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Chair.fbx",
+					chairL, chairHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(scale), "chair");
+
+			glm::vec2 chairR(centerX + 0.6f * scale, tableZ);
+			if (occ.CanPlace(chairR, chairHalf))
+				AddPropOcc(props, occ, "Assets/Models/Kitchen/Models/Chair.fbx",
+					chairR, chairHalf, floorY, glm::vec3(0.0f, -90.0f, 0.0f), glm::vec3(scale), "chair");
+		}
 	}
 }
 
@@ -587,27 +482,51 @@ void LobbyDecorator::Decorate(
 	float centerX = (roomMin.x + roomMax.x) * 0.5f;
 	float centerZ = (roomMin.z + roomMax.z) * 0.5f;
 
-	// Mock reception desk removed to keep the room blank unless populated by proper node inputs.
+	RoomOccupancy occ(glm::vec2(roomMin.x, roomMin.z), glm::vec2(roomMax.x, roomMax.z));
 
-	// 1. High-fidelity glass coffee table
-	AddProp(props, "Assets/Models/Livingroom/glass_table/glass_table.FBX", glm::vec3(centerX, floorY, centerZ + 0.2f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.1f), "coffee_table");
+	// 1. Coffee table — center
+	glm::vec2 tableHalf(0.5f, 0.35f);
+	glm::vec2 tableXZ(centerX, centerZ + 0.2f);
+	if (occ.CanPlace(tableXZ, tableHalf))
+		AddPropOcc(props, occ, "Assets/Models/Livingroom/glass_table/glass_table.FBX",
+			tableXZ, tableHalf, floorY, glm::vec3(0.0f), glm::vec3(1.1f), "coffee_table");
 
-	// 2. High-fidelity visitor sofa bench (using bank.FBX)
-	AddProp(props, "Assets/Models/Livingroom/interior/bank.FBX", glm::vec3(centerX, floorY, centerZ + 1.0f), glm::vec3(0.0f, 180.0f, 0.0f), glm::vec3(1.0f), "couch");
+	// 2. Sofa behind table
+	glm::vec2 sofaHalf(0.8f, 0.4f);
+	glm::vec2 sofaXZ(centerX, centerZ + 1.0f);
+	if (occ.CanPlace(sofaXZ, sofaHalf))
+		AddPropOcc(props, occ, "Assets/Models/Livingroom/interior/bank.FBX",
+			sofaXZ, sofaHalf, floorY, glm::vec3(0.0f, 180.0f, 0.0f), glm::vec3(1.0f), "couch");
 
-	// 3. High-fidelity media cabinet stand (tumba_fur.FBX)
-	float tvCabinetZ = centerZ - 0.7f;
-	AddProp(props, "Assets/Models/Livingroom/tumba_fur/tumba_fur.FBX", glm::vec3(centerX, floorY, tvCabinetZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "tv_stand");
+	// 3. TV Cabinet — opposite side
+	glm::vec2 tvHalf(0.6f, 0.3f);
+	glm::vec2 tvXZ(centerX, centerZ - 0.7f);
+	if (occ.CanPlace(tvXZ, tvHalf))
+	{
+		AddPropOcc(props, occ, "Assets/Models/Livingroom/tumba_fur/tumba_fur.FBX",
+			tvXZ, tvHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "tv_stand");
+		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx",
+			glm::vec3(tvXZ.x, floorY + 0.45f, tvXZ.y), glm::vec3(0.0f), glm::vec3(0.9f), "tv");
 
-	// 4. TV placed on top of media cabinet
-	AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx", glm::vec3(centerX, floorY + 0.45f, tvCabinetZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.9f), "tv");
+		// 4. Speakers — clamp inward if room is narrow
+		float spkOff = std::min(1.0f, (room.GetWidth() - 1.0f) * 0.5f);
+		glm::vec2 spkHalf(0.2f, 0.2f);
+		glm::vec2 spkL(centerX - spkOff, tvXZ.y);
+		if (occ.CanPlace(spkL, spkHalf))
+			AddPropOcc(props, occ, "Assets/Models/Livingroom/speaker/speaker.FBX",
+				spkL, spkHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "speaker");
+		glm::vec2 spkR(centerX + spkOff, tvXZ.y);
+		if (occ.CanPlace(spkR, spkHalf))
+			AddPropOcc(props, occ, "Assets/Models/Livingroom/speaker/speaker.FBX",
+				spkR, spkHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "speaker");
+	}
 
-	// 5. Left and Right Stereo Speakers
-	AddProp(props, "Assets/Models/Livingroom/speaker/speaker.FBX", glm::vec3(centerX - 1.0f, floorY, tvCabinetZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "speaker");
-	AddProp(props, "Assets/Models/Livingroom/speaker/speaker.FBX", glm::vec3(centerX + 1.0f, floorY, tvCabinetZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), "speaker");
-
-	// 6. High-fidelity printer in the corner
-	AddProp(props, "Assets/Models/Livingroom/printer/printer.FBX", glm::vec3(roomMin.x + 0.5f, floorY, roomMin.z + 0.5f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(1.0f), "office");
+	// 5. Printer — try corners
+	glm::vec2 printerHalf(0.25f, 0.2f);
+	glm::vec2 printerXZ;
+	if (occ.TryPlaceInCorner(printerHalf, printerXZ, 0.4f))
+		AddPropOcc(props, occ, "Assets/Models/Livingroom/printer/printer.FBX",
+			printerXZ, printerHalf, floorY, glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(1.0f), "office");
 }
 
 // =====================================================================

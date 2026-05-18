@@ -175,6 +175,7 @@
     <ClCompile Include="GenerationStack.cpp" />
     <ClCompile Include="InstancedGroup.cpp" />
     <ClCompile Include="InteriorDecorators.cpp" />
+    <ClCompile Include="RoomOccupancy.cpp" />
     <ClCompile Include="InteriorGenNode.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightObject.cpp" />
@@ -555,6 +556,7 @@
     <ClInclude Include="GraphicsSettings.h" />
     <ClInclude Include="Grid2D.h" />
     <ClInclude Include="InteriorDecorators.h" />
+    <ClInclude Include="RoomOccupancy.h" />
     <ClInclude Include="InteriorGenNode.h" />
     <ClInclude Include="InteriorStructure.h" />
     <ClInclude Include="SolarSystemNode.h" />

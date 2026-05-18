@@ -1,6 +1,7 @@
 #pragma once
 
 #include "InteriorStructure.h"
+#include "RoomOccupancy.h"
 #include "MeshData.h"
 #include "PrimitiveGenerator.h"
 #include <random>
