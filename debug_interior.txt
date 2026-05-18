@@ -4,3 +4,7 @@ Bed: bed1 43
   Calculated AABB Size: 1.31552 x 0.293636 x 1.8424
 Desk: little_glass_table (Root)
   Calculated AABB Size: 0.914851 x 0.404708 x 0.933481
+Sink: sink (Root)
+  Calculated AABB Size: 2.03135 x 1.01161 x 0.588624
+Bathtub: Bathroom_props_Set01 (Root)
+  Calculated AABB Size: 1.30872 x 1.81608 x 2.34737

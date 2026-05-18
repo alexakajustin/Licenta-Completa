@@ -198,9 +198,11 @@ void NodeEditorUI::RenderNodes(NodeGraph& graph, SceneManager* scene)
 		ImNodes::EndNodeTitleBar();
 
 		// Interior Content (UI parameters)
+		ImGui::PushID(node->id);
 		ImGui::PushItemWidth(120.0f);
 		node->RenderContent(scene);
 		ImGui::PopItemWidth();
+		ImGui::PopID();
 
 		ImGui::Spacing();
 

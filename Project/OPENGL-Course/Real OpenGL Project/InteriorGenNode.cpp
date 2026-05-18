@@ -771,6 +771,18 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				f << "Desk: " << deskSrcObj->GetName() << "\n";
 				f << "  Calculated AABB Size: " << deskSize.x << " x " << deskSize.y << " x " << deskSize.z << "\n";
 			}
+			if (sinkSrcObj) {
+				f << "Sink: " << sinkSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << sinkSize.x << " x " << sinkSize.y << " x " << sinkSize.z << "\n";
+			}
+			if (toiletSrcObj) {
+				f << "Toilet: " << toiletSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << toiletSize.x << " x " << toiletSize.y << " x " << toiletSize.z << "\n";
+			}
+			if (bathtubSrcObj) {
+				f << "Bathtub: " << bathtubSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << bathtubSize.x << " x " << bathtubSize.y << " x " << bathtubSize.z << "\n";
+			}
 			f.close();
 		}
 	}
@@ -926,7 +938,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 
 	// Phase 3b: Instantiate high-fidelity props as GameObjects
-	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj)
+	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj)
 	{
 		int propId = 0;
 		for (size_t i = 0; i < interiors.size(); i++)
@@ -952,6 +964,10 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				else if (prop.category == "stove") sourceObj = stoveSrcObj;
 				else if (prop.category == "fridge") sourceObj = fridgeSrcObj;
 				else if (prop.category == "sink") sourceObj = sinkSrcObj;
+				else if (prop.category == "toilet") sourceObj = toiletSrcObj;
+				else if (prop.category == "bathtub") sourceObj = bathtubSrcObj;
+				else if (prop.category == "washing_machine") sourceObj = toiletSrcObj; // reuse bathroom input
+				else if (prop.category == "cabinet") sourceObj = sinkSrcObj; // reuse sink input as fallback
 
 				if (sourceObj)
 				{

@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.17679820954799652,
-            -0.5262139439582825,
-            -0.8317699432373047
+            -0.9702234864234924,
+            -0.237685889005661,
+            -0.04660322517156601
         ],
-        "pitch": -31.75,
+        "pitch": -13.75,
         "position": [
-            2.4907732009887695,
-            4.331353187561035,
-            4.931907653808594
+            -13.27489948272705,
+            3.160601854324341,
+            -0.6724534630775452
         ],
-        "yaw": 618.0
+        "yaw": 182.75
     },
     "instancedGroups": [],
     "lights": [
@@ -63,9 +63,14 @@
                 "end": 145,
                 "id": 272,
                 "start": 271
+            },
+            {
+                "end": 302,
+                "id": 366,
+                "start": 316
             }
         ],
-        "nextId": 293,
+        "nextId": 367,
         "nodes": [
             {
                 "doorHeight": 2.4000000953674316,
@@ -88,7 +93,9 @@
                     144,
                     145,
                     146,
-                    147
+                    147,
+                    301,
+                    302
                 ],
                 "minRoomArea": 2.0,
                 "numBathrooms": 1,
@@ -104,7 +111,7 @@
                 "cachedModelPath": "Assets\\Models\\Livingroom\\glass_table\\little_glass_table.FBX",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -1.66432523727417,
+                    -5.233463287353516,
                     5.478752613067627,
                     0.3194143772125244
                 ],
@@ -189,7 +196,7 @@
                 "cachedModelPath": "Assets\\Models\\Livingroom\\bed1\\bed1.FBX",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    -3.5971665382385254,
+                    -6.480630874633789,
                     5.072449207305908,
                     1.6031233072280884
                 ],
@@ -337,12 +344,48 @@
                 ],
                 "selectedName": "Stove (Root)",
                 "title": "Scene Input"
+            },
+            {
+                "cachedModelPath": "Assets\\Models\\Bathroom\\Model\\Bathroom_props_set\\Bathroom_Props_Set02.fbx",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    -8.210841178894043,
+                    2.516507625579834,
+                    5.535827159881592
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    0.009999998845160007,
+                    0.009999999776482582,
+                    0.009999998845160007
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    152.7816925048828,
+                    958.5711669921875
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 315,
+                "inputPins": [],
+                "outputPins": [
+                    316
+                ],
+                "selectedName": "Bathroom_Props_Set02 (Root)",
+                "title": "Scene Input"
             }
         ]
     },
     "objects": [
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
@@ -370,6 +413,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     1.0,
@@ -419,6 +463,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     0.0,
@@ -468,6 +513,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Bedroom\\Models\\Interior\\Tv_01.fbx",
             "name": "Tv_01 (Root)",
             "normalMapPath": "",
@@ -495,6 +541,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.5879999995231628,
@@ -570,6 +617,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -645,6 +693,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Livingroom\\glass_table\\little_glass_table.FBX",
             "name": "little_glass_table (Root)",
             "normalMapPath": "",
@@ -672,6 +721,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -710,6 +760,22 @@
             "parent": "little_glass_table (Root)",
             "parentIndex": 6,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -731,6 +797,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.5879999995231628,
@@ -769,6 +836,22 @@
             "parent": "little_glass_table (Root)",
             "parentIndex": 6,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -790,6 +873,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.5879999995231628,
@@ -866,6 +950,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Kitchen\\Models\\sink.fbx",
             "name": "sink (Root)",
             "normalMapPath": "",
@@ -893,6 +978,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -970,6 +1056,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1008,6 +1095,22 @@
             "parent": "sink (Root)",
             "parentIndex": 10,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1029,6 +1132,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Kitchen\\Models\\Fridge.fbx",
             "name": "Fridge (Root)",
             "normalMapPath": "",
@@ -1056,6 +1160,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1094,6 +1199,22 @@
             "parent": "Fridge (Root)",
             "parentIndex": 13,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1115,6 +1236,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1153,6 +1275,22 @@
             "parent": "Fridge (Root)",
             "parentIndex": 13,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1174,6 +1312,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1212,6 +1351,22 @@
             "parent": "Fridge (Root)",
             "parentIndex": 13,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1233,6 +1388,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Kitchen\\Models\\Stove.fbx",
             "name": "Stove (Root)",
             "normalMapPath": "",
@@ -1260,6 +1416,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1298,6 +1455,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1319,6 +1492,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1357,6 +1531,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1378,6 +1568,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1416,6 +1607,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1437,6 +1644,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1475,6 +1683,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1496,6 +1720,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1534,6 +1759,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1555,6 +1796,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1593,6 +1835,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1614,6 +1872,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1652,6 +1911,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1673,6 +1948,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1711,6 +1987,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1732,6 +2024,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1770,6 +2063,22 @@
             "parent": "Stove (Root)",
             "parentIndex": 17,
             "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
             "texturePath": "",
             "transform": {
                 "position": [
@@ -1791,6 +2100,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     0.09240925312042236,
@@ -1834,6 +2144,472 @@
                 "scale": [
                     395.0,
                     140.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "Assets\\Models\\Bathroom\\Model\\Bathroom_props_set\\Bathroom_props_Set01.fbx",
+            "name": "Bathroom_props_Set01 (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -16.474885940551758,
+                    2.8000383377075195,
+                    -0.5259194374084473
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.004999999888241291,
+                    0.004999999888241291,
+                    0.004999999888241291
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_0",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_1",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_2",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_3",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_4",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    0.4000000059604645,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                "material.normalMap": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 32.0,
+                "material.specularIntensity": 1.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_5",
+            "normalMapPath": "",
+            "parent": "Bathroom_props_Set01 (Root)",
+            "parentIndex": 28,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_Normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/Bathroom/Texture Maps/Bathroom_props_set/Bathroom_Props_Set/Bathroom_Props_Set01_BaseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
                     1.0
                 ]
             }

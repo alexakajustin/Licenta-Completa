@@ -200,40 +200,34 @@ void BathroomDecorator::Decorate(
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
 
-	// 1. Toilet — try -Z wall first, then others
-	glm::vec2 toiletHalf(0.3f, 0.35f);
+	// Wall yaw lookup: wall 0(-X)=90, wall 1(+X)=-90, wall 2(-Z)=0, wall 3(+Z)=180
+	auto wallYaw = [](int w) -> float { return (w==0)?90.0f:(w==1)?-90.0f:(w==2)?0.0f:180.0f; };
+
+	// 1. Toilet — try all walls
+	glm::vec2 toiletHalf(toiletSize.x * 0.5f, toiletSize.z * 0.5f);
 	glm::vec2 toiletXZ;
-	if (occ.TryPlaceAlongWall(2, toiletHalf, 0.35f, toiletXZ))
+	for (int w = 0; w < 4; w++)
 	{
-		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
-			toiletXZ, toiletHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "toilet");
-	}
-
-	// 2. Sink — try +X wall
-	glm::vec2 sinkHalf(0.3f, 0.3f);
-	glm::vec2 sinkXZ;
-	if (occ.TryPlaceAlongWall(1, sinkHalf, 0.35f, sinkXZ))
-	{
-		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_props_Set01.fbx",
-			sinkXZ, sinkHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "sink");
-
-		// 3. Washing Machine — next to sink on same wall
-		glm::vec2 wmHalf(0.35f, 0.35f);
-		glm::vec2 wmXZ;
-		if (occ.TryPlaceAlongWall(1, wmHalf, 0.35f, wmXZ))
+		// the offset from the wall is the size perpendicular to it
+		if (occ.TryPlaceAlongWall(w, toiletHalf, toiletSize.z * 0.5f + 0.05f, toiletXZ))
 		{
-			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Washing_Machine.fbx",
-				wmXZ, wmHalf, floorY, glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(1.0f), "washing_machine");
+			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
+				toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "toilet");
+			break;
 		}
 	}
 
-	// 4. Wooden Rack — try a corner
-	glm::vec2 rackHalf(0.25f, 0.2f);
-	glm::vec2 rackXZ;
-	if (occ.TryPlaceInCorner(rackHalf, rackXZ, 0.35f))
+	// 2. Bathtub — try all walls
+	glm::vec2 bathHalf(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f);
+	glm::vec2 bathXZ;
+	for (int w = 0; w < 4; w++)
 	{
-		AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Wooden_Rack.fbx",
-			rackXZ, rackHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "cabinet");
+		if (occ.TryPlaceAlongWall(w, bathHalf, bathtubSize.z * 0.5f + 0.05f, bathXZ))
+		{
+			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
+				bathXZ, bathHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "bathtub");
+			break;
+		}
 	}
 }
 
