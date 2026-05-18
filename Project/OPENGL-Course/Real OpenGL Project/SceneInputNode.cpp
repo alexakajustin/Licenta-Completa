@@ -295,6 +295,59 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 
 	if (found) {
+		glm::vec3 scale = obj ? obj->GetTransform().GetScale() : cachedScale;
+		glm::vec3 rotation = obj ? obj->GetTransform().GetRotation() : cachedRotation;
+
+		// Transform the mesh data vertices using rotation and scale of the parent/source object
+		if (rotation != glm::vec3(0.0f) || scale != glm::vec3(1.0f))
+		{
+			glm::mat4 rotMatrix(1.0f);
+			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+			glm::mat4 transformMatrix = glm::scale(rotMatrix, scale);
+			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transformMatrix)));
+			glm::mat3 dirMatrix = glm::mat3(transformMatrix);
+
+			for (size_t v = 0; v < data.vertices.size(); v += 14)
+			{
+				// Position (0, 1, 2)
+				glm::vec4 pos(data.vertices[v + 0], data.vertices[v + 1], data.vertices[v + 2], 1.0f);
+				pos = transformMatrix * pos;
+				data.vertices[v + 0] = pos.x;
+				data.vertices[v + 1] = pos.y;
+				data.vertices[v + 2] = pos.z;
+
+				// Normal (3, 4, 5)
+				glm::vec3 norm(data.vertices[v + 3], data.vertices[v + 4], data.vertices[v + 5]);
+				if (glm::length(norm) > 0.0001f) {
+					norm = glm::normalize(normalMatrix * norm);
+					data.vertices[v + 3] = norm.x;
+					data.vertices[v + 4] = norm.y;
+					data.vertices[v + 5] = norm.z;
+				}
+
+				// Tangent (8, 9, 10)
+				glm::vec3 tang(data.vertices[v + 8], data.vertices[v + 9], data.vertices[v + 10]);
+				if (glm::length(tang) > 0.0001f) {
+					tang = glm::normalize(dirMatrix * tang);
+					data.vertices[v + 8] = tang.x;
+					data.vertices[v + 9] = tang.y;
+					data.vertices[v + 10] = tang.z;
+				}
+
+				// Bitangent (11, 12, 13)
+				glm::vec3 bitang(data.vertices[v + 11], data.vertices[v + 12], data.vertices[v + 13]);
+				if (glm::length(bitang) > 0.0001f) {
+					bitang = glm::normalize(dirMatrix * bitang);
+					data.vertices[v + 11] = bitang.x;
+					data.vertices[v + 12] = bitang.y;
+					data.vertices[v + 13] = bitang.z;
+				}
+			}
+		}
+
 		outputs[0].data.meshData = data;
 		
 		if (obj) {

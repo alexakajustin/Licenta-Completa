@@ -797,10 +797,24 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 					std::string cloneName = prefix + prop.category + "_" + std::to_string(propId++);
 					GameObject* propObj = sourceObj->Clone(cloneName);
 
-					// Apply transform from procedural generation relative to the plot
-					propObj->GetTransform().SetPosition(prop.position);
-					propObj->GetTransform().SetRotation(prop.rotation);
-					propObj->GetTransform().SetScale(prop.scale);
+					// Combine source transform (model correction) with procedural placement transform
+					glm::mat4 localMatrix(1.0f);
+					glm::vec3 srcRot = sourceObj->GetTransform().GetRotation();
+					glm::vec3 srcScl = sourceObj->GetTransform().GetScale();
+					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.x), glm::vec3(1.0f, 0.0f, 0.0f));
+					localMatrix = glm::rotate(localMatrix, glm::radians(srcRot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+					localMatrix = glm::scale(localMatrix, srcScl);
+
+					glm::mat4 placementMatrix(1.0f);
+					placementMatrix = glm::translate(placementMatrix, prop.position);
+					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+					placementMatrix = glm::rotate(placementMatrix, glm::radians(prop.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+					placementMatrix = glm::scale(placementMatrix, prop.scale);
+
+					glm::mat4 finalMatrix = placementMatrix * localMatrix;
+					propObj->GetTransform().SetFromMatrix(finalMatrix);
 					propObj->SetParent(root);
 
 					// Recursively register all cloned GameObjects to the scene so they are rendered and cleaned up correctly!

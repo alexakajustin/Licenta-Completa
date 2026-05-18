@@ -5,6 +5,9 @@
 #include <map>
 #include <filesystem>
 #include <future>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 struct TextureLoadData {
 	unsigned char* data;
@@ -62,6 +65,16 @@ private:
 	std::vector<AssetInfo> currentAssets;
 	std::map<std::string, Texture*> assetTextureCache;
 	bool isOpen = true;
+
+	// Search
+	char searchBuffer[256] = {};
+	std::vector<AssetInfo> searchResults;
+	bool isSearching = false;
+	std::atomic<int> currentSearchGeneration = 0;
+	std::mutex searchMutex;
+	std::vector<AssetInfo> asyncSearchResults;
+	std::atomic<bool> searchPending = false; // true while background thread is running
+	std::string lastSearchQuery;
 
 	std::vector<std::future<TextureLoadData*>> asyncTextureTasks;
 

@@ -292,77 +292,78 @@ void Model::LoadMaterials(const aiScene* scene)
 				
 				std::string texPath = directory + filename;
 				FILE* testFile = nullptr;
+				bool foundAny = false;
 				if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
 					fclose(testFile);
+					foundAny = true;
 				} else {
 					// Fallback to absolute/original path from Assimp
 					texPath = directory + pathStr;
 					if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
 						fclose(testFile);
+						foundAny = true;
 					} else {
 						// Search entire Assets folder modularly!
 						std::string foundTex = FindTextureRecursively(filename);
 						if (!foundTex.empty()) {
 							texPath = foundTex;
-						} else {
-							// If really not found anywhere, fallback to a hardcoded path so it throws a normal missing error later
-							texPath = std::string("Assets/Textures/") + filename;
+							foundAny = true;
 						}
 					}
 				}
 
-				if (textureCache.find(texPath) == textureCache.end()) {
-					textureCache[texPath] = new Texture(texPath.c_str());
-				}
-				textureList[i] = textureCache[texPath];
-
-				// Robust Normal Map Detection (Suffixes & Prefixes)
-				size_t dotPos = texPath.rfind('.');
-				if (dotPos != std::string::npos)
+				if (foundAny)
 				{
-					std::string base = texPath.substr(0, dotPos);
-					std::string ext = texPath.substr(dotPos);
-					std::string foundNormal = "";
-
-					// 1. Try suffixes
-					std::vector<std::string> suffixes = { "_normal", "_bump", "_n", "_norm", "_NM", "_BUMP", "_NORMAL" };
-					for (const auto& s : suffixes) {
-						std::string p = base + s + ext;
-						FILE* f = nullptr;
-						if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
+					if (textureCache.find(texPath) == textureCache.end()) {
+						textureCache[texPath] = new Texture(texPath.c_str());
 					}
+					textureList[i] = textureCache[texPath];
 
-					// 2. Try prefixes (e.g., N_leaf.png)
-					if (foundNormal.empty()) {
-						size_t lastSlash = base.find_last_of("/\\");
-						std::string dir = (lastSlash == std::string::npos) ? "" : base.substr(0, lastSlash + 1);
-						std::string name = (lastSlash == std::string::npos) ? base : base.substr(lastSlash + 1);
-						std::vector<std::string> prefixes = { "N_", "n_", "Normal_", "norm_" };
-						for (const auto& pr : prefixes) {
-							std::string p = dir + pr + name + ext;
+					// Robust Normal Map Detection (Suffixes & Prefixes)
+					size_t dotPos = texPath.rfind('.');
+					if (dotPos != std::string::npos)
+					{
+						std::string base = texPath.substr(0, dotPos);
+						std::string ext = texPath.substr(dotPos);
+						std::string foundNormal = "";
+
+						// 1. Try suffixes
+						std::vector<std::string> suffixes = { "_normal", "_bump", "_n", "_norm", "_NM", "_BUMP", "_NORMAL" };
+						for (const auto& s : suffixes) {
+							std::string p = base + s + ext;
 							FILE* f = nullptr;
 							if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
 						}
-					}
 
-					if (!foundNormal.empty())
-					{
-						if (textureCache.find(foundNormal) == textureCache.end()) {
-							textureCache[foundNormal] = new Texture(foundNormal.c_str());
+						// 2. Try prefixes (e.g., N_leaf.png)
+						if (foundNormal.empty()) {
+							size_t lastSlash = base.find_last_of("/\\");
+							std::string dir = (lastSlash == std::string::npos) ? "" : base.substr(0, lastSlash + 1);
+							std::string name = (lastSlash == std::string::npos) ? base : base.substr(lastSlash + 1);
+							std::vector<std::string> prefixes = { "N_", "n_", "Normal_", "norm_" };
+							for (const auto& pr : prefixes) {
+								std::string p = dir + pr + name + ext;
+								FILE* f = nullptr;
+								if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
+							}
 						}
-						normalMapList[i] = textureCache[foundNormal];
+
+						if (!foundNormal.empty())
+						{
+							if (textureCache.find(foundNormal) == textureCache.end()) {
+								textureCache[foundNormal] = new Texture(foundNormal.c_str());
+							}
+							normalMapList[i] = textureCache[foundNormal];
+						}
 					}
+				}
+				else
+				{
+					textureList[i] = nullptr;
 				}
 			}
 		}
-		if (!textureList[i])
-		{
-			std::string defPath = "Assets/Textures/plain.png";
-			if (textureCache.find(defPath) == textureCache.end()) {
-				textureCache[defPath] = new Texture(defPath.c_str());
-			}
-			textureList[i] = textureCache[defPath];
-		}
+		// Removed the plain.png fallback so models without textures just use their diffuse color
 
 		// Load Normal/Bump Map from Assimp
 		if (!normalMapList[i])

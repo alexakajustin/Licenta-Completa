@@ -452,8 +452,14 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 					}
 					assetTextureCache[res->path] = tex;
 					
-					// Update currentAssets pointing to it
+					// Update currentAssets and searchResults pointing to it
 					for (auto& a : currentAssets) {
+						if (a.path.string() == res->path) {
+							a.thumbnail = tex;
+							break;
+						}
+					}
+					for (auto& a : searchResults) {
 						if (a.path.string() == res->path) {
 							a.thumbnail = tex;
 							break;
@@ -470,18 +476,175 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 		if (ImGui::Button("Refresh")) {
 			RefreshAssetList();
+			searchResults.clear();
+			if (strlen(searchBuffer) > 0) isSearching = true; // Re-search after refresh
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("..")) {
 			if (currentAssetPath.has_parent_path() && currentAssetPath != "Assets") {
 				currentAssetPath = currentAssetPath.parent_path();
 				RefreshAssetList();
+				// Clear search when navigating
+				searchBuffer[0] = '\0';
+				isSearching = false;
+				searchResults.clear();
 			}
 		}
 		ImGui::SameLine();
-		ImGui::Text("Path: %s", currentAssetPath.string().c_str());
+
+		// ===== Unity-style Search Bar =====
+		ImGui::PushItemWidth(200.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
+		
+		bool searchChanged = ImGui::InputTextWithHint("##AssetSearch", "Search assets...", searchBuffer, sizeof(searchBuffer));
+		
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar();
+		ImGui::PopItemWidth();
+
+		// Clear button (X) when there's text
+		if (strlen(searchBuffer) > 0) {
+			ImGui::SameLine();
+			if (ImGui::SmallButton("X")) {
+				searchBuffer[0] = '\0';
+				isSearching = false;
+				searchResults.clear();
+				searchChanged = true;
+			}
+		}
+
+		// Perform async recursive search when query changes
+		if (searchChanged) {
+			std::string query(searchBuffer);
+			if (query.length() > 0) {
+				isSearching = true;
+				searchPending = true;
+				lastSearchQuery = query;
+
+				// Increment generation to discard any old running threads
+				int generation = ++currentSearchGeneration;
+
+				// Launch filesystem scan on detached background thread (NO blocking on destruction!)
+				std::filesystem::path searchRoot = currentAssetPath;
+				std::thread([this, searchRoot, query, generation]() {
+					std::vector<AssetInfo> results;
+					std::string lowerQuery = query;
+					std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), [](unsigned char c){ return std::tolower(c); });
+
+					try {
+						for (const auto& entry : std::filesystem::recursive_directory_iterator(searchRoot)) {
+							// If a new search was started, abort this one early
+							if (this->currentSearchGeneration != generation) return;
+
+							if (entry.is_directory()) continue;
+
+							std::string filename = entry.path().filename().string();
+							std::string lowerName = filename;
+							std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c){ return std::tolower(c); });
+
+							if (lowerName.find(lowerQuery) == std::string::npos) continue;
+
+							std::string ext = entry.path().extension().string();
+							for (auto& c : ext) c = tolower(c);
+
+							AssetInfo info;
+							info.name = filename;
+							info.path = entry.path();
+							info.thumbnail = nullptr; // Resolved on main thread
+
+							if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
+								info.type = AssetType::Texture;
+							else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf")
+								info.type = AssetType::Model;
+							else if (ext == ".mat")
+								info.type = AssetType::MaterialAsset;
+							else
+								continue;
+
+							results.push_back(info);
+						}
+					} catch (...) {}
+
+					// If this is still the active search, post results
+					if (this->currentSearchGeneration == generation) {
+						std::lock_guard<std::mutex> lock(this->searchMutex);
+						this->asyncSearchResults = results;
+						this->searchPending = false;
+					}
+				}).detach();
+			} else {
+				isSearching = false;
+				searchPending = false;
+				searchResults.clear();
+				currentSearchGeneration++; // abort active searches
+			}
+		}
+
+		// Poll for async search results (non-blocking)
+		if (!searchPending && isSearching) {
+			bool newResults = false;
+			{
+				std::lock_guard<std::mutex> lock(searchMutex);
+				if (!asyncSearchResults.empty() || strlen(searchBuffer) > 0) {
+					// We only swap if we had a successful completion for the current text
+					if (searchResults.size() != asyncSearchResults.size() || 
+						(!searchResults.empty() && !asyncSearchResults.empty() && searchResults[0].path != asyncSearchResults[0].path)) {
+						searchResults = asyncSearchResults;
+						newResults = true;
+					}
+				}
+			}
+
+			// Resolve thumbnails on main thread using cache (only when new results arrive)
+			if (newResults) {
+				for (auto& info : searchResults) {
+					std::string pStr = info.path.string();
+					if (assetTextureCache.count(pStr)) {
+						info.thumbnail = assetTextureCache[pStr];
+					} else if (info.type == AssetType::Texture) {
+						Texture* tex = new Texture("Assets/Textures/plain.png");
+						tex->LoadTextureA();
+						assetTextureCache[pStr] = tex;
+						info.thumbnail = tex;
+						asyncTextureTasks.push_back(std::async(std::launch::async, [pStr]() {
+							TextureLoadData* data = new TextureLoadData();
+							data->path = pStr;
+							data->data = stbi_load(pStr.c_str(), &data->width, &data->height, &data->bitDepth, 4);
+							return data;
+						}));
+					} else if (info.type == AssetType::Model) {
+						Texture* tex = new Texture("Assets/Textures/plain.png");
+						tex->LoadTextureA();
+						assetTextureCache[pStr] = tex;
+						info.thumbnail = tex;
+					} else if (info.type == AssetType::MaterialAsset) {
+						Texture* tex = new Texture();
+						GenerateMaterialThumbnail(pStr, tex);
+						assetTextureCache[pStr] = tex;
+						info.thumbnail = tex;
+					}
+				}
+			}
+		}
+
+		ImGui::SameLine();
+		ImGui::TextDisabled("Path: %s", currentAssetPath.string().c_str());
+
+		// Show result count / searching indicator
+		if (isSearching) {
+			ImGui::SameLine();
+			if (searchPending) {
+				ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Searching...");
+			} else {
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "(%d results)", (int)searchResults.size());
+			}
+		}
 
 		ImGui::Separator();
+
+		// Choose which asset list to display
+		std::vector<AssetInfo>& displayAssets = isSearching ? searchResults : currentAssets;
 
 		float cellSize = 100.0f;
 		float padding = 16.0f;
@@ -491,23 +654,27 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 		ImGui::Columns(columnCount, 0, false);
 
-		for (int i = 0; i < (int)currentAssets.size(); i++)
+		for (int i = 0; i < (int)displayAssets.size(); i++)
 		{
 			ImGui::PushID(i);
 			
 			ImVec4 tint = ImVec4(1, 1, 1, 1);
-			if (currentAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1);
+			if (displayAssets[i].type == AssetType::Folder) tint = ImVec4(1, 0.8f, 0.4f, 1);
 
 			ImVec2 startPos = ImGui::GetCursorPos();
-			bool isSelected = (currentAssets[i].path == selectedAssetPath);
+			bool isSelected = (displayAssets[i].path == selectedAssetPath);
 
 			if (ImGui::Selectable("##selectable", isSelected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(cellSize, cellSize + 40))) {
-				selectedAssetPath = currentAssets[i].path;
+				selectedAssetPath = displayAssets[i].path;
 				
 				if (ImGui::IsMouseDoubleClicked(0)) {
-					if (currentAssets[i].type == AssetType::Folder) {
-						currentAssetPath = currentAssets[i].path;
+					if (displayAssets[i].type == AssetType::Folder) {
+						currentAssetPath = displayAssets[i].path;
 						RefreshAssetList();
+						// Clear search on folder navigation
+						searchBuffer[0] = '\0';
+						isSearching = false;
+						searchResults.clear();
 						ImGui::PopID();
 						break; 
 					}
@@ -516,31 +683,31 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 			// Drag-drop source
 			if (ImGui::BeginDragDropSource()) {
-				std::string pathStr = currentAssets[i].path.string();
+				std::string pathStr = displayAssets[i].path.string();
 				
 				// Use different payload type for materials vs models
-				const char* payloadType = (currentAssets[i].type == AssetType::MaterialAsset) ? "MATERIAL_PATH" : "ASSET_PATH";
+				const char* payloadType = (displayAssets[i].type == AssetType::MaterialAsset) ? "MATERIAL_PATH" : "ASSET_PATH";
 				ImGui::SetDragDropPayload(payloadType, pathStr.c_str(), pathStr.size() + 1);
 				
-				ImGui::Text("Dragging %s", currentAssets[i].name.c_str());
-				if (currentAssets[i].thumbnail) {
-					ImGui::Image((ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
+				ImGui::Text("Dragging %s", displayAssets[i].name.c_str());
+				if (displayAssets[i].thumbnail) {
+					ImGui::Image((ImTextureID)(intptr_t)displayAssets[i].thumbnail->GetTextureID(), ImVec2(32, 32), ImVec2(0, 1), ImVec2(1, 0));
 				}
 				ImGui::EndDragDropSource();
 			}
 
 			// Icon / Thumbnail
 			ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + 5));
-			if (currentAssets[i].thumbnail) {
-				ImTextureID texID = (ImTextureID)(intptr_t)currentAssets[i].thumbnail->GetTextureID();
+			if (displayAssets[i].thumbnail) {
+				ImTextureID texID = (ImTextureID)(intptr_t)displayAssets[i].thumbnail->GetTextureID();
 				
 				// Use ImageWithBg to support the 'tint' parameter for folders
 				ImGui::ImageWithBg(texID, ImVec2(cellSize - 10, cellSize - 10), ImVec2(0, 1), ImVec2(1, 0), ImVec4(0,0,0,0), tint);
 				
 				// Show "Loading..." overlay for models that haven't generated their thumbnail yet
-				if (currentAssets[i].type == AssetType::Model) {
-					if (thumbnailGenerationMap.find(currentAssets[i].path.string()) == thumbnailGenerationMap.end()) {
-						Model* model = AssetManager::Get().GetModel(currentAssets[i].path.string(), false);
+				if (displayAssets[i].type == AssetType::Model) {
+					if (thumbnailGenerationMap.find(displayAssets[i].path.string()) == thumbnailGenerationMap.end()) {
+						Model* model = AssetManager::Get().GetModel(displayAssets[i].path.string(), false);
 						if (model && !model->IsReady() && !model->IsFailed()) {
 							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
 							char progStr[32];
@@ -564,7 +731,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 			ImGui::SetCursorPos(ImVec2(startPos.x, startPos.y + cellSize + 5));
 			ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + cellSize);
-			ImGui::Text("%s", currentAssets[i].name.c_str());
+			ImGui::Text("%s", displayAssets[i].name.c_str());
 			ImGui::PopTextWrapPos();
 
 			ImGui::NextColumn();
