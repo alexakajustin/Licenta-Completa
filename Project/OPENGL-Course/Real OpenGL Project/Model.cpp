@@ -265,7 +265,25 @@ void Model::LoadMaterials(const aiScene* scene)
 		directory = filePath.substr(0, slashPos + 1);
 	}
 
+	std::string modelBaseName = "";
+	if (slashPos != std::string::npos) modelBaseName = filePath.substr(slashPos + 1);
+	else modelBaseName = filePath;
+	size_t mdotPos = modelBaseName.find_last_of('.');
+	if (mdotPos != std::string::npos) modelBaseName = modelBaseName.substr(0, mdotPos);
+
 	std::map<std::string, Texture*> textureCache;
+
+	auto tryLoadTexture = [&](const std::string& filename) -> std::string {
+		std::string texPath = directory + filename;
+		FILE* testFile = nullptr;
+		if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
+			fclose(testFile);
+			return texPath;
+		}
+		std::string foundTex = FindTextureRecursively(filename);
+		if (!foundTex.empty()) return foundTex;
+		return "";
+	};
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++)
 	{
@@ -274,92 +292,97 @@ void Model::LoadMaterials(const aiScene* scene)
 		textureList[i] = nullptr;
 		normalMapList[i] = nullptr;
 
-		if (material->GetTextureCount(aiTextureType_DIFFUSE))
+		std::string diffusePath = "";
+		aiTextureType diffuseTypes[] = { aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR, aiTextureType_UNKNOWN };
+		for (int t = 0; t < 3 && diffusePath.empty(); t++) {
+			if (material->GetTextureCount(diffuseTypes[t])) {
+				aiString path;
+				if (material->GetTexture(diffuseTypes[t], 0, &path) == aiReturn_SUCCESS) {
+					std::string pathStr = std::string(path.data);
+					size_t lastSpace = pathStr.find_last_of(' ');
+					if (lastSpace != std::string::npos && pathStr.find('-') != std::string::npos) {
+						std::string lastPart = pathStr.substr(lastSpace + 1);
+						if (lastPart.find('.') != std::string::npos) pathStr = lastPart;
+					}
+					size_t idx = pathStr.find_last_of("/\\");
+					std::string filename = pathStr.substr(idx == std::string::npos ? 0 : idx + 1);
+					
+					diffusePath = tryLoadTexture(filename);
+					if (diffusePath.empty()) diffusePath = tryLoadTexture(pathStr);
+				}
+			}
+		}
+
+		if (diffusePath.empty()) {
+			aiString aiMatName;
+			material->Get(AI_MATKEY_NAME, aiMatName);
+			std::string matName = aiMatName.C_Str();
+			
+			std::vector<std::string> guesses = {
+				matName + "_BaseColor.png", matName + "_Diffuse.png", matName + "_Albedo.png",
+				modelBaseName + "_BaseColor.png", modelBaseName + "_Diffuse.png", modelBaseName + "_Albedo.png",
+				matName + ".png", matName + ".jpg", modelBaseName + ".png"
+			};
+			for (const auto& guess : guesses) {
+				diffusePath = tryLoadTexture(guess);
+				if (!diffusePath.empty()) {
+					printf("[Assimp] Guessed Diffuse Texture: %s\n", diffusePath.c_str());
+					break;
+				}
+			}
+		}
+
+		if (!diffusePath.empty())
 		{
-			aiString path;
-			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS)
+			if (textureCache.find(diffusePath) == textureCache.end()) {
+				textureCache[diffusePath] = new Texture(diffusePath.c_str());
+			}
+			textureList[i] = textureCache[diffusePath];
+
+			// Robust Normal Map Detection
+			size_t dotPos = diffusePath.rfind('.');
+			if (dotPos != std::string::npos)
 			{
-				std::string pathStr = std::string(path.data);
-				// Strip OBJ flags like "-bm 0.001" which Assimp sometimes leaves in
-				size_t lastSpace = pathStr.find_last_of(' ');
-				if (lastSpace != std::string::npos && pathStr.find('-') != std::string::npos) {
-					std::string lastPart = pathStr.substr(lastSpace + 1);
-					if (lastPart.find('.') != std::string::npos) pathStr = lastPart;
+				std::string base = diffusePath.substr(0, dotPos);
+				std::string ext = diffusePath.substr(dotPos);
+				std::string foundNormal = "";
+
+				std::vector<std::string> suffixes = { "_normal", "_bump", "_n", "_norm", "_NM", "_BUMP", "_NORMAL", "_Normal" };
+				for (const auto& s : suffixes) {
+					std::string p = base + s + ext;
+					FILE* f = nullptr;
+					if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
 				}
 
-				size_t idx = pathStr.find_last_of("/\\");
-				std::string filename = pathStr.substr(idx == std::string::npos ? 0 : idx + 1);
+				if (foundNormal.empty()) {
+					size_t lastSlash = base.find_last_of("/\\");
+					std::string dir = (lastSlash == std::string::npos) ? "" : base.substr(0, lastSlash + 1);
+					std::string name = (lastSlash == std::string::npos) ? base : base.substr(lastSlash + 1);
+					std::vector<std::string> prefixes = { "N_", "n_", "Normal_", "norm_" };
+					for (const auto& pr : prefixes) {
+						std::string p = dir + pr + name + ext;
+						FILE* f = nullptr;
+						if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
+					}
+				}
 				
-				std::string texPath = directory + filename;
-				FILE* testFile = nullptr;
-				bool foundAny = false;
-				if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
-					fclose(testFile);
-					foundAny = true;
-				} else {
-					// Fallback to absolute/original path from Assimp
-					texPath = directory + pathStr;
-					if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
-						fclose(testFile);
-						foundAny = true;
-					} else {
-						// Search entire Assets folder modularly!
-						std::string foundTex = FindTextureRecursively(filename);
-						if (!foundTex.empty()) {
-							texPath = foundTex;
-							foundAny = true;
-						}
+				// Try replacing BaseColor with Normal
+				if (foundNormal.empty()) {
+					std::string replaced = base;
+					size_t bcPos = replaced.find("_BaseColor");
+					if (bcPos != std::string::npos) {
+						replaced.replace(bcPos, 10, "_Normal");
+						FILE* f = nullptr;
+						if (fopen_s(&f, (replaced + ext).c_str(), "r") == 0) { fclose(f); foundNormal = replaced + ext; }
 					}
 				}
 
-				if (foundAny)
+				if (!foundNormal.empty())
 				{
-					if (textureCache.find(texPath) == textureCache.end()) {
-						textureCache[texPath] = new Texture(texPath.c_str());
+					if (textureCache.find(foundNormal) == textureCache.end()) {
+						textureCache[foundNormal] = new Texture(foundNormal.c_str());
 					}
-					textureList[i] = textureCache[texPath];
-
-					// Robust Normal Map Detection (Suffixes & Prefixes)
-					size_t dotPos = texPath.rfind('.');
-					if (dotPos != std::string::npos)
-					{
-						std::string base = texPath.substr(0, dotPos);
-						std::string ext = texPath.substr(dotPos);
-						std::string foundNormal = "";
-
-						// 1. Try suffixes
-						std::vector<std::string> suffixes = { "_normal", "_bump", "_n", "_norm", "_NM", "_BUMP", "_NORMAL" };
-						for (const auto& s : suffixes) {
-							std::string p = base + s + ext;
-							FILE* f = nullptr;
-							if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
-						}
-
-						// 2. Try prefixes (e.g., N_leaf.png)
-						if (foundNormal.empty()) {
-							size_t lastSlash = base.find_last_of("/\\");
-							std::string dir = (lastSlash == std::string::npos) ? "" : base.substr(0, lastSlash + 1);
-							std::string name = (lastSlash == std::string::npos) ? base : base.substr(lastSlash + 1);
-							std::vector<std::string> prefixes = { "N_", "n_", "Normal_", "norm_" };
-							for (const auto& pr : prefixes) {
-								std::string p = dir + pr + name + ext;
-								FILE* f = nullptr;
-								if (fopen_s(&f, p.c_str(), "r") == 0) { fclose(f); foundNormal = p; break; }
-							}
-						}
-
-						if (!foundNormal.empty())
-						{
-							if (textureCache.find(foundNormal) == textureCache.end()) {
-								textureCache[foundNormal] = new Texture(foundNormal.c_str());
-							}
-							normalMapList[i] = textureCache[foundNormal];
-						}
-					}
-				}
-				else
-				{
-					textureList[i] = nullptr;
+					normalMapList[i] = textureCache[foundNormal];
 				}
 			}
 		}

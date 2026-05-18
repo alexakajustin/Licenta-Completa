@@ -97,7 +97,9 @@ void OfficeDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
@@ -190,7 +192,9 @@ void BathroomDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	float floorY = room.minBounds.y;
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
@@ -248,7 +252,9 @@ void CorridorDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	float ceilingY = room.maxBounds.y - 0.02f;
 	float centerX = (room.minBounds.x + room.maxBounds.x) * 0.5f;
@@ -278,7 +284,9 @@ void BedroomDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
@@ -379,7 +387,9 @@ void KitchenDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	float floorY = room.minBounds.y;
 	glm::vec3 roomMin = room.minBounds;
@@ -474,7 +484,9 @@ void LobbyDecorator::Decorate(
 	glm::vec3 tvSize,
 	glm::vec3 stoveSize,
 	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize)
+	glm::vec3 sinkSize,
+	glm::vec3 toiletSize,
+	glm::vec3 bathtubSize)
 {
 	float floorY = room.minBounds.y;
 	glm::vec3 roomMin = room.minBounds;

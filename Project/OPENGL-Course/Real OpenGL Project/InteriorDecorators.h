@@ -55,7 +55,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)
 	) = 0;
 
 protected:
@@ -77,7 +79,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 class BathroomDecorator : public IInteriorDecorator
@@ -90,7 +94,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 class CorridorDecorator : public IInteriorDecorator
@@ -103,7 +109,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 class BedroomDecorator : public IInteriorDecorator
@@ -116,7 +124,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 class KitchenDecorator : public IInteriorDecorator
@@ -129,7 +139,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 class LobbyDecorator : public IInteriorDecorator
@@ -142,7 +154,9 @@ public:
 		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
 		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
 		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f)) override;
+		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
+		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
+		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f)) override;
 };
 
 // =====================================================================
