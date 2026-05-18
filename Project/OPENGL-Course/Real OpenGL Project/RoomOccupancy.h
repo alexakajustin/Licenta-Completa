@@ -41,7 +41,7 @@ public:
 	// stepSize: lateral resolution for scanning (smaller = more precise, slower)
 	// Returns true if a valid position was found.
 	bool TryPlaceAlongWall(int wall, glm::vec2 halfSize, float wallOffset,
-		glm::vec2& outCenter, float padding = 0.05f, float stepSize = 0.2f) const;
+		glm::vec2& outCenter, float padding = 0.05f, float stepSize = 0.2f, bool preferCorner = false) const;
 
 	// Try to place in one of the 4 corners. Returns true if a free corner was found.
 	bool TryPlaceInCorner(glm::vec2 halfSize, glm::vec2& outCenter,

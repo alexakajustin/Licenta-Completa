@@ -1,4 +1,4 @@
 === Interior Gen Debug ===
 Bed: None connected
 Bathtub: Bathroom_props_Set01 (Root)
-  Calculated AABB Size: 1.83221 x 2.54252 x 3.28632
+  Calculated AABB Size: 3.28632 x 2.54252 x 1.83221

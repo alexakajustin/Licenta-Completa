@@ -228,17 +228,25 @@ void BathroomDecorator::Decorate(
 	if (bathtubSize.x > 0.0f)
 	{
 		bool placed = false;
-		for (int w = 0; w < 4; w++)
+		
+		// Make it perfectly rotation-agnostic! Depth is always the smaller dimension.
+		float actualDepth = std::min(bathtubSize.x, bathtubSize.z);
+		float actualLength = std::max(bathtubSize.x, bathtubSize.z);
+
+		for (int i = 0; i < 4; i++)
 		{
+			// Prioritize Wall 1 (Right wall) as requested by the user
+			int w = (i + 1) % 4;
+
 			glm::vec2 bathHalf = (w == 0 || w == 1) ? 
-				glm::vec2(bathtubSize.z * 0.5f, bathtubSize.x * 0.5f) : 
-				glm::vec2(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f);
+				glm::vec2(actualDepth * 0.5f, actualLength * 0.5f) : 
+				glm::vec2(actualLength * 0.5f, actualDepth * 0.5f);
 
 			glm::vec2 bathXZ;
-			if (occ.TryPlaceAlongWall(w, bathHalf, bathtubSize.z * 0.5f + 0.05f, bathXZ, 0.05f))
+			if (occ.TryPlaceAlongWall(w, bathHalf, actualDepth * 0.5f + 0.01f, bathXZ, 0.01f, 0.2f, true))
 			{
 				AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
-					bathXZ, bathHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(1.0f), "bathtub");
+					bathXZ, bathHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
 				placed = true;
 				break;
 			}
@@ -246,11 +254,14 @@ void BathroomDecorator::Decorate(
 
 		if (!placed)
 		{
-			// The room is mathematically too small, but the user demanded it spawn regardless of location!
-			// We will just drop it in the exact center of the room and let it clip through the walls if necessary.
-			glm::vec2 roomCenter = (glm::vec2(room.minBounds.x, room.minBounds.z) + glm::vec2(room.maxBounds.x, room.maxBounds.z)) * 0.5f;
+			// The room is mathematically too small for the length of the bathtub.
+			// We will forcefully snap it flush against Wall 1 (+X, right wall) and center it vertically.
+			float wallOffset = actualDepth * 0.5f + 0.01f;
+			float cornerOffset = actualLength * 0.5f + 0.01f;
+			glm::vec2 forceXZ(room.maxBounds.x - wallOffset, room.maxBounds.z - cornerOffset);
+			
 			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
-				roomCenter, glm::vec2(bathtubSize.x * 0.5f, bathtubSize.z * 0.5f), floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
+				forceXZ, glm::vec2(actualDepth * 0.5f, actualLength * 0.5f), floorY, glm::vec3(0.0f), glm::vec3(1.0f), "bathtub");
 		}
 	}
 }

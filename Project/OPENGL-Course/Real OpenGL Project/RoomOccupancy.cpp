@@ -45,7 +45,7 @@ void RoomOccupancy::Register(glm::vec2 center, glm::vec2 halfSize)
 }
 
 bool RoomOccupancy::TryPlaceAlongWall(int wall, glm::vec2 halfSize, float wallOffset,
-	glm::vec2& outCenter, float padding, float stepSize) const
+	glm::vec2& outCenter, float padding, float stepSize, bool preferCorner) const
 {
 	// Determine the axis along the wall and the fixed perpendicular position
 	// wall 0 = -X: scan along Z, fixed X = roomMin.x + wallOffset
@@ -93,6 +93,31 @@ bool RoomOccupancy::TryPlaceAlongWall(int wall, glm::vec2 halfSize, float wallOf
 	}
 
 	if (scanMin > scanMax) return false; // Room too small
+
+	if (preferCorner)
+	{
+		// Force the algorithm to test the maximum edge (bottom-right corner) first!
+		for (float s = scanMax; s >= scanMin; s -= stepSize)
+		{
+			glm::vec2 candidate = scanAlongX ? glm::vec2(s, fixedCoord) : glm::vec2(fixedCoord, s);
+			if (CanPlace(candidate, halfSize, padding))
+			{
+				outCenter = candidate;
+				return true;
+			}
+		}
+		// Fallback to testing the minimum edge (top-left corner)
+		for (float s = scanMin; s <= scanMax; s += stepSize)
+		{
+			glm::vec2 candidate = scanAlongX ? glm::vec2(s, fixedCoord) : glm::vec2(fixedCoord, s);
+			if (CanPlace(candidate, halfSize, padding))
+			{
+				outCenter = candidate;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	// Try center first (most natural looking)
 	float centerScan = (scanMin + scanMax) * 0.5f;
