@@ -2571,11 +2571,6 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 			}
 		}
 
-		glm::vec3 rotationDelta(0.0f);
-		if (activeDragAxis == 20004) rotationDelta.x = deltaAngle;
-		else if (activeDragAxis == 20005) rotationDelta.y = deltaAngle;
-		else if (activeDragAxis == 20006) rotationDelta.z = deltaAngle;
-
 		// Rotate ALL selected objects
 		for (auto const& [obj, state] : dragInitialObjectStates) {
 			// Like translation, avoid double-rotation if parent is also selected
@@ -2587,7 +2582,24 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 			}
 			if (parentRotated) continue;
 
-			obj->GetTransform().SetRotation(state.localRotation + rotationDelta);
+			// Reconstruct the initial local rotation matrix
+			glm::mat4 initialRotMat(1.0f);
+			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+			glm::vec3 localAxis;
+			if (activeDragAxis == 20004) localAxis = glm::vec3(1, 0, 0);
+			else if (activeDragAxis == 20005) localAxis = glm::vec3(0, 1, 0);
+			else if (activeDragAxis == 20006) localAxis = glm::vec3(0, 0, 1);
+
+			// Apply delta rotation around the local axis
+			glm::mat4 newRotMat = initialRotMat * glm::rotate(glm::mat4(1.0f), glm::radians(deltaAngle), localAxis);
+
+			// Recompose a full local matrix to extract Euler angles cleanly with T * R * S
+			glm::mat4 newTransform = glm::translate(glm::mat4(1.0f), state.localPosition) * newRotMat * glm::scale(glm::mat4(1.0f), obj->GetTransform().GetScale()); 
+			
+			obj->GetTransform().SetFromMatrix(newTransform);
 		}
 	}
 }
