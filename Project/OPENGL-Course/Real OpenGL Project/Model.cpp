@@ -5,6 +5,7 @@
 #include <assimp/ProgressHandler.hpp>
 #include <filesystem>
 #include <future>
+#include <mutex>
 
 class ModelProgressHandler : public Assimp::ProgressHandler {
 public:
@@ -181,6 +182,77 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex, std::string(mesh->mName.C_Str()) });
 }
 
+static std::map<std::string, std::string> s_globalTexturePathCache;
+static std::map<std::string, std::string> s_globalTextureBaseNameCache;
+static std::mutex s_globalTexturePathCacheMutex;
+static bool s_globalTexturePathCacheBuilt = false;
+
+static std::string FindTextureRecursively(const std::string& filename)
+{
+	if (filename.empty()) return "";
+	
+	// Convert filename to lowercase for case-insensitive matching
+	std::string lowerFilename = filename;
+	std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), [](unsigned char c){ return std::tolower(c); });
+	
+	// Extract base name
+	std::string lowerBaseName = lowerFilename;
+	size_t dotPos = lowerBaseName.find_last_of('.');
+	if (dotPos != std::string::npos) {
+		lowerBaseName = lowerBaseName.substr(0, dotPos);
+	}
+
+	std::lock_guard<std::mutex> lock(s_globalTexturePathCacheMutex);
+
+	auto checkCaches = [&]() -> std::string {
+		if (s_globalTexturePathCache.find(lowerFilename) != s_globalTexturePathCache.end()) {
+			return s_globalTexturePathCache[lowerFilename];
+		}
+		if (s_globalTextureBaseNameCache.find(lowerBaseName) != s_globalTextureBaseNameCache.end()) {
+			return s_globalTextureBaseNameCache[lowerBaseName];
+		}
+		return "";
+	};
+
+	std::string found = checkCaches();
+	if (!found.empty()) return found;
+
+	// If we already swept the whole Assets/ folder once, and it's still not found, it literally doesn't exist
+	if (s_globalTexturePathCacheBuilt) {
+		return "";
+	}
+
+	try {
+		for (const auto& entry : std::filesystem::recursive_directory_iterator("Assets")) {
+			if (entry.is_regular_file()) {
+				std::string entryFilename = entry.path().filename().string();
+				std::transform(entryFilename.begin(), entryFilename.end(), entryFilename.begin(), [](unsigned char c){ return std::tolower(c); });
+				
+				std::string entryBaseName = entryFilename;
+				size_t eDotPos = entryBaseName.find_last_of('.');
+				if (eDotPos != std::string::npos) {
+					entryBaseName = entryBaseName.substr(0, eDotPos);
+				}
+
+				std::string pathStr = entry.path().string();
+				std::replace(pathStr.begin(), pathStr.end(), '\\', '/');
+				
+				// Cache full filename (lowercase)
+				if (s_globalTexturePathCache.find(entryFilename) == s_globalTexturePathCache.end()) {
+					s_globalTexturePathCache[entryFilename] = pathStr;
+				}
+				// Cache base name (lowercase)
+				if (s_globalTextureBaseNameCache.find(entryBaseName) == s_globalTextureBaseNameCache.end()) {
+					s_globalTextureBaseNameCache[entryBaseName] = pathStr;
+				}
+			}
+		}
+		s_globalTexturePathCacheBuilt = true;
+	} catch (...) { }
+
+	return checkCaches();
+}
+
 void Model::LoadMaterials(const aiScene* scene)
 {
 	textureList.resize(scene->mNumMaterials);
@@ -228,7 +300,14 @@ void Model::LoadMaterials(const aiScene* scene)
 					if (fopen_s(&testFile, texPath.c_str(), "r") == 0) {
 						fclose(testFile);
 					} else {
-						texPath = std::string("Assets/Textures/") + filename;
+						// Search entire Assets folder modularly!
+						std::string foundTex = FindTextureRecursively(filename);
+						if (!foundTex.empty()) {
+							texPath = foundTex;
+						} else {
+							// If really not found anywhere, fallback to a hardcoded path so it throws a normal missing error later
+							texPath = std::string("Assets/Textures/") + filename;
+						}
 					}
 				}
 
@@ -312,7 +391,14 @@ void Model::LoadMaterials(const aiScene* scene)
 						if (fopen_s(&testFile, nPath.c_str(), "r") != 0) {
 							// Fallback: check if the path from Assimp was actually relative
 							nPath = directory + pathStr;
-							fopen_s(&testFile, nPath.c_str(), "r");
+							if (fopen_s(&testFile, nPath.c_str(), "r") != 0) {
+								std::string foundNormal = FindTextureRecursively(filename);
+								if (!foundNormal.empty()) {
+									nPath = foundNormal;
+									// dummy file open so logic below works
+									fopen_s(&testFile, nPath.c_str(), "r");
+								}
+							}
 						}
 
 						if (testFile) {
