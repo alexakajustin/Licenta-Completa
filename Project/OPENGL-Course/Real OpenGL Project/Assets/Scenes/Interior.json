@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.34773170948028564,
-            -0.7660444378852844,
-            -0.5406094789505005
+            -0.28326931595802307,
+            -0.6723667979240417,
+            0.6838723421096802
         ],
-        "pitch": -50.0,
+        "pitch": -42.25,
         "position": [
-            -3.139641284942627,
-            7.4443440437316895,
-            4.4045562744140625
+            4.192041397094727,
+            5.724917888641357,
+            -2.6820058822631836
         ],
-        "yaw": -57.25
+        "yaw": -247.5
     },
     "instancedGroups": [],
     "lights": [
@@ -73,9 +73,14 @@
                 "end": 77,
                 "id": 97,
                 "start": 96
+            },
+            {
+                "end": 7,
+                "id": 158,
+                "start": 157
             }
         ],
-        "nextId": 98,
+        "nextId": 159,
         "nodes": [
             {
                 "doorHeight": 2.4000000953674316,
@@ -105,10 +110,10 @@
                     78,
                     79
                 ],
+                "maxRoomSize": 6.0,
                 "minRoomArea": 1.0,
-                "numBathrooms": 1,
-                "numBedrooms": 1,
-                "numKitchens": 1,
+                "minRoomSize": 3.0,
+                "numRooms": 4,
                 "outputPins": [],
                 "seed": 131,
                 "title": "Interior Gen",
@@ -249,66 +254,38 @@
                 "title": "Scene Input"
             },
             {
-                "cachedMatColor": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "cachedMatOffset": [
-                    0.0,
-                    0.0
-                ],
-                "cachedMatShininess": 25.0,
-                "cachedMatSpecular": 0.25,
-                "cachedMatTiling": [
-                    1.0,
-                    1.0
-                ],
-                "cachedModelPath": "Assets\\Models\\Kitchen\\Models\\Table.fbx",
+                "cachedModelPath": "Assets\\Models\\Livingroom\\glass_table\\little_glass_table.FBX",
                 "cachedNormalMapPath": "",
                 "cachedPosition": [
-                    5.020971298217773,
-                    -1.1280155181884766,
-                    -0.27414655685424805
+                    11.705792427062988,
+                    1.93796968460083,
+                    2.69366717338562
                 ],
                 "cachedPrimitiveType": "",
                 "cachedRotation": [
-                    0.0,
-                    0.0,
-                    0.0
+                    -90.0,
+                    180.0,
+                    180.0
                 ],
                 "cachedScale": [
-                    0.003000000026077032,
-                    0.003000000026077032,
-                    0.003000000026077032
+                    0.03999999910593033,
+                    0.029999999329447746,
+                    0.009999999776482582
                 ],
-                "cachedTextureLayers": [
-                    {
-                        "blendMode": 0,
-                        "heightMax": 100.0,
-                        "heightMin": 0.0,
-                        "invert": false,
-                        "normalMapPath": "",
-                        "opacity": 1.0,
-                        "slopeMax": 0.5,
-                        "slopeMin": 0.0,
-                        "texturePath": "Assets/Textures/plain.png",
-                        "tiling": 1.0
-                    }
-                ],
+                "cachedTextureLayers": [],
                 "cachedTexturePath": "",
                 "editorPos": [
                     174.0,
                     460.0
                 ],
                 "forceOriginalPrimitive": true,
-                "hasCachedMaterial": true,
+                "hasCachedMaterial": false,
                 "id": 58,
                 "inputPins": [],
                 "outputPins": [
                     59
                 ],
-                "selectedName": "Table 38",
+                "selectedName": "little_glass_table (Root)",
                 "title": "Scene Input"
             },
             {
@@ -505,6 +482,41 @@
                     96
                 ],
                 "selectedName": "bed2 97",
+                "title": "Scene Input"
+            },
+            {
+                "cachedModelPath": "Assets\\Models\\Kitchen\\Models\\Fridge.fbx",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    0.8170570135116577,
+                    0.8582119941711426,
+                    -10.005928039550781
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    -0.0,
+                    180.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    0.007000000216066837,
+                    0.007000000216066837,
+                    0.007000000216066837
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    206.0,
+                    920.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
+                "id": 156,
+                "inputPins": [],
+                "outputPins": [
+                    157
+                ],
+                "selectedName": "Fridge (Root)",
                 "title": "Scene Input"
             }
         ]
@@ -1266,82 +1278,6 @@
         {
             "inheritScale": true,
             "isVisible": true,
-            "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 25.0,
-                "material.specularColor": [
-                    0.800000011920929,
-                    0.800000011920929,
-                    0.800000011920929
-                ],
-                "material.specularIntensity": 0.25,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "Assets\\Models\\Kitchen\\Models\\Table.fbx",
-            "name": "Table 38",
-            "normalMapPath": "",
-            "parent": "",
-            "parentIndex": -1,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Textures/plain.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    5.020971298217773,
-                    -1.1280155181884766,
-                    -0.27414655685424805
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    0.003000000026077032,
-                    0.003000000026077032,
-                    0.003000000026077032
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "isVisible": true,
             "modelPath": "Assets\\Models\\Kitchen\\Models\\Stove.fbx",
             "name": "Stove (Root)",
             "normalMapPath": "",
@@ -1406,7 +1342,7 @@
             "name": "Mesh_0",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1482,7 +1418,7 @@
             "name": "Mesh_1",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1558,7 +1494,7 @@
             "name": "Mesh_2",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1634,7 +1570,7 @@
             "name": "Mesh_3",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1710,7 +1646,7 @@
             "name": "Mesh_4",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1786,7 +1722,7 @@
             "name": "Mesh_5",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1862,7 +1798,7 @@
             "name": "Mesh_6",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1938,7 +1874,7 @@
             "name": "Mesh_7",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2014,7 +1950,7 @@
             "name": "Mesh_8",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2090,7 +2026,7 @@
             "name": "Mesh_9",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2166,7 +2102,7 @@
             "name": "Mesh_10",
             "normalMapPath": "",
             "parent": "Stove (Root)",
-            "parentIndex": 13,
+            "parentIndex": 12,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2272,7 +2208,7 @@
             "name": "Mesh_0",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2348,7 +2284,7 @@
             "name": "Mesh_1",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2425,7 +2361,7 @@
             "name": "Mesh_2",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2501,7 +2437,7 @@
             "name": "Mesh_3",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2578,7 +2514,7 @@
             "name": "Mesh_4",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2654,7 +2590,7 @@
             "name": "Mesh_5",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2731,7 +2667,7 @@
             "name": "Mesh_6",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2807,7 +2743,7 @@
             "name": "Mesh_7",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2884,7 +2820,7 @@
             "name": "Mesh_8",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2960,7 +2896,7 @@
             "name": "Mesh_9",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3036,7 +2972,7 @@
             "name": "Mesh_10",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3112,7 +3048,7 @@
             "name": "Mesh_11",
             "normalMapPath": "",
             "parent": "sink (Root)",
-            "parentIndex": 25,
+            "parentIndex": 24,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3181,7 +3117,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_fur.FBX",
             "name": "tumba_fur 94",
@@ -3256,7 +3194,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\Livingroom\\bed2\\bed2.FBX",
             "name": "bed2 97",
@@ -3296,6 +3236,664 @@
                     0.02500000037252903,
                     0.02500000037252903,
                     0.02500000037252903
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "Assets\\Models\\Livingroom\\glass_table\\little_glass_table.FBX",
+            "name": "little_glass_table (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    11.705792427062988,
+                    1.93796968460083,
+                    2.69366717338562
+                ],
+                "rotation": [
+                    -90.0,
+                    180.0,
+                    180.0
+                ],
+                "scale": [
+                    0.03999999910593033,
+                    0.029999999329447746,
+                    0.009999999776482582
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_0",
+            "normalMapPath": "",
+            "parent": "little_glass_table (Root)",
+            "parentIndex": 39,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Mesh_1",
+            "normalMapPath": "",
+            "parent": "little_glass_table (Root)",
+            "parentIndex": 39,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "Assets\\Models\\Kitchen\\Models\\Fridge.fbx",
+            "name": "Fridge (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.8170570135116577,
+                    0.8582119941711426,
+                    -10.005928039550781
+                ],
+                "rotation": [
+                    -0.0,
+                    180.0,
+                    0.0
+                ],
+                "scale": [
+                    0.007000000216066837,
+                    0.007000000216066837,
+                    0.007000000216066837
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.008931570686399937,
+                    0.6699575185775757,
+                    0.6765676736831665,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 56.25,
+                "material.specularColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_0",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.611428439617157,
+                    0.7919183373451233,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_1",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.008931570686399937,
+                    0.6699575185775757,
+                    0.6765676736831665,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 56.25,
+                "material.specularColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_2",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 72.25,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_3",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.008931570686399937,
+                    0.6699575185775757,
+                    0.6765676736831665,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 56.25,
+                "material.specularColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_5",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.008931570686399937,
+                    0.6699575185775757,
+                    0.6765676736831665,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 56.25,
+                "material.specularColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Mesh_7",
+            "normalMapPath": "",
+            "parent": "Fridge (Root)",
+            "parentIndex": 42,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             }
         }

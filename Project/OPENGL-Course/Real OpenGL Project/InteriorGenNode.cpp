@@ -134,9 +134,9 @@ void InteriorGenNode::RenderContent(SceneManager* scene)
 
 	ImGui::Separator();
 	ImGui::Text("Room Layout Configuration");
-	ImGui::DragInt("Bedrooms", &numBedrooms, 0.1f, 0, 10);
-	ImGui::DragInt("Kitchens", &numKitchens, 0.1f, 0, 5);
-	ImGui::DragInt("Bathrooms", &numBathrooms, 0.1f, 0, 5);
+	ImGui::DragInt("Target Rooms", &numRooms, 0.1f, 1, 15);
+	ImGui::DragFloat("Min Room Size", &minRoomSize, 0.05f, 1.5f, 10.0f, "%.2f");
+	ImGui::DragFloat("Max Room Size", &maxRoomSize, 0.05f, 2.0f, 20.0f, "%.2f");
 }
 
 // =====================================================================
@@ -156,9 +156,9 @@ json InteriorGenNode::Serialize() const
 	j["wallInset"]         = wallInset;
 	j["seed"]              = seed;
 	j["generateFurniture"] = generateFurniture;
-	j["numBedrooms"]       = numBedrooms;
-	j["numKitchens"]       = numKitchens;
-	j["numBathrooms"]      = numBathrooms;
+	j["numRooms"]          = numRooms;
+	j["minRoomSize"]       = minRoomSize;
+	j["maxRoomSize"]       = maxRoomSize;
 	j["generateWalls"]     = generateWalls;
 	j["generateCeiling"]   = generateCeiling;
 	return j;
@@ -177,9 +177,9 @@ void InteriorGenNode::Deserialize(const json& j)
 	wallInset         = j.value("wallInset", 0.5f);
 	seed              = j.value("seed", 42);
 	generateFurniture = j.value("generateFurniture", false);
-	numBedrooms       = j.value("numBedrooms", 2);
-	numKitchens       = j.value("numKitchens", 1);
-	numBathrooms      = j.value("numBathrooms", 1);
+	numRooms          = j.value("numRooms", 4);
+	minRoomSize       = j.value("minRoomSize", 3.0f);
+	maxRoomSize       = j.value("maxRoomSize", 6.0f);
 	generateWalls     = j.value("generateWalls", true);
 	generateCeiling   = j.value("generateCeiling", false);
 }
@@ -236,10 +236,23 @@ void InteriorGenNode::SubdivideFloor(
 {
 	float width  = floorMax.x - floorMin.x;
 	float depth  = floorMax.z - floorMin.z;
-	float area   = width * depth;
 
-	// Base case: we reached the exact number of rooms requested for this partition
-	if (targetRooms <= 1 || (width < 2.5f && depth < 2.5f))
+	// Check if we must split because the room is too large, or if we want to split to reach targetRooms
+	bool mustSplit = (width > maxRoomSize) || (depth > maxRoomSize);
+
+	// Dynamically adjust effective min room size if we need to split to reach targetRooms
+	float effMinSize = minRoomSize;
+	if (targetRooms > 1 && (width < minRoomSize * 2.0f + wallThickness && depth < minRoomSize * 2.0f + wallThickness))
+	{
+		// Scale down min size so we can split, but don't go below an absolute limit of 1.5m
+		effMinSize = std::max(1.5f, std::min(width, depth) * 0.4f);
+	}
+
+	bool canSplitX = (width >= effMinSize * 2.0f + wallThickness);
+	bool canSplitZ = (depth >= effMinSize * 2.0f + wallThickness);
+	bool canSplit = canSplitX || canSplitZ;
+
+	if ((targetRooms <= 1 && !mustSplit) || !canSplit)
 	{
 		InteriorRoom room;
 		room.minBounds = floorMin;
@@ -258,9 +271,32 @@ void InteriorGenNode::SubdivideFloor(
 		return;
 	}
 
-	// Split along the longer dimension
-	bool splitX = (width > depth);
-	std::uniform_real_distribution<float> splitDist(0.35f, 0.65f);
+	// Decide split axis: split along the longer dimension if possible, or whichever allows valid split sizes
+	bool splitX = true;
+	if (canSplitX && canSplitZ)
+	{
+		splitX = (width > depth);
+	}
+	else if (canSplitX)
+	{
+		splitX = true;
+	}
+	else if (canSplitZ)
+	{
+		splitX = false;
+	}
+
+	// Calculate a random split fraction that respects effMinSize on both sides
+	float totalLen = splitX ? width : depth;
+	float minFrac = (effMinSize + wallThickness * 0.5f) / totalLen;
+	float maxFrac = 1.0f - minFrac;
+
+	// Clamp fraction in case values are slightly off
+	minFrac = std::max(0.1f, std::min(minFrac, 0.9f));
+	maxFrac = std::max(0.1f, std::min(maxFrac, 0.9f));
+	if (minFrac > maxFrac) std::swap(minFrac, maxFrac);
+
+	std::uniform_real_distribution<float> splitDist(minFrac, maxFrac);
 	float splitFrac = splitDist(rng);
 
 	// Proportionally distribute the target rooms to the two halves based on area split
@@ -331,8 +367,7 @@ void InteriorGenNode::AssignRoomTypes(
 		room.type = RoomType::Corridor;
 	}
 
-	// 1. Assign Lobby to the largest room (or first floor room)
-	// Sort rooms by area descending to find the largest room
+	// 1. Assign Lobby to the largest room
 	std::vector<InteriorRoom*> sortedRooms;
 	for (auto& room : interior.rooms)
 	{
@@ -343,20 +378,18 @@ void InteriorGenNode::AssignRoomTypes(
 		return a->GetArea() > b->GetArea();
 	});
 
-	// The largest room gets assigned as Lobby/Livingroom
 	if (!sortedRooms.empty())
 	{
 		sortedRooms[0]->type = RoomType::Lobby;
 	}
 
-	// We will allocate remaining rooms based on user preferences.
 	std::vector<InteriorRoom*> remainingRooms;
 	for (size_t i = 1; i < sortedRooms.size(); i++)
 	{
 		remainingRooms.push_back(sortedRooms[i]);
 	}
 
-	// If it's commercial, everything just becomes Office
+	// If it's commercial, everything else becomes Office
 	if (isCommercial)
 	{
 		for (auto* room : remainingRooms)
@@ -366,61 +399,57 @@ void InteriorGenNode::AssignRoomTypes(
 		return;
 	}
 
-	// 2. Assign Bathrooms: bathrooms are usually the smallest remaining rooms!
+	// For residential, we proportionally allocate:
+	// Bathroom: 1 for up to 4 rooms, 2 for 5-8 rooms, etc. (the smallest remaining rooms)
+	size_t totalRooms = interior.rooms.size();
+	size_t targetBathrooms = std::max<size_t>(1, totalRooms / 4);
+
+	// Sort remaining by area ascending for Bathrooms
 	std::sort(remainingRooms.begin(), remainingRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
 		return a->GetArea() < b->GetArea();
 	});
 
-	int assignedBathrooms = 0;
-	size_t index = 0;
-	while (assignedBathrooms < numBathrooms && index < remainingRooms.size())
+	size_t assignedBathrooms = 0;
+	while (assignedBathrooms < targetBathrooms && !remainingRooms.empty())
 	{
-		remainingRooms[index]->type = RoomType::Bathroom;
+		remainingRooms.front()->type = RoomType::Bathroom;
+		remainingRooms.erase(remainingRooms.begin());
 		assignedBathrooms++;
-		index++;
 	}
 
-	// Remove assigned bathrooms from remaining list
-	remainingRooms.erase(remainingRooms.begin(), remainingRooms.begin() + assignedBathrooms);
-
-	// 3. Assign Kitchens: kitchens are medium-large, so let's sort remaining rooms descending (largest first)
+	// Kitchen: 1 kitchen if we have at least 3 total rooms
+	size_t targetKitchens = (totalRooms >= 3) ? 1 : 0;
+	// Sort remaining by area descending (largest first) for Kitchen/Bedrooms
 	std::sort(remainingRooms.begin(), remainingRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
 		return a->GetArea() > b->GetArea();
 	});
 
-	int assignedKitchens = 0;
-	index = 0;
-	while (assignedKitchens < numKitchens && index < remainingRooms.size())
+	size_t assignedKitchens = 0;
+	while (assignedKitchens < targetKitchens && !remainingRooms.empty())
 	{
-		remainingRooms[index]->type = RoomType::Kitchen;
+		remainingRooms.front()->type = RoomType::Kitchen;
+		remainingRooms.erase(remainingRooms.begin());
 		assignedKitchens++;
-		index++;
 	}
 
-	// Remove assigned kitchens from remaining list
-	remainingRooms.erase(remainingRooms.begin(), remainingRooms.begin() + assignedKitchens);
-
-	// 4. Assign Bedrooms: up to numBedrooms
-	int assignedBedrooms = 0;
-	index = 0;
-	while (assignedBedrooms < numBedrooms && index < remainingRooms.size())
+	// Bedrooms: up to half of remaining, or at least 1 if we have remaining rooms
+	size_t targetBedrooms = std::max<size_t>(1, remainingRooms.size() / 2);
+	size_t assignedBedrooms = 0;
+	while (assignedBedrooms < targetBedrooms && !remainingRooms.empty())
 	{
-		remainingRooms[index]->type = RoomType::Bedroom;
+		remainingRooms.front()->type = RoomType::Bedroom;
+		remainingRooms.erase(remainingRooms.begin());
 		assignedBedrooms++;
-		index++;
 	}
 
-	// Remove assigned bedrooms
-	remainingRooms.erase(remainingRooms.begin(), remainingRooms.begin() + assignedBedrooms);
-
-	// 5. Remaining rooms: any leftovers become beautiful corridors or study offices!
+	// Remaining rooms: leftovers randomly become Bedroom, Office, or Bathroom (avoid empty Closets/Corridors)
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	for (auto* room : remainingRooms)
 	{
 		float r = prob(rng);
-		if (r < 0.4f) room->type = RoomType::Closet;
-		else if (r < 0.7f) room->type = RoomType::Office;
-		else room->type = RoomType::Corridor;
+		if (r < 0.45f) room->type = RoomType::Bedroom;
+		else if (r < 0.85f) room->type = RoomType::Office;
+		else room->type = RoomType::Bathroom;
 	}
 }
 
@@ -522,7 +551,7 @@ BuildingInterior InteriorGenNode::GenerateBuildingInterior(
 		                   ceilY,
 		                   interior.footprintMax.z - wallThickness);
 
-		int totalRequested = 1 + numBedrooms + numKitchens + numBathrooms;
+		int totalRequested = numRooms;
 		SubdivideFloor(interior, floorMin, floorMax, f, isCommercial, rng, totalRequested);
 	}
 
@@ -937,7 +966,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				auto decorator = CreateDecoratorForRoom(room.type);
 				if (decorator)
 				{
-					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize, toiletSize, bathtubSize, sofaSize, coffeeTableSize, tvStandSize);
+					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize, toiletSize, bathtubSize, sofaSize, coffeeTableSize, tvStandSize, interior.isCommercial);
 				}
 			}
 		}
@@ -1048,7 +1077,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				else if (prop.category == "toilet") sourceObj = toiletSrcObj;
 				else if (prop.category == "bathtub") sourceObj = bathtubSrcObj;
 				else if (prop.category == "washing_machine") sourceObj = toiletSrcObj; // reuse bathroom input
-				else if (prop.category == "cabinet") sourceObj = sinkSrcObj; // reuse sink input as fallback
+				else if (prop.category == "cabinet") sourceObj = tvStandSrcObj ? tvStandSrcObj : (deskSrcObj ? deskSrcObj : sinkSrcObj); // reuse cabinet/desk input instead of sink
 				else if (prop.category == "couch") sourceObj = sofaSrcObj;
 				else if (prop.category == "coffee_table") sourceObj = coffeeTableSrcObj;
 				else if (prop.category == "tv_stand") sourceObj = tvStandSrcObj;

@@ -1,9 +1,9 @@
 === Interior Gen Debug ===
 Bed: bed1 22
-  Source Transform: Pos(12.9, 3.96684, 1.43567) Rot(-90, 180, 180) Scl(0.02, 0.01, 0.02)
+  Source Transform: Pos(3.08687, 3.96684, 1.43567) Rot(-90, 180, 180) Scl(0.02, 0.01, 0.02)
   Calculated AABB Size: 1.31552 x 0.587271 x 1.8424
-Desk: Table 38
-  Calculated AABB Size: 0.919559 x 0.47381 x 0.430277
+Desk: little_glass_table (Root)
+  Calculated AABB Size: 1.21982 x 0.404708 x 0.933488
 Sink: sink (Root)
   Calculated AABB Size: 2.03135 x 1.1372 x 0.588624
 Bathtub: Bathroom_props_Set01 (Root)
@@ -11,4 +11,4 @@ Bathtub: Bathroom_props_Set01 (Root)
 Sofa: bed2 97
   Calculated AABB Size: 1.60344 x 0.521019 x 0.775799
 TV Stand: tumba_fur 94
-  Calculated AABB Size: 0.745008 x 0.629026 x 0.202184
+  Calculated AABB Size: 0.745007 x 0.629026 x 0.202184

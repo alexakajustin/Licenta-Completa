@@ -52,9 +52,9 @@ private:
 	float singleDepth    = 20.0f;   // Standalone building depth (when no plots are connected)
 	bool  generateWalls  = true;    // Toggle interior wall drawing
 	bool  generateCeiling = false;  // Toggle ceiling slab drawing
-	int   numBedrooms    = 2;
-	int   numKitchens    = 1;
-	int   numBathrooms   = 1;
+	int   numRooms       = 4;
+	float minRoomSize    = 3.0f;
+	float maxRoomSize    = 6.0f;
 
 	// Core generation pipeline
 	BuildingInterior GenerateBuildingInterior(

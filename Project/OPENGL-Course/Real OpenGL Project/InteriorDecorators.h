@@ -60,10 +60,10 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false
 	) = 0;
 
-protected:
 	// Shared primitive helper: create a box at a world position
 	static MeshData MakeBox(glm::vec3 center, glm::vec3 halfExtents, float uvScale = 1.0f);
 };
@@ -87,7 +87,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 class BathroomDecorator : public IInteriorDecorator
@@ -105,7 +106,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 class CorridorDecorator : public IInteriorDecorator
@@ -123,7 +125,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 class BedroomDecorator : public IInteriorDecorator
@@ -141,7 +144,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 class KitchenDecorator : public IInteriorDecorator
@@ -159,7 +163,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 class LobbyDecorator : public IInteriorDecorator
@@ -177,7 +182,8 @@ public:
 		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
 		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
 		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f)) override;
+		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		bool isCommercial = false) override;
 };
 
 // =====================================================================
