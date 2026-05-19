@@ -355,17 +355,6 @@ void InteriorGenNode::AssembleFloorplan(
 
 	float maxTotalWidth = std::max(topTotalWidth, bottomTotalWidth);
 
-	if (!topRow.empty() && topTotalWidth < maxTotalWidth) {
-		float diff = maxTotalWidth - topTotalWidth;
-		float paddingPerRoom = diff / topRow.size();
-		for (auto& r : topRow) r.width += paddingPerRoom;
-	}
-	if (!bottomRow.empty() && bottomTotalWidth < maxTotalWidth) {
-		float diff = maxTotalWidth - bottomTotalWidth;
-		float paddingPerRoom = diff / bottomRow.size();
-		for (auto& r : bottomRow) r.width += paddingPerRoom;
-	}
-
 	float totalWidth = maxTotalWidth + wt * 2.0f;
 	bool needsHallway = (specs.size() > 1);
 	float totalDepth = topMaxDepth + bottomMaxDepth + wt * 2.0f;
@@ -384,6 +373,8 @@ void InteriorGenNode::AssembleFloorplan(
 		r.maxBounds = maxB;
 		r.type = t;
 		r.floorIndex = 0;
+		// For irregular shapes, any room might have exterior walls so we'll just leave this as footprint check 
+		// although true exterior windows might need better checking later
 		float eps = wt * 2.0f;
 		r.hasExteriorWindow =
 			(std::abs(minB.x - interior.footprintMin.x) < eps) ||
@@ -422,9 +413,22 @@ void InteriorGenNode::AssembleFloorplan(
 		AddWall(glm::vec3(interior.footprintMin.x, floorY, hallMinZ - wt),
 				glm::vec3(interior.footprintMax.x, ceilY, hallMinZ));
 
+		// Hallway caps (left and right exterior)
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, hallMinZ),
+				glm::vec3(interior.footprintMin.x + wt, ceilY, hallMaxZ));
+		AddWall(glm::vec3(interior.footprintMax.x - wt, floorY, hallMinZ),
+				glm::vec3(interior.footprintMax.x, ceilY, hallMaxZ));
+
 		// Place top row (above hallway, +Z)
 		float curX = startX;
 		float topMinZ = hallMaxZ + wt;
+
+		if (!topRow.empty()) {
+			// Far North exterior wall
+			AddWall(glm::vec3(startX - wt, floorY, topMinZ + topMaxDepth),
+					glm::vec3(startX + topTotalWidth + wt, ceilY, topMinZ + topMaxDepth + wt));
+		}
+
 		for (size_t i = 0; i < topRow.size(); i++)
 		{
 			float roomW = topRow[i].width;
@@ -436,17 +440,29 @@ void InteriorGenNode::AssembleFloorplan(
 				topRow[i].type
 			);
 
-			if (i + 1 < topRow.size())
-			{
-				AddWall(glm::vec3(curX + roomW, floorY, topMinZ),
-						glm::vec3(curX + roomW + wt, ceilY, topMinZ + roomD));
+			// Left exterior cap
+			if (i == 0) {
+				AddWall(glm::vec3(startX - wt, floorY, topMinZ),
+						glm::vec3(startX, ceilY, topMinZ + roomD));
 			}
+
+			// Shared interior wall OR right exterior cap
+			AddWall(glm::vec3(curX + roomW, floorY, topMinZ),
+					glm::vec3(curX + roomW + wt, ceilY, topMinZ + roomD));
+
 			curX += roomW + wt;
 		}
 
 		// Place bottom row (below hallway, -Z)
 		curX = startX;
 		float bottomMaxZ = hallMinZ - wt;
+
+		if (!bottomRow.empty()) {
+			// Far South exterior wall
+			AddWall(glm::vec3(startX - wt, floorY, bottomMaxZ - bottomMaxDepth - wt),
+					glm::vec3(startX + bottomTotalWidth + wt, ceilY, bottomMaxZ - bottomMaxDepth));
+		}
+
 		for (size_t i = 0; i < bottomRow.size(); i++)
 		{
 			float roomW = bottomRow[i].width;
@@ -458,17 +474,22 @@ void InteriorGenNode::AssembleFloorplan(
 				bottomRow[i].type
 			);
 
-			if (i + 1 < bottomRow.size())
-			{
-				AddWall(glm::vec3(curX + roomW, floorY, bottomMaxZ - roomD),
-						glm::vec3(curX + roomW + wt, ceilY, bottomMaxZ));
+			// Left exterior cap
+			if (i == 0) {
+				AddWall(glm::vec3(startX - wt, floorY, bottomMaxZ - roomD),
+						glm::vec3(startX, ceilY, bottomMaxZ));
 			}
+
+			// Shared interior wall OR right exterior cap
+			AddWall(glm::vec3(curX + roomW, floorY, bottomMaxZ - roomD),
+					glm::vec3(curX + roomW + wt, ceilY, bottomMaxZ));
+
 			curX += roomW + wt;
 		}
 	}
 	else
 	{
-		// Single room â€” no hallway needed
+		// Single room — no hallway needed
 		float roomW = specs[0].width;
 		float roomD = specs[0].depth;
 		float halfRW = roomW * 0.5f;
@@ -482,6 +503,16 @@ void InteriorGenNode::AssembleFloorplan(
 			glm::vec3(origin.x + halfRW, ceilY, origin.z + halfRD),
 			specs[0].type
 		);
+
+		// 4 perimeter walls
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, interior.footprintMin.z),
+				glm::vec3(interior.footprintMax.x, ceilY, interior.footprintMin.z + wt)); // South
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, interior.footprintMax.z - wt),
+				glm::vec3(interior.footprintMax.x, ceilY, interior.footprintMax.z)); // North
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, interior.footprintMin.z + wt),
+				glm::vec3(interior.footprintMin.x + wt, ceilY, interior.footprintMax.z - wt)); // West
+		AddWall(glm::vec3(interior.footprintMax.x - wt, floorY, interior.footprintMin.z + wt),
+				glm::vec3(interior.footprintMax.x, ceilY, interior.footprintMax.z - wt)); // East
 	}
 }
 
@@ -1081,44 +1112,7 @@ void InteriorGenNode::BuildStructuralMesh(
 				}
 			}
 
-		// Outside walls (Perimeter NSEW)
-		float wThick = interior.wallThickness;
-		float minX = interior.footprintMin.x;
-		float maxX = interior.footprintMax.x;
-		float minZ = interior.footprintMin.z;
-		float maxZ = interior.footprintMax.z;
 
-		for (int f = 0; f < interior.numFloors; f++)
-		{
-			float floorY = interior.footprintMin.y + f * interior.floorHeight + interior.floorThickness;
-			float ceilY  = interior.footprintMin.y + (f + 1) * interior.floorHeight;
-			float wallH  = (ceilY - floorY) * 0.5f;
-			float centerY = (floorY + ceilY) * 0.5f;
-
-			// North Wall (at maxZ)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
-				glm::vec3((minX + maxX) * 0.5f, centerY, maxZ - wThick * 0.5f),
-				glm::vec3((maxX - minX) * 0.5f, wallH, wThick * 0.5f),
-				2.0f));
-
-			// South Wall (at minZ)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
-				glm::vec3((minX + maxX) * 0.5f, centerY, minZ + wThick * 0.5f),
-				glm::vec3((maxX - minX) * 0.5f, wallH, wThick * 0.5f),
-				2.0f));
-
-			// East Wall (at maxX)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
-				glm::vec3(maxX - wThick * 0.5f, centerY, (minZ + maxZ) * 0.5f),
-				glm::vec3(wThick * 0.5f, wallH, (maxZ - minZ) * 0.5f),
-				2.0f));
-
-			// West Wall (at minX)
-			meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, 
-				glm::vec3(minX + wThick * 0.5f, centerY, (minZ + maxZ) * 0.5f),
-				glm::vec3(wThick * 0.5f, wallH, (maxZ - minZ) * 0.5f),
-				2.0f));
-		}
 	}
 }
 
