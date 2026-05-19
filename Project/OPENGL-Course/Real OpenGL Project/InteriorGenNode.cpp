@@ -238,41 +238,41 @@ MeshData InteriorGenNode::MakeWallBox(glm::mat4 plotMat, glm::vec3 center, glm::
 // ComputeRoomSize â€” Determine ideal room dimensions from furniture
 // =====================================================================
 
-glm::vec2 InteriorGenNode::ComputeRoomSize(RoomType type, const FurnitureSizes& f) const
+glm::vec2 InteriorGenNode::ComputeRoomSize(RoomType type, const FurnitureSpecs& f) const
 {
-	float padding = 1.5f; // Walking space around furniture
+	float padding = (type == RoomType::Bathroom) ? 0.8f : 1.5f; // Walking space around furniture
 	float doorClearance = 1.2f; // Space for door swing
 
 	switch (type)
 	{
 	case RoomType::Bedroom:
 	{
-		float bedLen = std::max(f.bed.x, f.bed.z);
-		float bedW = std::min(f.bed.x, f.bed.z);
+		float bedLen = std::max(f.bed.size.x, f.bed.size.z);
+		float bedW = std::min(f.bed.size.x, f.bed.size.z);
 		float w = std::max(bedLen + padding + 0.5f, 3.5f);
-		float d = std::max(bedW + f.desk.z + padding + doorClearance, 3.2f);
+		float d = std::max(bedW + f.desk.size.z + padding + doorClearance, 3.2f);
 		return glm::vec2(w, d);
 	}
 	case RoomType::Bathroom:
 	{
-		float bathtubLen = std::max(f.bathtub.x, f.bathtub.z);
-		float bathtubW = std::min(f.bathtub.x, f.bathtub.z);
-		float w = std::max(bathtubLen + f.toilet.x + padding, 2.5f);
-		float d = std::max(std::max(bathtubW, f.sink.z) + padding + doorClearance, 2.0f);
+		float bathtubLen = std::max(f.bathtub.size.x, f.bathtub.size.z);
+		float bathtubW = std::min(f.bathtub.size.x, f.bathtub.size.z);
+		float w = std::max(std::max(bathtubLen, f.toilet.size.x) + padding, 2.5f);
+		float d = std::max(std::max(bathtubW, f.sink.size.z) + padding + doorClearance, 2.0f);
 		return glm::vec2(w, d);
 	}
 	case RoomType::Kitchen:
 	{
-		float applianceRow = f.stove.x + f.sink.x + f.fridge.x + 0.3f * 2.0f;
+		float applianceRow = f.stove.size.x + f.sink.size.x + f.fridge.size.x + 0.3f * 2.0f;
 		float w = std::max(applianceRow + padding, 3.5f);
-		float d = std::max(f.fridge.z + padding + doorClearance + 1.0f, 3.0f);
+		float d = std::max(f.fridge.size.z + padding + doorClearance + 1.0f, 3.0f);
 		return glm::vec2(w, d);
 	}
 	case RoomType::Lobby: // Living Room
 	{
-		float sofaLen = std::max(f.sofa.x, f.sofa.z);
-		float w = std::max(sofaLen + f.coffeeTable.x + padding + 0.5f, 4.0f);
-		float d = std::max(f.sofa.z + f.tvStand.z + padding + doorClearance, 3.5f);
+		float sofaLen = std::max(f.sofa.size.x, f.sofa.size.z);
+		float w = std::max(sofaLen + f.coffeeTable.size.x + padding + 0.5f, 4.0f);
+		float d = std::max(f.sofa.size.z + f.tvStand.size.z + padding + doorClearance, 3.5f);
 		return glm::vec2(w, d);
 	}
 	default:
@@ -288,7 +288,7 @@ void InteriorGenNode::AssembleFloorplan(
 	BuildingInterior& interior,
 	glm::vec3 origin, float floorY, float ceilY,
 	std::mt19937& rng,
-	const FurnitureSizes& furniture) const
+	const FurnitureSpecs& furniture) const
 {
 	// 1. Build the room list with types and ideal sizes
 	struct RoomSpec {
@@ -886,8 +886,9 @@ void InteriorGenNode::PlaceDoors(
 // =====================================================================
 
 BuildingInterior InteriorGenNode::GenerateBuildingInterior(
-	const TransformData& plot, std::mt19937& rng,
-	const FurnitureSizes& furniture) const
+	const TransformData& plot,
+	std::mt19937& rng,
+	const FurnitureSpecs& furniture) const
 {
 	BuildingInterior interior;
 
@@ -1375,18 +1376,18 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	size_t chunkSize = (plots.size() + numThreads - 1) / numThreads;
 
 	// Build furniture sizes struct for the pipeline
-	FurnitureSizes furnitureSizes;
-	furnitureSizes.bed = bedSize;
-	furnitureSizes.desk = deskSize;
-	furnitureSizes.tv = tvSize;
-	furnitureSizes.stove = stoveSize;
-	furnitureSizes.fridge = fridgeSize;
-	furnitureSizes.sink = sinkSize;
-	furnitureSizes.toilet = toiletSize;
-	furnitureSizes.bathtub = bathtubSize;
-	furnitureSizes.sofa = sofaSize;
-	furnitureSizes.coffeeTable = coffeeTableSize;
-	furnitureSizes.tvStand = tvStandSize;
+	FurnitureSpecs furnitureSpecs;
+	furnitureSpecs.bed = { bedSize, bedSrcObj ? bedSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.desk = { deskSize, deskSrcObj ? deskSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.tv = { tvSize, tvSrcObj ? tvSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.stove = { stoveSize, stoveSrcObj ? stoveSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.fridge = { fridgeSize, fridgeSrcObj ? fridgeSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.sink = { sinkSize, sinkSrcObj ? sinkSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.toilet = { toiletSize, toiletSrcObj ? toiletSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.bathtub = { bathtubSize, bathtubSrcObj ? bathtubSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.sofa = { sofaSize, sofaSrcObj ? sofaSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.coffeeTable = { coffeeTableSize, coffeeTableSrcObj ? coffeeTableSrcObj->GetModelSourcePath() : "" };
+	furnitureSpecs.tvStand = { tvStandSize, tvStandSrcObj ? tvStandSrcObj->GetModelSourcePath() : "" };
 
 	for (int t = 0; t < numThreads; t++)
 	{
@@ -1394,11 +1395,11 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		size_t endIdx = std::min(startIdx + chunkSize, plots.size());
 		if (startIdx >= plots.size()) break;
 
-		threads.emplace_back([this, startIdx, endIdx, &plots, &interiors, furnitureSizes]() {
+		threads.emplace_back([this, startIdx, endIdx, &plots, &interiors, furnitureSpecs]() {
 			for (size_t i = startIdx; i < endIdx; i++)
 			{
 				std::mt19937 localRng(seed + (int)i + 7919);
-				interiors[i] = GenerateBuildingInterior(plots[i], localRng, furnitureSizes);
+				interiors[i] = GenerateBuildingInterior(plots[i], localRng, furnitureSpecs);
 			}
 		});
 	}
@@ -1433,7 +1434,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				auto decorator = CreateDecoratorForRoom(room.type);
 				if (decorator)
 				{
-					decorator->Decorate(meshBuckets, interior.props, room, interior.doors, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize, toiletSize, bathtubSize, sofaSize, coffeeTableSize, tvStandSize, interior.isCommercial);
+					decorator->Decorate(meshBuckets, interior.props, room, interior.doors, decorRng, floorHeight, furnitureSpecs, interior.isCommercial);
 				}
 			}
 		}

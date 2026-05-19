@@ -51,19 +51,8 @@ public:
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng,
 		float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
-		bool isCommercial = false
-	) = 0;
+		const FurnitureSpecs& f,
+		bool isCommercial = false) = 0;
 
 	// Shared primitive helper: create a box at a world position
 	static MeshData MakeBox(glm::vec3 center, glm::vec3 halfExtents, float uvScale = 1.0f);
@@ -79,17 +68,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 
@@ -99,17 +78,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 
@@ -119,17 +88,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 
@@ -139,17 +98,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 
@@ -159,17 +108,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 
@@ -179,17 +118,7 @@ public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
 		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
-		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
-		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
-		glm::vec3 tvSize = glm::vec3(0.9f, 0.6f, 0.2f),
-		glm::vec3 stoveSize = glm::vec3(0.8f, 0.9f, 0.6f),
-		glm::vec3 fridgeSize = glm::vec3(0.8f, 1.8f, 0.7f),
-		glm::vec3 sinkSize = glm::vec3(0.9f, 0.9f, 0.6f),
-		glm::vec3 toiletSize = glm::vec3(0.5f, 0.8f, 0.7f),
-		glm::vec3 bathtubSize = glm::vec3(0.8f, 0.6f, 1.7f),
-		glm::vec3 sofaSize = glm::vec3(1.6f, 0.8f, 0.8f),
-		glm::vec3 coffeeTableSize = glm::vec3(1.0f, 0.45f, 0.7f),
-		glm::vec3 tvStandSize = glm::vec3(1.2f, 0.5f, 0.6f),
+		const FurnitureSpecs& f,
 		bool isCommercial = false) override;
 };
 

@@ -11,4 +11,4 @@ Bathtub: Bathroom_props_Set01 (Root)
 Sofa: bed2 97
   Calculated AABB Size: 1.60344 x 0.521019 x 0.775799
 TV Stand: tumba_fur 94
-  Calculated AABB Size: 0.745007 x 0.629026 x 0.202184
+  Calculated AABB Size: 0.645673 x 0.566124 x 0.181965

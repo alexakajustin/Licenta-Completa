@@ -59,17 +59,17 @@ private:
 	// Core generation pipeline
 	BuildingInterior GenerateBuildingInterior(
 		const TransformData& plot, std::mt19937& rng,
-		const FurnitureSizes& furniture) const;
+		const FurnitureSpecs& furniture) const;
 
 	// Furniture-first room layout: compute ideal room size from furniture
-	glm::vec2 ComputeRoomSize(RoomType type, const FurnitureSizes& furniture) const;
+	glm::vec2 ComputeRoomSize(RoomType type, const FurnitureSpecs& furniture) const;
 
 	// Assemble the floorplan by placing rooms around a central hallway
 	void AssembleFloorplan(
 		BuildingInterior& interior,
 		glm::vec3 origin, float floorY, float ceilY,
 		std::mt19937& rng,
-		const FurnitureSizes& furniture) const;
+		const FurnitureSpecs& furniture) const;
 
 	void PlaceDoors(
 		BuildingInterior& interior,

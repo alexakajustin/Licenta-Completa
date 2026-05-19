@@ -185,19 +185,21 @@ void OfficeDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	PlaceCeilingLights(props, room, rng);
 
@@ -310,19 +312,21 @@ void BathroomDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	float floorY = room.minBounds.y;
 
@@ -424,7 +428,8 @@ void BathroomDecorator::Decorate(
 				glm::vec2 toiletXZ;
 				if (occ.TryPlaceAlongWall(w, toiletHalf, tDepth * 0.5f + 0.05f, toiletXZ, 0.02f))
 				{
-					AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
+					std::string modelPath = f.toilet.path.empty() ? "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx" : f.toilet.path;
+					AddPropOcc(props, occ, modelPath,
 						toiletXZ, toiletHalf, floorY, glm::vec3(0.0f, wallYaw(w), 0.0f), glm::vec3(ts), "toilet");
 					toiletPlaced = true;
 				}
@@ -432,8 +437,9 @@ void BathroomDecorator::Decorate(
 		}
 		if (!toiletPlaced) // Force placement
 		{
+			std::string modelPath = f.toilet.path.empty() ? "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx" : f.toilet.path;
 			glm::vec2 toiletXZ = occ.GetRoomCenter() - glm::vec2(0.5f);
-			AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathroom_Props_Set02.fbx",
+			AddPropOcc(props, occ, modelPath,
 				toiletXZ, glm::vec2(toiletSize.x * 0.4f), floorY, glm::vec3(0.0f), glm::vec3(0.8f), "toilet");
 		}
 
@@ -487,7 +493,8 @@ void BathroomDecorator::Decorate(
 					{
 						if (isValidPlacement(bathXZ, yaw))
 						{
-							AddPropOcc(props, occ, "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx",
+							std::string modelPath = f.bathtub.path.empty() ? "Assets/Models/Bathroom/Model/Bathroom_props_set/Bathtub.fbx" : f.bathtub.path;
+							AddPropOcc(props, occ, modelPath,
 								bathXZ, bathHalf, floorY, glm::vec3(0.0f, yaw, 0.0f), glm::vec3(bathScale), "bathtub");
 							bathPlaced = true;
 							break;
@@ -553,19 +560,21 @@ void CorridorDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	// Corridors get lights and nice wall trims too!
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	PlaceCeilingLights(props, room, rng);
@@ -596,19 +605,21 @@ void BedroomDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	PlaceCeilingLights(props, room, rng);
 
@@ -665,7 +676,8 @@ void BedroomDecorator::Decorate(
 	glm::vec2 bedHalf = (bedYaw == 90.0f || bedYaw == -90.0f) ? glm::vec2(fBL * 0.5f, fBW * 0.5f) : glm::vec2(fBW * 0.5f, fBL * 0.5f);
 
 	// Register and place bed
-	AddPropOcc(props, occ, "Assets/Models/Bedroom/Models/Interior/Bed_01.fbx",
+	std::string bedPath = f.bed.path.empty() ? "Assets/Models/Bedroom/Models/Interior/Bed_01.fbx" : f.bed.path;
+	AddPropOcc(props, occ, bedPath,
 		bedXZ, bedHalf, floorY, glm::vec3(0.0f, bedYaw, 0.0f), glm::vec3(sf), "bed");
 
 	// Rug under bed
@@ -775,19 +787,21 @@ void KitchenDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	float floorY = room.minBounds.y;
 
@@ -917,19 +931,21 @@ void LobbyDecorator::Decorate(
 	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
-	glm::vec3 bedSize,
-	glm::vec3 deskSize,
-	glm::vec3 tvSize,
-	glm::vec3 stoveSize,
-	glm::vec3 fridgeSize,
-	glm::vec3 sinkSize,
-	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize,
-	glm::vec3 sofaSize,
-	glm::vec3 coffeeTableSize,
-	glm::vec3 tvStandSize,
+	const FurnitureSpecs& f,
 	bool isCommercial)
 {
+	glm::vec3 bedSize = f.bed.size;
+	glm::vec3 deskSize = f.desk.size;
+	glm::vec3 tvSize = f.tv.size;
+	glm::vec3 stoveSize = f.stove.size;
+	glm::vec3 fridgeSize = f.fridge.size;
+	glm::vec3 sinkSize = f.sink.size;
+	glm::vec3 toiletSize = f.toilet.size;
+	glm::vec3 bathtubSize = f.bathtub.size;
+	glm::vec3 sofaSize = f.sofa.size;
+	glm::vec3 coffeeTableSize = f.coffeeTable.size;
+	glm::vec3 tvStandSize = f.tvStand.size;
+
 	GenerateRoomTrim(meshBuckets, room, floorHeight, isCommercial);
 	PlaceCeilingLights(props, room, rng);
 

@@ -89,18 +89,24 @@ struct BuildingInterior
 };
 
 // Bundled furniture dimensions for pipeline parameter passing
-struct FurnitureSizes
+struct FurnitureSpecItem {
+	glm::vec3 size;
+	std::string path;
+};
+
+// Bundled furniture dimensions and model paths for pipeline parameter passing
+struct FurnitureSpecs
 {
-	glm::vec3 bed          = glm::vec3(1.6f, 0.8f, 2.0f);
-	glm::vec3 desk         = glm::vec3(1.2f, 0.75f, 0.6f);
-	glm::vec3 tv           = glm::vec3(0.9f, 0.6f, 0.2f);
-	glm::vec3 stove        = glm::vec3(0.8f, 0.9f, 0.6f);
-	glm::vec3 fridge       = glm::vec3(0.8f, 1.8f, 0.7f);
-	glm::vec3 sink         = glm::vec3(0.9f, 0.9f, 0.6f);
-	glm::vec3 toilet       = glm::vec3(0.5f, 0.8f, 0.7f);
-	glm::vec3 bathtub      = glm::vec3(0.8f, 0.6f, 1.7f);
-	glm::vec3 sofa         = glm::vec3(1.6f, 0.8f, 0.8f);
-	glm::vec3 coffeeTable  = glm::vec3(1.0f, 0.45f, 0.7f);
-	glm::vec3 tvStand      = glm::vec3(1.2f, 0.5f, 0.6f);
+	FurnitureSpecItem bed          = { glm::vec3(1.6f, 0.8f, 2.0f), "" };
+	FurnitureSpecItem desk         = { glm::vec3(1.2f, 0.75f, 0.6f), "" };
+	FurnitureSpecItem tv           = { glm::vec3(0.9f, 0.6f, 0.2f), "" };
+	FurnitureSpecItem stove        = { glm::vec3(0.8f, 0.9f, 0.6f), "" };
+	FurnitureSpecItem fridge       = { glm::vec3(0.8f, 1.8f, 0.7f), "" };
+	FurnitureSpecItem sink         = { glm::vec3(0.9f, 0.9f, 0.6f), "" };
+	FurnitureSpecItem toilet       = { glm::vec3(0.5f, 0.8f, 0.7f), "" };
+	FurnitureSpecItem bathtub      = { glm::vec3(0.8f, 0.6f, 1.7f), "" };
+	FurnitureSpecItem sofa         = { glm::vec3(1.6f, 0.8f, 0.8f), "" };
+	FurnitureSpecItem coffeeTable  = { glm::vec3(1.0f, 0.45f, 0.7f), "" };
+	FurnitureSpecItem tvStand      = { glm::vec3(1.2f, 0.5f, 0.6f), "" };
 };
 
