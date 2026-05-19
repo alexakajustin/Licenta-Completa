@@ -182,6 +182,7 @@ void OfficeDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -203,6 +204,7 @@ void OfficeDecorator::Decorate(
 	float floorY = room.minBounds.y;
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	std::uniform_real_distribution<float> rotJ(-15.0f, 15.0f);
@@ -305,6 +307,7 @@ void BathroomDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -325,6 +328,7 @@ void BathroomDecorator::Decorate(
 
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	auto wallYaw = [](int w) -> float { return (w==0)?90.0f:(w==1)?-90.0f:(w==2)?0.0f:180.0f; };
 
@@ -546,6 +550,7 @@ void CorridorDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -568,6 +573,7 @@ void CorridorDecorator::Decorate(
 	float floorY = room.minBounds.y;
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	// Place a plant pot in one of the corners if space permits
 	glm::vec2 plantHalf(0.2f);
@@ -587,6 +593,7 @@ void BedroomDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -608,6 +615,7 @@ void BedroomDecorator::Decorate(
 	float floorY = room.minBounds.y;
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 
@@ -764,6 +772,7 @@ void KitchenDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -784,6 +793,7 @@ void KitchenDecorator::Decorate(
 
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
 	                  glm::vec2(room.maxBounds.x, room.maxBounds.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	// Layout is aligned along wall 2 (-Z)
 	float roomW = room.GetWidth();
@@ -904,6 +914,7 @@ void LobbyDecorator::Decorate(
 	std::map<int, MeshData>& meshBuckets,
 	std::vector<PropPlacement>& props,
 	const InteriorRoom& room,
+	const std::vector<InteriorDoor>& doors,
 	std::mt19937& rng,
 	float floorHeight,
 	glm::vec3 bedSize,
@@ -929,6 +940,7 @@ void LobbyDecorator::Decorate(
 	float centerZ = (roomMin.z + roomMax.z) * 0.5f;
 
 	RoomOccupancy occ(glm::vec2(roomMin.x, roomMin.z), glm::vec2(roomMax.x, roomMax.z));
+	for (const auto& d : doors) occ.BlockDoor(d.position, d.width, d.runsAlongX, 0.15f);
 
 	// 1. Coffee table in the center
 	glm::vec2 tableHalf(coffeeTableSize.x * 0.5f, coffeeTableSize.z * 0.5f);

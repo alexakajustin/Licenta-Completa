@@ -48,6 +48,7 @@ public:
 		std::map<int, MeshData>& meshBuckets,
 		std::vector<PropPlacement>& props,
 		const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng,
 		float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
@@ -76,6 +77,7 @@ class OfficeDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
@@ -95,6 +97,7 @@ class BathroomDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
@@ -114,6 +117,7 @@ class CorridorDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
@@ -133,6 +137,7 @@ class BedroomDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
@@ -152,6 +157,7 @@ class KitchenDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),
@@ -171,6 +177,7 @@ class LobbyDecorator : public IInteriorDecorator
 {
 public:
 	void Decorate(std::map<int, MeshData>& meshBuckets, std::vector<PropPlacement>& props, const InteriorRoom& room,
+		const std::vector<InteriorDoor>& doors,
 		std::mt19937& rng, float floorHeight,
 		glm::vec3 bedSize = glm::vec3(1.6f, 0.8f, 2.0f),
 		glm::vec3 deskSize = glm::vec3(1.2f, 0.75f, 0.6f),

@@ -44,6 +44,29 @@ void RoomOccupancy::Register(glm::vec2 center, glm::vec2 halfSize)
 	placed.push_back(fp);
 }
 
+void RoomOccupancy::BlockDoor(glm::vec3 doorPosition, float doorWidth, bool runsAlongX, float wallThickness)
+{
+	float eps = wallThickness + 0.1f;
+	if (doorPosition.x >= roomMin.x - eps && doorPosition.x <= roomMax.x + eps &&
+		doorPosition.z >= roomMin.y - eps && doorPosition.z <= roomMax.y + eps)
+	{
+		float clearanceDepth = 1.5f; // Deep walkway clearance
+		float clearanceWidthHalf = (doorWidth * 0.5f) + 0.6f; // 60cm extra padding on each side of the door
+
+		glm::vec2 doorCenter(doorPosition.x, doorPosition.z);
+		glm::vec2 halfSize;
+		if (runsAlongX)
+		{
+			halfSize = glm::vec2(clearanceWidthHalf, clearanceDepth);
+		}
+		else
+		{
+			halfSize = glm::vec2(clearanceDepth, clearanceWidthHalf);
+		}
+		Register(doorCenter, halfSize);
+	}
+}
+
 bool RoomOccupancy::TryPlaceAlongWall(int wall, glm::vec2 halfSize, float wallOffset,
 	glm::vec2& outCenter, float padding, float stepSize, bool preferCorner) const
 {

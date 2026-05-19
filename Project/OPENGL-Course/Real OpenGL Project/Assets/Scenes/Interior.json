@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.8212172985076904,
-            -0.1736481785774231,
-            0.5435516834259033
+            0.7930953502655029,
+            -0.5842496752738953,
+            -0.1721978783607483
         ],
-        "pitch": -10.0,
+        "pitch": -35.75,
         "position": [
-            3.758220672607422,
-            1.275194764137268,
-            1.5229889154434204
+            -3.4020605087280273,
+            5.161880016326904,
+            0.33347979187965393
         ],
-        "yaw": -213.5
+        "yaw": -12.25
     },
     "instancedGroups": [],
     "lights": [
@@ -80,7 +80,7 @@
                 "start": 157
             }
         ],
-        "nextId": 190,
+        "nextId": 221,
         "nodes": [
             {
                 "doorHeight": 1.75,
@@ -113,9 +113,12 @@
                 "maxRoomSize": 6.0,
                 "minRoomArea": 1.0,
                 "minRoomSize": 3.0,
-                "numRooms": 4,
+                "numBathrooms": 2,
+                "numBedrooms": 2,
+                "numKitchens": 1,
+                "numLivingRooms": 1,
                 "outputPins": [],
-                "seed": 131,
+                "seed": 50,
                 "title": "Interior Gen",
                 "wallInset": 5.0,
                 "wallThickness": 0.15000000596046448

@@ -33,6 +33,9 @@ public:
 	// Register an item footprint as occupied
 	void Register(glm::vec2 center, glm::vec2 halfSize);
 
+	// Block area in front of a door to prevent furniture collisions
+	void BlockDoor(glm::vec3 doorPosition, float doorWidth, bool runsAlongX, float wallThickness);
+
 	// Try to find a valid position along a wall.
 	// wall: 0 = -X (left), 1 = +X (right), 2 = -Z (front), 3 = +Z (back)
 	// halfSize: XZ half-extents of the item to place
