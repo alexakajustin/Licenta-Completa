@@ -234,9 +234,6 @@ void InteriorGenNode::SubdivideFloor(
 	std::mt19937& rng,
 	int targetRooms) const
 {
-	float width  = floorMax.x - floorMin.x;
-	float depth  = floorMax.z - floorMin.z;
-
 	// Helper to add room with exterior window flag check
 	auto AddRoomDirect = [&](glm::vec3 minB, glm::vec3 maxB, RoomType t) {
 		InteriorRoom r;
@@ -262,368 +259,163 @@ void InteriorGenNode::SubdivideFloor(
 		interior.walls.push_back(w);
 	};
 
-	// Decide layout style randomly based on size and room count
+	struct SplitRoom {
+		glm::vec3 minB;
+		glm::vec3 maxB;
+		bool isHallway = false;
+	};
+
+	std::vector<SplitRoom> to_split;
+	to_split.push_back({ floorMin, floorMax, false });
+	std::vector<SplitRoom> finalRooms;
+
 	float hallWidth = isCommercial ? 2.2f : 1.8f;
-	float minSizeWithHall = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
+	float minHallSize = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
 
-	bool canCorridor = (targetRooms >= 3 && (width >= minSizeWithHall || depth >= minSizeWithHall));
-	bool canWhirl = (!isCommercial && targetRooms >= 5 && width >= minRoomSize * 2.0f + wallThickness && depth >= minRoomSize * 2.0f + wallThickness);
-
-	enum class LayoutStyle { None, Corridor, Whirl };
-	std::vector<LayoutStyle> options;
-	options.push_back(LayoutStyle::None); // Fallback is always an option
-
-	if (canCorridor) options.push_back(LayoutStyle::Corridor);
-	if (canWhirl) options.push_back(LayoutStyle::Whirl);
-
-	std::uniform_int_distribution<size_t> optDist(0, options.size() - 1);
-	LayoutStyle selectedStyle = options[optDist(rng)];
-
-	// If targetRooms is high, force a structured layout if available
-	if (targetRooms >= 4 && selectedStyle == LayoutStyle::None && options.size() > 1) {
-		std::uniform_int_distribution<size_t> forceDist(1, options.size() - 1);
-		selectedStyle = options[forceDist(rng)];
-	}
-
-	if (selectedStyle == LayoutStyle::Corridor)
+	while (!to_split.empty())
 	{
-		// Randomized axis: if both work, pick randomly. Otherwise pick the one that works.
-		bool canHallX = (width >= minSizeWithHall);
-		bool canHallZ = (depth >= minSizeWithHall);
-		bool hallAlongX = true;
-		if (canHallX && canHallZ) {
-			std::uniform_int_distribution<int> axisDist(0, 1);
-			hallAlongX = (axisDist(rng) == 0);
-		} else if (canHallX) {
-			hallAlongX = true;
-		} else {
-			hallAlongX = false;
+		// Find the largest room in the queue to split first (keeps room proportions balanced!)
+		auto largestIt = to_split.begin();
+		float maxArea = -1.0f;
+		for (auto it = to_split.begin(); it != to_split.end(); ++it)
+		{
+			float area = (it->maxB.x - it->minB.x) * (it->maxB.z - it->minB.z);
+			if (area > maxArea)
+			{
+				maxArea = area;
+				largestIt = it;
+			}
 		}
 
-		if (hallAlongX)
+		SplitRoom current = *largestIt;
+		to_split.erase(largestIt);
+
+		float w = current.maxB.x - current.minB.x;
+		float d = current.maxB.z - current.minB.z;
+
+		// Decide if we have enough space to split along X or Z
+		bool canSplitX = (w >= minRoomSize * 2.0f + wallThickness);
+		bool canSplitZ = (d >= minRoomSize * 2.0f + wallThickness);
+
+		// If a room exceeds maxRoomSize, we MUST split it (even if we met targetRooms count)
+		bool mustSplit = (w > maxRoomSize || d > maxRoomSize);
+		bool canSplit = (canSplitX || canSplitZ);
+		bool shouldSplit = ((int)(finalRooms.size() + to_split.size()) < targetRooms) || mustSplit;
+
+		if (!canSplit || !shouldSplit)
 		{
-			// Hallway runs along X (splits Z)
-			// Random hallway center between 35% and 65% of depth
-			std::uniform_real_distribution<float> centerDist(floorMin.z + minRoomSize + hallWidth * 0.5f, floorMax.z - minRoomSize - hallWidth * 0.5f);
-			float zCenter = centerDist(rng);
-
-			glm::vec3 hallMin = glm::vec3(floorMin.x, floorMin.y, zCenter - hallWidth * 0.5f);
-			glm::vec3 hallMax = glm::vec3(floorMax.x, floorMax.y, zCenter + hallWidth * 0.5f);
-			AddRoomDirect(hallMin, hallMax, RoomType::Corridor);
-
-			// Longitudinal walls bounding the hallway
-			AddWallDirect(glm::vec3(floorMin.x, floorMin.y, zCenter - hallWidth * 0.5f - wallThickness * 0.5f),
-						  glm::vec3(floorMax.x, floorMax.y, zCenter - hallWidth * 0.5f + wallThickness * 0.5f));
-			AddWallDirect(glm::vec3(floorMin.x, floorMin.y, zCenter + hallWidth * 0.5f - wallThickness * 0.5f),
-						  glm::vec3(floorMax.x, floorMax.y, zCenter + hallWidth * 0.5f + wallThickness * 0.5f));
-
-			// Allocate target rooms: corridor is 1, remaining N-1 are split randomly between Side A and Side B
-			int remaining = targetRooms - 1;
-			int roomsA = 1;
-			int roomsB = 1;
-			if (remaining > 2) {
-				std::uniform_int_distribution<int> splitDist(1, remaining - 1);
-				roomsA = splitDist(rng);
-				roomsB = remaining - roomsA;
-			} else if (remaining == 2) {
-				roomsA = 1;
-				roomsB = 1;
-			}
-
-			// Side A: Bottom / South
-			glm::vec3 sideAMin = floorMin;
-			glm::vec3 sideAMax = glm::vec3(floorMax.x, floorMax.y, zCenter - hallWidth * 0.5f - wallThickness * 0.5f);
-			
-			// Subdivide Side A with randomized room sizes
-			std::vector<float> splitsA;
-			splitsA.push_back(sideAMin.x);
-			if (roomsA > 1) {
-				std::vector<float> points;
-				for (int i = 0; i < roomsA - 1; ++i) {
-					float minP = sideAMin.x + (i + 1) * minRoomSize + i * wallThickness;
-					float maxP = sideAMax.x - (roomsA - 1 - i) * minRoomSize - (roomsA - 1 - i) * wallThickness;
-					if (minP < maxP) {
-						std::uniform_real_distribution<float> pDist(minP, maxP);
-						points.push_back(pDist(rng));
-					} else {
-						points.push_back(sideAMin.x + (sideAMax.x - sideAMin.x) * (float)(i + 1) / roomsA);
-					}
-				}
-				std::sort(points.begin(), points.end());
-				for (float p : points) splitsA.push_back(p);
-			}
-			splitsA.push_back(sideAMax.x);
-
-			for (int i = 0; i < roomsA; i++)
-			{
-				float xStart = splitsA[i];
-				float xEnd = splitsA[i + 1];
-
-				if (i < roomsA - 1)
-				{
-					AddWallDirect(glm::vec3(xEnd - wallThickness * 0.5f, sideAMin.y, sideAMin.z),
-								  glm::vec3(xEnd + wallThickness * 0.5f, sideAMax.y, sideAMax.z));
-				}
-
-				glm::vec3 rMin = glm::vec3(xStart + (i > 0 ? wallThickness * 0.5f : 0.0f), sideAMin.y, sideAMin.z);
-				glm::vec3 rMax = glm::vec3(xEnd - (i < roomsA - 1 ? wallThickness * 0.5f : 0.0f), sideAMax.y, sideAMax.z);
-				AddRoomDirect(rMin, rMax, RoomType::Office);
-			}
-
-			// Side B: Top / North
-			glm::vec3 sideBMin = glm::vec3(floorMin.x, floorMin.y, zCenter + hallWidth * 0.5f + wallThickness * 0.5f);
-			glm::vec3 sideBMax = floorMax;
-
-			std::vector<float> splitsB;
-			splitsB.push_back(sideBMin.x);
-			if (roomsB > 1) {
-				std::vector<float> points;
-				for (int i = 0; i < roomsB - 1; ++i) {
-					float minP = sideBMin.x + (i + 1) * minRoomSize + i * wallThickness;
-					float maxP = sideBMax.x - (roomsB - 1 - i) * minRoomSize - (roomsB - 1 - i) * wallThickness;
-					if (minP < maxP) {
-						std::uniform_real_distribution<float> pDist(minP, maxP);
-						points.push_back(pDist(rng));
-					} else {
-						points.push_back(sideBMin.x + (sideBMax.x - sideBMin.x) * (float)(i + 1) / roomsB);
-					}
-				}
-				std::sort(points.begin(), points.end());
-				for (float p : points) splitsB.push_back(p);
-			}
-			splitsB.push_back(sideBMax.x);
-
-			for (int i = 0; i < roomsB; i++)
-			{
-				float xStart = splitsB[i];
-				float xEnd = splitsB[i + 1];
-
-				if (i < roomsB - 1)
-				{
-					AddWallDirect(glm::vec3(xEnd - wallThickness * 0.5f, sideBMin.y, sideBMin.z),
-								  glm::vec3(xEnd + wallThickness * 0.5f, sideBMax.y, sideBMax.z));
-				}
-
-				glm::vec3 rMin = glm::vec3(xStart + (i > 0 ? wallThickness * 0.5f : 0.0f), sideBMin.y, sideBMin.z);
-				glm::vec3 rMax = glm::vec3(xEnd - (i < roomsB - 1 ? wallThickness * 0.5f : 0.0f), sideBMax.y, sideBMax.z);
-				AddRoomDirect(rMin, rMax, RoomType::Office);
-			}
+			finalRooms.push_back(current);
+			continue;
 		}
-		else
+
+		// Decide split axis based on aspect ratio or pick randomly based on rng seed
+		bool splitX = true;
+		if (canSplitX && canSplitZ)
 		{
-			// Hallway runs along Z (splits X)
-			std::uniform_real_distribution<float> centerDist(floorMin.x + minRoomSize + hallWidth * 0.5f, floorMax.x - minRoomSize - hallWidth * 0.5f);
-			float xCenter = centerDist(rng);
-
-			glm::vec3 hallMin = glm::vec3(xCenter - hallWidth * 0.5f, floorMin.y, floorMin.z);
-			glm::vec3 hallMax = glm::vec3(xCenter + hallWidth * 0.5f, floorMax.y, floorMax.z);
-			AddRoomDirect(hallMin, hallMax, RoomType::Corridor);
-
-			// Longitudinal walls bounding the hallway
-			AddWallDirect(glm::vec3(xCenter - hallWidth * 0.5f - wallThickness * 0.5f, floorMin.y, floorMin.z),
-						  glm::vec3(xCenter - hallWidth * 0.5f + wallThickness * 0.5f, floorMax.y, floorMax.z));
-			AddWallDirect(glm::vec3(xCenter + hallWidth * 0.5f - wallThickness * 0.5f, floorMin.y, floorMin.z),
-						  glm::vec3(xCenter + hallWidth * 0.5f + wallThickness * 0.5f, floorMax.y, floorMax.z));
-
-			int remaining = targetRooms - 1;
-			int roomsA = 1;
-			int roomsB = 1;
-			if (remaining > 2) {
-				std::uniform_int_distribution<int> splitDist(1, remaining - 1);
-				roomsA = splitDist(rng);
-				roomsB = remaining - roomsA;
-			} else if (remaining == 2) {
-				roomsA = 1;
-				roomsB = 1;
-			}
-
-			// Side A: Left / West
-			glm::vec3 sideAMin = floorMin;
-			glm::vec3 sideAMax = glm::vec3(xCenter - hallWidth * 0.5f - wallThickness * 0.5f, floorMax.y, floorMax.z);
-
-			std::vector<float> splitsA;
-			splitsA.push_back(sideAMin.z);
-			if (roomsA > 1) {
-				std::vector<float> points;
-				for (int i = 0; i < roomsA - 1; ++i) {
-					float minP = sideAMin.z + (i + 1) * minRoomSize + i * wallThickness;
-					float maxP = sideAMax.z - (roomsA - 1 - i) * minRoomSize - (roomsA - 1 - i) * wallThickness;
-					if (minP < maxP) {
-						std::uniform_real_distribution<float> pDist(minP, maxP);
-						points.push_back(pDist(rng));
-					} else {
-						points.push_back(sideAMin.z + (sideAMax.z - sideAMin.z) * (float)(i + 1) / roomsA);
-					}
-				}
-				std::sort(points.begin(), points.end());
-				for (float p : points) splitsA.push_back(p);
-			}
-			splitsA.push_back(sideAMax.z);
-
-			for (int i = 0; i < roomsA; i++)
-			{
-				float zStart = splitsA[i];
-				float zEnd = splitsA[i + 1];
-
-				if (i < roomsA - 1)
-				{
-					AddWallDirect(glm::vec3(sideAMin.x, sideAMin.y, zEnd - wallThickness * 0.5f),
-								  glm::vec3(sideAMax.x, sideAMax.y, zEnd + wallThickness * 0.5f));
-				}
-
-				glm::vec3 rMin = glm::vec3(sideAMin.x, sideAMin.y, zStart + (i > 0 ? wallThickness * 0.5f : 0.0f));
-				glm::vec3 rMax = glm::vec3(sideAMax.x, sideAMax.y, zEnd - (i < roomsA - 1 ? wallThickness * 0.5f : 0.0f));
-				AddRoomDirect(rMin, rMax, RoomType::Office);
-			}
-
-			// Side B: Right / East
-			glm::vec3 sideBMin = glm::vec3(xCenter + hallWidth * 0.5f + wallThickness * 0.5f, floorMin.y, floorMin.z);
-			glm::vec3 sideBMax = floorMax;
-
-			std::vector<float> splitsB;
-			splitsB.push_back(sideBMin.z);
-			if (roomsB > 1) {
-				std::vector<float> points;
-				for (int i = 0; i < roomsB - 1; ++i) {
-					float minP = sideBMin.z + (i + 1) * minRoomSize + i * wallThickness;
-					float maxP = sideBMax.z - (roomsB - 1 - i) * minRoomSize - (roomsB - 1 - i) * wallThickness;
-					if (minP < maxP) {
-						std::uniform_real_distribution<float> pDist(minP, maxP);
-						points.push_back(pDist(rng));
-					} else {
-						points.push_back(sideBMin.z + (sideBMax.z - sideBMin.z) * (float)(i + 1) / roomsB);
-					}
-				}
-				std::sort(points.begin(), points.end());
-				for (float p : points) splitsB.push_back(p);
-			}
-			splitsB.push_back(sideBMax.z);
-
-			for (int i = 0; i < roomsB; i++)
-			{
-				float zStart = splitsB[i];
-				float zEnd = splitsB[i + 1];
-
-				if (i < roomsB - 1)
-				{
-					AddWallDirect(glm::vec3(sideBMin.x, sideBMin.y, zEnd - wallThickness * 0.5f),
-								  glm::vec3(sideBMax.x, sideBMax.y, zEnd + wallThickness * 0.5f));
-				}
-
-				glm::vec3 rMin = glm::vec3(sideBMin.x, sideBMin.y, zStart + (i > 0 ? wallThickness * 0.5f : 0.0f));
-				glm::vec3 rMax = glm::vec3(sideBMax.x, sideBMax.y, zEnd - (i < roomsB - 1 ? wallThickness * 0.5f : 0.0f));
-				AddRoomDirect(rMin, rMax, RoomType::Office);
-			}
-		}
-	}
-	else if (selectedStyle == LayoutStyle::Whirl)
-	{
-		// Pinwheel / Central Lobby Layout
-		// Randomized central room fractions: between 0.32 and 0.44
-		std::uniform_real_distribution<float> sizeDist(0.32f, 0.44f);
-		float centerW = width * sizeDist(rng);
-		float centerD = depth * sizeDist(rng);
-
-		// Random offsets from perfect center
-		std::uniform_real_distribution<float> offsetXDist(-(width - centerW) * 0.08f, (width - centerW) * 0.08f);
-		std::uniform_real_distribution<float> offsetZDist(-(depth - centerD) * 0.08f, (depth - centerD) * 0.08f);
-		
-		float cx = (width - centerW) * 0.5f + offsetXDist(rng);
-		float cz = (depth - centerD) * 0.5f + offsetZDist(rng);
-
-		glm::vec3 cMin = glm::vec3(floorMin.x + cx, floorMin.y, floorMin.z + cz);
-		glm::vec3 cMax = glm::vec3(cMin.x + centerW, floorMax.y, cMin.z + centerD);
-
-		// Central Lobby Room
-		AddRoomDirect(cMin, cMax, RoomType::Lobby);
-
-		// Outer Rooms (0 = SW, 1 = NW, 2 = NE, 3 = SE)
-		glm::vec3 swMin = floorMin;
-		glm::vec3 swMax = glm::vec3(cMin.x - wallThickness * 0.5f, floorMax.y, cMax.z);
-		AddRoomDirect(swMin, swMax, RoomType::Office);
-
-		glm::vec3 nwMin = glm::vec3(floorMin.x, floorMin.y, cMax.z + wallThickness * 0.5f);
-		glm::vec3 nwMax = glm::vec3(cMax.x, floorMax.y, floorMax.z);
-		AddRoomDirect(nwMin, nwMax, RoomType::Office);
-
-		glm::vec3 neMin = glm::vec3(cMax.x + wallThickness * 0.5f, floorMin.y, cMin.z);
-		glm::vec3 neMax = floorMax;
-		AddRoomDirect(neMin, neMax, RoomType::Office);
-
-		glm::vec3 seMin = glm::vec3(cMin.x, floorMin.y, floorMin.z);
-		glm::vec3 seMax = glm::vec3(floorMax.x, floorMax.y, cMin.z - wallThickness * 0.5f);
-		AddRoomDirect(seMin, seMax, RoomType::Office);
-
-		// Walls bounding the central Lobby
-		// West wall of center
-		AddWallDirect(glm::vec3(cMin.x - wallThickness * 0.5f, floorMin.y, cMin.z),
-					  glm::vec3(cMin.x + wallThickness * 0.5f, floorMax.y, cMax.z));
-		// North wall of center
-		AddWallDirect(glm::vec3(cMin.x, floorMin.y, cMax.z - wallThickness * 0.5f),
-					  glm::vec3(cMax.x, floorMax.y, cMax.z + wallThickness * 0.5f));
-		// East wall of center
-		AddWallDirect(glm::vec3(cMax.x - wallThickness * 0.5f, floorMin.y, cMin.z),
-					  glm::vec3(cMax.x + wallThickness * 0.5f, floorMax.y, cMax.z));
-		// South wall of center
-		AddWallDirect(glm::vec3(cMin.x, floorMin.y, cMin.z - wallThickness * 0.5f),
-					  glm::vec3(cMax.x, floorMax.y, cMin.z + wallThickness * 0.5f));
-
-		// Divide-walls separating the outer rooms from each other (in pinwheel)
-		// Wall separating SW and NW
-		AddWallDirect(glm::vec3(floorMin.x, floorMin.y, cMax.z - wallThickness * 0.5f),
-					  glm::vec3(cMin.x - wallThickness * 0.5f, floorMax.y, cMax.z + wallThickness * 0.5f));
-		// Wall separating NW and NE
-		AddWallDirect(glm::vec3(cMax.x - wallThickness * 0.5f, floorMin.y, cMax.z + wallThickness * 0.5f),
-					  glm::vec3(cMax.x + wallThickness * 0.5f, floorMax.y, floorMax.z));
-		// Wall separating NE and SE
-		AddWallDirect(glm::vec3(cMax.x + wallThickness * 0.5f, floorMin.y, cMin.z - wallThickness * 0.5f),
-					  glm::vec3(floorMax.x, floorMax.y, cMin.z + wallThickness * 0.5f));
-		// Wall separating SE and SW
-		AddWallDirect(glm::vec3(cMin.x - wallThickness * 0.5f, floorMin.y, floorMin.z),
-					  glm::vec3(cMin.x + wallThickness * 0.5f, floorMax.y, cMin.z - wallThickness * 0.5f));
-	}
-	else
-	{
-		// Fallback: Simple Split (Two rooms or one single room)
-		bool canSplitX = (width >= minRoomSize * 2.0f + wallThickness);
-		bool canSplitZ = (depth >= minRoomSize * 2.0f + wallThickness);
-
-		if (targetRooms > 1 && (canSplitX || canSplitZ))
-		{
-			bool splitX = canSplitX;
-			if (canSplitX && canSplitZ) {
+			if (w > 1.25f * d) {
+				splitX = true;
+			} else if (d > 1.25f * w) {
+				splitX = false;
+			} else {
 				std::uniform_int_distribution<int> axisDist(0, 1);
 				splitX = (axisDist(rng) == 0);
 			}
+		}
+		else
+		{
+			splitX = canSplitX;
+		}
 
-			// Split fraction randomized between 30% and 70% instead of exact 50%
-			std::uniform_real_distribution<float> splitFracDist(0.3f, 0.7f);
-			float splitFrac = splitFracDist(rng);
+		// Decide random split position
+		float minPos = splitX ? (current.minB.x + minRoomSize) : (current.minB.z + minRoomSize);
+		float maxPos = splitX ? (current.maxB.x - minRoomSize) : (current.maxB.z - minRoomSize);
+
+		if (minPos >= maxPos)
+		{
+			finalRooms.push_back(current);
+			continue;
+		}
+
+		std::uniform_real_distribution<float> posDist(minPos, maxPos);
+		float splitVal = posDist(rng);
+
+		// Random chance of creating a hallway split instead of a standard split
+		bool makeHallway = false;
+		if (!isCommercial && ((int)(finalRooms.size() + to_split.size() + 2) <= targetRooms))
+		{
+			float sizeVal = splitX ? w : d;
+			if (sizeVal >= minHallSize)
+			{
+				std::uniform_real_distribution<float> probDist(0.0f, 1.0f);
+				if (probDist(rng) < 0.35f) // 35% chance
+				{
+					makeHallway = true;
+				}
+			}
+		}
+
+		if (makeHallway)
+		{
+			// Double-wall split to place a hallway on the fly
+			float minCenter = (splitX ? current.minB.x : current.minB.z) + minRoomSize + hallWidth * 0.5f;
+			float maxCenter = (splitX ? current.maxB.x : current.maxB.z) - minRoomSize - hallWidth * 0.5f;
+
+			std::uniform_real_distribution<float> centerDist(minCenter, maxCenter);
+			float centerVal = centerDist(rng);
+
+			float hMin = centerVal - hallWidth * 0.5f;
+			float hMax = centerVal + hallWidth * 0.5f;
 
 			if (splitX)
 			{
-				float splitPos = floorMin.x + width * splitFrac;
-				AddWallDirect(glm::vec3(splitPos - wallThickness * 0.5f, floorMin.y, floorMin.z),
-							  glm::vec3(splitPos + wallThickness * 0.5f, floorMax.y, floorMax.z));
+				AddWallDirect(glm::vec3(hMin - wallThickness * 0.5f, current.minB.y, current.minB.z),
+							  glm::vec3(hMin + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
+				AddWallDirect(glm::vec3(hMax - wallThickness * 0.5f, current.minB.y, current.minB.z),
+							  glm::vec3(hMax + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
 
-				AddRoomDirect(floorMin, glm::vec3(splitPos - wallThickness * 0.5f, floorMax.y, floorMax.z), RoomType::Office);
-				AddRoomDirect(glm::vec3(splitPos + wallThickness * 0.5f, floorMin.y, floorMin.z), floorMax, RoomType::Office);
+				to_split.push_back({ current.minB, glm::vec3(hMin - wallThickness * 0.5f, current.maxB.y, current.maxB.z), false });
+				finalRooms.push_back({ glm::vec3(hMin + wallThickness * 0.5f, current.minB.y, current.minB.z),
+									   glm::vec3(hMax - wallThickness * 0.5f, current.maxB.y, current.maxB.z), true });
+				to_split.push_back({ glm::vec3(hMax + wallThickness * 0.5f, current.minB.y, current.minB.z), current.maxB, false });
 			}
 			else
 			{
-				float splitPos = floorMin.z + depth * splitFrac;
-				AddWallDirect(glm::vec3(floorMin.x, floorMin.y, splitPos - wallThickness * 0.5f),
-							  glm::vec3(floorMax.x, floorMax.y, splitPos + wallThickness * 0.5f));
+				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, hMin - wallThickness * 0.5f),
+							  glm::vec3(current.maxB.x, current.maxB.y, hMin + wallThickness * 0.5f));
+				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, hMax - wallThickness * 0.5f),
+							  glm::vec3(current.maxB.x, current.maxB.y, hMax + wallThickness * 0.5f));
 
-				AddRoomDirect(floorMin, glm::vec3(floorMax.x, floorMax.y, splitPos - wallThickness * 0.5f), RoomType::Office);
-				AddRoomDirect(glm::vec3(floorMin.x, floorMin.y, splitPos + wallThickness * 0.5f), floorMax, RoomType::Office);
+				to_split.push_back({ current.minB, glm::vec3(current.maxB.x, current.maxB.y, hMin - wallThickness * 0.5f), false });
+				finalRooms.push_back({ glm::vec3(current.minB.x, current.minB.y, hMin + wallThickness * 0.5f),
+									   glm::vec3(current.maxB.x, current.maxB.y, hMax - wallThickness * 0.5f), true });
+				to_split.push_back({ glm::vec3(current.minB.x, current.minB.y, hMax + wallThickness * 0.5f), current.maxB, false });
 			}
 		}
 		else
 		{
-			// Single Room
-			AddRoomDirect(floorMin, floorMax, RoomType::Office);
+			// Standard split: place one wall, creating two rooms
+			if (splitX)
+			{
+				AddWallDirect(glm::vec3(splitVal - wallThickness * 0.5f, current.minB.y, current.minB.z),
+							  glm::vec3(splitVal + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
+
+				to_split.push_back({ current.minB, glm::vec3(splitVal - wallThickness * 0.5f, current.maxB.y, current.maxB.z), false });
+				to_split.push_back({ glm::vec3(splitVal + wallThickness * 0.5f, current.minB.y, current.minB.z), current.maxB, false });
+			}
+			else
+			{
+				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, splitVal - wallThickness * 0.5f),
+							  glm::vec3(current.maxB.x, current.maxB.y, splitVal + wallThickness * 0.5f));
+
+				to_split.push_back({ current.minB, glm::vec3(current.maxB.x, current.maxB.y, splitVal - wallThickness * 0.5f), false });
+				to_split.push_back({ glm::vec3(current.minB.x, current.minB.y, splitVal + wallThickness * 0.5f), current.maxB, false });
+			}
 		}
+	}
+
+	for (const auto& r : finalRooms)
+	{
+		AddRoomDirect(r.minB, r.maxB, r.isHallway ? RoomType::Corridor : RoomType::Office);
 	}
 }
 
@@ -651,67 +443,59 @@ void InteriorGenNode::AssignRoomTypes(
 	// If there are no assignable rooms, we're done
 	if (sortedRooms.empty()) return;
 
-	// Sort assignable rooms by area descending
-	std::sort(sortedRooms.begin(), sortedRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
-		return a->GetArea() > b->GetArea();
-	});
-
 	// If it's commercial, all assignable rooms remain RoomType::Office
 	if (isCommercial)
 	{
 		return;
 	}
 
-	// For residential, we distribute functions:
-	std::vector<InteriorRoom*> remainingRooms = sortedRooms;
-
-	// 1. Bathroom: smallest remaining rooms
-	size_t targetBathrooms = std::max<size_t>(1, (interior.rooms.size() - 1) / 4);
-	if (targetBathrooms > remainingRooms.size()) targetBathrooms = remainingRooms.size();
-
-	// Sort remaining by area ascending
-	std::sort(remainingRooms.begin(), remainingRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
-		return a->GetArea() < b->GetArea();
-	});
-
-	size_t assignedBathrooms = 0;
-	while (assignedBathrooms < targetBathrooms && !remainingRooms.empty())
-	{
-		remainingRooms.front()->type = RoomType::Bathroom;
-		remainingRooms.erase(remainingRooms.begin());
-		assignedBathrooms++;
-	}
-
-	// 2. Kitchen: largest remaining room
-	// Sort descending
-	std::sort(remainingRooms.begin(), remainingRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
+	// Sort assignable rooms by area descending (largest first)
+	std::sort(sortedRooms.begin(), sortedRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
 		return a->GetArea() > b->GetArea();
 	});
 
-	if (!remainingRooms.empty())
+	if (sortedRooms.size() == 1)
 	{
-		remainingRooms.front()->type = RoomType::Kitchen;
-		remainingRooms.erase(remainingRooms.begin());
+		sortedRooms[0]->type = RoomType::Lobby; // Studio: Living room/bedroom
 	}
-
-	// 3. Bedrooms: up to half of remaining, at least 1
-	size_t targetBedrooms = std::max<size_t>(1, remainingRooms.size() / 2);
-	size_t assignedBedrooms = 0;
-	while (assignedBedrooms < targetBedrooms && !remainingRooms.empty())
+	else if (sortedRooms.size() == 2)
 	{
-		remainingRooms.front()->type = RoomType::Bedroom;
-		remainingRooms.erase(remainingRooms.begin());
-		assignedBedrooms++;
+		sortedRooms[0]->type = RoomType::Lobby;     // Living Room
+		sortedRooms[1]->type = RoomType::Bathroom;  // Bathroom
 	}
-
-	// 4. Leftovers randomly become Bedroom, Office, or Bathroom
-	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
-	for (auto* room : remainingRooms)
+	else if (sortedRooms.size() == 3)
 	{
-		float r = prob(rng);
-		if (r < 0.45f) room->type = RoomType::Bedroom;
-		else if (r < 0.85f) room->type = RoomType::Office;
-		else room->type = RoomType::Bathroom;
+		sortedRooms[0]->type = RoomType::Lobby;     // Living Room
+		sortedRooms[1]->type = RoomType::Kitchen;   // Kitchen
+		sortedRooms[2]->type = RoomType::Bathroom;  // Bathroom
+	}
+	else
+	{
+		// 4 or more rooms
+		sortedRooms[0]->type = RoomType::Lobby;     // Living Room (largest)
+		sortedRooms[1]->type = RoomType::Kitchen;   // Kitchen (second largest)
+
+		// Smallest room(s) become Bathroom
+		size_t numBathrooms = std::max<size_t>(1, sortedRooms.size() / 4);
+		for (size_t i = 0; i < numBathrooms; i++)
+		{
+			size_t idx = sortedRooms.size() - 1 - i;
+			sortedRooms[idx]->type = RoomType::Bathroom;
+		}
+
+		// Middle rooms become Bedroom or Office
+		std::uniform_real_distribution<float> prob(0.0f, 1.0f);
+		for (size_t i = 2; i < sortedRooms.size() - numBathrooms; i++)
+		{
+			if (prob(rng) < 0.75f)
+			{
+				sortedRooms[i]->type = RoomType::Bedroom;
+			}
+			else
+			{
+				sortedRooms[i]->type = RoomType::Office;
+			}
+		}
 	}
 }
 
