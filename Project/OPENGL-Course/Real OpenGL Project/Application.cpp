@@ -22,6 +22,7 @@
 #include "AssetManager.h"
 #include "AllOperations.h"
 #include "SceneSerializer.h"
+#include "InteriorGenNode.h"
 #include <iostream>
 #include <map>
 #include <fstream>
@@ -100,6 +101,7 @@ Application::~Application()
 bool Application::Init()
 {
 	LoadGraphicsSettings();
+
 
 	// Window
 	mainWindow = Window(1920, 1080);

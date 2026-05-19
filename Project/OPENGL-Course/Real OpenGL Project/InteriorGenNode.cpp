@@ -7,6 +7,7 @@
 #include "TextureLayer.h"
 #include "PrimitiveGenerator.h"
 #include "AssetManager.h"
+#include <iostream>
 
 #include <thread>
 #include <future>
@@ -123,7 +124,6 @@ void InteriorGenNode::RenderContent(SceneManager* scene)
 
 	ImGui::DragFloat("Floor Height", &floorHeight, 0.1f, 1.5f, 6.0f, "%.1f");
 	ImGui::DragFloat("Wall Thickness", &wallThickness, 0.01f, 0.05f, 0.5f, "%.2f");
-	ImGui::DragFloat("Min Room Area", &minRoomArea, 0.5f, 2.0f, 30.0f, "%.1f");
 	ImGui::DragFloat("Door Width", &doorWidth, 0.05f, 0.6f, 2.0f, "%.2f");
 	ImGui::DragFloat("Hallway Width", &hallwayWidth, 0.1f, 1.0f, 5.0f, "%.1f");
 	ImGui::DragFloat("Wall Inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
@@ -135,8 +135,6 @@ void InteriorGenNode::RenderContent(SceneManager* scene)
 	ImGui::Separator();
 	ImGui::Text("Room Layout Configuration");
 	ImGui::DragInt("Target Rooms", &numRooms, 0.1f, 1, 15);
-	ImGui::DragFloat("Min Room Size", &minRoomSize, 0.05f, 1.5f, 10.0f, "%.2f");
-	ImGui::DragFloat("Max Room Size", &maxRoomSize, 0.05f, 2.0f, 20.0f, "%.2f");
 }
 
 // =====================================================================
@@ -171,8 +169,8 @@ void InteriorGenNode::Deserialize(const json& j)
 	wallThickness     = j.value("wallThickness", 0.15f);
 	floorThick        = j.value("floorThick", 0.1f);
 	minRoomArea       = j.value("minRoomArea", 6.0f);
-	doorWidth         = j.value("doorWidth", 1.0f);
-	doorHeight        = j.value("doorHeight", 2.4f);
+	doorWidth         = j.value("doorWidth", 0.8f);
+	doorHeight        = j.value("doorHeight", 2.1f);
 	hallwayWidth      = j.value("hallwayWidth", 2.0f);
 	wallInset         = j.value("wallInset", 0.5f);
 	seed              = j.value("seed", 42);
@@ -268,6 +266,7 @@ void InteriorGenNode::SubdivideFloor(
 	std::vector<SplitRoom> to_split;
 	to_split.push_back({ floorMin, floorMax, false });
 	std::vector<SplitRoom> finalRooms;
+	bool hasCorridor = false;
 
 	float hallWidth = isCommercial ? 2.2f : 1.8f;
 	float minHallSize = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
@@ -297,10 +296,9 @@ void InteriorGenNode::SubdivideFloor(
 		bool canSplitX = (w >= minRoomSize * 2.0f + wallThickness);
 		bool canSplitZ = (d >= minRoomSize * 2.0f + wallThickness);
 
-		// If a room exceeds maxRoomSize, we MUST split it (even if we met targetRooms count)
-		bool mustSplit = (w > maxRoomSize || d > maxRoomSize);
 		bool canSplit = (canSplitX || canSplitZ);
-		bool shouldSplit = ((int)(finalRooms.size() + to_split.size()) < targetRooms) || mustSplit;
+		// Split only if we have not reached the target rooms limit
+		bool shouldSplit = ((int)(finalRooms.size() + to_split.size() + 1) < targetRooms);
 
 		if (!canSplit || !shouldSplit)
 		{
@@ -326,9 +324,40 @@ void InteriorGenNode::SubdivideFloor(
 			splitX = canSplitX;
 		}
 
+		// Check if we should do a hallway split
+		bool makeHallway = false;
+		float currentHallWidth = hallWidth;
+		float useMinRoomSize = minRoomSize;
+		if (!isCommercial && !hasCorridor && ((int)(finalRooms.size() + to_split.size() + 2) <= targetRooms))
+		{
+			float sizeVal = splitX ? w : d;
+			float standardMinHallSize = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
+			float compactMinHallSize = 2.2f * 2.0f + 1.2f + wallThickness * 2.0f;
+
+			if (sizeVal >= standardMinHallSize)
+			{
+				makeHallway = true;
+				currentHallWidth = hallWidth;
+				useMinRoomSize = minRoomSize;
+			}
+			else if (sizeVal >= compactMinHallSize)
+			{
+				makeHallway = true;
+				currentHallWidth = 1.2f;
+				useMinRoomSize = 2.2f;
+			}
+		}
+
 		// Decide random split position
-		float minPos = splitX ? (current.minB.x + minRoomSize) : (current.minB.z + minRoomSize);
-		float maxPos = splitX ? (current.maxB.x - minRoomSize) : (current.maxB.z - minRoomSize);
+		float minPos = splitX ? (current.minB.x + useMinRoomSize) : (current.minB.z + useMinRoomSize);
+		float maxPos = splitX ? (current.maxB.x - useMinRoomSize) : (current.maxB.z - useMinRoomSize);
+
+		// Adjust the random split range for hallway splits
+		if (makeHallway)
+		{
+			minPos = splitX ? (current.minB.x + useMinRoomSize + currentHallWidth * 0.5f) : (current.minB.z + useMinRoomSize + currentHallWidth * 0.5f);
+			maxPos = splitX ? (current.maxB.x - useMinRoomSize - currentHallWidth * 0.5f) : (current.maxB.z - useMinRoomSize - currentHallWidth * 0.5f);
+		}
 
 		if (minPos >= maxPos)
 		{
@@ -339,32 +368,11 @@ void InteriorGenNode::SubdivideFloor(
 		std::uniform_real_distribution<float> posDist(minPos, maxPos);
 		float splitVal = posDist(rng);
 
-		// Random chance of creating a hallway split instead of a standard split
-		bool makeHallway = false;
-		if (!isCommercial && ((int)(finalRooms.size() + to_split.size() + 2) <= targetRooms))
-		{
-			float sizeVal = splitX ? w : d;
-			if (sizeVal >= minHallSize)
-			{
-				std::uniform_real_distribution<float> probDist(0.0f, 1.0f);
-				if (probDist(rng) < 0.35f) // 35% chance
-				{
-					makeHallway = true;
-				}
-			}
-		}
-
 		if (makeHallway)
 		{
-			// Double-wall split to place a hallway on the fly
-			float minCenter = (splitX ? current.minB.x : current.minB.z) + minRoomSize + hallWidth * 0.5f;
-			float maxCenter = (splitX ? current.maxB.x : current.maxB.z) - minRoomSize - hallWidth * 0.5f;
-
-			std::uniform_real_distribution<float> centerDist(minCenter, maxCenter);
-			float centerVal = centerDist(rng);
-
-			float hMin = centerVal - hallWidth * 0.5f;
-			float hMax = centerVal + hallWidth * 0.5f;
+			hasCorridor = true;
+			float hMin = splitVal - currentHallWidth * 0.5f;
+			float hMax = splitVal + currentHallWidth * 0.5f;
 
 			if (splitX)
 			{
@@ -465,8 +473,8 @@ void InteriorGenNode::AssignRoomTypes(
 	}
 	else if (sortedRooms.size() == 3)
 	{
-		sortedRooms[0]->type = RoomType::Lobby;     // Living Room
-		sortedRooms[1]->type = RoomType::Kitchen;   // Kitchen
+		sortedRooms[0]->type = RoomType::Lobby;     // Living Room / Kitchen combo
+		sortedRooms[1]->type = RoomType::Bedroom;   // Bedroom
 		sortedRooms[2]->type = RoomType::Bathroom;  // Bathroom
 	}
 	else
@@ -497,6 +505,79 @@ void InteriorGenNode::AssignRoomTypes(
 			}
 		}
 	}
+
+	// Build adjacency list for topological validation
+	size_t n = interior.rooms.size();
+	std::vector<std::vector<size_t>> adj(n);
+	float wThick = interior.wallThickness;
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = i + 1; j < n; j++)
+		{
+			const auto& r1 = interior.rooms[i];
+			const auto& r2 = interior.rooms[j];
+
+			float overlapX = std::min(r1.maxBounds.x, r2.maxBounds.x) - std::max(r1.minBounds.x, r2.minBounds.x);
+			float overlapZ = std::min(r1.maxBounds.z, r2.maxBounds.z) - std::max(r1.minBounds.z, r2.minBounds.z);
+
+			bool isAdjacent = false;
+			if (overlapZ > 0.4f && (std::abs(r1.maxBounds.x - r2.minBounds.x) < wThick * 2.0f + 0.1f ||
+								   std::abs(r1.minBounds.x - r2.maxBounds.x) < wThick * 2.0f + 0.1f)) {
+				isAdjacent = true;
+			}
+			if (overlapX > 0.4f && (std::abs(r1.maxBounds.z - r2.minBounds.z) < wThick * 2.0f + 0.1f ||
+								   std::abs(r1.minBounds.z - r2.maxBounds.z) < wThick * 2.0f + 0.1f)) {
+				isAdjacent = true;
+			}
+
+			if (isAdjacent) {
+				adj[i].push_back(j);
+				adj[j].push_back(i);
+			}
+		}
+	}
+
+	// Validate private-to-public adjacency. If a private room (Bedroom, Office, Bathroom)
+	// has NO neighbors of type Lobby, Corridor, or Kitchen (or in the case of a Bathroom, Bedroom for ensuite),
+	// we change either it or one of its neighbors to a Corridor or Lobby to make it reachable without bedroom-to-bedroom doors.
+	for (int pass = 0; pass < 3; pass++)
+	{
+		for (size_t i = 0; i < n; i++)
+		{
+			auto& room = interior.rooms[i];
+			if (room.type == RoomType::Bedroom || room.type == RoomType::Office || room.type == RoomType::Bathroom)
+			{
+				bool hasPublicNeighbor = false;
+				for (size_t neighborIdx : adj[i])
+				{
+					RoomType nt = interior.rooms[neighborIdx].type;
+					if (nt == RoomType::Lobby || nt == RoomType::Corridor || nt == RoomType::Kitchen)
+					{
+						hasPublicNeighbor = true;
+						break;
+					}
+					if (room.type == RoomType::Bathroom && nt == RoomType::Bedroom)
+					{
+						hasPublicNeighbor = true;
+						break;
+					}
+				}
+
+				if (!hasPublicNeighbor)
+				{
+					// Resolve the isolation: convert this room to a hallway (Corridor) or extension of the Lobby.
+					if (room.GetArea() < 12.0f)
+					{
+						room.type = RoomType::Corridor;
+					}
+					else
+					{
+						room.type = RoomType::Lobby;
+					}
+				}
+			}
+		}
+	}
 }
 
 // =====================================================================
@@ -508,128 +589,360 @@ void InteriorGenNode::PlaceDoors(
 	std::mt19937& rng) const
 {
 	interior.doors.clear();
+	if (interior.rooms.size() <= 1) return;
 
 	float wThick = interior.wallThickness;
-	float eps = 0.05f; // small tolerance
+	float eps = 0.05f;
 
-	std::vector<std::pair<size_t, size_t>> connectedPairs;
-	auto IsConnected = [&](size_t a, size_t b) {
+	struct DoorEdge {
+		size_t roomA;
+		size_t roomB;
+		glm::vec3 doorPos;
+		bool runsAlongX;
+		float overlapLen;
+		int priority; // 0 = Corridor/Lobby, 1 = Kitchen, 2 = Other, 3 = Small Overlap Fallback
+		bool isForbidden;
+	};
+
+	std::vector<DoorEdge> edges;
+
+	// Helper to gather adjacencies with a given minimum overlap
+	auto FindEdges = [&](float minOverlap, int prVal) {
+		for (size_t i = 0; i < interior.rooms.size(); i++)
+		{
+			for (size_t j = i + 1; j < interior.rooms.size(); j++)
+			{
+				const auto& room = interior.rooms[i];
+				const auto& other = interior.rooms[j];
+
+				// Check X adjacency (wall runs along Z, door spans Z)
+				float overlapZMin = std::max(room.minBounds.z, other.minBounds.z);
+				float overlapZMax = std::min(room.maxBounds.z, other.maxBounds.z);
+				float overlapZ = overlapZMax - overlapZMin;
+				if (overlapZ > minOverlap)
+				{
+					if (std::abs(room.maxBounds.x - other.minBounds.x) < wThick * 2.0f + 0.1f ||
+						std::abs(room.minBounds.x - other.maxBounds.x) < wThick * 2.0f + 0.1f)
+					{
+						// Prevent duplicates
+						bool exists = false;
+						for (const auto& e : edges) {
+							if (e.roomA == i && e.roomB == j && !e.runsAlongX) {
+								exists = true;
+								break;
+							}
+						}
+						if (!exists) {
+							DoorEdge edge;
+							edge.roomA = i;
+							edge.roomB = j;
+							float midZ = (overlapZMin + overlapZMax) * 0.5f;
+							float L = overlapZ;
+							float W = doorWidth;
+							if (L > W + 0.4f) {
+								std::uniform_int_distribution<int> sideDist(0, 1);
+								if (sideDist(rng) == 0) {
+									midZ = overlapZMin + W * 0.5f + 0.15f;
+								} else {
+									midZ = overlapZMax - W * 0.5f - 0.15f;
+								}
+							}
+							float wallX = std::abs(room.maxBounds.x - other.minBounds.x) < wThick * 2.0f + 0.1f ? (room.maxBounds.x + other.minBounds.x) * 0.5f : (room.minBounds.x + other.maxBounds.x) * 0.5f;
+							edge.doorPos = glm::vec3(wallX, room.minBounds.y, midZ);
+							edge.runsAlongX = false;
+							edge.overlapLen = overlapZ;
+
+							if (prVal < 3) {
+								if (room.type == RoomType::Corridor || room.type == RoomType::Lobby ||
+									other.type == RoomType::Corridor || other.type == RoomType::Lobby)
+									edge.priority = 0;
+								else if (room.type == RoomType::Kitchen || other.type == RoomType::Kitchen)
+									edge.priority = 1;
+								else
+									edge.priority = 2;
+							} else {
+								edge.priority = 3;
+							}
+
+							edge.isForbidden = (room.type == RoomType::Bedroom && other.type == RoomType::Bedroom) ||
+											   (room.type == RoomType::Bedroom && other.type == RoomType::Office) ||
+											   (room.type == RoomType::Office && other.type == RoomType::Bedroom) ||
+											   (room.type == RoomType::Bathroom && other.type == RoomType::Bathroom);
+
+							edges.push_back(edge);
+						}
+					}
+				}
+
+				// Check Z adjacency (wall runs along X, door spans X)
+				float overlapXMin = std::max(room.minBounds.x, other.minBounds.x);
+				float overlapXMax = std::min(room.maxBounds.x, other.maxBounds.x);
+				float overlapX = overlapXMax - overlapXMin;
+				if (overlapX > minOverlap)
+				{
+					if (std::abs(room.maxBounds.z - other.minBounds.z) < wThick * 2.0f + 0.1f ||
+						std::abs(room.minBounds.z - other.maxBounds.z) < wThick * 2.0f + 0.1f)
+					{
+						// Prevent duplicates
+						bool exists = false;
+						for (const auto& e : edges) {
+							if (e.roomA == i && e.roomB == j && e.runsAlongX) {
+								exists = true;
+								break;
+							}
+						}
+						if (!exists) {
+							DoorEdge edge;
+							edge.roomA = i;
+							edge.roomB = j;
+							float midX = (overlapXMin + overlapXMax) * 0.5f;
+							float L = overlapX;
+							float W = doorWidth;
+							if (L > W + 0.4f) {
+								std::uniform_int_distribution<int> sideDist(0, 1);
+								if (sideDist(rng) == 0) {
+									midX = overlapXMin + W * 0.5f + 0.15f;
+								} else {
+									midX = overlapXMax - W * 0.5f - 0.15f;
+								}
+							}
+							float wallZ = std::abs(room.maxBounds.z - other.minBounds.z) < wThick * 2.0f + 0.1f ? (room.maxBounds.z + other.minBounds.z) * 0.5f : (room.minBounds.z + other.maxBounds.z) * 0.5f;
+							edge.doorPos = glm::vec3(midX, room.minBounds.y, wallZ);
+							edge.runsAlongX = true;
+							edge.overlapLen = overlapX;
+
+							if (prVal < 3) {
+								if (room.type == RoomType::Corridor || room.type == RoomType::Lobby ||
+									other.type == RoomType::Corridor || other.type == RoomType::Lobby)
+									edge.priority = 0;
+								else if (room.type == RoomType::Kitchen || other.type == RoomType::Kitchen)
+									edge.priority = 1;
+								else
+									edge.priority = 2;
+							} else {
+								edge.priority = 3;
+							}
+
+							edge.isForbidden = (room.type == RoomType::Bedroom && other.type == RoomType::Bedroom) ||
+											   (room.type == RoomType::Bedroom && other.type == RoomType::Office) ||
+											   (room.type == RoomType::Office && other.type == RoomType::Bedroom) ||
+											   (room.type == RoomType::Bathroom && other.type == RoomType::Bathroom);
+
+							edges.push_back(edge);
+						}
+					}
+				}
+			}
+		}
+	};
+
+	// 1. Gather normal edges first (with a generous overlap of 0.6 meters)
+	FindEdges(0.6f, 0);
+
+	// 2. Find any isolated rooms and gather fallback edges with smaller overlap (0.1 meters) for them
+	for (size_t i = 0; i < interior.rooms.size(); i++)
+	{
+		bool hasEdge = false;
+		for (const auto& e : edges) {
+			if (e.roomA == i || e.roomB == i) {
+				hasEdge = true;
+				break;
+			}
+		}
+		if (!hasEdge) {
+			// Find tiny overlap edges for this specific room
+			for (size_t j = 0; j < interior.rooms.size(); j++)
+			{
+				if (i == j) continue;
+				const auto& room = interior.rooms[i];
+				const auto& other = interior.rooms[j];
+
+				float overlapZMin = std::max(room.minBounds.z, other.minBounds.z);
+				float overlapZMax = std::min(room.maxBounds.z, other.maxBounds.z);
+				float overlapZ = overlapZMax - overlapZMin;
+				if (overlapZ > 0.1f)
+				{
+					if (std::abs(room.maxBounds.x - other.minBounds.x) < wThick * 2.0f + 0.1f ||
+						std::abs(room.minBounds.x - other.maxBounds.x) < wThick * 2.0f + 0.1f)
+					{
+						DoorEdge edge;
+						edge.roomA = std::min(i, j);
+						edge.roomB = std::max(i, j);
+						float midZ = (overlapZMin + overlapZMax) * 0.5f;
+						float L = overlapZ;
+						float W = doorWidth;
+						if (L > W + 0.4f) {
+							std::uniform_int_distribution<int> sideDist(0, 1);
+							if (sideDist(rng) == 0) {
+								midZ = overlapZMin + W * 0.5f + 0.15f;
+							} else {
+								midZ = overlapZMax - W * 0.5f - 0.15f;
+							}
+						}
+						float wallX = std::abs(room.maxBounds.x - other.minBounds.x) < wThick * 2.0f + 0.1f ? (room.maxBounds.x + other.minBounds.x) * 0.5f : (room.minBounds.x + other.maxBounds.x) * 0.5f;
+						edge.doorPos = glm::vec3(wallX, room.minBounds.y, midZ);
+						edge.runsAlongX = false;
+						edge.overlapLen = overlapZ;
+						edge.priority = 3;
+						edge.isForbidden = (room.type == RoomType::Bedroom && other.type == RoomType::Bedroom) ||
+										   (room.type == RoomType::Bedroom && other.type == RoomType::Office) ||
+										   (room.type == RoomType::Office && other.type == RoomType::Bedroom) ||
+										   (room.type == RoomType::Bathroom && other.type == RoomType::Bathroom);
+						edges.push_back(edge);
+					}
+				}
+
+				float overlapXMin = std::max(room.minBounds.x, other.minBounds.x);
+				float overlapXMax = std::min(room.maxBounds.x, other.maxBounds.x);
+				float overlapX = overlapXMax - overlapXMin;
+				if (overlapX > 0.1f)
+				{
+					if (std::abs(room.maxBounds.z - other.minBounds.z) < wThick * 2.0f + 0.1f ||
+						std::abs(room.minBounds.z - other.maxBounds.z) < wThick * 2.0f + 0.1f)
+					{
+						DoorEdge edge;
+						edge.roomA = std::min(i, j);
+						edge.roomB = std::max(i, j);
+						float midX = (overlapXMin + overlapXMax) * 0.5f;
+						float L = overlapX;
+						float W = doorWidth;
+						if (L > W + 0.4f) {
+							std::uniform_int_distribution<int> sideDist(0, 1);
+							if (sideDist(rng) == 0) {
+								midX = overlapXMin + W * 0.5f + 0.15f;
+							} else {
+								midX = overlapXMax - W * 0.5f - 0.15f;
+							}
+						}
+						float wallZ = std::abs(room.maxBounds.z - other.minBounds.z) < wThick * 2.0f + 0.1f ? (room.maxBounds.z + other.minBounds.z) * 0.5f : (room.minBounds.z + other.maxBounds.z) * 0.5f;
+						edge.doorPos = glm::vec3(midX, room.minBounds.y, wallZ);
+						edge.runsAlongX = true;
+						edge.overlapLen = overlapX;
+						edge.priority = 3;
+						edge.isForbidden = (room.type == RoomType::Bedroom && other.type == RoomType::Bedroom) ||
+										   (room.type == RoomType::Bedroom && other.type == RoomType::Office) ||
+										   (room.type == RoomType::Office && other.type == RoomType::Bedroom) ||
+										   (room.type == RoomType::Bathroom && other.type == RoomType::Bathroom);
+						edges.push_back(edge);
+					}
+				}
+			}
+		}
+	}
+
+	// DSU spanning tree helper class
+	struct DSU {
+		std::vector<int> parent;
+		DSU(size_t n) {
+			parent.resize(n);
+			for (size_t i = 0; i < n; i++) parent[i] = (int)i;
+		}
+		int find(int i) {
+			if (parent[i] == i)
+				return i;
+			return parent[i] = find(parent[i]);
+		}
+		bool union_set(int i, int j) {
+			int rootI = find(i);
+			int rootJ = find(j);
+			if (rootI != rootJ) {
+				parent[rootI] = rootJ;
+				return true;
+			}
+			return false;
+		}
+	};
+
+	DSU dsu(interior.rooms.size());
+	std::vector<std::pair<size_t, size_t>> placedDoors;
+
+	auto HasDoorBetween = [&](size_t a, size_t b) {
 		size_t mn = std::min(a, b);
 		size_t mx = std::max(a, b);
-		for (const auto& p : connectedPairs) {
+		for (const auto& p : placedDoors) {
 			if (p.first == mn && p.second == mx) return true;
 		}
 		return false;
 	};
-	auto MarkConnected = [&](size_t a, size_t b) {
-		size_t mn = std::min(a, b);
-		size_t mx = std::max(a, b);
-		connectedPairs.push_back({mn, mx});
+
+	auto AddDoorDirect = [&](const DoorEdge& edge) {
+		InteriorDoor door;
+		door.width = doorWidth;
+		door.height = doorHeight;
+		door.runsAlongX = edge.runsAlongX;
+		door.position = edge.doorPos;
+		door.hingeOnLeft = (rng() % 2 == 0);
+		door.isOpen = true;
+
+		interior.doors.push_back(door);
+		placedDoors.push_back({ std::min(edge.roomA, edge.roomB), std::max(edge.roomA, edge.roomB) });
 	};
 
-	for (size_t i = 0; i < interior.rooms.size(); i++)
+	// Sort edges: non-forbidden first, then priority (0, 1, 2, 3), then overlapLen descending
+	std::sort(edges.begin(), edges.end(), [](const DoorEdge& a, const DoorEdge& b) {
+		if (a.isForbidden != b.isForbidden)
+			return !a.isForbidden; // non-forbidden first
+		if (a.priority != b.priority)
+			return a.priority < b.priority;
+		return a.overlapLen > b.overlapLen;
+	});
+
+	// Phase 1: Connect all components using the spanning tree (first pass avoiding forbidden edges if possible)
+	for (const auto& edge : edges)
 	{
-		auto& room = interior.rooms[i];
-		// Corridors and Lobbies don't initiate doors
-		if (room.type == RoomType::Corridor || room.type == RoomType::Lobby)
-			continue;
+		if (edge.isForbidden) continue; // STRICTLY SKIP forbidden edges!
 
-		// We want to find the best candidate room to connect to
-		struct DoorCandidate {
-			size_t targetRoomIdx;
-			glm::vec3 doorPos;
-			bool runsAlongX;
-			int priority; // 0 = Corridor/Lobby, 1 = Other
-			float overlapLen;
-		};
-
-		std::vector<DoorCandidate> candidates;
-
-		for (size_t j = 0; j < interior.rooms.size(); j++)
+		if (dsu.union_set((int)edge.roomA, (int)edge.roomB))
 		{
-			if (i == j) continue;
-			auto& other = interior.rooms[j];
-
-			// Shared X boundary (wall runs along Z, door spans Z)
-			bool adjacentX = false;
-			float overlapZMin = std::max(room.minBounds.z, other.minBounds.z);
-			float overlapZMax = std::min(room.maxBounds.z, other.maxBounds.z);
-			float overlapZ = overlapZMax - overlapZMin;
-
-			if (overlapZ > doorWidth + eps) {
-				if (std::abs(room.maxBounds.x - other.minBounds.x) < wThick + eps ||
-					std::abs(room.minBounds.x - other.maxBounds.x) < wThick + eps) {
-					adjacentX = true;
-				}
-			}
-
-			if (adjacentX) {
-				DoorCandidate cand;
-				cand.targetRoomIdx = j;
-				cand.runsAlongX = false;
-				float midZ = (overlapZMin + overlapZMax) * 0.5f;
-				float wallX = std::abs(room.maxBounds.x - other.minBounds.x) < wThick + eps ? room.maxBounds.x : room.minBounds.x;
-				cand.doorPos = glm::vec3(wallX, room.minBounds.y, midZ);
-				cand.priority = (other.type == RoomType::Corridor || other.type == RoomType::Lobby) ? 0 : 1;
-				cand.overlapLen = overlapZ;
-				candidates.push_back(cand);
-			}
-
-			// Shared Z boundary (wall runs along X, door spans X)
-			bool adjacentZ = false;
-			float overlapXMin = std::max(room.minBounds.x, other.minBounds.x);
-			float overlapXMax = std::min(room.maxBounds.x, other.maxBounds.x);
-			float overlapX = overlapXMax - overlapXMin;
-
-			if (overlapX > doorWidth + eps) {
-				if (std::abs(room.maxBounds.z - other.minBounds.z) < wThick + eps ||
-					std::abs(room.minBounds.z - other.maxBounds.z) < wThick + eps) {
-					adjacentZ = true;
-				}
-			}
-
-			if (adjacentZ) {
-				DoorCandidate cand;
-				cand.targetRoomIdx = j;
-				cand.runsAlongX = true;
-				float midX = (overlapXMin + overlapXMax) * 0.5f;
-				float wallZ = std::abs(room.maxBounds.z - other.minBounds.z) < wThick + eps ? room.maxBounds.z : room.minBounds.z;
-				cand.doorPos = glm::vec3(midX, room.minBounds.y, wallZ);
-				cand.priority = (other.type == RoomType::Corridor || other.type == RoomType::Lobby) ? 0 : 1;
-				cand.overlapLen = overlapX;
-				candidates.push_back(cand);
-			}
-		}
-
-		if (candidates.empty()) continue;
-
-		// Sort candidates: Priority 0 first, then overlapLen descending
-		std::sort(candidates.begin(), candidates.end(), [](const DoorCandidate& a, const DoorCandidate& b) {
-			if (a.priority != b.priority)
-				return a.priority < b.priority;
-			return a.overlapLen > b.overlapLen;
-		});
-
-		// Pick the best candidate that isn't already connected
-		for (auto& best : candidates)
-		{
-			if (IsConnected(i, best.targetRoomIdx)) {
-				break; // already connected
-			}
-
-			InteriorDoor door;
-			door.width = doorWidth;
-			door.height = doorHeight;
-			door.runsAlongX = best.runsAlongX;
-			door.position = best.doorPos;
-			door.hingeOnLeft = (rng() % 2 == 0);
-			door.isOpen = true;
-
-			interior.doors.push_back(door);
-			MarkConnected(i, best.targetRoomIdx);
-			break;
+			AddDoorDirect(edge);
 		}
 	}
+
+	// Phase 2: Add extra direct connections to Corridor/Lobby (priority 0) to ensure natural navigation flow
+	for (const auto& edge : edges)
+	{
+		if (edge.isForbidden) continue; // STRICTLY SKIP forbidden edges!
+
+		if (edge.priority == 0)
+		{
+			if (!HasDoorBetween(edge.roomA, edge.roomB))
+			{
+				AddDoorDirect(edge);
+			}
+		}
+	}
+
+	// DEBUG PRINT FOR DIAGNOSIS
+	std::cout << "\n--- PlaceDoors Debug Info ---" << std::endl;
+	std::cout << "Rooms count: " << interior.rooms.size() << std::endl;
+	for (size_t i = 0; i < interior.rooms.size(); i++) {
+		auto& r = interior.rooms[i];
+		std::cout << "Room " << i << " (type=" << (int)r.type << "): min=(" 
+				  << r.minBounds.x << "," << r.minBounds.z << "), max=(" 
+				  << r.maxBounds.x << "," << r.maxBounds.z << ")" << std::endl;
+	}
+	std::cout << "Edges collected: " << edges.size() << std::endl;
+	for (const auto& e : edges) {
+		std::cout << "Edge " << e.roomA << " <-> " << e.roomB 
+				  << " overlap=" << e.overlapLen << " priority=" << e.priority 
+				  << " forbidden=" << e.isForbidden << " pos=("
+				  << e.doorPos.x << "," << e.doorPos.z << ")" << std::endl;
+	}
+	std::cout << "Doors placed: " << interior.doors.size() << std::endl;
+	for (const auto& d : interior.doors) {
+		std::cout << "Door at (" << d.position.x << "," << d.position.z 
+				  << ") axisX=" << d.runsAlongX << " W=" << d.width << std::endl;
+	}
+	for (size_t i = 0; i < interior.rooms.size(); i++) {
+		int doorCount = 0;
+		for (const auto& p : placedDoors) {
+			if (p.first == i || p.second == i) doorCount++;
+		}
+		if (doorCount == 0) {
+			std::cout << "WARNING: Room " << i << " has ZERO doors!" << std::endl;
+		}
+	}
+	std::cout << "-----------------------------\n" << std::endl;
 }
 
 // =====================================================================
@@ -747,9 +1060,9 @@ void InteriorGenNode::BuildStructuralMesh(
 				float wallD = wall.maxBounds.z - wall.minBounds.z;
 				bool thinInX = (wallW < wallD);
 
-				// Find if there is an intersecting door
-				const InteriorDoor* intersectingDoor = nullptr;
-				float eps = 0.1f;
+				// Find all intersecting doors
+				std::vector<const InteriorDoor*> intersectingDoors;
+				float eps = 0.15f; // updated eps to comfortably match slightly larger wall thicknesses
 
 				for (const auto& door : interior.doors)
 				{
@@ -763,8 +1076,7 @@ void InteriorGenNode::BuildStructuralMesh(
 								door.position.z >= wall.minBounds.z - eps &&
 								door.position.z <= wall.maxBounds.z + eps)
 							{
-								intersectingDoor = &door;
-								break;
+								intersectingDoors.push_back(&door);
 							}
 						}
 					}
@@ -778,48 +1090,57 @@ void InteriorGenNode::BuildStructuralMesh(
 								door.position.x >= wall.minBounds.x - eps &&
 								door.position.x <= wall.maxBounds.x + eps)
 							{
-								intersectingDoor = &door;
-								break;
+								intersectingDoors.push_back(&door);
 							}
 						}
 					}
 				}
 
-				if (intersectingDoor)
+				if (!intersectingDoors.empty())
 				{
-					float doorHalfW = intersectingDoor->width * 0.5f;
 					if (thinInX)
 					{
-						// Split wall along Z
-						float zSplitLeft = intersectingDoor->position.z - doorHalfW;
-						float zSplitRight = intersectingDoor->position.z + doorHalfW;
+						// Sort doors along Z axis ascending
+						std::sort(intersectingDoors.begin(), intersectingDoors.end(), [](const InteriorDoor* a, const InteriorDoor* b) {
+							return a->position.z < b->position.z;
+						});
 
-						// 1. Left/Bottom piece
-						if (zSplitLeft - wall.minBounds.z > 0.05f)
+						float currentZ = wall.minBounds.z;
+						for (const auto* door : intersectingDoors)
 						{
-							glm::vec3 minB = wall.minBounds;
-							glm::vec3 maxB = glm::vec3(wall.maxBounds.x, wall.maxBounds.y, zSplitLeft);
-							glm::vec3 center = (minB + maxB) * 0.5f;
-							glm::vec3 half = (maxB - minB) * 0.5f;
-							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							float doorHalfW = door->width * 0.5f;
+							float zSplitLeft = door->position.z - doorHalfW;
+							float zSplitRight = door->position.z + doorHalfW;
+
+							// Left/Bottom piece
+							if (zSplitLeft - currentZ > 0.05f)
+							{
+								glm::vec3 minB = glm::vec3(wall.minBounds.x, wall.minBounds.y, currentZ);
+								glm::vec3 maxB = glm::vec3(wall.maxBounds.x, wall.maxBounds.y, zSplitLeft);
+								glm::vec3 center = (minB + maxB) * 0.5f;
+								glm::vec3 half = (maxB - minB) * 0.5f;
+								meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							}
+
+							// Header piece above the door
+							float headerMinY = door->position.y + door->height;
+							if (wall.maxBounds.y - headerMinY > 0.05f)
+							{
+								glm::vec3 minB = glm::vec3(wall.minBounds.x, headerMinY, zSplitLeft);
+								glm::vec3 maxB = glm::vec3(wall.maxBounds.x, wall.maxBounds.y, zSplitRight);
+								glm::vec3 center = (minB + maxB) * 0.5f;
+								glm::vec3 half = (maxB - minB) * 0.5f;
+								meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							}
+
+							currentZ = zSplitRight;
 						}
 
-						// 2. Right/Top piece
-						if (wall.maxBounds.z - zSplitRight > 0.05f)
+						// Right/Top piece
+						if (wall.maxBounds.z - currentZ > 0.05f)
 						{
-							glm::vec3 minB = glm::vec3(wall.minBounds.x, wall.minBounds.y, zSplitRight);
+							glm::vec3 minB = glm::vec3(wall.minBounds.x, wall.minBounds.y, currentZ);
 							glm::vec3 maxB = wall.maxBounds;
-							glm::vec3 center = (minB + maxB) * 0.5f;
-							glm::vec3 half = (maxB - minB) * 0.5f;
-							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
-						}
-
-						// 3. Header piece above the door
-						float headerMinY = intersectingDoor->position.y + intersectingDoor->height;
-						if (wall.maxBounds.y - headerMinY > 0.05f)
-						{
-							glm::vec3 minB = glm::vec3(wall.minBounds.x, headerMinY, zSplitLeft);
-							glm::vec3 maxB = glm::vec3(wall.maxBounds.x, wall.maxBounds.y, zSplitRight);
 							glm::vec3 center = (minB + maxB) * 0.5f;
 							glm::vec3 half = (maxB - minB) * 0.5f;
 							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
@@ -827,36 +1148,47 @@ void InteriorGenNode::BuildStructuralMesh(
 					}
 					else
 					{
-						// Split wall along X
-						float xSplitLeft = intersectingDoor->position.x - doorHalfW;
-						float xSplitRight = intersectingDoor->position.x + doorHalfW;
+						// Sort doors along X axis ascending
+						std::sort(intersectingDoors.begin(), intersectingDoors.end(), [](const InteriorDoor* a, const InteriorDoor* b) {
+							return a->position.x < b->position.x;
+						});
 
-						// 1. Left piece
-						if (xSplitLeft - wall.minBounds.x > 0.05f)
+						float currentX = wall.minBounds.x;
+						for (const auto* door : intersectingDoors)
 						{
-							glm::vec3 minB = wall.minBounds;
-							glm::vec3 maxB = glm::vec3(xSplitLeft, wall.maxBounds.y, wall.maxBounds.z);
-							glm::vec3 center = (minB + maxB) * 0.5f;
-							glm::vec3 half = (maxB - minB) * 0.5f;
-							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							float doorHalfW = door->width * 0.5f;
+							float xSplitLeft = door->position.x - doorHalfW;
+							float xSplitRight = door->position.x + doorHalfW;
+
+							// Left piece
+							if (xSplitLeft - currentX > 0.05f)
+							{
+								glm::vec3 minB = glm::vec3(currentX, wall.minBounds.y, wall.minBounds.z);
+								glm::vec3 maxB = glm::vec3(xSplitLeft, wall.maxBounds.y, wall.maxBounds.z);
+								glm::vec3 center = (minB + maxB) * 0.5f;
+								glm::vec3 half = (maxB - minB) * 0.5f;
+								meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							}
+
+							// Header piece above the door
+							float headerMinY = door->position.y + door->height;
+							if (wall.maxBounds.y - headerMinY > 0.05f)
+							{
+								glm::vec3 minB = glm::vec3(xSplitLeft, headerMinY, wall.minBounds.z);
+								glm::vec3 maxB = glm::vec3(xSplitRight, wall.maxBounds.y, wall.maxBounds.z);
+								glm::vec3 center = (minB + maxB) * 0.5f;
+								glm::vec3 half = (maxB - minB) * 0.5f;
+								meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
+							}
+
+							currentX = xSplitRight;
 						}
 
-						// 2. Right piece
-						if (wall.maxBounds.x - xSplitRight > 0.05f)
+						// Right piece
+						if (wall.maxBounds.x - currentX > 0.05f)
 						{
-							glm::vec3 minB = glm::vec3(xSplitRight, wall.minBounds.y, wall.minBounds.z);
+							glm::vec3 minB = glm::vec3(currentX, wall.minBounds.y, wall.minBounds.z);
 							glm::vec3 maxB = wall.maxBounds;
-							glm::vec3 center = (minB + maxB) * 0.5f;
-							glm::vec3 half = (maxB - minB) * 0.5f;
-							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
-						}
-
-						// 3. Header piece above the door
-						float headerMinY = intersectingDoor->position.y + intersectingDoor->height;
-						if (wall.maxBounds.y - headerMinY > 0.05f)
-						{
-							glm::vec3 minB = glm::vec3(xSplitLeft, headerMinY, wall.minBounds.z);
-							glm::vec3 maxB = glm::vec3(xSplitRight, wall.maxBounds.y, wall.maxBounds.z);
 							glm::vec3 center = (minB + maxB) * 0.5f;
 							glm::vec3 half = (maxB - minB) * 0.5f;
 							meshBuckets[MAT_DRYWALL].Append(MakeWallBox(plotMat, center, half, 2.0f));
@@ -1423,3 +1755,4 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	printf("[InteriorGenNode] Generated interiors for %d buildings -> %d material batches, %d total triangles\n",
 		(int)plots.size(), batchCount, totalRooms);
 }
+

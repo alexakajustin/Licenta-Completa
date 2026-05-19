@@ -41,9 +41,9 @@ private:
 	float floorHeight    = 3.0f;    // Height per floor
 	float wallThickness  = 0.15f;   // Interior wall thickness
 	float floorThick     = 0.1f;    // Floor/ceiling slab thickness
-	float minRoomArea    = 6.0f;    // Minimum room area before stopping subdivision
-	float doorWidth      = 1.0f;    // Standard door width
-	float doorHeight     = 2.4f;    // Standard door height
+	float minRoomArea    = 1.0f;    // Minimum room area before stopping subdivision
+	float doorWidth      = 0.8f;    // Standard door width
+	float doorHeight     = 2.1f;    // Standard door height
 	float hallwayWidth   = 2.0f;    // Central hallway width
 	float wallInset      = 0.5f;    // Building shell inset (must match BuildingGenNode)
 	int   seed           = 42;
