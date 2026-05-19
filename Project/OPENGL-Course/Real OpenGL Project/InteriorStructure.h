@@ -88,3 +88,19 @@ struct BuildingInterior
 	std::vector<PropPlacement> props;
 };
 
+// Bundled furniture dimensions for pipeline parameter passing
+struct FurnitureSizes
+{
+	glm::vec3 bed          = glm::vec3(1.6f, 0.8f, 2.0f);
+	glm::vec3 desk         = glm::vec3(1.2f, 0.75f, 0.6f);
+	glm::vec3 tv           = glm::vec3(0.9f, 0.6f, 0.2f);
+	glm::vec3 stove        = glm::vec3(0.8f, 0.9f, 0.6f);
+	glm::vec3 fridge       = glm::vec3(0.8f, 1.8f, 0.7f);
+	glm::vec3 sink         = glm::vec3(0.9f, 0.9f, 0.6f);
+	glm::vec3 toilet       = glm::vec3(0.5f, 0.8f, 0.7f);
+	glm::vec3 bathtub      = glm::vec3(0.8f, 0.6f, 1.7f);
+	glm::vec3 sofa         = glm::vec3(1.6f, 0.8f, 0.8f);
+	glm::vec3 coffeeTable  = glm::vec3(1.0f, 0.45f, 0.7f);
+	glm::vec3 tvStand      = glm::vec3(1.2f, 0.5f, 0.6f);
+};
+

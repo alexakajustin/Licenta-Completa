@@ -160,7 +160,6 @@ json InteriorGenNode::Serialize() const
 	j["floorHeight"]       = floorHeight;
 	j["wallThickness"]     = wallThickness;
 	j["floorThick"]        = floorThick;
-	j["minRoomArea"]       = minRoomArea;
 	j["doorWidth"]         = doorWidth;
 	j["doorHeight"]        = doorHeight;
 	j["hallwayWidth"]      = hallwayWidth;
@@ -171,8 +170,6 @@ json InteriorGenNode::Serialize() const
 	j["numBathrooms"]      = numBathrooms;
 	j["numKitchens"]       = numKitchens;
 	j["numLivingRooms"]    = numLivingRooms;
-	j["minRoomSize"]       = minRoomSize;
-	j["maxRoomSize"]       = maxRoomSize;
 	j["generateWalls"]     = generateWalls;
 	j["generateCeiling"]   = generateCeiling;
 	return j;
@@ -184,10 +181,9 @@ void InteriorGenNode::Deserialize(const json& j)
 	floorHeight       = j.value("floorHeight", 3.0f);
 	wallThickness     = j.value("wallThickness", 0.15f);
 	floorThick        = j.value("floorThick", 0.1f);
-	minRoomArea       = j.value("minRoomArea", 6.0f);
 	doorWidth         = j.value("doorWidth", 0.8f);
 	doorHeight        = j.value("doorHeight", 2.1f);
-	hallwayWidth      = j.value("hallwayWidth", 2.0f);
+	hallwayWidth      = j.value("hallwayWidth", 1.8f);
 	wallInset         = j.value("wallInset", 0.5f);
 	seed              = j.value("seed", 42);
 	generateFurniture = j.value("generateFurniture", false);
@@ -195,14 +191,12 @@ void InteriorGenNode::Deserialize(const json& j)
 	numBathrooms      = j.value("numBathrooms", 1);
 	numKitchens       = j.value("numKitchens", 1);
 	numLivingRooms    = j.value("numLivingRooms", 1);
-	minRoomSize       = j.value("minRoomSize", 3.0f);
-	maxRoomSize       = j.value("maxRoomSize", 6.0f);
 	generateWalls     = j.value("generateWalls", true);
 	generateCeiling   = j.value("generateCeiling", false);
 }
 
 // =====================================================================
-// MakeWallBox — UV-scaled cube primitive (same pattern as BuildingGenNode)
+// MakeWallBox â€” UV-scaled cube primitive (same pattern as BuildingGenNode)
 // =====================================================================
 
 MeshData InteriorGenNode::MakeWallBox(glm::mat4 plotMat, glm::vec3 center, glm::vec3 halfExtents, float uvScale) const
@@ -241,25 +235,156 @@ MeshData InteriorGenNode::MakeWallBox(glm::mat4 plotMat, glm::vec3 center, glm::
 }
 
 // =====================================================================
-// SubdivideFloor — Recursive BSP-style room splitting
+// ComputeRoomSize â€” Determine ideal room dimensions from furniture
 // =====================================================================
 
-void InteriorGenNode::SubdivideFloor(
-	BuildingInterior& interior,
-	glm::vec3 floorMin, glm::vec3 floorMax,
-	int floorIndex, bool isCommercial,
-	std::mt19937& rng,
-	int targetRooms) const
+glm::vec2 InteriorGenNode::ComputeRoomSize(RoomType type, const FurnitureSizes& f) const
 {
-	// Helper to add room with exterior window flag check
-	auto AddRoomDirect = [&](glm::vec3 minB, glm::vec3 maxB, RoomType t) {
+	float padding = 1.5f; // Walking space around furniture
+	float doorClearance = 1.2f; // Space for door swing
+
+	switch (type)
+	{
+	case RoomType::Bedroom:
+	{
+		float bedLen = std::max(f.bed.x, f.bed.z);
+		float bedW = std::min(f.bed.x, f.bed.z);
+		float w = std::max(bedLen + padding + 0.5f, 3.5f);
+		float d = std::max(bedW + f.desk.z + padding + doorClearance, 3.2f);
+		return glm::vec2(w, d);
+	}
+	case RoomType::Bathroom:
+	{
+		float bathtubLen = std::max(f.bathtub.x, f.bathtub.z);
+		float bathtubW = std::min(f.bathtub.x, f.bathtub.z);
+		float w = std::max(bathtubLen + f.toilet.x + padding, 2.5f);
+		float d = std::max(std::max(bathtubW, f.sink.z) + padding + doorClearance, 2.0f);
+		return glm::vec2(w, d);
+	}
+	case RoomType::Kitchen:
+	{
+		float applianceRow = f.stove.x + f.sink.x + f.fridge.x + 0.3f * 2.0f;
+		float w = std::max(applianceRow + padding, 3.5f);
+		float d = std::max(f.fridge.z + padding + doorClearance + 1.0f, 3.0f);
+		return glm::vec2(w, d);
+	}
+	case RoomType::Lobby: // Living Room
+	{
+		float sofaLen = std::max(f.sofa.x, f.sofa.z);
+		float w = std::max(sofaLen + f.coffeeTable.x + padding + 0.5f, 4.0f);
+		float d = std::max(f.sofa.z + f.tvStand.z + padding + doorClearance, 3.5f);
+		return glm::vec2(w, d);
+	}
+	default:
+		return glm::vec2(3.0f, 3.0f);
+	}
+}
+
+// =====================================================================
+// AssembleFloorplan â€” Pack rooms along a central hallway
+// =====================================================================
+
+void InteriorGenNode::AssembleFloorplan(
+	BuildingInterior& interior,
+	glm::vec3 origin, float floorY, float ceilY,
+	std::mt19937& rng,
+	const FurnitureSizes& furniture) const
+{
+	// 1. Build the room list with types and ideal sizes
+	struct RoomSpec {
+		RoomType type;
+		float width;
+		float depth;
+	};
+
+	std::vector<RoomSpec> specs;
+	for (int i = 0; i < numLivingRooms; i++)
+	{
+		auto sz = ComputeRoomSize(RoomType::Lobby, furniture);
+		specs.push_back({ RoomType::Lobby, sz.x, sz.y });
+	}
+	for (int i = 0; i < numKitchens; i++)
+	{
+		auto sz = ComputeRoomSize(RoomType::Kitchen, furniture);
+		specs.push_back({ RoomType::Kitchen, sz.x, sz.y });
+	}
+	for (int i = 0; i < numBedrooms; i++)
+	{
+		auto sz = ComputeRoomSize(RoomType::Bedroom, furniture);
+		specs.push_back({ RoomType::Bedroom, sz.x, sz.y });
+	}
+	for (int i = 0; i < numBathrooms; i++)
+	{
+		auto sz = ComputeRoomSize(RoomType::Bathroom, furniture);
+		specs.push_back({ RoomType::Bathroom, sz.x, sz.y });
+	}
+
+	if (specs.empty()) return;
+
+	// 2. Split rooms into two rows (top and bottom of hallway)
+	std::vector<RoomSpec> topRow, bottomRow;
+	for (size_t i = 0; i < specs.size(); i++)
+	{
+		if (i % 2 == 0)
+			topRow.push_back(specs[i]);
+		else
+			bottomRow.push_back(specs[i]);
+	}
+
+	// 3. Compute row widths and max depths
+	float wt = wallThickness;
+	float hallW = hallwayWidth;
+
+	float topTotalWidth = 0.0f;
+	float topMaxDepth = 0.0f;
+	for (const auto& r : topRow)
+	{
+		topTotalWidth += r.width + wt;
+		topMaxDepth = std::max(topMaxDepth, r.depth);
+	}
+	if (!topRow.empty()) topTotalWidth -= wt; // No trailing wall
+
+	float bottomTotalWidth = 0.0f;
+	float bottomMaxDepth = 0.0f;
+	for (const auto& r : bottomRow)
+	{
+		bottomTotalWidth += r.width + wt;
+		bottomMaxDepth = std::max(bottomMaxDepth, r.depth);
+	}
+	if (!bottomRow.empty()) bottomTotalWidth -= wt;
+
+	float maxTotalWidth = std::max(topTotalWidth, bottomTotalWidth);
+
+	if (!topRow.empty() && topTotalWidth < maxTotalWidth) {
+		float diff = maxTotalWidth - topTotalWidth;
+		float paddingPerRoom = diff / topRow.size();
+		for (auto& r : topRow) r.width += paddingPerRoom;
+	}
+	if (!bottomRow.empty() && bottomTotalWidth < maxTotalWidth) {
+		float diff = maxTotalWidth - bottomTotalWidth;
+		float paddingPerRoom = diff / bottomRow.size();
+		for (auto& r : bottomRow) r.width += paddingPerRoom;
+	}
+
+	float totalWidth = maxTotalWidth + wt * 2.0f;
+	bool needsHallway = (specs.size() > 1);
+	float totalDepth = topMaxDepth + bottomMaxDepth + wt * 2.0f;
+	if (needsHallway) totalDepth += hallW + wt * 2.0f;
+
+	// 4. Set building footprint from computed dimensions
+	float halfW = totalWidth * 0.5f;
+	float halfD = totalDepth * 0.5f;
+	interior.footprintMin = glm::vec3(origin.x - halfW, origin.y, origin.z - halfD);
+	interior.footprintMax = glm::vec3(origin.x + halfW, ceilY, origin.z + halfD);
+
+	// Helper lambdas
+	auto AddRoom = [&](glm::vec3 minB, glm::vec3 maxB, RoomType t) {
 		InteriorRoom r;
 		r.minBounds = minB;
 		r.maxBounds = maxB;
 		r.type = t;
-		r.floorIndex = floorIndex;
-
-		float eps = wallThickness * 2.0f;
+		r.floorIndex = 0;
+		float eps = wt * 2.0f;
 		r.hasExteriorWindow =
 			(std::abs(minB.x - interior.footprintMin.x) < eps) ||
 			(std::abs(maxB.x - interior.footprintMax.x) < eps) ||
@@ -268,341 +393,100 @@ void InteriorGenNode::SubdivideFloor(
 		interior.rooms.push_back(r);
 	};
 
-	// Helper to add wall
-	auto AddWallDirect = [&](glm::vec3 minB, glm::vec3 maxB) {
+	auto AddWall = [&](glm::vec3 minB, glm::vec3 maxB) {
 		InteriorWall w;
 		w.minBounds = minB;
 		w.maxBounds = maxB;
 		interior.walls.push_back(w);
 	};
 
-	struct SplitRoom {
-		glm::vec3 minB;
-		glm::vec3 maxB;
-		bool isHallway = false;
-	};
+	// 5. Place rooms
+	float startX = interior.footprintMin.x + wt;
 
-	std::vector<SplitRoom> to_split;
-	to_split.push_back({ floorMin, floorMax, false });
-	std::vector<SplitRoom> finalRooms;
-	bool hasCorridor = false;
-
-	float hallWidth = isCommercial ? 2.2f : 1.8f;
-	float minHallSize = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
-
-	while (!to_split.empty())
+	if (needsHallway)
 	{
-		// Find the largest room in the queue to split first (keeps room proportions balanced!)
-		auto largestIt = to_split.begin();
-		float maxArea = -1.0f;
-		for (auto it = to_split.begin(); it != to_split.end(); ++it)
+		// Hallway boundaries
+		float hallMinZ = origin.z - hallW * 0.5f;
+		float hallMaxZ = origin.z + hallW * 0.5f;
+
+		// Add hallway room
+		AddRoom(
+			glm::vec3(interior.footprintMin.x + wt, floorY, hallMinZ),
+			glm::vec3(interior.footprintMax.x - wt, ceilY, hallMaxZ),
+			RoomType::Corridor
+		);
+
+		// Hallway walls (top and bottom boundaries)
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, hallMaxZ),
+				glm::vec3(interior.footprintMax.x, ceilY, hallMaxZ + wt));
+		AddWall(glm::vec3(interior.footprintMin.x, floorY, hallMinZ - wt),
+				glm::vec3(interior.footprintMax.x, ceilY, hallMinZ));
+
+		// Place top row (above hallway, +Z)
+		float curX = startX;
+		float topMinZ = hallMaxZ + wt;
+		for (size_t i = 0; i < topRow.size(); i++)
 		{
-			float area = (it->maxB.x - it->minB.x) * (it->maxB.z - it->minB.z);
-			if (area > maxArea)
+			float roomW = topRow[i].width;
+			float roomD = topMaxDepth;
+
+			AddRoom(
+				glm::vec3(curX, floorY, topMinZ),
+				glm::vec3(curX + roomW, ceilY, topMinZ + roomD),
+				topRow[i].type
+			);
+
+			if (i + 1 < topRow.size())
 			{
-				maxArea = area;
-				largestIt = it;
+				AddWall(glm::vec3(curX + roomW, floorY, topMinZ),
+						glm::vec3(curX + roomW + wt, ceilY, topMinZ + roomD));
 			}
+			curX += roomW + wt;
 		}
 
-		SplitRoom current = *largestIt;
-		to_split.erase(largestIt);
-
-		float w = current.maxB.x - current.minB.x;
-		float d = current.maxB.z - current.minB.z;
-
-		// Decide if we have enough space to split along X or Z
-		bool canSplitX = (w >= minRoomSize * 2.0f + wallThickness);
-		bool canSplitZ = (d >= minRoomSize * 2.0f + wallThickness);
-
-		bool canSplit = (canSplitX || canSplitZ);
-		// Count currently generated non-corridor rooms to match requested count
-		int nonCorridorRooms = 0;
-		for (const auto& r : finalRooms) if (!r.isHallway) nonCorridorRooms++;
-		for (const auto& r : to_split) if (!r.isHallway) nonCorridorRooms++;
-		if (!current.isHallway) nonCorridorRooms++;
-
-		bool shouldSplit = (nonCorridorRooms < targetRooms);
-
-		if (!canSplit || !shouldSplit)
+		// Place bottom row (below hallway, -Z)
+		curX = startX;
+		float bottomMaxZ = hallMinZ - wt;
+		for (size_t i = 0; i < bottomRow.size(); i++)
 		{
-			finalRooms.push_back(current);
-			continue;
-		}
+			float roomW = bottomRow[i].width;
+			float roomD = bottomMaxDepth;
 
-		// Decide split axis based on aspect ratio or pick randomly based on rng seed
-		bool splitX = true;
-		if (canSplitX && canSplitZ)
-		{
-			if (w > 1.25f * d) {
-				splitX = true;
-			} else if (d > 1.25f * w) {
-				splitX = false;
-			} else {
-				std::uniform_int_distribution<int> axisDist(0, 1);
-				splitX = (axisDist(rng) == 0);
-			}
-		}
-		else
-		{
-			splitX = canSplitX;
-		}
+			AddRoom(
+				glm::vec3(curX, floorY, bottomMaxZ - roomD),
+				glm::vec3(curX + roomW, ceilY, bottomMaxZ),
+				bottomRow[i].type
+			);
 
-		// Check if we should do a hallway split
-		bool makeHallway = false;
-		float currentHallWidth = hallWidth;
-		float useMinRoomSize = minRoomSize;
-		if (!isCommercial && !hasCorridor && (targetRooms >= 2))
-		{
-			float sizeVal = splitX ? w : d;
-			float standardMinHallSize = minRoomSize * 2.0f + hallWidth + wallThickness * 2.0f;
-			float compactMinHallSize = 2.2f * 2.0f + 1.2f + wallThickness * 2.0f;
-
-			if (sizeVal >= standardMinHallSize)
+			if (i + 1 < bottomRow.size())
 			{
-				makeHallway = true;
-				currentHallWidth = hallWidth;
-				useMinRoomSize = minRoomSize;
+				AddWall(glm::vec3(curX + roomW, floorY, bottomMaxZ - roomD),
+						glm::vec3(curX + roomW + wt, ceilY, bottomMaxZ));
 			}
-			else if (sizeVal >= compactMinHallSize)
-			{
-				makeHallway = true;
-				currentHallWidth = 1.2f;
-				useMinRoomSize = 2.2f;
-			}
+			curX += roomW + wt;
 		}
-
-		// Decide random split position
-		float minPos = splitX ? (current.minB.x + useMinRoomSize) : (current.minB.z + useMinRoomSize);
-		float maxPos = splitX ? (current.maxB.x - useMinRoomSize) : (current.maxB.z - useMinRoomSize);
-
-		// Adjust the random split range for hallway splits
-		if (makeHallway)
-		{
-			minPos = splitX ? (current.minB.x + useMinRoomSize + currentHallWidth * 0.5f) : (current.minB.z + useMinRoomSize + currentHallWidth * 0.5f);
-			maxPos = splitX ? (current.maxB.x - useMinRoomSize - currentHallWidth * 0.5f) : (current.maxB.z - useMinRoomSize - currentHallWidth * 0.5f);
-		}
-
-		if (minPos >= maxPos)
-		{
-			finalRooms.push_back(current);
-			continue;
-		}
-
-		std::uniform_real_distribution<float> posDist(minPos, maxPos);
-		float splitVal = posDist(rng);
-
-		if (makeHallway)
-		{
-			hasCorridor = true;
-			float hMin = splitVal - currentHallWidth * 0.5f;
-			float hMax = splitVal + currentHallWidth * 0.5f;
-
-			if (splitX)
-			{
-				AddWallDirect(glm::vec3(hMin - wallThickness * 0.5f, current.minB.y, current.minB.z),
-							  glm::vec3(hMin + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
-				AddWallDirect(glm::vec3(hMax - wallThickness * 0.5f, current.minB.y, current.minB.z),
-							  glm::vec3(hMax + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
-
-				to_split.push_back({ current.minB, glm::vec3(hMin - wallThickness * 0.5f, current.maxB.y, current.maxB.z), false });
-				finalRooms.push_back({ glm::vec3(hMin + wallThickness * 0.5f, current.minB.y, current.minB.z),
-									   glm::vec3(hMax - wallThickness * 0.5f, current.maxB.y, current.maxB.z), true });
-				to_split.push_back({ glm::vec3(hMax + wallThickness * 0.5f, current.minB.y, current.minB.z), current.maxB, false });
-			}
-			else
-			{
-				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, hMin - wallThickness * 0.5f),
-							  glm::vec3(current.maxB.x, current.maxB.y, hMin + wallThickness * 0.5f));
-				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, hMax - wallThickness * 0.5f),
-							  glm::vec3(current.maxB.x, current.maxB.y, hMax + wallThickness * 0.5f));
-
-				to_split.push_back({ current.minB, glm::vec3(current.maxB.x, current.maxB.y, hMin - wallThickness * 0.5f), false });
-				finalRooms.push_back({ glm::vec3(current.minB.x, current.minB.y, hMin + wallThickness * 0.5f),
-									   glm::vec3(current.maxB.x, current.maxB.y, hMax - wallThickness * 0.5f), true });
-				to_split.push_back({ glm::vec3(current.minB.x, current.minB.y, hMax + wallThickness * 0.5f), current.maxB, false });
-			}
-		}
-		else
-		{
-			// Standard split: place one wall, creating two rooms
-			if (splitX)
-			{
-				AddWallDirect(glm::vec3(splitVal - wallThickness * 0.5f, current.minB.y, current.minB.z),
-							  glm::vec3(splitVal + wallThickness * 0.5f, current.maxB.y, current.maxB.z));
-
-				to_split.push_back({ current.minB, glm::vec3(splitVal - wallThickness * 0.5f, current.maxB.y, current.maxB.z), false });
-				to_split.push_back({ glm::vec3(splitVal + wallThickness * 0.5f, current.minB.y, current.minB.z), current.maxB, false });
-			}
-			else
-			{
-				AddWallDirect(glm::vec3(current.minB.x, current.minB.y, splitVal - wallThickness * 0.5f),
-							  glm::vec3(current.maxB.x, current.maxB.y, splitVal + wallThickness * 0.5f));
-
-				to_split.push_back({ current.minB, glm::vec3(current.maxB.x, current.maxB.y, splitVal - wallThickness * 0.5f), false });
-				to_split.push_back({ glm::vec3(current.minB.x, current.minB.y, splitVal + wallThickness * 0.5f), current.maxB, false });
-			}
-		}
-	}
-
-	for (const auto& r : finalRooms)
-	{
-		AddRoomDirect(r.minB, r.maxB, r.isHallway ? RoomType::Corridor : RoomType::Office);
-	}
-}
-
-// =====================================================================
-// AssignRoomTypes — Classify rooms based on size, position, adjacency
-// =====================================================================
-
-void InteriorGenNode::AssignRoomTypes(
-	BuildingInterior& interior,
-	bool isCommercial,
-	std::mt19937& rng) const
-{
-	if (interior.rooms.empty()) return;
-
-	// Gather only the assignable rooms (those created as RoomType::Office)
-	std::vector<InteriorRoom*> sortedRooms;
-	for (auto& room : interior.rooms)
-	{
-		if (room.type == RoomType::Office)
-		{
-			sortedRooms.push_back(&room);
-		}
-	}
-
-	// If there are no assignable rooms, we're done
-	if (sortedRooms.empty()) return;
-
-	// If it's commercial, all assignable rooms remain RoomType::Office
-	if (isCommercial)
-	{
-		return;
-	}
-
-	// Sort assignable rooms by area descending (largest first)
-	std::sort(sortedRooms.begin(), sortedRooms.end(), [](const InteriorRoom* a, const InteriorRoom* b) {
-		return a->GetArea() > b->GetArea();
-	});
-
-	std::vector<RoomType> typesToAssign;
-	// Push in priority of existence (which ones to keep if we have to truncate)
-	for (int i = 0; i < numLivingRooms; i++) typesToAssign.push_back(RoomType::Lobby);
-	for (int i = 0; i < numBathrooms; i++) typesToAssign.push_back(RoomType::Bathroom);
-	for (int i = 0; i < numKitchens; i++) typesToAssign.push_back(RoomType::Kitchen);
-	for (int i = 0; i < numBedrooms; i++) typesToAssign.push_back(RoomType::Bedroom);
-
-	if (typesToAssign.size() > sortedRooms.size())
-	{
-		typesToAssign.resize(sortedRooms.size());
 	}
 	else
 	{
-		while (typesToAssign.size() < sortedRooms.size())
-		{
-			typesToAssign.push_back(RoomType::Bedroom);
-		}
-	}
+		// Single room â€” no hallway needed
+		float roomW = specs[0].width;
+		float roomD = specs[0].depth;
+		float halfRW = roomW * 0.5f;
+		float halfRD = roomD * 0.5f;
 
-	// Sort the types to assign based on size preference descending
-	// Lobby: 5, Kitchen: 4, Bedroom: 3, Bathroom: 1
-	auto GetSizeScore = [](RoomType t) {
-		switch (t)
-		{
-		case RoomType::Lobby: return 5;
-		case RoomType::Kitchen: return 4;
-		case RoomType::Bedroom: return 3;
-		case RoomType::Bathroom: return 1;
-		default: return 0;
-		}
-	};
+		interior.footprintMin = glm::vec3(origin.x - halfRW - wt, origin.y, origin.z - halfRD - wt);
+		interior.footprintMax = glm::vec3(origin.x + halfRW + wt, ceilY, origin.z + halfRD + wt);
 
-	std::sort(typesToAssign.begin(), typesToAssign.end(), [&](RoomType a, RoomType b) {
-		return GetSizeScore(a) > GetSizeScore(b);
-	});
-
-	for (size_t i = 0; i < sortedRooms.size(); i++)
-	{
-		sortedRooms[i]->type = typesToAssign[i];
-	}
-
-	// Build adjacency list for topological validation
-	size_t n = interior.rooms.size();
-	std::vector<std::vector<size_t>> adj(n);
-	float wThick = interior.wallThickness;
-	for (size_t i = 0; i < n; i++)
-	{
-		for (size_t j = i + 1; j < n; j++)
-		{
-			const auto& r1 = interior.rooms[i];
-			const auto& r2 = interior.rooms[j];
-
-			float overlapX = std::min(r1.maxBounds.x, r2.maxBounds.x) - std::max(r1.minBounds.x, r2.minBounds.x);
-			float overlapZ = std::min(r1.maxBounds.z, r2.maxBounds.z) - std::max(r1.minBounds.z, r2.minBounds.z);
-
-			bool isAdjacent = false;
-			if (overlapZ > 0.4f && (std::abs(r1.maxBounds.x - r2.minBounds.x) < wThick * 2.0f + 0.1f ||
-								   std::abs(r1.minBounds.x - r2.maxBounds.x) < wThick * 2.0f + 0.1f)) {
-				isAdjacent = true;
-			}
-			if (overlapX > 0.4f && (std::abs(r1.maxBounds.z - r2.minBounds.z) < wThick * 2.0f + 0.1f ||
-								   std::abs(r1.minBounds.z - r2.maxBounds.z) < wThick * 2.0f + 0.1f)) {
-				isAdjacent = true;
-			}
-
-			if (isAdjacent) {
-				adj[i].push_back(j);
-				adj[j].push_back(i);
-			}
-		}
-	}
-
-	// Validate private-to-public adjacency. If a private room (Bedroom, Office, Bathroom)
-	// has NO neighbors of type Lobby, Corridor, or Kitchen (or in the case of a Bathroom, Bedroom for ensuite),
-	// we change either it or one of its neighbors to a Corridor or Lobby to make it reachable without bedroom-to-bedroom doors.
-	for (int pass = 0; pass < 3; pass++)
-	{
-		for (size_t i = 0; i < n; i++)
-		{
-			auto& room = interior.rooms[i];
-			if (room.type == RoomType::Bedroom || room.type == RoomType::Office || room.type == RoomType::Bathroom)
-			{
-				bool hasPublicNeighbor = false;
-				for (size_t neighborIdx : adj[i])
-				{
-					RoomType nt = interior.rooms[neighborIdx].type;
-					if (nt == RoomType::Lobby || nt == RoomType::Corridor || nt == RoomType::Kitchen)
-					{
-						hasPublicNeighbor = true;
-						break;
-					}
-					if (room.type == RoomType::Bathroom && nt == RoomType::Bedroom)
-					{
-						hasPublicNeighbor = true;
-						break;
-					}
-				}
-
-				if (!hasPublicNeighbor)
-				{
-					// Resolve the isolation: convert this room to a hallway (Corridor) or extension of the Lobby.
-					if (room.GetArea() < 12.0f)
-					{
-						room.type = RoomType::Corridor;
-					}
-					else
-					{
-						room.type = RoomType::Lobby;
-					}
-				}
-			}
-		}
+		AddRoom(
+			glm::vec3(origin.x - halfRW, floorY, origin.z - halfRD),
+			glm::vec3(origin.x + halfRW, ceilY, origin.z + halfRD),
+			specs[0].type
+		);
 	}
 }
 
 // =====================================================================
-// PlaceDoors — Insert doors between adjacent rooms
+// PlaceDoors â€” Insert doors between adjacent rooms
 // =====================================================================
 
 void InteriorGenNode::PlaceDoors(
@@ -967,56 +851,28 @@ void InteriorGenNode::PlaceDoors(
 }
 
 // =====================================================================
-// GenerateBuildingInterior — Full pipeline for one building
+// GenerateBuildingInterior â€” Full pipeline for one building
 // =====================================================================
 
 BuildingInterior InteriorGenNode::GenerateBuildingInterior(
-	const TransformData& plot, std::mt19937& rng) const
+	const TransformData& plot, std::mt19937& rng,
+	const FurnitureSizes& furniture) const
 {
 	BuildingInterior interior;
 
-	float plotW = plot.scale.x;
-	float plotD = plot.scale.z;
-	bool isCommercial = (plot.scale.y > 1.5f);
-
-	float currentInset = isCommercial ? wallInset : std::max(wallInset, 4.0f);
-	float bW = (plotW - currentInset * 2.0f) * 0.5f;
-	float bD = (plotD - currentInset * 2.0f) * 0.5f;
-
-	if (bW < 1.5f || bD < 1.5f) return interior; // too small
-
-	interior.isCommercial = isCommercial;
+	interior.isCommercial = false;
 	interior.floorHeight = floorHeight;
 	interior.wallThickness = wallThickness;
 	interior.floorThickness = floorThick;
-
-	// Building footprint in world space
-	interior.footprintMin = glm::vec3(plot.position.x - bW, plot.position.y, plot.position.z - bD);
-	interior.footprintMax = glm::vec3(plot.position.x + bW, 0.0f, plot.position.z + bD);
-
-	// Determine number of floors (Locked to exactly 1 floor as requested)
 	interior.numFloors = 1;
-	interior.footprintMax.y = plot.position.y + interior.numFloors * floorHeight;
 
-	// Subdivide each floor
-	for (int f = 0; f < interior.numFloors; f++)
-	{
-		float floorY = plot.position.y + f * floorHeight + floorThick;
-		float ceilY  = plot.position.y + (f + 1) * floorHeight;
+	float floorY = plot.position.y + floorThick;
+	float ceilY  = plot.position.y + floorHeight;
 
-		glm::vec3 floorMin(interior.footprintMin.x + wallThickness,
-		                   floorY,
-		                   interior.footprintMin.z + wallThickness);
-		glm::vec3 floorMax(interior.footprintMax.x - wallThickness,
-		                   ceilY,
-		                   interior.footprintMax.z - wallThickness);
+	// Assemble the floorplan — this sets footprintMin/footprintMax from room sizes
+	AssembleFloorplan(interior, plot.position, floorY, ceilY, rng, furniture);
 
-		int totalRequested = numBedrooms + numBathrooms + numKitchens + numLivingRooms;
-		SubdivideFloor(interior, floorMin, floorMax, f, isCommercial, rng, totalRequested);
-	}
-
-	// Assign room functions
-	AssignRoomTypes(interior, isCommercial, rng);
+	if (interior.rooms.empty()) return interior;
 
 	// Place doors in walls
 	PlaceDoors(interior, rng);
@@ -1025,7 +881,7 @@ BuildingInterior InteriorGenNode::GenerateBuildingInterior(
 }
 
 // =====================================================================
-// BuildStructuralMesh — Generate floor/ceiling/wall geometry
+// BuildStructuralMesh â€” Generate floor/ceiling/wall geometry
 // =====================================================================
 
 void InteriorGenNode::BuildStructuralMesh(
@@ -1407,7 +1263,7 @@ static glm::vec3 GetObjectAABBSize(GameObject* obj, glm::vec3 defaultVal) {
 }
 
 // =====================================================================
-// Execute — Main entry point
+// Execute â€” Main entry point
 // =====================================================================
 
 void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -1524,17 +1380,31 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	std::vector<std::thread> threads;
 	size_t chunkSize = (plots.size() + numThreads - 1) / numThreads;
 
+	// Build furniture sizes struct for the pipeline
+	FurnitureSizes furnitureSizes;
+	furnitureSizes.bed = bedSize;
+	furnitureSizes.desk = deskSize;
+	furnitureSizes.tv = tvSize;
+	furnitureSizes.stove = stoveSize;
+	furnitureSizes.fridge = fridgeSize;
+	furnitureSizes.sink = sinkSize;
+	furnitureSizes.toilet = toiletSize;
+	furnitureSizes.bathtub = bathtubSize;
+	furnitureSizes.sofa = sofaSize;
+	furnitureSizes.coffeeTable = coffeeTableSize;
+	furnitureSizes.tvStand = tvStandSize;
+
 	for (int t = 0; t < numThreads; t++)
 	{
 		size_t startIdx = t * chunkSize;
 		size_t endIdx = std::min(startIdx + chunkSize, plots.size());
 		if (startIdx >= plots.size()) break;
 
-		threads.emplace_back([this, startIdx, endIdx, &plots, &interiors]() {
+		threads.emplace_back([this, startIdx, endIdx, &plots, &interiors, furnitureSizes]() {
 			for (size_t i = startIdx; i < endIdx; i++)
 			{
-				std::mt19937 localRng(seed + (int)i + 7919); // different seed offset than BuildingGenNode
-				interiors[i] = GenerateBuildingInterior(plots[i], localRng);
+				std::mt19937 localRng(seed + (int)i + 7919);
+				interiors[i] = GenerateBuildingInterior(plots[i], localRng, furnitureSizes);
 			}
 		});
 	}

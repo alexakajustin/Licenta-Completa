@@ -41,14 +41,13 @@ private:
 	float floorHeight    = 3.0f;    // Height per floor
 	float wallThickness  = 0.15f;   // Interior wall thickness
 	float floorThick     = 0.1f;    // Floor/ceiling slab thickness
-	float minRoomArea    = 1.0f;    // Minimum room area before stopping subdivision
 	float doorWidth      = 0.8f;    // Standard door width
 	float doorHeight     = 2.1f;    // Standard door height
-	float hallwayWidth   = 2.0f;    // Central hallway width
+	float hallwayWidth   = 1.8f;    // Central hallway width
 	float wallInset      = 0.5f;    // Building shell inset (must match BuildingGenNode)
 	int   seed           = 42;
 	bool  generateFurniture = false; // Toggle furniture decoration
-	float singleWidth    = 20.0f;   // Stanadalone building width (when no plots are connected)
+	float singleWidth    = 20.0f;   // Standalone building width (when no plots are connected)
 	float singleDepth    = 20.0f;   // Standalone building depth (when no plots are connected)
 	bool  generateWalls  = true;    // Toggle interior wall drawing
 	bool  generateCeiling = false;  // Toggle ceiling slab drawing
@@ -56,24 +55,21 @@ private:
 	int   numBathrooms   = 1;
 	int   numKitchens    = 1;
 	int   numLivingRooms = 1;
-	float minRoomSize    = 3.0f;
-	float maxRoomSize    = 6.0f;
 
 	// Core generation pipeline
 	BuildingInterior GenerateBuildingInterior(
-		const TransformData& plot, std::mt19937& rng) const;
+		const TransformData& plot, std::mt19937& rng,
+		const FurnitureSizes& furniture) const;
 
-	void SubdivideFloor(
+	// Furniture-first room layout: compute ideal room size from furniture
+	glm::vec2 ComputeRoomSize(RoomType type, const FurnitureSizes& furniture) const;
+
+	// Assemble the floorplan by placing rooms around a central hallway
+	void AssembleFloorplan(
 		BuildingInterior& interior,
-		glm::vec3 floorMin, glm::vec3 floorMax,
-		int floorIndex, bool isCommercial,
+		glm::vec3 origin, float floorY, float ceilY,
 		std::mt19937& rng,
-		int targetRooms) const;
-
-	void AssignRoomTypes(
-		BuildingInterior& interior,
-		bool isCommercial,
-		std::mt19937& rng) const;
+		const FurnitureSizes& furniture) const;
 
 	void PlaceDoors(
 		BuildingInterior& interior,
