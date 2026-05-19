@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.28326931595802307,
-            -0.6723667979240417,
-            0.6838723421096802
+            -0.8212172985076904,
+            -0.1736481785774231,
+            0.5435516834259033
         ],
-        "pitch": -42.25,
+        "pitch": -10.0,
         "position": [
-            4.192041397094727,
-            5.724917888641357,
-            -2.6820058822631836
+            3.758220672607422,
+            1.275194764137268,
+            1.5229889154434204
         ],
-        "yaw": -247.5
+        "yaw": -213.5
     },
     "instancedGroups": [],
     "lights": [
@@ -80,11 +80,11 @@
                 "start": 157
             }
         ],
-        "nextId": 159,
+        "nextId": 190,
         "nodes": [
             {
-                "doorHeight": 2.4000000953674316,
-                "doorWidth": 2.0,
+                "doorHeight": 1.75,
+                "doorWidth": 1.149999976158142,
                 "editorPos": [
                     300.0,
                     150.0
@@ -3462,7 +3462,6 @@
                     0.6765676736831665,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3479,7 +3478,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -3537,7 +3538,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3554,7 +3554,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -3612,7 +3614,6 @@
                     0.6765676736831665,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3629,7 +3630,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_2",
@@ -3687,7 +3690,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3704,7 +3706,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_3",
@@ -3762,7 +3766,6 @@
                     0.6765676736831665,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3779,7 +3782,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_5",
@@ -3837,7 +3842,6 @@
                     0.6765676736831665,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Fridge.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -3854,7 +3858,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_7",

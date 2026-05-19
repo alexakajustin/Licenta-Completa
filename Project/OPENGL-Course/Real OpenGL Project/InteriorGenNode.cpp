@@ -125,6 +125,7 @@ void InteriorGenNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Floor Height", &floorHeight, 0.1f, 1.5f, 6.0f, "%.1f");
 	ImGui::DragFloat("Wall Thickness", &wallThickness, 0.01f, 0.05f, 0.5f, "%.2f");
 	ImGui::DragFloat("Door Width", &doorWidth, 0.05f, 0.6f, 2.0f, "%.2f");
+	ImGui::DragFloat("Door Height", &doorHeight, 0.05f, 1.5f, 3.5f, "%.2f");
 	ImGui::DragFloat("Hallway Width", &hallwayWidth, 0.1f, 1.0f, 5.0f, "%.1f");
 	ImGui::DragFloat("Wall Inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
 	ImGui::DragInt("Seed", &seed, 1, 0, 9999);
