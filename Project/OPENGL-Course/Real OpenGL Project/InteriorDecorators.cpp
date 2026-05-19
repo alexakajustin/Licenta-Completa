@@ -99,7 +99,10 @@ void OfficeDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
@@ -194,7 +197,10 @@ void BathroomDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	float floorY = room.minBounds.y;
 	RoomOccupancy occ(glm::vec2(room.minBounds.x, room.minBounds.z),
@@ -375,7 +381,10 @@ void CorridorDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	float ceilingY = room.maxBounds.y - 0.02f;
 	float centerX = (room.minBounds.x + room.maxBounds.x) * 0.5f;
@@ -407,7 +416,10 @@ void BedroomDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	std::uniform_real_distribution<float> prob(0.0f, 1.0f);
 	float floorY = room.minBounds.y;
@@ -510,7 +522,10 @@ void KitchenDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	float floorY = room.minBounds.y;
 	glm::vec3 roomMin = room.minBounds;
@@ -607,7 +622,10 @@ void LobbyDecorator::Decorate(
 	glm::vec3 fridgeSize,
 	glm::vec3 sinkSize,
 	glm::vec3 toiletSize,
-	glm::vec3 bathtubSize)
+	glm::vec3 bathtubSize,
+	glm::vec3 sofaSize,
+	glm::vec3 coffeeTableSize,
+	glm::vec3 tvStandSize)
 {
 	float floorY = room.minBounds.y;
 	glm::vec3 roomMin = room.minBounds;
@@ -618,28 +636,28 @@ void LobbyDecorator::Decorate(
 	RoomOccupancy occ(glm::vec2(roomMin.x, roomMin.z), glm::vec2(roomMax.x, roomMax.z));
 
 	// 1. Coffee table — center
-	glm::vec2 tableHalf(0.5f, 0.35f);
+	glm::vec2 tableHalf(coffeeTableSize.x * 0.5f, coffeeTableSize.z * 0.5f);
 	glm::vec2 tableXZ(centerX, centerZ + 0.2f);
 	if (occ.CanPlace(tableXZ, tableHalf))
 		AddPropOcc(props, occ, "Assets/Models/Livingroom/glass_table/glass_table.FBX",
-			tableXZ, tableHalf, floorY, glm::vec3(0.0f), glm::vec3(1.1f), "coffee_table");
+			tableXZ, tableHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "coffee_table");
 
 	// 2. Sofa behind table
-	glm::vec2 sofaHalf(0.8f, 0.4f);
+	glm::vec2 sofaHalf(sofaSize.x * 0.5f, sofaSize.z * 0.5f);
 	glm::vec2 sofaXZ(centerX, centerZ + 1.0f);
 	if (occ.CanPlace(sofaXZ, sofaHalf))
 		AddPropOcc(props, occ, "Assets/Models/Livingroom/interior/bank.FBX",
 			sofaXZ, sofaHalf, floorY, glm::vec3(0.0f, 180.0f, 0.0f), glm::vec3(1.0f), "couch");
 
 	// 3. TV Cabinet — opposite side
-	glm::vec2 tvHalf(0.6f, 0.3f);
+	glm::vec2 tvHalf(tvStandSize.x * 0.5f, tvStandSize.z * 0.5f);
 	glm::vec2 tvXZ(centerX, centerZ - 0.7f);
 	if (occ.CanPlace(tvXZ, tvHalf))
 	{
 		AddPropOcc(props, occ, "Assets/Models/Livingroom/tumba_fur/tumba_fur.FBX",
 			tvXZ, tvHalf, floorY, glm::vec3(0.0f), glm::vec3(1.0f), "tv_stand");
 		AddProp(props, "Assets/Models/Bedroom/Models/Interior/Tv_01.fbx",
-			glm::vec3(tvXZ.x, floorY + 0.45f, tvXZ.y), glm::vec3(0.0f), glm::vec3(0.9f), "tv");
+			glm::vec3(tvXZ.x, floorY + tvStandSize.y, tvXZ.y), glm::vec3(0.0f), glm::vec3(1.0f), "tv");
 
 		// 4. Speakers — clamp inward if room is narrow
 		float spkOff = std::min(1.0f, (room.GetWidth() - 1.0f) * 0.5f);

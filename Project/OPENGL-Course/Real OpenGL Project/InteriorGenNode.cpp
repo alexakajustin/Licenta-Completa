@@ -96,6 +96,9 @@ InteriorGenNode::InteriorGenNode(NodeGraph& graph)
 	Pin sinkIn(graph.NextPinId(), PinDataType::Mesh, "Sink Model");
 	Pin toiletIn(graph.NextPinId(), PinDataType::Mesh, "Toilet Model");
 	Pin bathtubIn(graph.NextPinId(), PinDataType::Mesh, "Bathtub Model");
+	Pin sofaIn(graph.NextPinId(), PinDataType::Mesh, "Sofa Model");
+	Pin coffeeTableIn(graph.NextPinId(), PinDataType::Mesh, "Coffee Table Model");
+	Pin tvStandIn(graph.NextPinId(), PinDataType::Mesh, "TV Stand Model");
 	inputs.push_back(bedIn);
 	inputs.push_back(deskIn);
 	inputs.push_back(tvIn);
@@ -104,6 +107,9 @@ InteriorGenNode::InteriorGenNode(NodeGraph& graph)
 	inputs.push_back(sinkIn);
 	inputs.push_back(toiletIn);
 	inputs.push_back(bathtubIn);
+	inputs.push_back(sofaIn);
+	inputs.push_back(coffeeTableIn);
+	inputs.push_back(tvStandIn);
 }
 
 // =====================================================================
@@ -785,6 +791,9 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	GameObject* sinkSrcObj = (inputs.size() > 6 && inputs[6].data.type == PinDataType::Mesh) ? inputs[6].data.sourceObject : nullptr;
 	GameObject* toiletSrcObj = (inputs.size() > 7 && inputs[7].data.type == PinDataType::Mesh) ? inputs[7].data.sourceObject : nullptr;
 	GameObject* bathtubSrcObj = (inputs.size() > 8 && inputs[8].data.type == PinDataType::Mesh) ? inputs[8].data.sourceObject : nullptr;
+	GameObject* sofaSrcObj = (inputs.size() > 9 && inputs[9].data.type == PinDataType::Mesh) ? inputs[9].data.sourceObject : nullptr;
+	GameObject* coffeeTableSrcObj = (inputs.size() > 10 && inputs[10].data.type == PinDataType::Mesh) ? inputs[10].data.sourceObject : nullptr;
+	GameObject* tvStandSrcObj = (inputs.size() > 11 && inputs[11].data.type == PinDataType::Mesh) ? inputs[11].data.sourceObject : nullptr;
 
 	glm::vec3 bedSize = GetObjectAABBSize(bedSrcObj, glm::vec3(1.6f, 0.8f, 2.0f));
 	glm::vec3 deskSize = GetObjectAABBSize(deskSrcObj, glm::vec3(1.2f, 0.75f, 0.6f));
@@ -794,6 +803,9 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	glm::vec3 sinkSize = GetObjectAABBSize(sinkSrcObj, glm::vec3(0.9f, 0.9f, 0.6f));
 	glm::vec3 toiletSize = GetObjectAABBSize(toiletSrcObj, glm::vec3(0.0f));
 	glm::vec3 bathtubSize = GetObjectAABBSize(bathtubSrcObj, glm::vec3(0.0f));
+	glm::vec3 sofaSize = GetObjectAABBSize(sofaSrcObj, glm::vec3(1.6f, 0.8f, 0.8f));
+	glm::vec3 coffeeTableSize = GetObjectAABBSize(coffeeTableSrcObj, glm::vec3(1.0f, 0.45f, 0.7f));
+	glm::vec3 tvStandSize = GetObjectAABBSize(tvStandSrcObj, glm::vec3(1.2f, 0.5f, 0.6f));
 
 	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s (Size: %.2f x %.2f x %.2f)\n", bedSrcObj->GetName().c_str(), bedSize.x, bedSize.y, bedSize.z);
 	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s (Size: %.2f x %.2f x %.2f)\n", deskSrcObj->GetName().c_str(), deskSize.x, deskSize.y, deskSize.z);
@@ -803,6 +815,9 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	if (sinkSrcObj) printf("[InteriorGenNode] Connected Sink: %s (Size: %.2f x %.2f x %.2f)\n", sinkSrcObj->GetName().c_str(), sinkSize.x, sinkSize.y, sinkSize.z);
 	if (toiletSrcObj) printf("[InteriorGenNode] Connected Toilet: %s (Size: %.2f x %.2f x %.2f)\n", toiletSrcObj->GetName().c_str(), toiletSize.x, toiletSize.y, toiletSize.z);
 	if (bathtubSrcObj) printf("[InteriorGenNode] Connected Bathtub: %s (Size: %.2f x %.2f x %.2f)\n", bathtubSrcObj->GetName().c_str(), bathtubSize.x, bathtubSize.y, bathtubSize.z);
+	if (sofaSrcObj) printf("[InteriorGenNode] Connected Sofa: %s (Size: %.2f x %.2f x %.2f)\n", sofaSrcObj->GetName().c_str(), sofaSize.x, sofaSize.y, sofaSize.z);
+	if (coffeeTableSrcObj) printf("[InteriorGenNode] Connected Coffee Table: %s (Size: %.2f x %.2f x %.2f)\n", coffeeTableSrcObj->GetName().c_str(), coffeeTableSize.x, coffeeTableSize.y, coffeeTableSize.z);
+	if (tvStandSrcObj) printf("[InteriorGenNode] Connected TV Stand: %s (Size: %.2f x %.2f x %.2f)\n", tvStandSrcObj->GetName().c_str(), tvStandSize.x, tvStandSize.y, tvStandSize.z);
 
 	// Write debugging information to a file in the workspace
 	{
@@ -836,6 +851,18 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			if (bathtubSrcObj) {
 				f << "Bathtub: " << bathtubSrcObj->GetName() << "\n";
 				f << "  Calculated AABB Size: " << bathtubSize.x << " x " << bathtubSize.y << " x " << bathtubSize.z << "\n";
+			}
+			if (sofaSrcObj) {
+				f << "Sofa: " << sofaSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << sofaSize.x << " x " << sofaSize.y << " x " << sofaSize.z << "\n";
+			}
+			if (coffeeTableSrcObj) {
+				f << "Coffee Table: " << coffeeTableSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << coffeeTableSize.x << " x " << coffeeTableSize.y << " x " << coffeeTableSize.z << "\n";
+			}
+			if (tvStandSrcObj) {
+				f << "TV Stand: " << tvStandSrcObj->GetName() << "\n";
+				f << "  Calculated AABB Size: " << tvStandSize.x << " x " << tvStandSize.y << " x " << tvStandSize.z << "\n";
 			}
 			f.close();
 		}
@@ -902,7 +929,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		BuildStructuralMesh(interior, plotMat, meshBuckets);
 
 		// Furniture decoration
-		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj)
+		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj || sofaSrcObj || coffeeTableSrcObj || tvStandSrcObj)
 		{
 			std::mt19937 decorRng(seed + (int)i + 13337);
 			for (const auto& room : interior.rooms)
@@ -910,7 +937,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				auto decorator = CreateDecoratorForRoom(room.type);
 				if (decorator)
 				{
-					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize, toiletSize, bathtubSize);
+					decorator->Decorate(meshBuckets, interior.props, room, decorRng, floorHeight, bedSize, deskSize, tvSize, stoveSize, fridgeSize, sinkSize, toiletSize, bathtubSize, sofaSize, coffeeTableSize, tvStandSize);
 				}
 			}
 		}
@@ -992,7 +1019,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 
 	// Phase 3b: Instantiate high-fidelity props as GameObjects
-	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj)
+	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj || sofaSrcObj || coffeeTableSrcObj || tvStandSrcObj)
 	{
 		int propId = 0;
 		for (size_t i = 0; i < interiors.size(); i++)
@@ -1022,6 +1049,9 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				else if (prop.category == "bathtub") sourceObj = bathtubSrcObj;
 				else if (prop.category == "washing_machine") sourceObj = toiletSrcObj; // reuse bathroom input
 				else if (prop.category == "cabinet") sourceObj = sinkSrcObj; // reuse sink input as fallback
+				else if (prop.category == "couch") sourceObj = sofaSrcObj;
+				else if (prop.category == "coffee_table") sourceObj = coffeeTableSrcObj;
+				else if (prop.category == "tv_stand") sourceObj = tvStandSrcObj;
 
 				if (prop.category == "debug_fail_bathtub")
 				{

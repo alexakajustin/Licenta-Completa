@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.7740623354911804,
-            -0.6018150448799133,
-            -0.1965867578983307
+            0.34773170948028564,
+            -0.7660444378852844,
+            -0.5406094789505005
         ],
-        "pitch": -37.0,
+        "pitch": -50.0,
         "position": [
-            -4.4345245361328125,
-            7.75398588180542,
-            2.22932505607605
+            -3.139641284942627,
+            7.4443440437316895,
+            4.4045562744140625
         ],
-        "yaw": -374.25
+        "yaw": -57.25
     },
     "instancedGroups": [],
     "lights": [
@@ -63,9 +63,19 @@
                 "end": 8,
                 "id": 66,
                 "start": 65
+            },
+            {
+                "end": 79,
+                "id": 94,
+                "start": 93
+            },
+            {
+                "end": 77,
+                "id": 97,
+                "start": 96
             }
         ],
-        "nextId": 67,
+        "nextId": 98,
         "nodes": [
             {
                 "doorHeight": 2.4000000953674316,
@@ -90,7 +100,10 @@
                     7,
                     8,
                     9,
-                    10
+                    10,
+                    77,
+                    78,
+                    79
                 ],
                 "minRoomArea": 1.0,
                 "numBathrooms": 1,
@@ -366,6 +379,132 @@
                     65
                 ],
                 "selectedName": "sink (Root)",
+                "title": "Scene Input"
+            },
+            {
+                "cachedMatColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 2.0,
+                "cachedMatSpecular": 0.0,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_fur.FBX",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    1.8647141456604004,
+                    3.8244032859802246,
+                    0.0
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    0.0,
+                    90.0,
+                    -90.0
+                ],
+                "cachedScale": [
+                    0.009999994188547134,
+                    0.009999999776482582,
+                    0.014999999664723873
+                ],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 0,
+                        "heightMax": 100.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_texture.jpg",
+                        "tiling": 1.0
+                    }
+                ],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    82.16448974609375,
+                    766.6471557617188
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": true,
+                "id": 92,
+                "inputPins": [],
+                "outputPins": [
+                    93
+                ],
+                "selectedName": "tumba_fur 94",
+                "title": "Scene Input"
+            },
+            {
+                "cachedMatColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "cachedMatOffset": [
+                    0.0,
+                    0.0
+                ],
+                "cachedMatShininess": 2.0,
+                "cachedMatSpecular": 0.0,
+                "cachedMatTiling": [
+                    1.0,
+                    1.0
+                ],
+                "cachedModelPath": "Assets\\Models\\Livingroom\\bed2\\bed2.FBX",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    6.6058430671691895,
+                    2.5115127563476563,
+                    34.929386138916016
+                ],
+                "cachedPrimitiveType": "",
+                "cachedRotation": [
+                    -90.0,
+                    179.99996948242188,
+                    -179.99996948242188
+                ],
+                "cachedScale": [
+                    0.02500000037252903,
+                    0.02500000037252903,
+                    0.02500000037252903
+                ],
+                "cachedTextureLayers": [
+                    {
+                        "blendMode": 0,
+                        "heightMax": 100.0,
+                        "heightMin": 0.0,
+                        "invert": false,
+                        "normalMapPath": "",
+                        "opacity": 1.0,
+                        "slopeMax": 0.5,
+                        "slopeMin": 0.0,
+                        "texturePath": "Assets\\Models\\Livingroom\\bed2\\bed2.jpg",
+                        "tiling": 1.0
+                    }
+                ],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    75.16448974609375,
+                    902.6471557617188
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": true,
+                "id": 95,
+                "inputPins": [],
+                "outputPins": [
+                    96
+                ],
+                "selectedName": "bed2 97",
                 "title": "Scene Input"
             }
         ]
@@ -897,7 +1036,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\Livingroom\\bed1\\bed1.FBX",
             "name": "bed1 22",
@@ -1000,7 +1141,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -1075,7 +1218,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -1133,7 +1278,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Table.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1150,7 +1294,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\Kitchen\\Models\\Table.fbx",
             "name": "Table 38",
@@ -1236,7 +1382,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1253,7 +1398,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -1311,7 +1458,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1328,7 +1474,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -1386,7 +1534,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1403,7 +1550,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_2",
@@ -1461,7 +1610,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1478,7 +1626,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_3",
@@ -1536,7 +1686,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1553,7 +1702,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_4",
@@ -1611,7 +1762,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1628,7 +1778,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_5",
@@ -1686,7 +1838,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1703,7 +1854,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_6",
@@ -1761,7 +1914,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1778,7 +1930,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_7",
@@ -1836,7 +1990,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1853,7 +2006,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_8",
@@ -1911,7 +2066,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -1928,7 +2082,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_9",
@@ -1986,7 +2142,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/Materials/StoveMat/Stove.mat",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2003,7 +2158,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_10",
@@ -2107,7 +2264,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
@@ -2165,7 +2324,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2182,7 +2340,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
@@ -2257,7 +2417,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_2",
@@ -2315,7 +2477,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2332,7 +2493,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_3",
@@ -2407,7 +2570,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_4",
@@ -2465,7 +2630,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2482,7 +2646,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_5",
@@ -2557,7 +2723,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_6",
@@ -2615,7 +2783,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2632,7 +2799,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_7",
@@ -2707,7 +2876,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_8",
@@ -2765,7 +2936,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2782,7 +2952,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_9",
@@ -2840,7 +3012,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2857,7 +3028,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_10",
@@ -2915,7 +3088,6 @@
                     1.0,
                     1.0
                 ],
-                "material.diffuseMap": "Assets/Models/Kitchen/Models/sink.fbx",
                 "material.offset": [
                     0.0,
                     0.0
@@ -2932,7 +3104,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_11",
@@ -2972,6 +3146,156 @@
                     1.0,
                     1.0,
                     1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "material.baseColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_texture.jpg",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_fur.FBX",
+            "name": "tumba_fur 94",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Models\\Livingroom\\tumba_fur\\tumba_texture.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    1.8647141456604004,
+                    3.8244032859802246,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    90.0,
+                    -90.0
+                ],
+                "scale": [
+                    0.009999994188547134,
+                    0.009999999776482582,
+                    0.014999999664723873
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628
+                ],
+                "material.baseColor": [
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    0.5879999995231628,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets\\Models\\Livingroom\\bed2\\bed2.jpg",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.shininess": 2.0,
+                "material.specularColor": [
+                    0.8999999761581421,
+                    0.8999999761581421,
+                    0.8999999761581421
+                ],
+                "material.specularIntensity": 0.0,
+                "material.sssDistortion": 0.20000000298023224,
+                "material.sssScale": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\Livingroom\\bed2\\bed2.FBX",
+            "name": "bed2 97",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Models\\Livingroom\\bed2\\bed2.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    6.6058430671691895,
+                    2.5115127563476563,
+                    34.929386138916016
+                ],
+                "rotation": [
+                    -90.0,
+                    179.99996948242188,
+                    -179.99996948242188
+                ],
+                "scale": [
+                    0.02500000037252903,
+                    0.02500000037252903,
+                    0.02500000037252903
                 ]
             }
         }
