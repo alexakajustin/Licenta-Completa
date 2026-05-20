@@ -1288,10 +1288,37 @@ void EditorUI::RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, in
 		glm::vec3 bMin, bMax;
 		obj->GetWorldBounds(bMin, bMax);
 		
-		glm::vec3 center = (bMin + bMax) * 0.5f;
-		float size = glm::length(bMax - bMin);
+		glm::vec3 center;
+		float size = 0.0f;
+		
+		// Handle invalid/empty bounds gracefully (default bounds are often 1e10f and -1e10f)
+		if (bMin.x > bMax.x || bMin.y > bMax.y || bMin.z > bMax.z || 
+			std::isnan(bMin.x) || std::isnan(bMax.x) || 
+			std::isinf(bMin.x) || std::isinf(bMax.x)) {
+			center = obj->GetTransform().GetPosition();
+			size = 10.0f;
+		} else {
+			center = (bMin + bMax) * 0.5f;
+			size = glm::length(bMax - bMin);
+		}
+		
+		// Fallback for extreme or NaN center values
+		if (std::isnan(center.x) || std::isinf(center.x) || 
+			std::isnan(center.y) || std::isinf(center.y) || 
+			std::isnan(center.z) || std::isinf(center.z)) {
+			center = obj->GetTransform().GetPosition();
+		}
+		if (std::isnan(center.x) || std::isinf(center.x)) {
+			center = glm::vec3(0.0f);
+		}
+
 		// Unity-style focus: Ensure camera is far enough to see the whole object, without an arbitrary small cap
 		float focusDistance = glm::max(size * 0.65f, 5.0f);
+		
+		// Cap focus distance to a sensible maximum (e.g. 2000.0f, which is 10% of the 20km render distance)
+		if (focusDistance > 2000.0f || std::isnan(focusDistance) || std::isinf(focusDistance)) {
+			focusDistance = 2000.0f;
+		}
 		
 		camera->SetPositionAndLookAt(center, focusDistance);
 	}

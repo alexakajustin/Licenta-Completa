@@ -413,10 +413,14 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		if (obj) CleanupFallbacks();
 
 		// Propagate transform data so downstream nodes can handle scale/restore
+		// IMPORTANT: Since we already baked rotation and scale into the vertex data above
+		// (lines 304-351), we must propagate identity scale/rotation. Otherwise the
+		// OutputNode handler will re-apply scale (e.g. 1000,1,1000) on already-scaled
+		// vertices, causing the terrain to appear flat (double-scaling bug).
 		TransformData t;
 		t.position = obj ? obj->GetTransform().GetPosition() : cachedPosition;
-		t.rotation = obj ? obj->GetTransform().GetRotation() : cachedRotation;
-		t.scale = obj ? obj->GetTransform().GetScale() : cachedScale;
+		t.rotation = glm::vec3(0.0f); // Already baked into vertices
+		t.scale = glm::vec3(1.0f);    // Already baked into vertices
 		outputs[0].data.transforms.push_back(t);
 	}
 }

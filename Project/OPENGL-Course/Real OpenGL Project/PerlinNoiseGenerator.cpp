@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <cstdlib>
 #include <algorithm>
+#include <cfloat>
 #include <thread>
 #include <vector>
 #include <random>
@@ -178,6 +179,25 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 		data = *input;
 		int vertCount = data.GetVertexCount();
 
+		// === Compute mesh bounding box for coordinate normalization ===
+		// Normalize vertex X/Z to [0,1] range so that frequency is always relative
+		// to the mesh size (e.g. freq=0.5 = ~half a noise cycle across the terrain),
+		// regardless of whether vertices are in [-1,1] or [-1000,1000] world-space.
+		float minX = FLT_MAX, maxX = -FLT_MAX, minZ = FLT_MAX, maxZ = -FLT_MAX;
+		for (int i = 0; i < vertCount; i++)
+		{
+			float vx = data.vertices[i * 14];
+			float vz = data.vertices[i * 14 + 2];
+			if (vx < minX) minX = vx;
+			if (vx > maxX) maxX = vx;
+			if (vz < minZ) minZ = vz;
+			if (vz > maxZ) maxZ = vz;
+		}
+		float rangeX = (maxX - minX);
+		float rangeZ = (maxZ - minZ);
+		if (rangeX < 0.0001f) rangeX = 1.0f;
+		if (rangeZ < 0.0001f) rangeZ = 1.0f;
+
 		// === MULTITHREADED DISPLACEMENT ===
 		unsigned int numThreads = std::thread::hardware_concurrency();
 		if (numThreads == 0) numThreads = 4;
@@ -189,8 +209,11 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 				int base = i * 14;
 				float vx = data.vertices[base];
 				float vz = data.vertices[base + 2];
-				float sx = (vx + offsetX + 10000.1234f);
-				float sz = (vz + offsetZ + 10000.1234f);
+				// Normalize to [0,1] range so frequency is mesh-size-relative
+				float nx = (vx - minX) / rangeX;
+				float nz = (vz - minZ) / rangeZ;
+				float sx = (nx + offsetX + 0.1234f);
+				float sz = (nz + offsetZ + 0.1234f);
 				float noise = FractalNoise(sx * frequency, sz * frequency);
 
 				if (useNormalDisplacement)
@@ -220,14 +243,17 @@ MeshData PerlinNoiseGenerator::Generate(const MeshData* input)
 				int startV = t * perThread;
 				int endV = (t == numThreads - 1) ? vertCount : (t + 1) * perThread;
 
-				threads.emplace_back([this, &data, startV, endV]() {
+				threads.emplace_back([this, &data, startV, endV, minX, minZ, rangeX, rangeZ]() {
 					for (int i = startV; i < endV; i++)
 					{
 						int base = i * 14;
 						float vx = data.vertices[base];
 						float vz = data.vertices[base + 2];
-						float sx = (vx + offsetX + 10000.1234f);
-						float sz = (vz + offsetZ + 10000.1234f);
+						// Normalize to [0,1] range so frequency is mesh-size-relative
+						float nx = (vx - minX) / rangeX;
+						float nz = (vz - minZ) / rangeZ;
+						float sx = (nx + offsetX + 0.1234f);
+						float sz = (nz + offsetZ + 0.1234f);
 						float noise = FractalNoise(sx * frequency, sz * frequency);
 
 						if (useNormalDisplacement)
