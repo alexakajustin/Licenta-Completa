@@ -83,18 +83,8 @@ void DebugOverlay::BeginFrame()
 	frameTimeHistory.push_back(deltaTime * 1000.0f);
 	if ((int)frameTimeHistory.size() > HISTORY_SIZE) frameTimeHistory.pop_front();
 
-	// Start GPU timer (double-buffered: read previous, start new)
-	if (queryReady) {
-		GLuint64 gpuTime = 0;
-		GLint available = 0;
-		glGetQueryObjectiv(gpuTimerQuery[1 - currentQuery], GL_QUERY_RESULT_AVAILABLE, &available);
-		if (available) {
-			glGetQueryObjectui64v(gpuTimerQuery[1 - currentQuery], GL_QUERY_RESULT, &gpuTime);
-			gpuTimeMs = gpuTime / 1000000.0f; // ns -> ms
-		}
-	}
-
-	glBeginQuery(GL_TIME_ELAPSED, gpuTimerQuery[currentQuery]);
+	// NOTE: Frame-level GL_TIME_ELAPSED removed — it conflicts with per-pass timers.
+	// gpuTimeMs is now computed as sum of pass timers in EndFrame().
 
 	// Reset per-pass active flags
 	for (auto& [name, timer] : passTimers) timer.active = false;
@@ -106,9 +96,13 @@ void DebugOverlay::BeginFrame()
 
 void DebugOverlay::EndFrame()
 {
-	glEndQuery(GL_TIME_ELAPSED);
-	currentQuery = 1 - currentQuery;
-	queryReady = true;
+	// Compute total GPU time as sum of all pass timers
+	// (Frame-level GL_TIME_ELAPSED removed — it conflicted with per-pass queries)
+	float totalGpu = 0.0f;
+	for (auto& [name, timer] : passTimers) {
+		if (timer.active) totalGpu += timer.smoothedMs;
+	}
+	gpuTimeMs = totalGpu;
 
 	// Snapshot counters
 	lastDrawCalls = drawCallCount;

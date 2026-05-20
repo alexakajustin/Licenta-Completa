@@ -55,7 +55,7 @@ struct GraphicsSettings {
 	bool debugShowBounds = false;
 	bool debugFreezeCulling = false;
 	bool showWireframe = false;
-	bool enableOcclusionCulling = true;
+	bool enableOcclusionCulling = false; // Disabled: counterproductive with static batching
 	bool debugShowHiZ = false;
 	bool debugShowCulling = false;
 };

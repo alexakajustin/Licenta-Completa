@@ -291,19 +291,17 @@ void ScatterNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	outputs[1].data.transforms.resize(workingCount); // Pre-allocate for parallel writing
 	outputs[1].data.instanceMeshes.clear(); // We don't usually generate unique meshes here unless noise is integrated
 
-	// Calculate surface world matrix (INCLUDING scale, so spawned objects spread properly over scaled surfaces)
+	// Calculate surface world matrix.
+	// IMPORTANT: SceneInputNode already bakes scale+rotation INTO the mesh vertices.
+	// So surfaceWorld must ONLY apply position (translation), otherwise scale/rotation
+	// are applied twice and scatter positions end up wildly wrong.
 	glm::mat4 surfaceWorld = glm::mat4(1.0f);
 	glm::mat3 surfaceNormalMatrix = glm::mat3(1.0f);
 	if (!inputs[0].data.transforms.empty())
 	{
 		const TransformData& st = inputs[0].data.transforms[0];
+		// Only translation — scale and rotation are already baked into mesh vertices by SceneInputNode
 		surfaceWorld = glm::translate(surfaceWorld, st.position);
-		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.x), glm::vec3(1, 0, 0));
-		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.y), glm::vec3(0, 1, 0));
-		surfaceWorld = glm::rotate(surfaceWorld, glm::radians(st.rotation.z), glm::vec3(0, 0, 1));
-		surfaceWorld = glm::scale(surfaceWorld, st.scale);
-		
-		surfaceNormalMatrix = glm::transpose(glm::inverse(glm::mat3(surfaceWorld)));
 	}
 
 	// === HIGH PERFORMANCE PARALLEL TRANSFORM GENERATION ===

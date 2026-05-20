@@ -1,19 +1,25 @@
 {
     "camera": {
         "front": [
-            0.7720149159431458,
-            -0.49242356419563293,
-            -0.4018855094909668
+            0.056141048669815063,
+            -0.13917310535907745,
+            -0.9886754155158997
         ],
-        "pitch": -29.5,
+        "pitch": -8.0,
         "position": [
-            148.4405975341797,
-            232.25245666503906,
-            412.1172790527344
+            -0.6814006567001343,
+            2.0311057567596436,
+            -1.2430328130722046
         ],
-        "yaw": -27.5
+        "yaw": -86.75
     },
-    "instancedGroups": [],
+    "instancedGroups": [
+        {
+            "instanceDataPath": "Test_Scatter_Instanced_5_Cube_1.inst",
+            "name": "Scatter_Instanced_5_Cube 1",
+            "sourceObjectName": "Cube 1"
+        }
+    ],
     "lights": [
         {
             "ambientIntensity": 0.4000000059604645,
@@ -35,27 +41,17 @@
     "nodeGraph": {
         "links": [
             {
-                "end": 4,
-                "id": 14,
+                "end": 6,
+                "id": 10,
                 "start": 2
             },
             {
-                "end": 10,
-                "id": 15,
-                "start": 5
-            },
-            {
                 "end": 7,
-                "id": 16,
-                "start": 11
-            },
-            {
-                "end": 13,
-                "id": 17,
-                "start": 8
+                "id": 11,
+                "start": 4
             }
         ],
-        "nextId": 18,
+        "nextId": 12,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -72,15 +68,15 @@
                     0.0
                 ],
                 "cachedScale": [
-                    1000.0,
+                    100.0,
                     1.0,
-                    1000.0
+                    100.0
                 ],
                 "cachedTextureLayers": [],
                 "cachedTexturePath": "",
                 "editorPos": [
                     50.0,
-                    150.0
+                    50.0
                 ],
                 "forceOriginalPrimitive": true,
                 "hasCachedMaterial": false,
@@ -93,97 +89,80 @@
                 "title": "Scene Input"
             },
             {
-                "amplitude": 400.0,
-                "editorPos": [
-                    250.0,
-                    150.0
+                "cachedModelPath": "",
+                "cachedNormalMapPath": "",
+                "cachedPosition": [
+                    -4.37113897078234e-07,
+                    0.16099584102630615,
+                    -10.0
                 ],
-                "frequency": 0.5,
+                "cachedPrimitiveType": "Cube",
+                "cachedRotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "cachedScale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "cachedTextureLayers": [],
+                "cachedTexturePath": "",
+                "editorPos": [
+                    50.0,
+                    250.0
+                ],
+                "forceOriginalPrimitive": true,
+                "hasCachedMaterial": false,
                 "id": 3,
-                "inputPins": [
+                "inputPins": [],
+                "outputPins": [
                     4
                 ],
-                "octaves": 8,
-                "offsetX": 0.0,
-                "offsetZ": 0.0,
-                "outputPins": [
-                    5
-                ],
-                "persistence": 0.44999998807907104,
-                "ridged": true,
-                "seed": 42,
-                "title": "Perlin Noise",
-                "useNormalDisplacement": false
+                "selectedName": "Cube 1",
+                "title": "Scene Input"
             },
             {
-                "baseDepth": 1.0,
-                "baseWidth": 8.0,
+                "alignToNormal": true,
+                "count": 1000,
+                "createdGroupNames": [
+                    "Scatter_Instanced_5_Cube 1"
+                ],
+                "deletionVolumes": [],
                 "editorPos": [
-                    650.0,
+                    300.0,
                     150.0
                 ],
-                "flowSpeed": 0.11999999731779099,
-                "id": 6,
+                "id": 5,
                 "inputPins": [
+                    6,
                     7
                 ],
-                "maxSteps": 800,
+                "maxScale": 1.2000000476837158,
+                "minScale": 0.800000011920929,
                 "outputPins": [
-                    8
+                    8,
+                    9
                 ],
-                "smoothPasses": 8,
-                "springCount": 8,
-                "textureTiling": 6.0,
-                "title": "River",
-                "waterOffset": 3.0
-            },
-            {
-                "depositionConstant": 0.019999999552965164,
-                "dissolvingConstant": 0.05000000074505806,
-                "editorPos": [
-                    450.0,
-                    150.0
-                ],
-                "evaporationConstant": 0.00019999999494757503,
-                "id": 9,
-                "inputPins": [
-                    10
-                ],
-                "maxDelta": 1.2000000476837158,
-                "outputPins": [
-                    11
-                ],
-                "rainRate": 0.03999999910593033,
-                "sedimentCapacity": 30.0,
-                "simulationSteps": 250,
-                "smoothPasses": 0,
-                "title": "Hydraulic Erosion"
-            },
-            {
-                "editorPos": [
-                    850.0,
-                    150.0
-                ],
-                "id": 12,
-                "inputPins": [
-                    13
-                ],
-                "outputPins": [],
-                "sameAsInput": true,
-                "targetName": "(none)",
-                "title": "Output",
-                "updateMesh": true
+                "randomRotation": true,
+                "seed": 42,
+                "spawnAsObjects": true,
+                "spawnedMap": {},
+                "targetParentName": "(none)",
+                "title": "Scatter"
             }
         ]
     },
     "objects": [
         {
-            "customMeshPath": "Test_Plane.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "Plane",
             "texturePath": "",
             "transform": {
@@ -198,70 +177,48 @@
                     0.0
                 ],
                 "scale": [
-                    1000.0,
+                    100.0,
                     1.0,
-                    1000.0
+                    100.0
                 ]
             }
         },
         {
             "inheritScale": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.8500000238418579
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Cube 1",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Cube",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -4.37113897078234e-07,
+                    0.16099584102630615,
+                    -10.0
                 ],
-                "material.offset": [
+                "rotation": [
+                    0.0,
                     0.0,
                     0.0
                 ],
-                "material.shininess": 256.0,
-                "material.specularIntensity": 3.0,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "material_causticsMap": "Assets/Textures/Water/caustics.png",
-                "material_dudvMap": "Assets/Textures/Water/dudv.png",
-                "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 6.0,
-                "material_foamColor": [
-                    1.0,
+                "scale": [
                     1.0,
                     1.0,
                     1.0
-                ],
-                "material_foamDistance": 3.0,
-                "material_fresnelPower": 4.0,
-                "material_shininessOverride": 512.0,
-                "material_specularIntensityOverride": 5.0,
-                "material_waterColorDeep": [
-                    0.012000000104308128,
-                    0.14900000393390656,
-                    0.3490000069141388,
-                    0.9490000009536743
-                ],
-                "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
-                    0.7020000219345093
-                ],
-                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 0.11999999731779099,
-                "material_waveStrength": 5.0,
-                "shader_frag": "Assets/Shaders/river.frag",
-                "shader_vert": "Assets/Shaders/river.vert"
-            },
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
-            "name": "River_Water_6",
+            "name": "Scatter_Group_5_Cube 1",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -276,87 +233,9 @@
                     0.0
                 ],
                 "scale": [
-                    1000.0,
-                    1.0,
-                    1000.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.8500000238418579
-                ],
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.shininess": 128.0,
-                "material.specularIntensity": 2.0,
-                "material.sssDistortion": 0.20000000298023224,
-                "material.sssScale": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "material_causticsMap": "Assets/Textures/Water/caustics.png",
-                "material_dudvMap": "Assets/Textures/Water/dudv.png",
-                "material_dudvStrength": 0.019999999552965164,
-                "material_dudvTiling": 6.0,
-                "material_foamColor": [
-                    1.0,
                     1.0,
                     1.0,
                     1.0
-                ],
-                "material_foamDistance": 9.699999809265137,
-                "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
-                "material_specularIntensityOverride": 3.0,
-                "material_waterColorDeep": [
-                    0.012000000104308128,
-                    0.14900000393390656,
-                    0.3490000069141388,
-                    0.9490000009536743
-                ],
-                "material_waterColorShallow": [
-                    0.050999999046325684,
-                    0.6000000238418579,
-                    0.7490000128746033,
-                    0.7020000219345093
-                ],
-                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 1.0,
-                "material_waveStrength": 0.5099999904632568,
-                "shader_frag": "Assets/Shaders/water.frag",
-                "shader_vert": "Assets/Shaders/water.vert"
-            },
-            "modelPath": "",
-            "name": "Lake_Water_6",
-            "normalMapPath": "",
-            "parent": "",
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1000.0,
-                    1.0,
-                    1000.0
                 ]
             }
         }

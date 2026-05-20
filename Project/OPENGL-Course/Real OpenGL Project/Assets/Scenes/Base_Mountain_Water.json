@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.6644556522369385,
-            -0.06540313363075256,
-            0.7444603443145752
+            -0.6705186367034912,
+            -0.07410848885774612,
+            0.7381820678710938
         ],
-        "pitch": -3.75,
+        "pitch": -4.25,
         "position": [
-            217.3692169189453,
-            367.5679931640625,
-            293.033935546875
+            215.22918701171875,
+            332.6090087890625,
+            353.5857238769531
         ],
-        "yaw": -948.25
+        "yaw": -947.75
     },
     "instancedGroups": [
         {
@@ -71,7 +71,7 @@
                 "start": 80
             }
         ],
-        "nextId": 156,
+        "nextId": 173,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -397603,10 +397603,12 @@
         {
             "customMeshPath": "Base_Mountain_Water_Plane.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "Plane",
             "textureLayers": [
                 {
@@ -397688,6 +397690,7 @@
         {
             "customMeshPath": "Base_Mountain_Water_River_Water_6.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     1.0,
@@ -397750,6 +397753,7 @@
             "name": "River_Water_6",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -397773,6 +397777,7 @@
         {
             "customMeshPath": "Base_Mountain_Water_Lake_Water_6.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     1.0,
@@ -397830,6 +397835,7 @@
             "name": "Lake_Water_6",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -397852,10 +397858,12 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Tree.obj",
             "name": "Tree (Root)",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -397878,10 +397886,12 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Mesh_0",
             "normalMapPath": "",
             "parent": "Tree (Root)",
+            "parentIndex": 3,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -397920,10 +397930,12 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Mesh_1",
             "normalMapPath": "",
             "parent": "Tree (Root)",
+            "parentIndex": 3,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -397962,6 +397974,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -398001,6 +398014,7 @@
             "name": "grass 6",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -398039,10 +398053,12 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Scatter_Group_61_Tree (Root)",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -398065,10 +398081,12 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "",
             "name": "Scatter_Group_61_grass 6",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
