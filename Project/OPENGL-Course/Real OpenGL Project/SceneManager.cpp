@@ -21,6 +21,7 @@
 #include "UndoActions.h"
 #include "GraphicsSettings.h"
 #include "Planet.h"
+#include "DebugOverlay.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -598,6 +599,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						}
 					}
 
+					// Per-object cost tracking (only for main render pass, not shadow passes)
+					if (!overrideShader && DebugOverlay::GetInstance()) {
+						int mc = mdl ? (int)mdl->GetMeshCount() : 1;
+						DebugOverlay::GetInstance()->BeginObject(obj->GetName(), mc);
+					}
+
 					obj->RenderSingle(
 						targetShader->GetModelLocation(), targetShader->GetSpecularIntensityLocation(), targetShader->GetShininessLocation(),
 						glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
@@ -608,6 +615,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
 						cameraPos, graphicsSettings, targetShader->GetShaderID(), targetShader->HasTessellation()
 					);
+
+					if (!overrideShader && DebugOverlay::GetInstance()) {
+						DebugOverlay::GetInstance()->EndObject();
+					}
 				}
 			}
 		}

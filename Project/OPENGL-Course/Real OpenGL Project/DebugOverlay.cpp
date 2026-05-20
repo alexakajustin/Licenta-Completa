@@ -38,6 +38,7 @@ DebugOverlay::DebugOverlay()
 DebugOverlay::~DebugOverlay()
 {
 	if (gpuTimerQuery[0]) glDeleteQueries(2, gpuTimerQuery);
+	for (auto& [name, timer] : passTimers) timer.Cleanup();
 }
 
 void DebugOverlay::QueryGPUInfo()
@@ -94,6 +95,13 @@ void DebugOverlay::BeginFrame()
 	}
 
 	glBeginQuery(GL_TIME_ELAPSED, gpuTimerQuery[currentQuery]);
+
+	// Reset per-pass active flags
+	for (auto& [name, timer] : passTimers) timer.active = false;
+
+	// Reset per-object tracking
+	objectCosts.clear();
+	currentObject = nullptr;
 }
 
 void DebugOverlay::EndFrame()
@@ -105,12 +113,60 @@ void DebugOverlay::EndFrame()
 	// Snapshot counters
 	lastDrawCalls = drawCallCount;
 	lastTriangles = triangleCount;
+
+	// Snapshot object costs
+	lastObjectCosts = objectCosts;
 }
 
 void DebugOverlay::ResetCounters()
 {
 	drawCallCount = 0;
 	triangleCount = 0;
+}
+
+// --- Per-pass profiling ---
+void DebugOverlay::BeginPass(const std::string& passName)
+{
+	auto it = passTimers.find(passName);
+	if (it == passTimers.end()) {
+		PassTimer timer;
+		timer.name = passName;
+		timer.Init();
+		passTimers[passName] = timer;
+		passOrder.push_back(passName);
+		it = passTimers.find(passName);
+	}
+	it->second.Begin();
+}
+
+void DebugOverlay::EndPass(const std::string& passName)
+{
+	auto it = passTimers.find(passName);
+	if (it != passTimers.end()) {
+		it->second.End();
+	}
+}
+
+// --- Per-object cost tracking ---
+void DebugOverlay::BeginObject(const std::string& name, int meshCount)
+{
+	objectCosts.push_back({ name, 0, 0, meshCount });
+	currentObject = &objectCosts.back();
+}
+
+void DebugOverlay::CountObjectDrawCall()
+{
+	if (currentObject) currentObject->drawCalls++;
+}
+
+void DebugOverlay::CountObjectTriangles(int count)
+{
+	if (currentObject) currentObject->triangles += count;
+}
+
+void DebugOverlay::EndObject()
+{
+	currentObject = nullptr;
 }
 
 void DebugOverlay::Render(EditorUI::WindowState& uiState)
@@ -146,8 +202,6 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	if (debugOpen)
 	{
 		uiState.CheckMaximize(5);
-
-
 
 	// --- GPU Info ---
 	ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "GPU Info");
@@ -193,11 +247,21 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 
 	ImGui::Spacing();
 
+	// --- Render Pass GPU Timers ---
+	RenderPassTimers();
+
+	ImGui::Spacing();
+
 	// --- Draw Stats ---
 	ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.6f, 1.0f), "Draw Stats");
 	ImGui::Separator();
 	ImGui::Text("Draw Calls: %d", lastDrawCalls);
 	ImGui::Text("Triangles:  %d", lastTriangles);
+
+	ImGui::Spacing();
+
+	// --- Per-Object Breakdown ---
+	RenderObjectBreakdown();
 
 	ImGui::Spacing();
 
@@ -246,6 +310,136 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 	}
 
 	ImGui::End();
+}
+
+void DebugOverlay::RenderPassTimers()
+{
+	if (passTimers.empty()) return;
+
+	ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "Render Pass Profiler");
+	ImGui::Separator();
+
+	// Collect total GPU time across passes
+	float totalPassTime = 0.0f;
+	for (auto& name : passOrder) {
+		auto& timer = passTimers[name];
+		if (timer.active) totalPassTime += timer.smoothedMs;
+	}
+
+	// Render bar chart
+	float availWidth = ImGui::GetContentRegionAvail().x;
+
+	for (auto& name : passOrder) {
+		auto& timer = passTimers[name];
+		if (!timer.active) continue;
+
+		float fraction = (totalPassTime > 0.0f) ? (timer.smoothedMs / totalPassTime) : 0.0f;
+
+		// Color: green = fast, yellow = moderate, red = slow
+		ImVec4 barColor;
+		if (timer.smoothedMs < 2.0f) barColor = ImVec4(0.2f, 0.8f, 0.3f, 1.0f);
+		else if (timer.smoothedMs < 8.0f) barColor = ImVec4(0.9f, 0.8f, 0.2f, 1.0f);
+		else barColor = ImVec4(1.0f, 0.3f, 0.2f, 1.0f);
+
+		ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
+		char overlayText[64];
+		snprintf(overlayText, sizeof(overlayText), "%s: %.2f ms (%.0f%%)", name.c_str(), timer.smoothedMs, fraction * 100.0f);
+		ImGui::ProgressBar(fraction, ImVec2(availWidth, 18), overlayText);
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::Text("Total Pass Time: %.2f ms", totalPassTime);
+}
+
+void DebugOverlay::RenderObjectBreakdown()
+{
+	ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "Object Cost Breakdown");
+	
+	ImGui::SameLine();
+	ImGui::Checkbox("Show##ObjBreakdown", &showObjectBreakdown);
+
+	if (!showObjectBreakdown) return;
+
+	ImGui::Separator();
+
+	if (lastObjectCosts.empty()) {
+		ImGui::TextDisabled("No object data this frame.");
+		return;
+	}
+
+	// Sort options
+	ImGui::Text("Sort:");
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Tris")) objectSortMode = 0;
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Draws")) objectSortMode = 1;
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Name")) objectSortMode = 2;
+
+	// Sort the snapshot
+	auto sorted = lastObjectCosts;
+	if (objectSortMode == 0)
+		std::sort(sorted.begin(), sorted.end(), [](const ObjectCost& a, const ObjectCost& b) { return a.triangles > b.triangles; });
+	else if (objectSortMode == 1)
+		std::sort(sorted.begin(), sorted.end(), [](const ObjectCost& a, const ObjectCost& b) { return a.drawCalls > b.drawCalls; });
+	else
+		std::sort(sorted.begin(), sorted.end(), [](const ObjectCost& a, const ObjectCost& b) { return a.name < b.name; });
+
+	// Total for percentage
+	int totalTris = 0;
+	for (auto& obj : sorted) totalTris += obj.triangles;
+
+	// Table
+	if (ImGui::BeginTable("##ObjCostTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0, 200))) {
+		ImGui::TableSetupColumn("Object", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Tris", ImGuiTableColumnFlags_WidthFixed, 60);
+		ImGui::TableSetupColumn("Draws", ImGuiTableColumnFlags_WidthFixed, 40);
+		ImGui::TableSetupColumn("%", ImGuiTableColumnFlags_WidthFixed, 40);
+		ImGui::TableHeadersRow();
+
+		// Show top 50 to avoid flooding
+		int shown = 0;
+		for (auto& obj : sorted) {
+			if (shown >= 50) break;
+			if (obj.triangles == 0 && obj.drawCalls == 0) continue;
+
+			float pct = (totalTris > 0) ? (obj.triangles * 100.0f / totalTris) : 0.0f;
+
+			ImGui::TableNextRow();
+
+			// Highlight expensive objects
+			if (pct > 10.0f) {
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::GetColorU32(ImVec4(0.5f, 0.1f, 0.1f, 0.4f)));
+			}
+
+			ImGui::TableSetColumnIndex(0);
+			// Truncate long names
+			std::string displayName = obj.name;
+			if (displayName.length() > 25) displayName = displayName.substr(0, 22) + "...";
+			ImGui::TextUnformatted(displayName.c_str());
+
+			ImGui::TableSetColumnIndex(1);
+			if (obj.triangles > 100000) 
+				ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%dk", obj.triangles / 1000);
+			else
+				ImGui::Text("%d", obj.triangles);
+
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%d", obj.drawCalls);
+
+			ImGui::TableSetColumnIndex(3);
+			if (pct > 10.0f)
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "%.0f", pct);
+			else
+				ImGui::Text("%.0f", pct);
+
+			shown++;
+		}
+
+		ImGui::EndTable();
+	}
+
+	ImGui::Text("Total Objects: %d | Total Tris: %dk", (int)lastObjectCosts.size(), totalTris / 1000);
 }
 
 void DebugOverlay::RenderMemoryInfo()

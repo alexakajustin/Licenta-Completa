@@ -21,7 +21,7 @@
     "skyboxType": 0,
     "ssaoBias": 0.02500000037252903,
     "ssaoBlurSize": 4,
-    "ssaoEnabled": true,
+    "ssaoEnabled": false,
     "ssaoIntensity": 1.5,
     "ssaoKernelSize": 64,
     "ssaoRadius": 0.5,

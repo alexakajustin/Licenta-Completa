@@ -407,11 +407,13 @@ void Application::Run()
 
 		// Shadow passes
 		float shadowFar = graphicsSettings.shadowDistance;
+		debugOverlay.BeginPass("Shadow Maps");
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar, &graphicsSettings);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager, &graphicsSettings);
 		for (unsigned int i = 0; i < spotLightCount; i++)
 			renderer.OmniShadowMapPass(&spotLights[i], sceneManager, &graphicsSettings);
+		debugOverlay.EndPass("Shadow Maps");
 
 		// 1. Reflection Pass (if there is water)
 		float waterHeight = -1000.0f; 
@@ -543,8 +545,10 @@ void Application::Run()
 				glEnable(GL_DEPTH_TEST);
 			}
 
+			debugOverlay.BeginPass("Reflection");
 			renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
 				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight, &graphicsSettings);
+			debugOverlay.EndPass("Reflection");
 		}
 		
 		// 2. Final Scene Render (Viewport FBO)
@@ -594,14 +598,17 @@ void Application::Run()
 			glEnable(GL_DEPTH_TEST);
 		}
 
+		debugOverlay.BeginPass("Main Render");
 		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
+		debugOverlay.EndPass("Main Render");
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// SSAO PASS
 		if (graphicsSettings.ssaoEnabled)
 		{
+			debugOverlay.BeginPass("SSAO");
 			// 1. Generate SSAO texture
 			glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
 			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
@@ -645,7 +652,7 @@ void Application::Run()
 			glBlendFunc(GL_ZERO, GL_SRC_COLOR); 
 			ssaoApplyShader.UseShader();
 			glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "ssaoText"), 0);
-			glUniform1i(glGetUniformLocation(ssaoApplyShader.GetShaderID(), "depthMap"), 1);
+			glUniform1i(glGetUniformLocation(ssaoShader.GetShaderID(), "depthMap"), 1);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
 			glActiveTexture(GL_TEXTURE1);
@@ -654,12 +661,14 @@ void Application::Run()
 			glDisable(GL_BLEND);
 			glEnable(GL_DEPTH_TEST);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			debugOverlay.EndPass("SSAO");
 		}
 
 
 		// GOD RAYS PASS
 		if (graphicsSettings.godraysEnabled)
 		{
+			debugOverlay.BeginPass("God Rays");
 			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
 			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 			
@@ -680,10 +689,6 @@ void Application::Run()
 
 			// Sun data
 			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-			// We want direction FROM sun TO center (which is -direction) or direction TO the sun?
-			// The shader uses view * vec4(sunDir * 1000.0, 1.0) and expects sunDir to be direction TO the sun.
-			// DirectionalLight::direction is usually direction the light is travelING (towards the origin).
-			// So -sunDir is direction TO the sun.
 			glm::vec3 dirToSun = -glm::normalize(sunDir);
 			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
 			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
@@ -705,6 +710,7 @@ void Application::Run()
 			glDisable(GL_BLEND);
 			glEnable(GL_DEPTH_TEST);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			debugOverlay.EndPass("God Rays");
 		}
 
 		// Scene Selection (Move before depth clear so we can use scene depth)

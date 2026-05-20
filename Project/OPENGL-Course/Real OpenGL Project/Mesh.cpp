@@ -109,6 +109,8 @@ void Mesh::RenderMesh()
 	if (DebugOverlay::GetInstance()) {
 		DebugOverlay::GetInstance()->CountDrawCall();
 		DebugOverlay::GetInstance()->CountTriangles(indexCount / 3);
+		DebugOverlay::GetInstance()->CountObjectDrawCall();
+		DebugOverlay::GetInstance()->CountObjectTriangles(indexCount / 3);
 	}
 
 	// unbind the VAO
@@ -138,6 +140,8 @@ void Mesh::RenderMeshTessellated(bool canTessellate)
 	if (DebugOverlay::GetInstance()) {
 		DebugOverlay::GetInstance()->CountDrawCall();
 		DebugOverlay::GetInstance()->CountTriangles(indexCount / 3);
+		DebugOverlay::GetInstance()->CountObjectDrawCall();
+		DebugOverlay::GetInstance()->CountObjectTriangles(indexCount / 3);
 	}
 
 	glBindVertexArray(0);
