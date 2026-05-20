@@ -19,7 +19,7 @@ public:
 	glm::mat4 CalculateLightTransform(glm::vec3 target);
 
 	// Cascaded Shadow Map methods
-	void CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far);
+	void CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCount = 4);
 	const std::vector<glm::mat4>& GetCascadedLightMatrices() const { return cascadedLightMatrices; }
 	const std::vector<float>& GetCascadeSplitDistances() const { return cascadeSplitDistances; }
 

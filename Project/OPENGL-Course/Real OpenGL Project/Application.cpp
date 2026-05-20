@@ -252,6 +252,10 @@ void Application::Run()
 
 		AssetManager::Get().Update();
 
+		// Process deferred LOD generation (a few meshes per frame)
+		extern void SceneManager_ProcessDeferredLODs();
+		SceneManager_ProcessDeferredLODs();
+
 		// Debug overlay timing
 		debugOverlay.BeginFrame();
 		debugOverlay.ResetCounters();

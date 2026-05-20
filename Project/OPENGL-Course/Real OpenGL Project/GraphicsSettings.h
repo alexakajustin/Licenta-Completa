@@ -19,11 +19,12 @@ struct GraphicsSettings {
 	int ssaoBlurSize = 4;      // 2, 4, 6, 8
 
 	// Culling & LOD Distances (Base values, before multipliers)
-	float lod0Distance = 1000.0f;
-	float lod1Distance = 2500.0f;
-	float lod2Distance = 5000.0f;
-	float renderDistance = 10000.0f; // Object cut-off (Trees/Grass)
+	float lod0Distance = 50.0f;    // Full detail within 50 units
+	float lod1Distance = 150.0f;   // 50% detail at 50-150 units
+	float lod2Distance = 400.0f;   // 25% detail at 150-400 units
+	float renderDistance = 2000.0f; // Object cut-off
 	float shadowDistance = 500.0f;
+	int shadowCascades = 2;        // Number of shadow cascades (1-4, fewer = faster)
 
 	// God Rays
 	bool godraysEnabled = true;

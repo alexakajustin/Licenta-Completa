@@ -71,13 +71,13 @@ glm::mat4 DirectionalLight::CalculateLightTransform(glm::vec3 target)
 	return lightProj * glm::lookAt(target + glm::normalize(-direction) * 250.0f, target, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
-void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far)
+void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCountIn)
 {
-	const int cascadeCount = 4; // Fixed for now to match CascadedShadowMap
+	const int cascadeCount = std::max(1, std::min(cascadeCountIn, 4));
 	cascadedLightMatrices.clear();
 	cascadeSplitDistances.clear();
 
-	float cascadeSplits[cascadeCount + 1];
+	float cascadeSplits[5]; // max 4 cascades + 1
 	
 	// Split distances (Logarithmic/Linear mix)
 	// lambda = 0.8 - 0.9 is better for balancing sharpness at close range with distant coverage

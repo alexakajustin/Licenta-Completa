@@ -83,8 +83,9 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	CascadedShadowMap* csm = (CascadedShadowMap*)light->GetShadowMap();
 	if (!csm) return;
 
-	// 1. Calculate the cascade matrices
-	light->CalculateCascadedLightMatrices(view, projection, near, far);
+	// 1. Calculate the cascade matrices (use configurable count)
+	int numCascades = (gs && gs->shadowCascades >= 1 && gs->shadowCascades <= 4) ? gs->shadowCascades : 4;
+	light->CalculateCascadedLightMatrices(view, projection, near, far, numCascades);
 	const auto& matrices = light->GetCascadedLightMatrices();
 
 	directionalShadowShader.UseShader();
@@ -97,7 +98,9 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 	glDepthFunc(GL_LESS);
 	glDisable(GL_BLEND);       // No blending for shadow map generation
 
-	for (GLuint i = 0; i < csm->GetCascadeCount(); i++)
+	// Only iterate over computed cascades (may be fewer than csm->GetCascadeCount())
+	GLuint actualCascades = std::min((GLuint)matrices.size(), csm->GetCascadeCount());
+	for (GLuint i = 0; i < actualCascades; i++)
 	{
 		csm->WriteLayer(i);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to 0.0 (no occlusion)

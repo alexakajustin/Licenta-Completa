@@ -299,8 +299,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		material->Bind(shaderID); // IMPORTANT: This uploads all shader-specific properties (baseColor, windSpeed, etc.) using the correct shader program
 		
 		// Shadow shaders use materialAlpha for transparency color mapping
-		GLint alphaLoc = glGetUniformLocation(shaderID, "materialAlpha");
-		if (alphaLoc != -1) glUniform1f(alphaLoc, material->GetAlpha());
+		static GLuint cachedAlphaShader = 0;
+		static GLint cachedAlphaLoc = -1;
+		if (cachedAlphaShader != shaderID) { cachedAlphaShader = shaderID; cachedAlphaLoc = glGetUniformLocation(shaderID, "materialAlpha"); }
+		if (cachedAlphaLoc != -1) glUniform1f(cachedAlphaLoc, material->GetAlpha());
 	}
 	else
 	{
@@ -314,8 +316,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		glUniform2f(uniformTiling, 1.0f, 1.0f);
 		glUniform2f(uniformOffset, 0.0f, 0.0f);
 
-		GLint alphaLoc = glGetUniformLocation(shaderID, "materialAlpha");
-		if (alphaLoc != -1) glUniform1f(alphaLoc, 1.0f);
+		static GLuint cachedAlphaShader2 = 0;
+		static GLint cachedAlphaLoc2 = -1;
+		if (cachedAlphaShader2 != shaderID) { cachedAlphaShader2 = shaderID; cachedAlphaLoc2 = glGetUniformLocation(shaderID, "materialAlpha"); }
+		if (cachedAlphaLoc2 != -1) glUniform1f(cachedAlphaLoc2, 1.0f);
 	}
 
 	// ========== Texture Layers Configuration (Must happen BEFORE draw calls) ==========
@@ -468,20 +472,25 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	}
 
 	// LOD Debug Coloring
+	static GLuint cachedDebugShader = 0;
+	static GLint cachedDebugLODLoc = -1;
+	static GLint cachedLodColorLoc = -1;
+	if (cachedDebugShader != shaderID) {
+		cachedDebugShader = shaderID;
+		cachedDebugLODLoc = glGetUniformLocation(shaderID, "debugLODColoring");
+		cachedLodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
+	}
 	if (gs && gs->debugLODColoring && meshToRender) {
-		GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
-		if (debugLoc != -1) glUniform1i(debugLoc, 1);
+		if (cachedDebugLODLoc != -1) glUniform1i(cachedDebugLODLoc, 1);
 		
-		GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
-		if (lodColorLoc != -1) {
-			if (meshToRender == mesh) glUniform3f(lodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
-			else if (lodCount >= 1 && meshToRender == lodMeshes[0]) glUniform3f(lodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
-			else if (lodCount >= 2 && meshToRender == lodMeshes[1]) glUniform3f(lodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
-			else glUniform3f(lodColorLoc, 1.0f, 1.0f, 0.0f); // YELLOW = Other
+		if (cachedLodColorLoc != -1) {
+			if (meshToRender == mesh) glUniform3f(cachedLodColorLoc, 1.0f, 0.2f, 0.2f); // RED = LOD0
+			else if (lodCount >= 1 && meshToRender == lodMeshes[0]) glUniform3f(cachedLodColorLoc, 0.2f, 1.0f, 0.2f); // GREEN = LOD1
+			else if (lodCount >= 2 && meshToRender == lodMeshes[1]) glUniform3f(cachedLodColorLoc, 0.2f, 0.2f, 1.0f); // BLUE = LOD2
+			else glUniform3f(cachedLodColorLoc, 1.0f, 1.0f, 0.0f); // YELLOW = Other
 		}
 	} else {
-		GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
-		if (debugLoc != -1) glUniform1i(debugLoc, 0);
+		if (cachedDebugLODLoc != -1) glUniform1i(cachedDebugLODLoc, 0);
 	}
 
 	if (meshToRender) {

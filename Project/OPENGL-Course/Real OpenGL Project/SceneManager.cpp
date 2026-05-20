@@ -567,6 +567,31 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			} else {
 				if (!isCulled) {
 					PrepareShader(targetShader);
+
+					// === FAST SHADOW PATH ===
+					// For shadow/override passes, skip ALL material, texture, LOD debug overhead.
+					// The shadow shader only needs: model matrix + vertex positions.
+					// This eliminates ~40 wasted uniform uploads per object per shadow cascade.
+					if (overrideShader && msh) {
+						glm::mat4 modelMatrix = obj->GetWorldMatrix();
+						glUniformMatrix4fv(targetShader->GetModelLocation(), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+						
+						// Handle transparency for shadow color mapping
+						if (mat) {
+							GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+							if (alphaLoc != -1) glUniform1f(alphaLoc, mat->GetAlpha());
+						}
+						
+						msh->RenderMesh();
+					}
+					// For override shader with model (no mesh), use simplified render
+					else if (overrideShader && mdl) {
+						glm::mat4 modelMatrix = obj->GetWorldMatrix();
+						glUniformMatrix4fv(targetShader->GetModelLocation(), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+						mdl->RenderModelGeometryOnly();
+					}
+					// === FULL RENDER PATH (main pass only) ===
+					else {
 					bool renderAsTessellated = false;
 					if (obj->GetUseTessellation() && renderer) {
 						bool hasDispMap = false;
@@ -605,20 +630,37 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						DebugOverlay::GetInstance()->BeginObject(obj->GetName(), mc);
 					}
 
+					// Cache uniform locations per shader to avoid 8x glGetUniformLocation per object
+					static struct CachedLocs {
+						GLuint shaderID = 0;
+						GLint baseColor, useNormalMap, useDiffuseTexture, theTexture, normalMap;
+					} cachedRenderLocs;
+					
+					GLuint sid = targetShader->GetShaderID();
+					if (cachedRenderLocs.shaderID != sid) {
+						cachedRenderLocs.shaderID = sid;
+						cachedRenderLocs.baseColor = glGetUniformLocation(sid, "material.baseColor");
+						cachedRenderLocs.useNormalMap = glGetUniformLocation(sid, "useNormalMap");
+						cachedRenderLocs.useDiffuseTexture = glGetUniformLocation(sid, "useDiffuseTexture");
+						cachedRenderLocs.theTexture = glGetUniformLocation(sid, "theTexture");
+						cachedRenderLocs.normalMap = glGetUniformLocation(sid, "normalMap");
+					}
+
 					obj->RenderSingle(
 						targetShader->GetModelLocation(), targetShader->GetSpecularIntensityLocation(), targetShader->GetShininessLocation(),
-						glGetUniformLocation(targetShader->GetShaderID(), "material.baseColor"),
+						cachedRenderLocs.baseColor,
 						targetShader->GetTilingLocation(), targetShader->GetOffsetLocation(),
-						glGetUniformLocation(targetShader->GetShaderID(), "useNormalMap"),
-						glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture"),
-						glGetUniformLocation(targetShader->GetShaderID(), "theTexture"),
-						glGetUniformLocation(targetShader->GetShaderID(), "normalMap"),
-						cameraPos, graphicsSettings, targetShader->GetShaderID(), targetShader->HasTessellation()
+						cachedRenderLocs.useNormalMap,
+						cachedRenderLocs.useDiffuseTexture,
+						cachedRenderLocs.theTexture,
+						cachedRenderLocs.normalMap,
+						cameraPos, graphicsSettings, sid, targetShader->HasTessellation()
 					);
 
 					if (!overrideShader && DebugOverlay::GetInstance()) {
 						DebugOverlay::GetInstance()->EndObject();
 					}
+					} // end full render path
 				}
 			}
 		}
@@ -1588,6 +1630,73 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 }
 
 #include "AssetManager.h"
+#include "MeshSimplifier.h"
+
+// =========================================================
+// DEFERRED LOD GENERATION — Process a few meshes per frame
+// instead of blocking for minutes during model instantiation
+// =========================================================
+struct PendingLODWork {
+	GameObject* obj;
+	MeshData meshData;
+};
+static std::vector<PendingLODWork> s_lodQueue;
+
+// Call this every frame from Application::Run() to process pending LODs
+void SceneManager_ProcessDeferredLODs()
+{
+	if (s_lodQueue.empty()) return;
+
+	// Process up to 3 meshes per frame to avoid frame spikes
+	int processed = 0;
+	while (!s_lodQueue.empty() && processed < 3)
+	{
+		auto& work = s_lodQueue.back();
+		GameObject* obj = work.obj;
+		
+		if (obj && obj->GetMesh())
+		{
+			int triCount = work.meshData.GetTriangleCount();
+			if (triCount >= 500) 
+			{
+				// Generate only 2 LOD levels (50% and 12%) — 3 levels wastes memory
+				static const float lodRatios[2] = { 0.50f, 0.12f };
+				for (int level = 0; level < 2; level++) {
+					MeshData simplified = MeshSimplifier::Simplify(work.meshData, lodRatios[level]);
+					if (simplified.GetTriangleCount() < 1) continue;
+
+					Mesh* lodMesh = new Mesh();
+					lodMesh->CreateMesh(
+						(GLfloat*)simplified.vertices.data(),
+						(unsigned int*)simplified.indices.data(),
+						(unsigned int)simplified.vertices.size(),
+						(unsigned int)simplified.indices.size()
+					);
+
+					glm::vec3 bmin, bmax;
+					obj->GetMesh()->GetBounds(bmin, bmax);
+					lodMesh->SetBounds(bmin, bmax);
+					lodMesh->AddRef();
+					obj->SetLODMesh(level, lodMesh);
+				}
+			}
+		}
+
+		s_lodQueue.pop_back();
+		processed++;
+	}
+
+	if (s_lodQueue.empty()) {
+		printf("[LOD] All deferred LODs generated.\n");
+	}
+}
+
+// Queue a mesh for deferred LOD generation
+static void QueueLODGeneration(GameObject* obj, const MeshData& meshData)
+{
+	if (meshData.GetTriangleCount() < 500) return;
+	s_lodQueue.push_back({ obj, meshData });
+}
 
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
 {
@@ -1611,63 +1720,123 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		objects.push_back(root);
 
 		const auto& meshNames = model->GetMeshNames();
+		const auto& meshDataList = model->GetMeshDataList();
+
+		// ================================================================
+		// STATIC BATCHING: Merge meshes by material into combined VBOs
+		// Instead of 1600 individual draw calls, merge into ~30 per material.
+		// This is THE fix for CPU-bound scenes with many small meshes.
+		// ================================================================
+		struct BatchGroup {
+			unsigned int matIdx;
+			Material* material;
+			Texture* diffuse;
+			Texture* normal;
+			std::vector<GLfloat> mergedVerts;
+			std::vector<unsigned int> mergedIndices;
+			unsigned int vertexOffset = 0; // Running vertex count for index offsetting
+			std::vector<std::string> sourceNames;
+		};
+
+		// Group meshes by material index
+		std::map<unsigned int, BatchGroup> batchGroups;
+
 		for (size_t i = 0; i < model->GetMeshCount(); i++) 
 		{
-			std::string mName = meshNames[i];
-			if (mName.empty() || mName == "default") mName = "Mesh_" + std::to_string(i);
-
-			GameObject* child = new GameObject(mName);
-			child->SetMesh(model->GetMesh(i));
+			if (i >= meshDataList.size()) continue;
 			
 			unsigned int matIdx = model->GetMaterialIndex((unsigned int)i);
-			Material* matInst = model->GetMaterialInstance(matIdx);
-			if (matInst) {
-				child->SetMaterial(matInst);
-			} else if (!child->GetMaterial()) {
-				child->SetMaterial(new Material());
+			auto& group = batchGroups[matIdx];
+			
+			if (group.sourceNames.empty()) {
+				// First mesh in this group — initialize
+				group.matIdx = matIdx;
+				group.material = model->GetMaterialInstance(matIdx);
+				group.diffuse = model->GetTexture(matIdx);
+				group.normal = model->GetNormalMap(matIdx);
 			}
 
-			// UNIFIED FIX: Initialize the first Texture Layer to match LoadScene behavior
-			Texture* diffuse = model->GetTexture(matIdx);
-			Texture* normal = model->GetNormalMap(matIdx);
-			if (diffuse || normal) {
-				TextureLayer layer;
-				layer.texture = diffuse;
-				layer.normalMap = normal;
-				layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
-				layer.normalMapPath = normal ? normal->GetFileLocation() : "";
-				child->AddTextureLayer(layer);
-			}
+			const MeshData& md = meshDataList[i];
+			if (md.vertices.empty() || md.indices.empty()) continue;
 
-			// Logical Auto-Configuration: Detect Foliage/Leaves
-			std::string lowerName = mName;
-			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-			if (lowerName.find("leaf") != std::string::npos || 
-				lowerName.find("leaves") != std::string::npos || 
-				lowerName.find("foliage") != std::string::npos ||
-				lowerName.find("polysurface1sg1") != std::string::npos) // Match based on Tree.obj structure
-			{
-				// Auto-assign wind parameters (matches grass.vert/frag uniforms)
-				child->GetMaterial()->SetFloat("windSpeed", 1.0f);
-				child->GetMaterial()->SetFloat("windStrength", 0.15f);
-				child->SetName(mName + " (Foliage)");
-			}
-			else if (lowerName.find("bark") != std::string::npos || lowerName.find("trunk") != std::string::npos)
-			{
-				child->SetName(mName + " (Trunk)");
-			}
+			// Append vertices directly (no transform needed — children are at root origin)
+			group.mergedVerts.insert(group.mergedVerts.end(), md.vertices.begin(), md.vertices.end());
 
-			root->AddChild(child); // Attach to root without maintaining world position
-			objects.push_back(child);
+			// Append indices with vertex offset
+			for (unsigned int idx : md.indices) {
+				group.mergedIndices.push_back(idx + group.vertexOffset);
+			}
+			group.vertexOffset += (unsigned int)(md.vertices.size() / 14); // 14 floats per vertex
+
+			std::string mName = (i < meshNames.size()) ? meshNames[i] : "";
+			if (mName.empty() || mName == "default") mName = "Mesh_" + std::to_string(i);
+			group.sourceNames.push_back(mName);
 		}
-		SetSelectedIndex((int)objects.size() - (int)model->GetMeshCount() - 1);
-		printf("[SceneManager] Partitioned modular model '%s' into %d components.\n", baseName.c_str(), (int)model->GetMeshCount());
 
-		// Record undo for all created objects (root + children)
+		// Create one merged GameObject per batch group
+		int batchIdx = 0;
+		for (auto& [matIdx, group] : batchGroups) 
+		{
+			if (group.mergedVerts.empty() || group.mergedIndices.empty()) continue;
+
+			// Build merged GPU mesh
+			Mesh* mergedMesh = new Mesh();
+			mergedMesh->CreateMesh(
+				group.mergedVerts.data(),
+				group.mergedIndices.data(),
+				(unsigned int)group.mergedVerts.size(),
+				(unsigned int)group.mergedIndices.size()
+			);
+
+			// Calculate bounds
+			glm::vec3 bmin(1e10f), bmax(-1e10f);
+			for (size_t v = 0; v < group.mergedVerts.size() / 14; v++) {
+				glm::vec3 p(group.mergedVerts[v * 14], group.mergedVerts[v * 14 + 1], group.mergedVerts[v * 14 + 2]);
+				bmin = glm::min(bmin, p);
+				bmax = glm::max(bmax, p);
+			}
+			mergedMesh->SetBounds(bmin, bmax);
+			mergedMesh->AddRef();
+
+			// Create a single GameObject for this batch
+			std::string batchName = "Batch_" + std::to_string(batchIdx) + " (" + std::to_string(group.sourceNames.size()) + " meshes)";
+			GameObject* batchObj = new GameObject(batchName);
+			batchObj->SetMesh(mergedMesh);
+
+			if (group.material) {
+				batchObj->SetMaterial(group.material);
+			} else {
+				batchObj->SetMaterial(new Material());
+			}
+
+			if (group.diffuse || group.normal) {
+				TextureLayer layer;
+				layer.texture = group.diffuse;
+				layer.normalMap = group.normal;
+				layer.texturePath = group.diffuse ? group.diffuse->GetFileLocation() : "";
+				layer.normalMapPath = group.normal ? group.normal->GetFileLocation() : "";
+				batchObj->AddTextureLayer(layer);
+			}
+
+			root->AddChild(batchObj);
+			objects.push_back(batchObj);
+			batchIdx++;
+
+			// Free merged data now that it's on GPU
+			group.mergedVerts.clear();
+			group.mergedVerts.shrink_to_fit();
+			group.mergedIndices.clear();
+			group.mergedIndices.shrink_to_fit();
+		}
+
+		printf("[SceneManager] STATIC BATCHED '%s': %d meshes -> %d batched objects\n", baseName.c_str(), (int)model->GetMeshCount(), batchIdx);
+		SetSelectedIndex((int)objects.size() - batchIdx - 1);
+
+		// Record undo for all created objects (root + batched children)
 		std::vector<GameObject*> created;
 		created.push_back(root);
-		for (size_t i = 0; i < model->GetMeshCount(); i++) {
-			created.push_back(objects[objects.size() - model->GetMeshCount() + i]);
+		for (int i = 0; i < batchIdx; i++) {
+			created.push_back(objects[objects.size() - batchIdx + i]);
 		}
 		undoManager.PushAction(std::make_unique<CreateObjectAction>(this, created, "Instantiate " + baseName));
 	}
@@ -1676,8 +1845,14 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		// Fallback for single-mesh models
 		GameObject* newObj = new GameObject(baseName + " " + std::to_string(objects.size()));
 		newObj->GetTransform().SetPosition(spawnPos);
-		newObj->SetModel(model);
 		newObj->SetModelSourcePath(path.string());
+		
+		// Set the mesh directly so LOD switching works (Model::RenderModel bypasses LOD)
+		if (model->GetMeshCount() == 1) {
+			newObj->SetMesh(model->GetMesh(0));
+		} else {
+			newObj->SetModel(model);
+		}
 		
 		unsigned int matIdx = model->GetMaterialIndex(0);
 		Material* matInst = model->GetMaterialInstance(matIdx);
@@ -1697,6 +1872,12 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 			layer.texturePath = diffuse ? diffuse->GetFileLocation() : "";
 			layer.normalMapPath = normal ? normal->GetFileLocation() : "";
 			newObj->AddTextureLayer(layer);
+		}
+
+		// === AUTO-LOD GENERATION ===
+		const auto& meshDataList = model->GetMeshDataList();
+		if (!meshDataList.empty() && newObj->GetMesh()) {
+			QueueLODGeneration(newObj, meshDataList[0]);
 		}
 
 		objects.push_back(newObj);
