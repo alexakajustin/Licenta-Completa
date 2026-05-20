@@ -402,7 +402,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 		// --- EXTREME SOURCE SINK ---
 		// Sink the first point 25 meters deep to guarantee it starts INSIDE the mountain.
-		float lastH = finePath[0].height - (25.0f / terrainScale.y); 
+		float lastH = finePath[0].height - 25.0f; 
 		finePath[0].height = lastH;
 
 		for (size_t i = 1; i < finePath.size(); i++) {
@@ -492,7 +492,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	MeshData lakeMesh;
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.25f;
-	float yOffset = waterOffset / terrainScale.y;
+	float yOffset = waterOffset;
 
 	for (const auto& riverData : fineRivers)
 	{
@@ -540,14 +540,14 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			// Push segments backward and RE-SAMPLE terrain height at the new position.
 			// This ensures the buried part of the mesh follows the topography behind the source.
 			if (i < 8 && riverData.path.size() >= 2) {
-				float pushDist = (20.0f / terrainScale.x) * (1.0f - (float)i / 8.0f);
+				float pushDist = 20.0f * (1.0f - (float)i / 8.0f);
 				center -= dir * pushDist;
 				
 				// Sample terrain at the new "inside" position
-				int gx = std::max(0, std::min((int)center.x, gridRes - 1));
-				int gz = std::max(0, std::min((int)center.z, gridRes - 1));
+				int gx = std::max(0, std::min((int)(((center.x / terrainScale.x) + 1.0f) * 0.5f * (gridRes - 1)), gridRes - 1));
+				int gz = std::max(0, std::min((int)(((center.z / terrainScale.z) + 1.0f) * 0.5f * (gridRes - 1)), gridRes - 1));
 				float h = originalHeights[gz * gridRes + gx];
-				center.y = h + yOffset - (2.0f / terrainScale.y); // Sink it 2m deep!
+				center.y = h + yOffset - 2.0f; // Sink it 2m deep!
 			}
 
 			float volume = riverData.path[i].volume;
@@ -564,7 +564,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				currentWidth *= t;
 			}
 			
-			float localWidth = (currentWidth * waterMeshWidthMultiplier) / terrainScale.x;
+			float localWidth = currentWidth * waterMeshWidthMultiplier;
 			glm::vec3 pL = center - right * localWidth;
 			glm::vec3 pR = center + right * localWidth;
 
@@ -639,8 +639,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 		if (terrainObj) {
 			obj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
-			obj->GetTransform().SetRotation(terrainObj->GetTransform().GetRotation());
-			obj->GetTransform().SetScale(terrainObj->GetTransform().GetScale());
+			obj->GetTransform().SetRotation(glm::vec3(0.0f));
+			obj->GetTransform().SetScale(glm::vec3(1.0f));
 		}
 		if (!obj->GetMaterial()) {
 			Material* mat = Material::LoadFromFile(matPath);
