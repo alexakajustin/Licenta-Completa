@@ -453,22 +453,28 @@ void DebugOverlay::RenderMemoryInfo()
 	{
 		size_t usedBytes = pmc.PrivateUsage;
 		float usedMB = usedBytes / (1024.0f * 1024.0f);
-		float limitMB = 4096.0f; // 4GB limit with /LARGEADDRESSAWARE
-		float usagePercent = usedMB / limitMB;
+
+		// Query actual system RAM (not a hardcoded 4GB guess)
+		MEMORYSTATUSEX memStatus;
+		memStatus.dwLength = sizeof(memStatus);
+		float totalMB = 16384.0f; // Fallback
+		float availMB = 0.0f;
+		if (GlobalMemoryStatusEx(&memStatus)) {
+			totalMB = memStatus.ullTotalPhys / (1024.0f * 1024.0f);
+			availMB = memStatus.ullAvailPhys / (1024.0f * 1024.0f);
+		}
+		float usagePercent = usedMB / totalMB;
 		
-		ImVec4 ramColor = usagePercent < 0.75f ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) :
-						  usagePercent < 0.90f ? ImVec4(1.0f, 1.0f, 0.2f, 1.0f) :
+		ImVec4 ramColor = usagePercent < 0.50f ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) :
+						  usagePercent < 0.80f ? ImVec4(1.0f, 1.0f, 0.2f, 1.0f) :
 												 ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
 		
-		ImGui::TextColored(ramColor, "Used: %.0f / %.0f MB (%.1f%%)", usedMB, limitMB, usagePercent * 100.0f);
+		ImGui::TextColored(ramColor, "Process: %.0f MB", usedMB);
+		ImGui::Text("System:  %.0f / %.0f MB (%.0f%% free)", totalMB - availMB, totalMB, (availMB / totalMB) * 100.0f);
 		
-		char overlay[32];
-		snprintf(overlay, sizeof(overlay), "%.0f MB / 4GB", usedMB);
+		char overlay[48];
+		snprintf(overlay, sizeof(overlay), "%.0f MB / %.0f GB", usedMB, totalMB / 1024.0f);
 		ImGui::ProgressBar(usagePercent, ImVec2(0, 18), overlay);
-		
-		if (usagePercent > 0.90f) {
-			ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "WARNING: Memory critical! 4GB limit close.");
-		}
 	}
 	else {
 		ImGui::TextDisabled("Could not query process memory info.");
