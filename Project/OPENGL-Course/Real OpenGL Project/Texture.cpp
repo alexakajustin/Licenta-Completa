@@ -44,12 +44,26 @@ Texture& Texture::operator=(Texture&& other) noexcept
 
 bool Texture::LoadTextureCPU()
 {
+	if (rawData) return true; // Already loaded (e.g., embedded GLB texture)
 	rawData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
 	if (!rawData) {
 		printf("FAILED TO FIND %s!\n", fileLocation);
 		return false;
 	}
 	bitDepth = 4;
+	return true;
+}
+
+bool Texture::LoadFromMemory(const unsigned char* compressedData, int dataSize)
+{
+	if (rawData) return true;
+	rawData = stbi_load_from_memory(compressedData, dataSize, &width, &height, &bitDepth, 4);
+	if (!rawData) {
+		printf("[Texture] Failed to decode embedded texture (%d bytes)\n", dataSize);
+		return false;
+	}
+	bitDepth = 4;
+	printf("[Texture] Loaded embedded texture: %dx%d from %d bytes\n", width, height, dataSize);
 	return true;
 }
 

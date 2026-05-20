@@ -1591,7 +1591,7 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 	}
 
 	// If the model has multiple meshes, explode it into a modular hierarchy
-	// (e.g. Tree -> [Trunk, Leaves])
+	// (e.g. Tree -> [Trunk, Leaves], or full scene -> all components)
 	if (model->GetMeshCount() > 1) 
 	{
 		GameObject* root = new GameObject(baseName + " (Root)");

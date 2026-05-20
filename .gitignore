@@ -52,3 +52,6 @@ Assets/Textures/Shared/
 *.ilk
 *.exe
 Project/OPENGL-Course/Real OpenGL Project/Assets/Scenes/San Miguel/
+Project/OPENGL-Course/Real OpenGL Project/Assets/Models/russiancore
+*.glb
+.helm-diag/

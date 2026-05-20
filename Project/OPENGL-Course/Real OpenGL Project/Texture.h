@@ -19,6 +19,7 @@ public:
 	bool LoadTextureA(); // texture with alpha
 	bool LoadTextureGrayscale(); // single-channel for displacement/height maps (4x less memory)
 	bool LoadTextureFromData(unsigned char* texData, int w, int h, int bitD);
+	bool LoadFromMemory(const unsigned char* compressedData, int dataSize); // For embedded GLB textures
 	
 	bool LoadTextureCPU();
 	bool LoadTextureGPU();

@@ -348,7 +348,7 @@ void AssetBrowser::RefreshAssetList()
 					}));
 				}
 			}
-			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf") {
+			else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf" || ext == ".glb") {
 				info.type = AssetType::Model;
 				std::string pStr = entry.path().string();
 				if (assetTextureCache.count(pStr)) {
@@ -582,7 +582,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 
 								if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
 									info.type = AssetType::Texture;
-								else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf")
+								else if (ext == ".obj" || ext == ".fbx" || ext == ".dae" || ext == ".gltf" || ext == ".glb")
 									info.type = AssetType::Model;
 								else if (ext == ".mat")
 									info.type = AssetType::MaterialAsset;

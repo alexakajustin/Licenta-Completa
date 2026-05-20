@@ -119,10 +119,8 @@ void Model::LoadModelGPU()
 				plainFallback->LoadTexture(); // Sync load on main thread (GL context available)
 			}
 			textureList[ti] = plainFallback;
-			// Also force material color to white
-			if (ti < materialList.size() && materialList[ti]) {
-				materialList[ti]->SetColor(glm::vec3(1.0f));
-			}
+			// Keep the original material color from Assimp — plain.png is white,
+			// so shader computes: white_texture × material_color = material_color
 			printf("[Model GPU] Texture[%d] replaced with plain.png fallback (GPU ID: %u)\n", (int)ti, plainFallback->GetTextureID());
 		}
 	}
@@ -303,6 +301,35 @@ void Model::LoadMaterials(const aiScene* scene)
 		return "";
 	};
 
+	// Lambda: try to load an embedded texture from GLB/GLTF
+	auto tryLoadEmbedded = [&](const aiScene* sc, const char* texPath) -> Texture* {
+		const aiTexture* embTex = sc->GetEmbeddedTexture(texPath);
+		if (!embTex) return nullptr;
+
+		std::string cacheKey = std::string("*emb*") + texPath;
+		if (textureCache.count(cacheKey)) return textureCache[cacheKey];
+
+		Texture* tex = new Texture("(embedded)");
+		if (embTex->mHeight == 0) {
+			// Compressed format (PNG, JPEG, etc) — mWidth is byte count
+			tex->LoadFromMemory((const unsigned char*)embTex->pcData, embTex->mWidth);
+		} else {
+			// Raw ARGB8888 pixels — convert to RGBA for stbi compatibility
+			int pixelCount = embTex->mWidth * embTex->mHeight;
+			unsigned char* rgba = (unsigned char*)malloc(pixelCount * 4);
+			for (int p = 0; p < pixelCount; p++) {
+				rgba[p*4+0] = embTex->pcData[p].r;
+				rgba[p*4+1] = embTex->pcData[p].g;
+				rgba[p*4+2] = embTex->pcData[p].b;
+				rgba[p*4+3] = embTex->pcData[p].a;
+			}
+			tex->LoadTextureFromData(rgba, embTex->mWidth, embTex->mHeight, 4);
+			free(rgba);
+		}
+		textureCache[cacheKey] = tex;
+		return tex;
+	};
+
 	for (size_t i = 0; i < scene->mNumMaterials; i++)
 	{
 		aiMaterial* material = scene->mMaterials[i];
@@ -312,10 +339,17 @@ void Model::LoadMaterials(const aiScene* scene)
 
 		std::string diffusePath = "";
 		aiTextureType diffuseTypes[] = { aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR, aiTextureType_UNKNOWN };
-		for (int t = 0; t < 3 && diffusePath.empty(); t++) {
+		for (int t = 0; t < 3 && diffusePath.empty() && !textureList[i]; t++) {
 			if (material->GetTextureCount(diffuseTypes[t])) {
 				aiString path;
 				if (material->GetTexture(diffuseTypes[t], 0, &path) == aiReturn_SUCCESS) {
+					// Try embedded texture first (GLB/GLTF)
+					Texture* embTex = tryLoadEmbedded(scene, path.C_Str());
+					if (embTex) {
+						textureList[i] = embTex;
+						break;
+					}
+
 					std::string pathStr = std::string(path.data);
 					size_t lastSpace = pathStr.find_last_of(' ');
 					if (lastSpace != std::string::npos && pathStr.find('-') != std::string::npos) {
@@ -331,7 +365,7 @@ void Model::LoadMaterials(const aiScene* scene)
 			}
 		}
 
-		if (diffusePath.empty()) {
+		if (diffusePath.empty() && !textureList[i]) {
 			aiString aiMatName;
 			material->Get(AI_MATKEY_NAME, aiMatName);
 			std::string matName = aiMatName.C_Str();
@@ -350,7 +384,7 @@ void Model::LoadMaterials(const aiScene* scene)
 			}
 		}
 
-		if (!diffusePath.empty())
+		if (!diffusePath.empty() && !textureList[i])
 		{
 			if (textureCache.find(diffusePath) == textureCache.end()) {
 				textureCache[diffusePath] = new Texture(diffusePath.c_str());
@@ -418,6 +452,13 @@ void Model::LoadMaterials(const aiScene* scene)
 					aiString path;
 					if (material->GetTexture(types[t], 0, &path) == aiReturn_SUCCESS)
 					{
+						// Try embedded texture first (GLB/GLTF)
+						Texture* embNorm = tryLoadEmbedded(scene, path.C_Str());
+						if (embNorm) {
+							normalMapList[i] = embNorm;
+							break;
+						}
+
 						std::string pathStr = std::string(path.data);
 						// Strip OBJ flags like "-bm 0.001"
 						size_t lastSpace = pathStr.find_last_of(' ');
