@@ -76,7 +76,12 @@ public:
 		ImGui::Combo("Vertical Rule", &verticalMode, vModes, 3);
 
 		ImGui::DragFloat("Vertical Buffer", &bufferDistance, 0.01f, -10.0f, 10.0f, "%.3f");
-		ImGui::DragFloat("Horizontal Margin", &horizontalMargin, 0.01f, 0.0f, 50.0f, "%.3f");
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Height offset for Above/Below rules.\nPositive = more strict, Negative = more lenient.");
+
+		ImGui::DragFloat("Horizontal Margin", &horizontalMargin, 0.5f, 0.0f, 500.0f, "%.1f");
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Safety zone (in world units) around the target object.\nExpands the rejection/inclusion area horizontally.");
 	}
 
 	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
@@ -124,9 +129,21 @@ public:
 			return;
 		}
 
-		// --- SPATIAL MATRICES ---
+		// --- SPATIAL MATRICES & SAFETY BUFFER CONVERSION ---
 		glm::mat4 modelMatrix = target->GetWorldMatrix();
 		glm::mat4 invModel = glm::inverse(modelMatrix);
+
+		glm::vec3 scale = target->GetTransform().GetScale();
+		float localRadius = (scale.x > 0.001f) ? (horizontalMargin / scale.x) : 0.0f;
+
+		printf("[ObjectFilter] Target='%s' HasCustomMesh=%d\n", targetName.c_str(), target->HasCustomMesh());
+		printf("[ObjectFilter] Target WorldMatrix scale: (%.1f, %.1f, %.1f)\n", scale.x, scale.y, scale.z);
+		glm::vec3 minB, maxB;
+		targetMeshData.GetBounds(minB, maxB);
+		printf("[ObjectFilter] Mesh local bounds: min=(%.3f, %.3f, %.3f), max=(%.3f, %.3f, %.3f), vertCount=%d\n", 
+			minB.x, minB.y, minB.z, maxB.x, maxB.y, maxB.z, targetMeshData.GetVertexCount());
+		printf("[ObjectFilter] Filtering %zu objects. World margin = %.2f -> local radius = %.5f\n", 
+			inputTransforms.size(), horizontalMargin, localRadius);
 
 		// --- PRE-BUILD CACHE (Avoid thread race condition) ---
 		if (progress) progress(5.0f, "Rasterizing target mesh...");
@@ -137,6 +154,7 @@ public:
 		if (numThreads == 0) numThreads = 8;
 		
 		std::vector<TransformList> threadPassed(numThreads);
+		std::vector<TransformList> threadRejected(numThreads);
 		std::vector<std::thread> threads;
 		
 		size_t perThread = inputTransforms.size() / numThreads;
@@ -148,8 +166,9 @@ public:
 			size_t start = i * perThread;
 			size_t end = (i == numThreads - 1) ? inputTransforms.size() : (i + 1) * perThread;
 
-			threads.emplace_back([this, &inputTransforms, &targetMeshData, &threadPassed, invModel, modelMatrix, i, start, end]() {
+			threads.emplace_back([this, &inputTransforms, &targetMeshData, &threadPassed, &threadRejected, invModel, modelMatrix, localRadius, i, start, end]() {
 				threadPassed[i].reserve((end - start) / 2);
+				threadRejected[i].reserve((end - start) / 4);
 
 				for (size_t j = start; j < end; j++)
 				{
@@ -158,9 +177,8 @@ public:
 					// 1. Transform World-Space Tree to Local-Space of the Target Object
 					glm::vec4 localPos = invModel * glm::vec4(t.position, 1.0f);
 					
-					// 2. Sample Height in Local Space (High Performance)
-					// We pass horizontalMargin to GetHeightAt to support the "Safety Zone" around water.
-					float localTargetHeight = targetMeshData.GetHeightAt(localPos.x, localPos.z, horizontalMargin);
+					// 2. Sample Height in Local Space with local safety radius (High Performance)
+					float localTargetHeight = targetMeshData.GetHeightAt(localPos.x, localPos.z, localRadius);
 					bool intersects = (localTargetHeight > -1e9f);
 					
 					bool conditionMet = false;
@@ -179,6 +197,7 @@ public:
 
 					bool pass = (filterMode == 0) ? !conditionMet : conditionMet;
 					if (pass) threadPassed[i].push_back(t);
+					else threadRejected[i].push_back(t);
 				}
 			});
 		}
@@ -187,20 +206,35 @@ public:
 
 		// Combine results efficiently
 		if (progress) progress(90.0f, "Assembling results...");
+		
 		TransformList finalPassed;
-		size_t totalCount = 0;
-		for (const auto& list : threadPassed) totalCount += list.size();
-		finalPassed.reserve(totalCount);
+		TransformList finalRejected;
+		
+		size_t totalPassed = 0;
+		size_t totalRejected = 0;
+		for (const auto& list : threadPassed) totalPassed += list.size();
+		for (const auto& list : threadRejected) totalRejected += list.size();
+		
+		finalPassed.reserve(totalPassed);
+		finalRejected.reserve(totalRejected);
 
 		for (auto& list : threadPassed)
 		{
 			finalPassed.insert(finalPassed.end(), list.begin(), list.end());
 			list.clear();
-			list.shrink_to_fit(); // Free memory ASAP
+			list.shrink_to_fit();
+		}
+		for (auto& list : threadRejected)
+		{
+			finalRejected.insert(finalRejected.end(), list.begin(), list.end());
+			list.clear();
+			list.shrink_to_fit();
 		}
 
+		printf("[ObjectFilter] Completed filtering. Passed: %zu, Rejected: %zu\n", finalPassed.size(), finalRejected.size());
+
 		outputs[0].data.transforms = std::move(finalPassed);
-		// Note: we skip output[1] for extreme performance unless requested to save memory
+		outputs[1].data.transforms = std::move(finalRejected);
 		
 		if (progress) progress(100.0f, "Object Filter Done!");
 	}

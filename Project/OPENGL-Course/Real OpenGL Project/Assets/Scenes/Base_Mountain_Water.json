@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.6705186367034912,
-            -0.07410848885774612,
-            0.7381820678710938
+            0.8386625647544861,
+            -0.5446390509605408,
+            -0.0036589449737221003
         ],
-        "pitch": -4.25,
+        "pitch": -33.0,
         "position": [
-            215.22918701171875,
-            332.6090087890625,
-            353.5857238769531
+            711.6918334960938,
+            289.727294921875,
+            236.00291442871094
         ],
-        "yaw": -947.75
+        "yaw": -1440.25
     },
     "instancedGroups": [
         {
@@ -71,7 +71,7 @@
                 "start": 80
             }
         ],
-        "nextId": 173,
+        "nextId": 207,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -397551,7 +397551,7 @@
                     65
                 ],
                 "randomRotation": true,
-                "seed": 6334,
+                "seed": 41,
                 "spawnAsObjects": true,
                 "spawnedMap": {},
                 "targetParentName": "(none)",
@@ -397564,7 +397564,7 @@
                     426.0
                 ],
                 "filterMode": 0,
-                "horizontalMargin": 0.05000000074505806,
+                "horizontalMargin": 1.5,
                 "id": 78,
                 "inputPins": [
                     79
@@ -397584,7 +397584,7 @@
                     521.0
                 ],
                 "filterMode": 0,
-                "horizontalMargin": 0.03999999910593033,
+                "horizontalMargin": 1.5,
                 "id": 83,
                 "inputPins": [
                     84

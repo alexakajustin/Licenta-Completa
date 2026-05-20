@@ -336,6 +336,9 @@ private:
 		float rangeX = std::max(0.001f, maxX - minX), rangeZ = std::max(0.001f, maxZ - minZ);
 		float maxRange = std::max(rangeX, rangeZ);
 		int res = (int)glm::clamp(maxRange, 32.0f, 1024.0f);
+		if (maxRange < 50.0f && triCount > 1000) {
+			res = (triCount > 10000) ? 1024 : 512;
+		}
 		float cellSize = maxRange / (float)res;
 		int resX = std::min(res, (int)std::ceil(rangeX / cellSize));
 		int resZ = std::min(res, (int)std::ceil(rangeZ / cellSize));
