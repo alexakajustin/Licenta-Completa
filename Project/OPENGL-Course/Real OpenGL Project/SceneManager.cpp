@@ -1822,11 +1822,11 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 			objects.push_back(batchObj);
 			batchIdx++;
 
-			// Free merged data now that it's on GPU
-			group.mergedVerts.clear();
-			group.mergedVerts.shrink_to_fit();
-			group.mergedIndices.clear();
-			group.mergedIndices.shrink_to_fit();
+			// Save merged data as custom mesh so it gets properly serialized and reloaded
+			MeshData cpuData;
+			cpuData.vertices = std::move(group.mergedVerts);
+			cpuData.indices = std::move(group.mergedIndices);
+			batchObj->SetCPUMeshData(cpuData);
 		}
 
 		printf("[SceneManager] STATIC BATCHED '%s': %d meshes -> %d batched objects\n", baseName.c_str(), (int)model->GetMeshCount(), batchIdx);
