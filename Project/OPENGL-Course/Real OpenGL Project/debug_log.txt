@@ -1,0 +1,341 @@
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1, 124.675, -1), MaxBound: (1, 361.941, 1), TerrainScale: (1, 118.633, 1)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1, 124.675, -1), MaxBound: (1, 361.941, 1), TerrainScale: (1, 118.633, 1)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 175.755, -1000), MaxBound: (1000, 389.426, 1000), TerrainScale: (1000, 106.835, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 6
+Processing Sink #1 at (164, 394) with flow volume: 1
+Finished Sink #1 in 4115 iterations. lakePixels size: 4114, finalWaterLevel: 220.128
+Processing Sink #2 at (334, 432) with flow volume: 1
+  BFS iteration 10000, pq size: 1305, currentVolume: 2707.72, targetVolume: 7500, waterLevel: 235.164
+  BFS iteration 20000, pq size: 1406, currentVolume: 2707.72, targetVolume: 7500, waterLevel: 235.164
+  BFS iteration 30000, pq size: 2317, currentVolume: 2707.72, targetVolume: 7500, waterLevel: 235.164
+Finished Sink #2 in 34492 iterations. lakePixels size: 34491, finalWaterLevel: 235.305
+Processing Sink #3 at (382, 85) with flow volume: 1
+Finished Sink #3 in 2977 iterations. lakePixels size: 2976, finalWaterLevel: 303.072
+Processing Sink #4 at (512, 243) with flow volume: 1
+Finished Sink #4 in 3030 iterations. lakePixels size: 3029, finalWaterLevel: 321.096
+Processing Sink #5 at (144, 0) with flow volume: 1
+  BFS iteration 10000, pq size: 1554, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 20000, pq size: 2409, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 30000, pq size: 2388, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 40000, pq size: 3698, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 50000, pq size: 4493, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 60000, pq size: 5072, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 70000, pq size: 5508, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 80000, pq size: 5053, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 90000, pq size: 5278, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 100000, pq size: 5456, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 110000, pq size: 5681, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 120000, pq size: 5638, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 130000, pq size: 5590, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 140000, pq size: 5481, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 150000, pq size: 5592, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 160000, pq size: 5929, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 170000, pq size: 5880, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 180000, pq size: 5228, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 190000, pq size: 4817, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+  BFS iteration 200000, pq size: 4424, currentVolume: 5905.86, targetVolume: 7500, waterLevel: 329.568
+Finished Sink #5 in 203322 iterations. lakePixels size: 203321, finalWaterLevel: 329.576
+Processing Sink #6 at (0, 82) with flow volume: 3
+  BFS iteration 10000, pq size: 1257, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 20000, pq size: 2530, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 30000, pq size: 3489, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 40000, pq size: 3402, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 50000, pq size: 3403, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 60000, pq size: 3402, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 70000, pq size: 3996, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 80000, pq size: 4156, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 90000, pq size: 4189, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 100000, pq size: 4066, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 110000, pq size: 4034, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 120000, pq size: 3802, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 130000, pq size: 3551, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 140000, pq size: 2794, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 150000, pq size: 2702, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 160000, pq size: 3546, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 170000, pq size: 4434, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 180000, pq size: 4227, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 190000, pq size: 3883, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+  BFS iteration 200000, pq size: 4304, currentVolume: 788.657, targetVolume: 22500, waterLevel: 331.353
+Finished Sink #6 in 208443 iterations. lakePixels size: 208442, finalWaterLevel: 331.458
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1, 175.755, -1), MaxBound: (1, 389.426, 1), TerrainScale: (1, 106.835, 1)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 6
+Processing Sink #1 at (164, 394) with flow volume: 1
+Finished Sink #1 in 830 iterations. lakePixels size: 829, finalWaterLevel: 217.426
+Processing Sink #2 at (334, 432) with flow volume: 1
+Finished Sink #2 in 719 iterations. lakePixels size: 718, finalWaterLevel: 233.508
+Processing Sink #3 at (382, 85) with flow volume: 1
+Finished Sink #3 in 797 iterations. lakePixels size: 796, finalWaterLevel: 299.457
+Processing Sink #4 at (512, 243) with flow volume: 1
+Finished Sink #4 in 194 iterations. lakePixels size: 193, finalWaterLevel: 315.062
+Processing Sink #5 at (144, 0) with flow volume: 1
+Finished Sink #5 in 468 iterations. lakePixels size: 467, finalWaterLevel: 323.316
+Processing Sink #6 at (0, 82) with flow volume: 3
+Finished Sink #6 in 256 iterations. lakePixels size: 255, finalWaterLevel: 330.28
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1, 218.801, -1), MaxBound: (1, 633.397, 1), TerrainScale: (1, 207.298, 1)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 5
+Processing Sink #1 at (349, 178) with flow volume: 1
+Finished Sink #1 in 2235 iterations. lakePixels size: 2234, finalWaterLevel: 264.797
+Processing Sink #2 at (304, 235) with flow volume: 2
+Finished Sink #2 in 3292 iterations. lakePixels size: 3291, finalWaterLevel: 269.116
+Processing Sink #3 at (114, 242) with flow volume: 1
+  BFS iteration 10000, pq size: 1950, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 20000, pq size: 2684, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 30000, pq size: 2917, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 40000, pq size: 2834, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 50000, pq size: 2760, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 60000, pq size: 2688, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 70000, pq size: 3595, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 80000, pq size: 3749, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 90000, pq size: 3753, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 100000, pq size: 3206, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+  BFS iteration 110000, pq size: 3162, currentVolume: 1088.52, targetVolume: 7500, waterLevel: 384.707
+Finished Sink #3 in 111481 iterations. lakePixels size: 111480, finalWaterLevel: 384.765
+Processing Sink #4 at (278, 512) with flow volume: 1
+Finished Sink #4 in 1317 iterations. lakePixels size: 1316, finalWaterLevel: 409.75
+Processing Sink #5 at (171, 512) with flow volume: 3
+Finished Sink #5 in 9654 iterations. lakePixels size: 9653, finalWaterLevel: 433.666
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 112.777, -1000), MaxBound: (1000, 372.307, 1000), TerrainScale: (1000, 129.765, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 5
+Processing Sink #1 at (356, 178) with flow volume: 1
+Finished Sink #1 in 1400 iterations. lakePixels size: 1399, finalWaterLevel: 147.005
+Processing Sink #2 at (512, 507) with flow volume: 1
+Finished Sink #2 in 731 iterations. lakePixels size: 730, finalWaterLevel: 202.293
+Processing Sink #3 at (173, 508) with flow volume: 4
+Finished Sink #3 in 9762 iterations. lakePixels size: 9761, finalWaterLevel: 250.351
+Processing Sink #4 at (54, 345) with flow volume: 1
+  BFS iteration 10000, pq size: 2371, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 20000, pq size: 3041, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 30000, pq size: 3067, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 40000, pq size: 2624, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 50000, pq size: 2565, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 60000, pq size: 2381, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 70000, pq size: 3366, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 80000, pq size: 3066, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 90000, pq size: 3134, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 100000, pq size: 2735, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 110000, pq size: 3436, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 120000, pq size: 2771, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 130000, pq size: 2576, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 140000, pq size: 2220, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+  BFS iteration 150000, pq size: 1925, currentVolume: 7.43985, targetVolume: 7500, waterLevel: 249.3
+Finished Sink #4 in 155641 iterations. lakePixels size: 155640, finalWaterLevel: 249.348
+Processing Sink #5 at (336, 330) with flow volume: 1
+  BFS iteration 10000, pq size: 1743, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 20000, pq size: 2389, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 30000, pq size: 2321, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 40000, pq size: 1944, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 50000, pq size: 1825, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 60000, pq size: 1805, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 70000, pq size: 2878, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 80000, pq size: 2490, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 90000, pq size: 2547, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 100000, pq size: 2245, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 110000, pq size: 3418, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 120000, pq size: 2949, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 130000, pq size: 2745, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 140000, pq size: 2365, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 150000, pq size: 2152, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+  BFS iteration 160000, pq size: 2074, currentVolume: 1172.78, targetVolume: 7500, waterLevel: 255.733
+Finished Sink #5 in 164324 iterations. lakePixels size: 164323, finalWaterLevel: 255.772
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.675, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.633, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 4
+Processing Sink #1 at (352, 175) with flow volume: 1
+Finished Sink #1 in 2658 iterations. lakePixels size: 2657, finalWaterLevel: 152.787
+Processing Sink #2 at (308, 230) with flow volume: 3
+Finished Sink #2 in 4876 iterations. lakePixels size: 4875, finalWaterLevel: 157.573
+Processing Sink #3 at (278, 512) with flow volume: 1
+Finished Sink #3 in 2717 iterations. lakePixels size: 2716, finalWaterLevel: 235.841
+Processing Sink #4 at (171, 512) with flow volume: 3
+  BFS iteration 10000, pq size: 1053, currentVolume: 17738.7, targetVolume: 22500, waterLevel: 248.318
+Finished Sink #4 in 10337 iterations. lakePixels size: 10336, finalWaterLevel: 248.788
+=== RiverNode::Execute End ===
+=== RiverNode::Execute Start ===
+Vertices: 263169, gridRes: 513
+MinBound: (-1000, 124.234, -1000), MaxBound: (1000, 361.941, 1000), TerrainScale: (1000, 118.854, 1000)
+Path tracing complete. springs size: 8, riverPaths size: 8
+Sinks found: 5
+Processing Sink #1 at (349, 179) with flow volume: 1
+Finished Sink #1 in 1704 iterations. lakePixels size: 1703, finalWaterLevel: 150.71
+Processing Sink #2 at (298, 232) with flow volume: 2
+Finished Sink #2 in 3041 iterations. lakePixels size: 3040, finalWaterLevel: 154.412
+Processing Sink #3 at (109, 265) with flow volume: 1
+  BFS iteration 10000, pq size: 1381, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 20000, pq size: 1970, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 30000, pq size: 1898, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 40000, pq size: 1643, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 50000, pq size: 1551, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 60000, pq size: 1504, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 70000, pq size: 2289, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 80000, pq size: 2124, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 90000, pq size: 2046, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+  BFS iteration 100000, pq size: 1788, currentVolume: 1668.09, targetVolume: 7500, waterLevel: 219.72
+Finished Sink #3 in 108322 iterations. lakePixels size: 108321, finalWaterLevel: 219.774
+Processing Sink #4 at (172, 511) with flow volume: 3
+Finished Sink #4 in 9366 iterations. lakePixels size: 9365, finalWaterLevel: 249.282
+Processing Sink #5 at (325, 337) with flow volume: 1
+  BFS iteration 10000, pq size: 1161, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 20000, pq size: 1663, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 30000, pq size: 1588, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 40000, pq size: 1342, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 50000, pq size: 1264, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 60000, pq size: 1779, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 70000, pq size: 2085, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 80000, pq size: 1909, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 90000, pq size: 1791, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 100000, pq size: 1680, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 110000, pq size: 1919, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 120000, pq size: 1915, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 130000, pq size: 1823, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 140000, pq size: 1679, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 150000, pq size: 1416, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+  BFS iteration 160000, pq size: 1437, currentVolume: 428.561, targetVolume: 7500, waterLevel: 253.88
+Finished Sink #5 in 162379 iterations. lakePixels size: 162378, finalWaterLevel: 253.923
+=== RiverNode::Execute End ===

@@ -88,7 +88,12 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	glm::vec3 terrainScale(1.0f);
 	GameObject* terrainObj = scene.FindObject(inputs[0].data.sourceObjectName);
-	if (terrainObj) terrainScale = terrainObj->GetTransform().GetScale();
+	if (terrainObj) {
+		terrainScale = terrainObj->GetTransform().GetScale();
+	}
+	if (!inputs[0].data.transforms.empty()) {
+		terrainScale = inputs[0].data.transforms[0].scale;
+	}
 
 	// 1. Identify "Springs"
 	struct Spring { int x, z; float height; };
@@ -433,7 +438,16 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 			int cx = (int)pt.pos.x;
 			int cz = (int)pt.pos.y;
-			int gridRadius = (int)std::ceil(currentWidth / (terrainScale.x / gridRes));
+			
+			float stepSize = terrainScale.x / (float)gridRes;
+			int gridRadius = 0;
+			if (stepSize > 1e-5f) {
+				gridRadius = (int)std::ceil(currentWidth / stepSize);
+			}
+			// Safety cap to prevent massive/infinite loops if scale is invalid or extremely small
+			if (gridRadius > gridRes / 4) {
+				gridRadius = gridRes / 4;
+			}
 
 			for (int rz = -gridRadius; rz <= gridRadius; rz++) {
 				for (int rx = -gridRadius; rx <= gridRadius; rx++) {

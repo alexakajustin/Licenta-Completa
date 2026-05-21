@@ -772,6 +772,51 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					GameObject* target = objects[targetIdx];
 					MeshData& uploadData = meshInput.data.meshData;
 
+					// If the mesh data was scaled/rotated in the pipeline, we must un-scale/un-rotate it
+					// back to local space using the inverse of the original transform before uploading it
+					// to the GPU mesh. This ensures the GameObject retains its original transform scale
+					// and rotation in the scene without causing double-scaling during rendering.
+					if (!meshInput.data.transforms.empty())
+					{
+						glm::vec3 origScale = meshInput.data.transforms[0].scale;
+						glm::vec3 origRotation = meshInput.data.transforms[0].rotation;
+
+						if (origScale != glm::vec3(1.0f) || origRotation != glm::vec3(0.0f))
+						{
+							glm::mat4 rotMatrix(1.0f);
+							rotMatrix = glm::rotate(rotMatrix, glm::radians(origRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+							rotMatrix = glm::rotate(rotMatrix, glm::radians(origRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+							rotMatrix = glm::rotate(rotMatrix, glm::radians(origRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+							glm::mat4 transformMatrix = glm::scale(rotMatrix, origScale);
+							glm::mat4 invTransform = glm::inverse(transformMatrix);
+							// Normals computed by pipeline from world-space positions need un-baking too.
+							// Inverse of forward normalMatrix (transpose(inverse(M))) is transpose(M).
+							glm::mat3 invNormal = glm::transpose(glm::mat3(transformMatrix));
+
+							for (size_t v = 0; v < uploadData.vertices.size(); v += 14)
+							{
+								// Position (0, 1, 2)
+								glm::vec4 pos(uploadData.vertices[v + 0], uploadData.vertices[v + 1], uploadData.vertices[v + 2], 1.0f);
+								pos = invTransform * pos;
+								uploadData.vertices[v + 0] = pos.x;
+								uploadData.vertices[v + 1] = pos.y;
+								uploadData.vertices[v + 2] = pos.z;
+
+								// Normal (5, 6, 7) — NOT 3,4,5 which are texcoord + normal.x
+								glm::vec3 norm(uploadData.vertices[v + 5], uploadData.vertices[v + 6], uploadData.vertices[v + 7]);
+								if (glm::length(norm) > 0.0001f) {
+									norm = glm::normalize(invNormal * norm);
+									uploadData.vertices[v + 5] = norm.x;
+									uploadData.vertices[v + 6] = norm.y;
+									uploadData.vertices[v + 7] = norm.z;
+								}
+								// Tangents (8,9,10) and bitangents (11,12,13) are NOT un-baked
+								// because SceneInputNode only bakes positions, not TBN vectors.
+							}
+						}
+					}
+
 					bool isShared = false;
 					if (target->GetMesh())
 					{
@@ -800,9 +845,12 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						uploadData.GetBounds(min, max);
 						target->GetMesh()->SetBounds(min, max);
 
-						// Always strictly apply the scale from the input transform
+						// Always strictly apply the scale and rotation from the input transform
 						if (!meshInput.data.transforms.empty())
+						{
 							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
+							target->GetTransform().SetRotation(meshInput.data.transforms[0].rotation);
+						}
 
 						target->SetCPUMeshData(uploadData);
 						// printf("Updated unique mesh for object: %s\n", target->GetName().c_str());
@@ -819,8 +867,12 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 						uploadData.GetBounds(min, max);
 						newMesh->SetBounds(min, max);
 						
+						// Always strictly apply the scale and rotation from the input transform
 						if (!meshInput.data.transforms.empty())
+						{
 							target->GetTransform().SetScale(meshInput.data.transforms[0].scale);
+							target->GetTransform().SetRotation(meshInput.data.transforms[0].rotation);
+						}
 						target->SetCPUMeshData(uploadData);
 						printf("Branched new unique mesh for object: %s\n", target->GetName().c_str());
 					}
