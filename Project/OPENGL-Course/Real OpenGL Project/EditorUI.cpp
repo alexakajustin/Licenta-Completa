@@ -1965,6 +1965,7 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			ImGui::Spacing();
 			ImGui::DragFloat("Render Distance", &graphicsSettingsPtr->renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
 			ImGui::DragFloat("Shadow Max Dist", &graphicsSettingsPtr->shadowDistance, 1.0f, 1.0f, 5000.0f, "%.0f m");
+			ImGui::SliderInt("Shadow Cascades", &graphicsSettingsPtr->shadowCascades, 1, 4);
 		}
 
 		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))

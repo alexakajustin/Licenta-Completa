@@ -1058,6 +1058,7 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("lod2Distance")) graphicsSettings.lod2Distance = j["lod2Distance"];
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
 		if (j.contains("shadowDistance")) graphicsSettings.shadowDistance = j["shadowDistance"];
+		if (j.contains("shadowCascades")) graphicsSettings.shadowCascades = j["shadowCascades"];
 
 		if (j.contains("godraysEnabled")) graphicsSettings.godraysEnabled = j["godraysEnabled"];
 		if (j.contains("godraysDecay")) graphicsSettings.godraysDecay = j["godraysDecay"];
@@ -1113,6 +1114,7 @@ void Application::SaveGraphicsSettings()
 	j["lod2Distance"] = graphicsSettings.lod2Distance;
 	j["renderDistance"] = graphicsSettings.renderDistance;
 	j["shadowDistance"] = graphicsSettings.shadowDistance;
+	j["shadowCascades"] = graphicsSettings.shadowCascades;
 
 	j["godraysEnabled"] = graphicsSettings.godraysEnabled;
 	j["godraysDecay"] = graphicsSettings.godraysDecay;
