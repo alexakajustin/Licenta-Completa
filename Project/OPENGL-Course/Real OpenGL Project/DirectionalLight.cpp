@@ -159,9 +159,10 @@ void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, con
 		glm::mat4 lightView = glm::lookAt(center - lightDir * radius, center, up);
 		
 		// Projection is a fixed-size square based on the stable radius.
-		// We use a fixed near/far plane to encompass potential shadow casters.
-		// Reduced from 10000 to 1000 to improve depth precision and bias scaling.
-		glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, -1000.0f, 1000.0f);
+		// We dynamically scale near/far planes with radius to prevent clipping at high shadow distances,
+		// while keeping a minimum bound to ensure sufficient caster coverage behind the camera.
+		float zMult = std::max(2000.0f, radius * 4.0f);
+		glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, -zMult, zMult);
 
 		// 3. PIXEL-PERFECT SNAPPING
 		// We transform the origin to light-space, snap it to the texel grid, and apply the offset.
