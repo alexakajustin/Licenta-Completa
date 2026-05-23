@@ -1501,6 +1501,15 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 		}
 	}
 
+	auto GetLinearDepth = [&](float d) -> float {
+		float ndc = d * 2.0f - 1.0f;
+		float A = projection[2][2];
+		float B = projection[3][2];
+		float denom = A + ndc;
+		if (std::abs(denom) < 0.00001f) return 10000.0f;
+		return std::abs(B / denom);
+	};
+
 	auto IsVisible = [&](glm::vec2 screenPos, float depth) -> bool {
 		if (depthBuffer.empty()) return true;
 
@@ -1511,9 +1520,13 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 
 		if (lx >= 0 && lx < rW) {
 			float sampledDepth = depthBuffer[lx + ly * rW];
-			// Bias to account for floating point precision and self-occlusion.
-			// Increased to 0.001f for better tolerance on slopes.
-			return depth <= sampledDepth + 0.001f; 
+			
+			// Depth buffer is highly non-linear. Bias must be applied in linear space.
+			float linDepth = GetLinearDepth(depth);
+			float linSampled = GetLinearDepth(sampledDepth);
+			
+			// 1.5 meters bias accounts for instance bounding spheres and slopes.
+			return linDepth <= linSampled + 1.5f; 
 		}
 		return false;
 	};
@@ -2351,7 +2364,19 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			float winDepth = ndcDepth * 0.5f + 0.5f;
 
 			// If hit point is closer than the original world objects (terrain, floor, etc.)
-			if (winDepth <= sceneDepth + 0.001f) {
+			auto GetLinearDepth = [&](float d) -> float {
+				float ndc = d * 2.0f - 1.0f;
+				float A = projection[2][2];
+				float B = projection[3][2];
+				float denom = A + ndc;
+				if (std::abs(denom) < 0.00001f) return 10000.0f;
+				return std::abs(B / denom);
+			};
+
+			float linWinDepth = GetLinearDepth(winDepth);
+			float linSceneDepth = GetLinearDepth(sceneDepth);
+
+			if (linWinDepth <= linSceneDepth + 1.5f) {
 				instanceWon = true;
 				// Select in-place on GPU instead of extracting to a costly GameObject.
 				// This keeps all instances in the fast instanced rendering pipeline.
