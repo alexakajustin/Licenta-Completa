@@ -64,6 +64,50 @@ void LightTransformAction::Redo()
 }
 
 // =====================================================================
+// TransformInstancesAction
+// =====================================================================
+
+#include "InstancedGroup.h"
+#include <set>
+
+TransformInstancesAction::TransformInstancesAction(const std::string& desc,
+	const std::vector<InstanceTransformSnapshot>& before,
+	const std::vector<InstanceTransformSnapshot>& after)
+	: description(desc), beforeState(before), afterState(after)
+{
+}
+
+void TransformInstancesAction::Undo()
+{
+	std::set<InstancedGroup*> dirtyGroups;
+	for (const auto& snap : beforeState) {
+		if (!snap.group || snap.index < 0 || snap.index >= snap.group->cpuInstances.size()) continue;
+		snap.group->cpuInstances[snap.index].positionAndScale.x = snap.position.x;
+		snap.group->cpuInstances[snap.index].positionAndScale.y = snap.position.y;
+		snap.group->cpuInstances[snap.index].positionAndScale.z = snap.position.z;
+		dirtyGroups.insert(snap.group);
+	}
+	for (auto* group : dirtyGroups) {
+		group->ReuploadGPU();
+	}
+}
+
+void TransformInstancesAction::Redo()
+{
+	std::set<InstancedGroup*> dirtyGroups;
+	for (const auto& snap : afterState) {
+		if (!snap.group || snap.index < 0 || snap.index >= snap.group->cpuInstances.size()) continue;
+		snap.group->cpuInstances[snap.index].positionAndScale.x = snap.position.x;
+		snap.group->cpuInstances[snap.index].positionAndScale.y = snap.position.y;
+		snap.group->cpuInstances[snap.index].positionAndScale.z = snap.position.z;
+		dirtyGroups.insert(snap.group);
+	}
+	for (auto* group : dirtyGroups) {
+		group->ReuploadGPU();
+	}
+}
+
+// =====================================================================
 // DeleteObjectsAction
 // =====================================================================
 

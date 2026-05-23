@@ -12,6 +12,7 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <set>
 #include <thread>
 #include <unordered_set>
 #include <unordered_map>
@@ -1336,6 +1337,25 @@ bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
 		glm::vec3* lightPos = lights[selLight]->GetPositionPtr();
 		if (lightPos) { outPos = *lightPos; return true; }
 	}
+
+	// Fallback: check for selected instances in InstancedGroups
+	glm::vec3 sum(0.0f);
+	int count = 0;
+	for (auto* group : instancedGroups) {
+		if (!group || group->selectedInstanceIndices.empty()) continue;
+		for (int idx : group->selectedInstanceIndices) {
+			if (idx >= 0 && idx < (int)group->cpuInstances.size()) {
+				const auto& inst = group->cpuInstances[idx];
+				sum += glm::vec3(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+				count++;
+			}
+		}
+	}
+	if (count > 0) {
+		outPos = sum / (float)count;
+		return true;
+	}
+
 	return false;
 }
 
@@ -1538,7 +1558,8 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 		}
 	}
 
-	// Extract instanced scatter objects that fall within the box
+	// Select instanced scatter objects that fall within the box (in-place, no extraction)
+	int totalInstancesSelected = 0;
 	for (auto* group : instancedGroups) {
 		if (!group || group->cpuInstances.empty()) continue;
 
@@ -1560,21 +1581,12 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 			}
 		}
 
-		// Extract all instances in parallel
+		// Select instances in-place on GPU instead of extracting to GameObjects.
+		// This keeps all instances in the fast instanced rendering pipeline and
+		// prevents the massive FPS drop from creating thousands of individual draw calls.
 		if (!matchingIndices.empty()) {
-			int baseIdx = (int)objects.size();
-			group->ExtractInstances(matchingIndices, this, true);
-			
-			// Select the newly extracted objects
-			int newSize = (int)objects.size();
-			for (int i = baseIdx; i < newSize; i++) {
-				if (!IsObjectSelected(i)) {
-					selectedObjectIndices.push_back(i);
-				}
-			}
-
-			// Single GPU re-upload after all extractions from this group
-			group->ReuploadGPU();
+			group->SelectInstances(matchingIndices, additive);
+			totalInstancesSelected += (int)matchingIndices.size();
 		}
 	}
 
@@ -1585,8 +1597,8 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 
 	activeDragAxis = 0;
 	
-	printf("[SceneManager] Box selected %d objects, %d lights\n", 
-		(int)selectedObjectIndices.size(), (int)selectedLightIndices.size());
+	printf("[SceneManager] Box selected %d objects, %d lights, %d instances\n", 
+		(int)selectedObjectIndices.size(), (int)selectedLightIndices.size(), totalInstancesSelected);
 }
 
 // =====================================================================
@@ -2309,7 +2321,7 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		return pickedID;
 	}
 
-	// Smart Instance Extraction (Raycast)
+	// Smart Instance Selection (Raycast) — select in-place, don't extract
 	bool instanceWon = false;
 	
 	// Only try to select scatter if we didn't hit a Light Icon (10000-19999)
@@ -2338,11 +2350,14 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			float ndcDepth = clipSpace.z / clipSpace.w;
 			float winDepth = ndcDepth * 0.5f + 0.5f;
 
-			// If hit point is closer than the original world objects (monitor, floor, etc.)
+			// If hit point is closer than the original world objects (terrain, floor, etc.)
 			if (winDepth <= sceneDepth + 0.001f) {
 				instanceWon = true;
-				bestGroup->ExtractInstance(bestIndex, this);
-				return (int)objects.size(); // newly spawned obj ID
+				// Select in-place on GPU instead of extracting to a costly GameObject.
+				// This keeps all instances in the fast instanced rendering pipeline.
+				ClearSelection(); // Clear regular object/light selection
+				bestGroup->SelectInstances({bestIndex}, false);
+				return 30000 + bestIndex; // Return a special ID indicating instance selection
 			}
 		}
 	}
@@ -2629,6 +2644,21 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 					glm::vec3* lp = lights[selLight]->GetPositionPtr();
 					if (lp) dragInitialObjectPos = *lp;
 				}
+				else {
+					// Check for selected instances in InstancedGroups
+					dragInitialInstanceStates.clear();
+					for (auto* group : instancedGroups) {
+						if (!group || group->selectedInstanceIndices.empty()) continue;
+						for (int idx : group->selectedInstanceIndices) {
+							if (idx >= 0 && idx < (int)group->cpuInstances.size()) {
+								const auto& inst = group->cpuInstances[idx];
+								glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+								dragInitialInstanceStates.push_back({ group, idx, pos });
+							}
+						}
+					}
+					dragInitialObjectPos = gizmoCenter;
+				}
 				
 				glm::vec3 axis(0.0f);
 				if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
@@ -2716,8 +2746,26 @@ void SceneManager::HandleMousePress(int button, int action, float mouseX, float 
 							glm::vec3* curPos = light->GetPositionPtr();
 							after.push_back({ light, curPos ? *curPos : initialPos });
 						}
-						undoManager.PushAction(std::make_unique<LightTransformAction>("Move Light", before, after));
+							undoManager.PushAction(std::make_unique<LightTransformAction>("Move Light", before, after));
 					}
+					// TRANSLATION — record instance position undo
+					if (!dragInitialInstanceStates.empty()) {
+						std::vector<InstanceTransformSnapshot> before, after;
+						for (auto& entry : dragInitialInstanceStates) {
+							if (entry.group && entry.index >= 0 && entry.index < (int)entry.group->cpuInstances.size()) {
+								before.push_back({ entry.group, entry.index, entry.initialPosition });
+								glm::vec3 curPos(
+									entry.group->cpuInstances[entry.index].positionAndScale.x,
+									entry.group->cpuInstances[entry.index].positionAndScale.y,
+									entry.group->cpuInstances[entry.index].positionAndScale.z
+								);
+								after.push_back({ entry.group, entry.index, curPos });
+							}
+						}
+						undoManager.PushAction(std::make_unique<TransformInstancesAction>("Move Instances", before, after));
+					}
+					// TRANSLATION — cleanup instance drag state
+					dragInitialInstanceStates.clear();
 				}
 				else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
 					// ROTATION — record transform undo
@@ -2793,6 +2841,24 @@ void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& 
 		// Move ALL selected lights
 		for (auto const& [light, initialPos] : dragInitialLightPositions) {
 			light->SetPosition(initialPos + worldDelta);
+		}
+
+		// Move ALL selected instances (in-place on GPU)
+		if (!dragInitialInstanceStates.empty()) {
+			std::set<InstancedGroup*> dirtyGroups;
+			for (auto& entry : dragInitialInstanceStates) {
+				if (entry.index >= 0 && entry.index < (int)entry.group->cpuInstances.size()) {
+					glm::vec3 newPos = entry.initialPosition + worldDelta;
+					entry.group->cpuInstances[entry.index].positionAndScale.x = newPos.x;
+					entry.group->cpuInstances[entry.index].positionAndScale.y = newPos.y;
+					entry.group->cpuInstances[entry.index].positionAndScale.z = newPos.z;
+					dirtyGroups.insert(entry.group);
+				}
+			}
+			// Single GPU re-upload per group for performance
+			for (auto* group : dirtyGroups) {
+				group->ReuploadGPU();
+			}
 		}
 	}
 	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {

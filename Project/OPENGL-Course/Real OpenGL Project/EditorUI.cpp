@@ -1393,6 +1393,13 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 	bool showObjectInspector = (selectedObj >= 0 && selectedLight < 0);
 	bool showLightInspector = (selectedLight >= 0 && selectedObj < 0);
 
+	// Check if any instances are selected
+	int totalInstancesSelected = 0;
+	for (auto* group : scene.GetInstancedGroups()) {
+		if (group) totalInstancesSelected += (int)group->selectedInstanceIndices.size();
+	}
+	bool showInstanceInspector = (!showObjectInspector && !showLightInspector && totalInstancesSelected > 0);
+
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winH = displaySize.y;
 	float menuHeight = ImGui::GetFrameHeight();
@@ -1414,7 +1421,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-	if (!showObjectInspector && !showLightInspector) {
+	if (!showObjectInspector && !showLightInspector && !showInstanceInspector) {
 		// Even if empty, show a blank Inspector window for docking consistency
 		if (ImGui::Begin("Inspector", &windowState.isInspectorOpen, windowFlags)) {
 			windowState.CheckMaximize(2);
@@ -1902,6 +1909,31 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 					ImGui::SliderFloat("Spot Edge", light->GetSpotEdgePtr(), 0.0f, 90.0f);
 				}
 			}
+		}
+		else if (showInstanceInspector)
+		{
+			ImGui::Text("Selected Instances: %d", totalInstancesSelected);
+			ImGui::Separator();
+			ImGui::Spacing();
+			ImGui::TextWrapped("Instances are currently rendered efficiently on the GPU using hardware instancing. You can move them using the transform gizmo.");
+			ImGui::Spacing();
+			ImGui::Spacing();
+			if (ImGui::Button("Extract to GameObjects", ImVec2(-1, 0))) {
+				// We must extract group by group. Extracting modifies the cpuInstances and clears selection
+				// so we must gather first or be careful
+				for (auto* group : scene.GetInstancedGroups()) {
+					if (group && !group->selectedInstanceIndices.empty()) {
+						// Pass true for skipReuploadAndSelect since we are extracting them fully,
+						// but wait, ExtractInstances handles ReuploadGPU if we pass false, which is better
+						// Actually wait, let's just use the group method
+						group->ExtractInstances(group->selectedInstanceIndices, &scene, false);
+					}
+				}
+				// Clear any remaining selection to switch to the newly extracted objects
+				scene.ClearSelection();
+			}
+			ImGui::Spacing();
+			ImGui::TextDisabled("Warning: Extracting many instances will create individual GameObjects and draw calls, significantly decreasing FPS.");
 		}
 
 		// Drag-drop target for models (whole inspector area)

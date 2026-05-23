@@ -237,6 +237,14 @@ private:
 	glm::vec3 dragInitialRotVec;  // Initial vector from center to plane intersection
 	glm::vec3 dragRotationAxis;   // The world-space rotation axis
 	
+	// Instance drag state (for gizmo manipulation of selected instances in-place)
+	struct InstanceDragEntry {
+		InstancedGroup* group;
+		int index;
+		glm::vec3 initialPosition;
+	};
+	std::vector<InstanceDragEntry> dragInitialInstanceStates;
+	
 	// Clipboard
 	struct LightClipboardEntry {
 		LightType type;

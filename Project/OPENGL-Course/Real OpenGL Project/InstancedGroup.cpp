@@ -37,11 +37,15 @@ void InstancedGroup::Setup(Mesh* mesh,
 	Material* mat, Texture* tex, Texture* norm,
 	const std::vector<TextureLayer>& layers)
 {
+	if (mesh) mesh->AddRef(); // Retain the new mesh BEFORE releasing the old one to prevent use-after-free
+
 	Release(); // Clean up any previous buffers
-	if (instances.empty()) return;
+	if (instances.empty()) {
+		if (mesh) mesh->Release();
+		return;
+	}
 
 	sharedMesh = mesh;
-	if (sharedMesh) sharedMesh->AddRef();
 
 	material = mat;
 	texture = tex;

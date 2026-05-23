@@ -61,10 +61,39 @@ public:
 	void Redo() override;
 	std::string GetDescription() const override { return description; }
 
-private:
 	std::string description;
 	std::vector<LightTransformSnapshot> beforeState;
 	std::vector<LightTransformSnapshot> afterState;
+};
+
+// =====================================================================
+// InstanceTransformSnapshot — Captures position for one instance in a group
+// =====================================================================
+class InstancedGroup;
+struct InstanceTransformSnapshot {
+	InstancedGroup* group;
+	int index;
+	glm::vec3 position;
+};
+
+// =====================================================================
+// TransformInstancesAction — Undo/Redo for instance position changes (gizmo)
+// =====================================================================
+class TransformInstancesAction : public UndoAction
+{
+public:
+	TransformInstancesAction(const std::string& desc,
+		const std::vector<InstanceTransformSnapshot>& before,
+		const std::vector<InstanceTransformSnapshot>& after);
+
+	void Undo() override;
+	void Redo() override;
+	std::string GetDescription() const override { return description; }
+
+private:
+	std::string description;
+	std::vector<InstanceTransformSnapshot> beforeState;
+	std::vector<InstanceTransformSnapshot> afterState;
 };
 
 // =====================================================================

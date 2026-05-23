@@ -61,20 +61,18 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 
 	glm::mat4 view = camera.calculateViewMatrix();
 
-	// Get raw mouse position from GLFW
+	// Get raw mouse position from GLFW (in screen/window points — same space as ImGui)
 	double mouseX, mouseY;
 	glfwGetCursorPos(window.getWindow(), &mouseX, &mouseY);
 
-	// Translate to screen space (taking care of any window/framebuffer scaling)
-	int winW, winH;
-	glfwGetWindowSize(window.getWindow(), &winW, &winH);
-	int fbw, fbh;
-	glfwGetFramebufferSize(window.getWindow(), &fbw, &fbh);
+	// Use screen-point coordinates directly — ImGui viewport position (vPos)
+	// is in screen points, not framebuffer pixels. Scaling by the framebuffer/window
+	// ratio would create a mismatch on High DPI displays (125%, 150%, 200% scaling),
+	// causing depth buffer reads from the wrong pixel and broken occlusion culling.
+	float screenX = (float)mouseX;
+	float screenY = (float)mouseY;
 
-	float screenX = (float)mouseX * ((float)fbw / (float)winW);
-	float screenY = (float)mouseY * ((float)fbh / (float)winH);
-
-	// Offset by viewport position
+	// Offset by viewport position (both in screen points now)
 	float relativeX = screenX - vPos.x;
 	float relativeY = screenY - vPos.y;
 
