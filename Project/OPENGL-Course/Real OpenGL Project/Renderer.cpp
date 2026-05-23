@@ -489,6 +489,7 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 		neutralize("in float vFadeFactor;", "// Redefined by header");
 		neutralize("varying float vFadeFactor;", "// Redefined by header");
 		neutralize("vFadeFactor = 0.0;", "// vFadeFactor set by ResolveInstancedModelMatrix()");
+		neutralize("vIsSelected = 0.0;", "// vIsSelected set by ResolveInstancedModelMatrix()");
 
 		// Update version and prepend header
 		size_t vPos = src.find("#version");
@@ -518,6 +519,7 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 					logic += "    mat4 model; model = ResolveInstancedModelMatrix();\n";
 					logic += "    vData.vFadeFactor = _instanceFadeFactor;\n";
 					logic += "    vData.iInstanceID = gl_InstanceID;\n";
+					logic += "    vIsSelected = _instanceIsSelected;\n";
 					if (hasTessPipe) logic += "    vFadeFactor = _instanceFadeFactor;\n"; 
 				} else if (stageType == 1) { // TCS
 					logic += "    vDataOut[gl_InvocationID].iInstanceID = vDataIn[gl_InvocationID].iInstanceID;\n";

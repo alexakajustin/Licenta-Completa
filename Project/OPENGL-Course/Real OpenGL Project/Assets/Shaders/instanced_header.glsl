@@ -21,6 +21,7 @@ struct InstanceData {
 };
 
 float _instanceFadeFactor = 0.0;
+float _instanceIsSelected = 0.0;
 
 #if defined(IS_VERTEX_SHADER)
     layout(location = 10) flat out InstanceData vData;
@@ -72,8 +73,15 @@ mat4 ResolveInstancedModelMatrix() {
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
     
-    // Store fade factor for later copy to vFadeFactor
-    _instanceFadeFactor = inst.rotAndFlags.w;
+    // Unpack selection flag and fade factor
+    float rawW = inst.rotAndFlags.w;
+    if (rawW > 5.0) {
+        _instanceIsSelected = 1.0;
+        _instanceFadeFactor = rawW - 10.0;
+    } else {
+        _instanceIsSelected = 0.0;
+        _instanceFadeFactor = rawW;
+    }
     
     mat3 rotMat = eulerToMat3(instanceRot);
     

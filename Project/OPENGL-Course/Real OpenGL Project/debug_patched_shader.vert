@@ -24,6 +24,7 @@ struct InstanceData {
 };
 
 float _instanceFadeFactor = 0.0;
+float _instanceIsSelected = 0.0;
 
 #if defined(IS_VERTEX_SHADER)
     layout(location = 10) flat out InstanceData vData;
@@ -75,8 +76,15 @@ mat4 ResolveInstancedModelMatrix() {
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
     
-    // Store fade factor for later copy to vFadeFactor
-    _instanceFadeFactor = inst.rotAndFlags.w;
+    // Unpack selection flag and fade factor
+    float rawW = inst.rotAndFlags.w;
+    if (rawW > 5.0) {
+        _instanceIsSelected = 1.0;
+        _instanceFadeFactor = rawW - 10.0;
+    } else {
+        _instanceIsSelected = 0.0;
+        _instanceFadeFactor = rawW;
+    }
     
     mat3 rotMat = eulerToMat3(instanceRot);
     
@@ -116,6 +124,7 @@ void main()
     mat4 model; model = ResolveInstancedModelMatrix();
     vData.vFadeFactor = _instanceFadeFactor;
     vData.iInstanceID = gl_InstanceID;
+    vIsSelected = _instanceIsSelected;
 
 	mat4 modelMatrix = model;
 	if (useInstancing == 1) {
@@ -128,7 +137,7 @@ void main()
 		displacedPos.z += cos(time * windSpeed + pos.z) * windStrength;
 	}
 	
-	vIsSelected = 0.0;
+	// vIsSelected set by ResolveInstancedModelMatrix()
 	// vFadeFactor set by ResolveInstancedModelMatrix()
 	vec4 worldPos = modelMatrix * vec4(displacedPos, 1.0);
 	gl_ClipDistance[0] = dot(worldPos, clipPlane);

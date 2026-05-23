@@ -97,5 +97,6 @@ void main()
     gl_Position = vec4(worldPos, 1.0);
     
     TexCoord = tex * material.tiling + material.offset;
-    vFadeFactor = inst.rotAndFlags.w;
+    float rawW = inst.rotAndFlags.w;
+    vFadeFactor = (rawW > 5.0) ? (rawW - 10.0) : rawW;
 }

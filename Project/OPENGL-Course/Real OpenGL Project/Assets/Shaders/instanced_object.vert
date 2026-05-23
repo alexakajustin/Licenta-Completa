@@ -75,8 +75,14 @@ void main()
     vec3 instancePos = inst.posAndScale.xyz;
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
-    vIsSelected = 0.0;
-    vFadeFactor = inst.rotAndFlags.w; // Distance fade factor from compute cull
+    float rawW = inst.rotAndFlags.w;
+    if (rawW > 5.0) {
+        vIsSelected = 1.0;
+        vFadeFactor = rawW - 10.0;
+    } else {
+        vIsSelected = 0.0;
+        vFadeFactor = rawW;
+    }
     
     // Build model matrix from packed data
     mat3 rotMat = eulerToMat3(instanceRot);

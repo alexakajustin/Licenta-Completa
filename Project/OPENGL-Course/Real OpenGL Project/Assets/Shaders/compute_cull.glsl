@@ -169,7 +169,9 @@ void main()
         fadeFactor = clamp((dist - fadeStart) / (maxDrawDistance - fadeStart), 0.0, 1.0);
     }
     // Store fade factor in rotAndFlags.w for the fragment shader
-    inst.rotAndFlags.w = fadeFactor;
+    // Also preserve the original selection flag from CPU (1.0 = selected)
+    float isSelected = inst.rotAndFlags.w;
+    inst.rotAndFlags.w = fadeFactor + (isSelected > 0.5 ? 10.0 : 0.0);
 
     // ------- Frustum Culling (clip-space sphere test) -------
     // Skip frustum/Hi-Z when using sphere culling (omni light shadows)
