@@ -1,0 +1,29 @@
+# Doxygen Configuration File
+# Keep It Simple, Stupid (KISS)
+
+PROJECT_NAME           = "Real OpenGL Project"
+OUTPUT_DIRECTORY       = Doc
+CREATE_SUBDIRS         = NO
+OUTPUT_LANGUAGE        = English
+
+# Input configuration
+INPUT                  = . Core Editor Lighting Nodes Procedural Rendering Scene Simulation Utils Shaders Assets/Shaders
+FILE_PATTERNS          = *.cpp *.h *.vert *.frag *.geom *.tcs *.tes *.glsl
+EXTENSION_MAPPING      = vert=C++ frag=C++ geom=C++ tcs=C++ tes=C++ glsl=C++
+RECURSIVE              = YES
+EXCLUDE                = "External Libs" Doc
+
+# Output formats (Only HTML, no LaTeX/man/etc.)
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+# Extraction settings
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+
+# Graphviz/Dot diagram support (set to YES if you have Graphviz installed and want graphs)
+HAVE_DOT               = NO

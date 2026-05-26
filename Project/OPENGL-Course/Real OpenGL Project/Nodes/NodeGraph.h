@@ -15,89 +15,123 @@ class Texture;
 class Material;
 
 // ========== Pin ==========
+/**
+ * @struct Pin
+ * @brief Represents an input or output data connection slot on a graph node.
+ */
 struct Pin
 {
-	int id;
-	PinDataType dataType;
-	std::string name;
-	PinData data;  // Filled during execution
+	int id; ///< Unique identifier of the pin.
+	PinDataType dataType; ///< Data type constraint of the pin.
+	std::string name; ///< String name label of the pin.
+	PinData data;  ///< Data payload populated during graph execution.
 
 	Pin() : id(0), dataType(PinDataType::None) {}
 	Pin(int id, PinDataType type, const std::string& name)
 		: id(id), dataType(type), name(name) {}
 };
 
-// ========== Link ==========
+/**
+ * @struct Link
+ * @brief Represents a connection link transferring data from an output pin to an input pin.
+ */
 struct Link
 {
-	int id;
-	int startPinId;  // Output pin
-	int endPinId;    // Input pin
+	int id; ///< Unique identifier of the link.
+	int startPinId;  ///< Output source pin identifier.
+	int endPinId;    ///< Input destination pin identifier.
 
 	Link() : id(0), startPinId(0), endPinId(0) {}
 	Link(int id, int start, int end) : id(id), startPinId(start), endPinId(end) {}
 };
 
-// ========== Base Node ==========
+/**
+ * @class GraphNode
+ * @brief Abstract base class representing a single processing node within the procedural pipeline.
+ */
 class GraphNode
 {
 public:
-	int id;
-	std::string title;
-	std::vector<Pin> inputs;
-	std::vector<Pin> outputs;
-	glm::vec2 editorPos = glm::vec2(0.0f); // Position in node editor
-	bool positionSet = false;
+	int id; ///< Unique identifier of the node.
+	std::string title; ///< Display title of the node.
+	std::vector<Pin> inputs; ///< Array of input pins.
+	std::vector<Pin> outputs; ///< Array of output pins.
+	glm::vec2 editorPos = glm::vec2(0.0f); ///< Coordinates position in the ImNodes editor workspace.
+	bool positionSet = false; ///< Flag indicating if editor position has been defined.
 
 	GraphNode() : id(0) {}
 	virtual ~GraphNode() = default;
 
-	// Render ImGui controls inside the node body
+	/**
+	 * @brief Abstract method to draw customized ImGui node configuration parameters.
+	 */
 	virtual void RenderContent(SceneManager* scene) = 0;
 
 	using NodeProgressCallback = std::function<void(float, const std::string&)>;
-	// Process: read input pin data, compute, write output pin data
+	
+	/**
+	 * @brief Abstract method to process input values and update output pin payloads.
+	 */
 	virtual void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) = 0;
 
-	// Called right before node is deleted from the graph
+	/**
+	 * @brief Triggered when the node is deleted to perform resource cleanup.
+	 */
 	virtual void OnRemove(SceneManager& scene) {}
 
-	// Called when a scene object is renamed so nodes can update their stored references
+	/**
+	 * @brief Triggered when scene objects are renamed to synchronize name references.
+	 */
 	virtual void OnObjectRenamed(const std::string& oldName, const std::string& newName) {}
 
-	// Find a pin by ID
 	Pin* FindPin(int pinId);
 	Pin* FindInputPin(int pinId);
 	Pin* FindOutputPin(int pinId);
 
-	// Serialization
 	virtual json Serialize() const;
 	virtual void Deserialize(const json& j);
 };
 
-// ========== Node Graph ==========
+/**
+ * @class NodeGraph
+ * @brief Master controller containing lists of nodes and connections, managing evaluation flows.
+ */
 class NodeGraph
 {
 public:
 	NodeGraph();
 	~NodeGraph();
 
-	// Node management
+	/**
+	 * @brief Appends a node to the graph memory tracking.
+	 */
 	void AddNode(GraphNode* node);
+
+	/**
+	 * @brief Removes a node and all its connected links.
+	 */
 	void RemoveNode(int nodeId, SceneManager* scene = nullptr);
+	
 	GraphNode* FindNode(int nodeId);
 	GraphNode* FindNodeByPinId(int pinId);
 
-	// Link management
+	/**
+	 * @brief Creates a connection link between an output and input pin.
+	 */
 	bool AddLink(int outputPinId, int inputPinId);
 	void RemoveLink(int linkId);
 	void RemoveLinkByPinId(int pinId);
+	
+	/**
+	 * @brief Validates if two pins can be connected (datatype check + cycle detection).
+	 */
 	bool CanLink(int outputPinId, int inputPinId);
 
-	// Execution
+	/**
+	 * @brief Evaluates the entire graph, sorting nodes topologically and executing them sequentially.
+	 */
 	void Execute(SceneManager& scene, Texture* defaultTex, Material* defaultMat, std::function<void(float, float, const std::string&)> progressCallback = nullptr);
 
-	// Accessors
 	std::vector<GraphNode*>& GetNodes() { return nodes; }
 	std::vector<Link>& GetLinks() { return links; }
 
@@ -105,18 +139,20 @@ public:
 	int NextNodeId() { return nextId++; }
 	int NextPinId() { return nextId++; }
 
-	// Serialization
 	json Serialize() const;
 	void Deserialize(const json& j, SceneManager& scene);
 
-	// Track generated objects for cleanup (objects that won't be saved in objects array)
 	bool IsObjectGenerated(const std::string& name) const;
-	// Track dynamically modified objects (to avoid saving their huge generated meshes)
 	bool IsObjectMeshModified(const std::string& name) const;
 
-	// Notify all nodes that a scene object was renamed
+	/**
+	 * @brief Dispatches object rename notifications to all active nodes.
+	 */
 	void NotifyObjectRenamed(const std::string& oldName, const std::string& newName);
 
+	/**
+	 * @brief Clears all nodes, links, and cached states.
+	 */
 	void Clear();
 
 private:
@@ -124,12 +160,15 @@ private:
 	std::vector<Link> links;
 	int nextId;
 
-	// Topological sort for execution order
+	/**
+	 * @brief Sorts nodes topologically to define a valid dependency execution order.
+	 */
 	std::vector<GraphNode*> TopologicalSort();
 
-	// Propagate data along links (copy output pin data to connected input pins)
+	/**
+	 * @brief Copies output pin payloads into their target input pins across active links.
+	 */
 	void PropagateData();
 
-	// Track generated objects for cleanup
 	std::vector<std::string> generatedObjectNames;
 };

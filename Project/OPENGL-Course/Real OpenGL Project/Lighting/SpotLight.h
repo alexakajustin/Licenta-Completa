@@ -27,6 +27,9 @@ public:
     float* GetEdgePtr() { return &edge; }
      
     ~SpotLight();
+	SpotLight(SpotLight&&) = default;
+	SpotLight& operator=(SpotLight&&) = default;
+
 private:
     glm::vec3 direction;
 

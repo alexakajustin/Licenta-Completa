@@ -6,8 +6,16 @@
 #include <algorithm>
 #include <random>
 
+/**
+ * @class Noise3D
+ * @brief Utility class that provides 3D Perlin noise, fractal Brownian motion (fBm), and 3D ridged noise lookup fields.
+ */
 class Noise3D {
 public:
+    /**
+     * @brief Constructor that generates shuffled permutation vectors using an active seed.
+     * @param seed Random seed for generating noise permutations.
+     */
     Noise3D(unsigned int seed = 12345) {
         p.resize(256);
         std::iota(p.begin(), p.end(), 0);
@@ -16,6 +24,13 @@ public:
         p.insert(p.end(), p.begin(), p.end());
     }
 
+    /**
+     * @brief Computes raw single-octave 3D Perlin noise.
+     * @param x coordinate.
+     * @param y coordinate.
+     * @param z coordinate.
+     * @return Noise value normalized in the [-1.0, 1.0] range.
+     */
     float Noise(float x, float y, float z) const {
         // Simple 3D Perlin noise implementation
         int X = (int)floor(x) & 255;
@@ -43,6 +58,14 @@ public:
                                      Grad(p[BB + 1], x - 1, y - 1, z - 1))));
     }
 
+    /**
+     * @brief Fractal Brownian Motion (fBm) noise summation.
+     * @param pos 3D position vector.
+     * @param octaves Number of octaves.
+     * @param persistence Amplitude decay factor.
+     * @param lacunarity Frequency multiplication factor.
+     * @return Summed fractal noise value.
+     */
     float fBm(glm::vec3 pos, int octaves, float persistence, float lacunarity) const {
         float total = 0;
         float frequency = 1;
@@ -57,6 +80,14 @@ public:
         return total / maxValue;
     }
 
+    /**
+     * @brief Computes 3D ridged multifractal noise (useful for mountain ranges or sharp details).
+     * @param pos 3D position vector.
+     * @param octaves Number of octaves.
+     * @param persistence Amplitude decay factor.
+     * @param lacunarity Frequency multiplication factor.
+     * @return Summed ridged noise value.
+     */
     float RidgedNoise(glm::vec3 pos, int octaves, float persistence, float lacunarity) const {
         float total = 0;
         float frequency = 1;
@@ -75,7 +106,7 @@ public:
     }
 
 private:
-    std::vector<int> p;
+    std::vector<int> p; ///< Permutation table.
 
     static float Fade(float t) { return t * t * t * (t * (t * 6 - 15) + 10); }
     static float Lerp(float t, float a, float b) { return a + t * (b - a); }

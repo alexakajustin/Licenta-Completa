@@ -1,6 +1,7 @@
 #include "Nodes/SceneInputNode.h"
 #include "Rendering/PrimitiveGenerator.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include "imgui.h"
 
 SceneInputNode::SceneInputNode(NodeGraph& graph)
@@ -281,9 +282,9 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		else if (!cachedModelPath.empty())
 		{
 			// The AssetManager might already have it loaded, or missing, but we still try
-			Model* m = AssetManager::Get().GetModel(cachedModelPath);
+			Model* m = ServiceLocator::GetAssetManager()->GetModel(cachedModelPath);
 			// We MUST wait for the model to finish loading before trying to extract its meshes
-			AssetManager::Get().WaitForAll();
+			ServiceLocator::GetAssetManager()->WaitForAll();
 			
 			const auto& meshes = m->GetMeshDataList();
 			for (const auto& mesh : meshes)

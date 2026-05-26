@@ -15,9 +15,17 @@
 // Scatters instances of an object mesh across a surface mesh.
 // Inputs: Surface (Mesh), Object (Mesh)
 // Outputs: Combined (Mesh) — all instances merged into one mesh
+/**
+ * @class ScatterNode
+ * @brief Scatters instances of an object mesh across a surface mesh using either merged meshes or scene GameObject instances.
+ */
 class ScatterNode : public GraphNode
 {
 public:
+	/**
+	 * @brief Constructor registers input and output pins.
+	 * @param graph NodeGraph that owns this node.
+	 */
 	ScatterNode(NodeGraph& graph)
 	{
 		id = graph.NextNodeId();
@@ -36,11 +44,29 @@ public:
 		outputs.push_back(instancesOut);
 	}
 
+	/**
+	 * @brief Serializes node properties to JSON.
+	 */
 	json Serialize() const override;
+
+	/**
+	 * @brief Deserializes node properties from JSON.
+	 */
 	void Deserialize(const json& j) override;
 
+	/**
+	 * @brief Renders the editor UI panel for configuring counts, seed values, and alignment options.
+	 */
 	void RenderContent(SceneManager* scene) override;
+
+	/**
+	 * @brief Runs the scatter layout simulation, generating coordinates and applying transforms.
+	 */
 	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
+
+	/**
+	 * @brief Triggered when node is removed, cleans up generated game objects.
+	 */
 	void OnRemove(SceneManager& scene) override;
 
 	// Multi-Object tracking
@@ -55,6 +81,9 @@ public:
 	int GetParentIndex() const { return targetParentIndex; }
 	std::string GetParentName() const { return targetParentName; }
 
+	/**
+	 * @brief Synchronizes object tracking names during renaming events.
+	 */
 	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
 	{
 		// Update parent reference
@@ -87,12 +116,12 @@ public:
 	void SetTargetParent(int index, const std::string& name) { targetParentIndex = index; targetParentName = name; }
 
 private:
-	int count = 50;
-	float minScale = 0.8f;
-	float maxScale = 1.2f;
-	bool randomRotation = true;
-	bool alignToNormal = true;
-	int seed = 42;
+	int count = 50; ///< Number of instances to scatter.
+	float minScale = 0.8f; ///< Minimum scale jitter factor.
+	float maxScale = 1.2f; ///< Maximum scale jitter factor.
+	bool randomRotation = true; ///< If true, randomizes Y rotation.
+	bool alignToNormal = true; ///< If true, aligns the up vector of the model with the surface normal.
+	int seed = 42; ///< Random seed.
 
 	// Spawning Settings
 	bool spawnAsObjects = false;
@@ -106,10 +135,13 @@ private:
 	std::set<std::string> createdGroupNames;
 	std::map<std::string, std::vector<std::string>> spawnedMap; // objectName -> list of instance names
 	
-	// Spatial Masking for deleted instances
+	/**
+	 * @struct DeletionVolume
+	 * @brief Defines spherical exclusion volumes where spawned instances should be culled.
+	 */
 	struct DeletionVolume {
-		glm::vec3 position;
-		float radius;
+		glm::vec3 position; ///< Center of the exclusion sphere.
+		float radius; ///< Radius of the exclusion sphere.
 	};
 	std::vector<DeletionVolume> deletionVolumes;
 

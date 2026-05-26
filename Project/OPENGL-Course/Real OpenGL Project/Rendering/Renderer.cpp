@@ -9,6 +9,8 @@
 #include <sstream>
 #include "Rendering/CascadedShadowMap.h"
 #include "GraphicsSettings.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 
 Renderer::Renderer()
 	: uniformModel(-1), uniformProjection(-1), uniformView(-1),
@@ -572,8 +574,7 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 		hybrid->CreateFromString(vSource.c_str(), fSource.c_str());
 	}
 
-	extern std::unordered_map<GLuint, std::string> g_ShaderNames;
-	g_ShaderNames[hybrid->GetShaderID()] = "Instanced Hybrid: " + cacheKey;
+	ServiceLocator::GetAssetManager()->RegisterShader(hybrid->GetShaderID(), "Instanced Hybrid: " + cacheKey);
 
 	printf("[Renderer] Created 'Instancified' hybrid: %s%s\n", cacheKey.c_str(), hasTess ? " (Tessellation)" : "");
 	

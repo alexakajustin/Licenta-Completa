@@ -14,7 +14,7 @@ Light::Light()
 
 Light::Light(GLfloat shadowWidth, GLfloat shadowHeight, GLfloat red, GLfloat green, GLfloat blue, GLfloat ambientIntensity, GLfloat diffuseIntensity)
 {
-	shadowMap = new ShadowMap();
+	shadowMap = std::make_unique<ShadowMap>();
 	shadowMap->Init(shadowWidth, shadowHeight);
 
 	colour = glm::vec3(red, green, blue);

@@ -6,7 +6,8 @@
 #include "Scene/SceneManager.h"
 #include "Rendering/Material.h"
 #include "Rendering/PrimitiveGenerator.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -112,7 +113,7 @@ bool AssetBrowser::GenerateModelThumbnail(const std::filesystem::path& modelPath
 		}
 	}
 
-	Model* tempModel = AssetManager::Get().GetModel(modelPath.string());
+	Model* tempModel = ServiceLocator::GetAssetManager()->GetModel(modelPath.string());
 	
 	if (!tempModel->IsReady()) {
 		if (tempModel->IsFailed()) {
@@ -427,8 +428,8 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				
 				// ONLY try to generate if we haven't successfully done so before
 				if (thumbnailGenerationMap.find(pStr) == thumbnailGenerationMap.end()) {
-					bool canLoad = AssetManager::Get().GetActiveTasksCount() < 2;
-					Model* model = AssetManager::Get().GetModel(pStr, canLoad);
+					bool canLoad = ServiceLocator::GetAssetManager()->GetActiveTasksCount() < 2;
+					Model* model = ServiceLocator::GetAssetManager()->GetModel(pStr, canLoad);
 					if (model) {
 						if (model->IsReady() && !model->IsFailed()) {
 							GenerateModelThumbnail(asset.path, asset.thumbnail);
@@ -740,7 +741,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 				if (displayAssets[i].type == AssetType::Model) {
 					std::string pStr = displayAssets[i].path.string();
 					if (thumbnailGenerationMap.find(pStr) == thumbnailGenerationMap.end()) {
-						Model* model = AssetManager::Get().GetModel(pStr, false);
+						Model* model = ServiceLocator::GetAssetManager()->GetModel(pStr, false);
 						if (model && !model->IsReady() && !model->IsFailed()) {
 							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
 							char progStr[32];
@@ -756,7 +757,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 						}
 					} else {
 						// It was attempted. Was it a failure?
-						Model* model = AssetManager::Get().GetModel(pStr, false);
+						Model* model = ServiceLocator::GetAssetManager()->GetModel(pStr, false);
 						if (model && model->IsFailed()) {
 							ImGui::SetCursorPos(ImVec2(startPos.x + 5, startPos.y + cellSize - 20));
 							ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Failed");

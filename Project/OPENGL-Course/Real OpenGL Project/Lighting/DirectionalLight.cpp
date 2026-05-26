@@ -20,9 +20,8 @@ DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
 	GLfloat diffuseIntensity, GLfloat xDirection, GLfloat yDirection, GLfloat zDirection) : Light(shadowWidth, shadowHeight, red, green, blue, ambientIntensity, diffuseIntensity)
 {
 	// Replace default ShadowMap with CascadedShadowMap
-	if (shadowMap) delete shadowMap;
-	shadowMap = new CascadedShadowMap();
-	((CascadedShadowMap*)shadowMap)->Init((GLuint)shadowWidth, (GLuint)shadowHeight, 4);
+	shadowMap = std::make_unique<CascadedShadowMap>();
+	static_cast<CascadedShadowMap*>(shadowMap.get())->Init((GLuint)shadowWidth, (GLuint)shadowHeight, 4);
 
 	direction = glm::normalize(glm::vec3(xDirection, yDirection, zDirection));
 	lightProj = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);

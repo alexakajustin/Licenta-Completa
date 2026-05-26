@@ -19,7 +19,8 @@
 #include "Editor/DebugOverlay.h"
 #include "External Libs/imnodes/imnodes.h"
 #include "Rendering/PrimitiveGenerator.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include "Nodes/AllOperations.h"
 #include "Scene/SceneSerializer.h"
 #include "Procedural/InteriorGenNode.h"
@@ -31,7 +32,8 @@
 #include <unordered_map>
 #include <string>
 
-std::unordered_map<GLuint, std::string> g_ShaderNames;
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 
 // OpenGL Debug Callback
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -52,8 +54,8 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 	GLint currentProgram = 0;
 	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
 	std::string shaderName = "Unknown/None";
-	if (currentProgram != 0 && g_ShaderNames.count(currentProgram)) {
-		shaderName = g_ShaderNames[currentProgram];
+	if (currentProgram != 0 && ServiceLocator::GetAssetManager()->HasShader(currentProgram)) {
+		shaderName = ServiceLocator::GetAssetManager()->GetShaderName(currentProgram);
 	}
 
 	// Print the first occurrence immediately
@@ -65,8 +67,8 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 		
 		// On the FIRST occurrence of the glUniformMatrix4fv error, dump all registered shaders
 		if (id == 0x4b6) {
-			fprintf(stderr, "\n=== SHADER REGISTRY DUMP (g_ShaderNames) ===\n");
-			for (auto& [sid, sname] : g_ShaderNames) {
+			fprintf(stderr, "\n=== SHADER REGISTRY DUMP ===\n");
+			for (auto& [sid, sname] : ServiceLocator::GetAssetManager()->GetAllRegisteredShaders()) {
 				fprintf(stderr, "  Program %u: [%s]\n", sid, sname.c_str());
 			}
 			fprintf(stderr, "=== END DUMP ===\n\n");
@@ -250,7 +252,7 @@ void Application::Run()
 		deltaTime = now - lastTime;
 		lastTime = now;
 
-		AssetManager::Get().Update();
+		ServiceLocator::GetAssetManager()->Update();
 
 		// Process deferred LOD generation (a few meshes per frame)
 		extern void SceneManager_ProcessDeferredLODs();
@@ -940,12 +942,13 @@ void Application::SetupDockSpace()
 
 void Application::InitSSAO()
 {
-	ssaoShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao.frag");
-	ssaoBlurShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_blur.frag");
-	ssaoApplyShader.CreateFromFiles("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
-	godrayShader.CreateFromFiles("Assets/Shaders/godrays.vert", "Assets/Shaders/godrays.frag");
-	volumetricSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/volumetric_sky.frag");
-	universeSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/universe_sky.frag");
+	auto am = ServiceLocator::GetAssetManager();
+	ssaoShader.CreateFromFiles(am->GetShaderPath("ssao.vert").c_str(), am->GetShaderPath("ssao.frag").c_str());
+	ssaoBlurShader.CreateFromFiles(am->GetShaderPath("ssao.vert").c_str(), am->GetShaderPath("ssao_blur.frag").c_str());
+	ssaoApplyShader.CreateFromFiles(am->GetShaderPath("ssao.vert").c_str(), am->GetShaderPath("ssao_apply.frag").c_str());
+	godrayShader.CreateFromFiles(am->GetShaderPath("godrays.vert").c_str(), am->GetShaderPath("godrays.frag").c_str());
+	volumetricSkyShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("volumetric_sky.frag").c_str());
+	universeSkyShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("universe_sky.frag").c_str());
 
 	// Gen FBOs
 	glGenFramebuffers(1, &ssaoFBO);

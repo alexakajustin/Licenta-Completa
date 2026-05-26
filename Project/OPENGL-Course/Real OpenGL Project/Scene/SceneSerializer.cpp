@@ -17,7 +17,8 @@
 #include "Rendering/Material.h"
 #include "Rendering/TextureLayer.h"
 #include "Rendering/PrimitiveGenerator.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include "CommonValues.h"
 
 #include "External Libs/nlohmann/json.hpp"
@@ -420,17 +421,17 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 		// Pass 0.5: Trigger background loading
 		for (const auto& path : uniquePaths) {
-			AssetManager::Get().GetModel(path);
+			ServiceLocator::GetAssetManager()->GetModel(path);
 		}
 		
 		// Responsive Wait: Process GPU uploads while keeping UI alive
-		size_t initialTasks = AssetManager::Get().GetActiveTasksCount();
-		while (AssetManager::Get().GetActiveTasksCount() > 0)
+		size_t initialTasks = ServiceLocator::GetAssetManager()->GetActiveTasksCount();
+		while (ServiceLocator::GetAssetManager()->GetActiveTasksCount() > 0)
 		{
-			AssetManager::Get().Update(); // Process ready GPU uploads
+			ServiceLocator::GetAssetManager()->Update(); // Process ready GPU uploads
 			
 			if (progressCallback) {
-				size_t remaining = AssetManager::Get().GetActiveTasksCount();
+				size_t remaining = ServiceLocator::GetAssetManager()->GetActiveTasksCount();
 				float progress = 15.0f + (initialTasks > 0 ? (1.0f - (float)remaining / initialTasks) * 15.0f : 15.0f);
 				progressCallback(progress, 0.0f, "Uploading GPU Assets (" + std::to_string(remaining) + " left)...");
 			}
@@ -513,7 +514,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 			if (!modelPath.empty())
 			{
-				Model* model = AssetManager::Get().GetModel(modelPath);
+				Model* model = ServiceLocator::GetAssetManager()->GetModel(modelPath);
 				if (model && model->GetMeshCount() == 1) {
 					obj->SetModel(model);
 				}
@@ -748,7 +749,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				std::string sourcePath = parent->GetModelSourcePath();
 				if (!sourcePath.empty() && !loadedObjects[i]->GetMesh() && !loadedObjects[i]->GetModel())
 				{
-					Model* parentModel = AssetManager::Get().GetModel(sourcePath);
+					Model* parentModel = ServiceLocator::GetAssetManager()->GetModel(sourcePath);
 					if (parentModel) 
 					{
 						// Optimize mesh lookup by indexing the model once
@@ -1014,7 +1015,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 		// Wait for all assets to finish loading before auto-execution.
 		// Otherwise, models used by the scatter nodes will be empty, and instances will not spawn.
-		AssetManager::Get().WaitForAll();
+		ServiceLocator::GetAssetManager()->WaitForAll();
 
 		if (progressCallback) progressCallback(50.0f, 0.0f, "Executing Generation Pipeline...");
 
@@ -1134,7 +1135,7 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 	} else if (j.contains("model_path")) {
 		std::string path = j["model_path"].get<std::string>();
 		if (!path.empty() && (!obj->GetModel() || obj->GetModel()->GetPath() != path)) {
-			obj->SetModel(AssetManager::Get().GetModel(path));
+			obj->SetModel(ServiceLocator::GetAssetManager()->GetModel(path));
 		}
 	}
 

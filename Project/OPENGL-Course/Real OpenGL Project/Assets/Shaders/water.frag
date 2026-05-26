@@ -1,7 +1,9 @@
 #version 330
 
-// PREMIUM LAKE SHADER - "SEASCAPE" ADAPTATION 
-// Discarded old logic. Implementing iterative high-fidelity normal blending and Beer's Law.
+/**
+ * @file water.frag
+ * @brief High-fidelity lake water fragment shader adaptively calculating Fresnel reflection, depth-based absorption (Beer's Law), foam, and caustics.
+ */
 
 in vec4 vertex_color;
 in vec2 TexCoord;
@@ -20,10 +22,28 @@ in float vObjectScale;
 
 out vec4 colour;
 
-// Standard Light Uniforms
+/**
+ * @struct Light
+ * @brief Base lighting parameters.
+ */
 struct Light { vec3 colour; float ambientIntensity; float diffuseIntensity; };
+
+/**
+ * @struct DirectionalLight
+ * @brief Directional light source configuration.
+ */
 struct DirectionalLight { Light base; vec3 direction; };
+
+/**
+ * @struct PointLight
+ * @brief Point light source configuration.
+ */
 struct PointLight { Light base; vec3 position; float constant; float linear; float exponent; };
+
+/**
+ * @struct SpotLight
+ * @brief Spot light source configuration.
+ */
 struct SpotLight { Light base; vec3 position; vec3 direction; float edge; float constant; float linear; float exponent; };
 
 uniform int pointLightCount;
@@ -32,7 +52,10 @@ uniform DirectionalLight directionalLight;
 uniform PointLight pointLights[16];
 uniform SpotLight spotLights[16];
 
-// Material & Textures
+/**
+ * @struct Material
+ * @brief Water material properties.
+ */
 struct Material { 
     float specularIntensity; 
     float shininess; 
@@ -43,32 +66,32 @@ struct Material {
     vec2 offset; 
 };
 uniform Material material;
-uniform sampler2D material_dudvMap;
-uniform sampler2D material_waterNormalMap;
-uniform sampler2D material_causticsMap;
+uniform sampler2D material_dudvMap; ///< DuDv UV distortion map texture.
+uniform sampler2D material_waterNormalMap; ///< Water waves normal map sampler.
+uniform sampler2D material_causticsMap; ///< Caustics animated projection map texture.
 
-// Custom Uniforms
-uniform sampler2D refractionMap;
-uniform sampler2D reflectionMap;
-uniform sampler2D sceneDepthMap;
-uniform float time;
-uniform vec2 screenSize;
-uniform vec3 eyePosition;
+uniform sampler2D refractionMap; ///< Underwater camera render buffer refraction map texture.
+uniform sampler2D reflectionMap; ///< Reflected camera render buffer reflection map texture.
+uniform sampler2D sceneDepthMap; ///< Camera depth buffer depth map texture.
+uniform float time; ///< Current animation timer.
+uniform vec2 screenSize; ///< Width and height of view space screen.
+uniform vec3 eyePosition; ///< World-space camera eye position vector.
 uniform float selectionTint;
 
-uniform vec4 material_waterColorDeep;
-uniform vec4 material_waterColorShallow;
-uniform float material_waterDepthScale;
-uniform float material_fresnelPower;
-uniform float material_waveSpeed;
+uniform vec4 material_waterColorDeep; ///< Color of water in deep sections.
+uniform vec4 material_waterColorShallow; ///< Color of water in shallow shorelines.
+uniform float material_waterDepthScale; ///< Scale factor for Beer's Law depth absorption.
+uniform float material_fresnelPower; ///< Fresnel reflection power exponent.
+uniform float material_waveSpeed; ///< Velocity scale of waves translation.
 uniform float material_waveStrength;
-uniform float material_waveScale;
-uniform vec4 material_foamColor;
-uniform float material_foamDistance;
+uniform float material_waveScale; ///< Texture UV coordinates scale factor for waves.
+uniform vec4 material_foamColor; ///< Foam edge color.
+uniform float material_foamDistance; ///< Distance threshold for shore foam visibility.
 uniform float material_dudvTiling;
 uniform float material_dudvStrength;
 uniform float material_specularIntensityOverride;
 uniform float material_shininessOverride;
+
 
 float LinearizeDepth(float depth) {
     float near = 0.1; float far = 2000.0;

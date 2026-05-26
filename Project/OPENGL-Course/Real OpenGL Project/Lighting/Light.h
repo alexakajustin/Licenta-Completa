@@ -8,6 +8,7 @@
 #include "Rendering/ShadowMap.h"
 
 #include <vector>
+#include <memory>
 
 class Light
 {
@@ -17,7 +18,7 @@ public:
 	Light(GLfloat shadowWidth, GLfloat shadowHeight,
 		GLfloat red, GLfloat green, GLfloat blue, GLfloat ambientIntensity, GLfloat diffuseIntensity);
 
-	ShadowMap* GetShadowMap() { return shadowMap; }
+	ShadowMap* GetShadowMap() { return shadowMap.get(); }
 
 	// Getters for editing
 	glm::vec3* GetColourPtr() { return &colour; }
@@ -25,6 +26,9 @@ public:
 	GLfloat* GetDiffuseIntensityPtr() { return &diffuseIntensity; }
 
 	~Light();
+	Light(Light&&) = default;
+	Light& operator=(Light&&) = default;
+
 
 protected:
 	glm::vec3 colour;
@@ -34,5 +38,5 @@ protected:
 	//proj matrix from the lights point of view
 	glm::mat4 lightProj;
 
-	ShadowMap* shadowMap;
+	std::unique_ptr<ShadowMap> shadowMap;
 };

@@ -1654,7 +1654,8 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 	undoManager.PushAction(std::make_unique<CreateObjectAction>(this, std::vector<GameObject*>{obj}, "Create " + type));
 }
 
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include "Rendering/MeshSimplifier.h"
 
 // =========================================================
@@ -1726,12 +1727,12 @@ static void QueueLODGeneration(GameObject* obj, const MeshData& meshData)
 void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3 spawnPos)
 {
 	std::string baseName = path.stem().string();
-	Model* model = AssetManager::Get().GetModel(path.string());
+	Model* model = ServiceLocator::GetAssetManager()->GetModel(path.string());
 	if (!model) return;
 
 	// Responsive Wait: Ensure model is ready before modular detection
-	while (AssetManager::Get().GetActiveTasksCount() > 0) {
-		AssetManager::Get().Update();
+	while (ServiceLocator::GetAssetManager()->GetActiveTasksCount() > 0) {
+		ServiceLocator::GetAssetManager()->Update();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
@@ -1965,7 +1966,7 @@ void SceneManager::DeleteLight(int index)
 		int arrayIdx = (int)(ptr - globalPointLights);
 		if (arrayIdx >= 0 && arrayIdx < (int)*globalPointLightCount) {
 			for (unsigned int j = arrayIdx; j < *globalPointLightCount - 1; j++)
-				globalPointLights[j] = globalPointLights[j + 1];
+				globalPointLights[j] = std::move(globalPointLights[j + 1]);
 			(*globalPointLightCount)--;
 
 			for (auto* lo : lights) {
@@ -1980,7 +1981,7 @@ void SceneManager::DeleteLight(int index)
 		int arrayIdx = (int)(ptr - globalSpotLights);
 		if (arrayIdx >= 0 && arrayIdx < (int)*globalSpotLightCount) {
 			for (unsigned int j = arrayIdx; j < *globalSpotLightCount - 1; j++)
-				globalSpotLights[j] = globalSpotLights[j + 1];
+				globalSpotLights[j] = std::move(globalSpotLights[j + 1]);
 			(*globalSpotLightCount)--;
 
 			for (auto* lo : lights) {

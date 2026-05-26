@@ -1,0 +1,25 @@
+var class_operation =
+[
+    [ "~Operation", "class_operation.html#a930ca278333d00b5a88e75cef0f4e71d", null ],
+    [ "Execute", "class_operation.html#afbe341cf437f3f192378180641706476", null ],
+    [ "GetBool", "class_operation.html#a8d05e1dd15224b75654fe0564eeae860", null ],
+    [ "GetCategory", "class_operation.html#a036cfc1fc1ac404450c084bf4d387db8", null ],
+    [ "GetEnum", "class_operation.html#a5e387e6843b49ed012156fb4a66519af", null ],
+    [ "GetFloat", "class_operation.html#af42ef17e5302693223e362da493c18b4", null ],
+    [ "GetInt", "class_operation.html#a618e359c0f711b6777727ee10d481420", null ],
+    [ "GetName", "class_operation.html#ab00e5ccac6fb845b40d20fbf910a7e1c", null ],
+    [ "GetParamDefs", "class_operation.html#af2a9db769a812d744e5049a1a6dd9901", null ],
+    [ "GetParams", "class_operation.html#a1ea2db64d5ad946e286aacc65975bcb6", null ],
+    [ "GetParams", "class_operation.html#ad250d2c14604bafb38503021558352c9", null ],
+    [ "GetVec2", "class_operation.html#a56c5e71e07a677583823dedeb60cfa77", null ],
+    [ "GetVec3", "class_operation.html#a59fe3f85b1cfa36790faf7b8a74eab15", null ],
+    [ "InitDefaults", "class_operation.html#a45c9ac9a99cf1c546e234e8a57a2d8d3", null ],
+    [ "RenderUI", "class_operation.html#a4cb469866a14df385217bc0de52c74fd", null ],
+    [ "SetBool", "class_operation.html#a3cca085ba649821ff87028dfe992b289", null ],
+    [ "SetEnum", "class_operation.html#a0dd69e7498fb15deddf1357a81b706aa", null ],
+    [ "SetFloat", "class_operation.html#a9e8ede766712051e6528bb474f82846e", null ],
+    [ "SetInt", "class_operation.html#aebb9e9f67052970c0046e40b90ea541a", null ],
+    [ "SetVec2", "class_operation.html#adf71b3fdc658ae9d5ff0e7ba07a308c4", null ],
+    [ "SetVec3", "class_operation.html#ab02f9f2c450b89e79532e9284370d220", null ],
+    [ "params", "class_operation.html#a62e5840895c236148c47b0cb412e11b9", null ]
+];

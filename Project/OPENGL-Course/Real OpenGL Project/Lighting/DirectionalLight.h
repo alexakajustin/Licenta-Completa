@@ -33,6 +33,9 @@ public:
 	float GetShadowFrustumSize() const { return shadowFrustumSize; }
 
 	~DirectionalLight();
+	DirectionalLight(DirectionalLight&&) = default;
+	DirectionalLight& operator=(DirectionalLight&&) = default;
+
 private:
 	glm::vec3 direction;
 	float pitch = 0.0f;

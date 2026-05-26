@@ -1,0 +1,26 @@
+var river_8vert =
+[
+    [ "Material", "struct_material.html", "struct_material" ],
+    [ "layout", "river_8vert.html#a7e3ee6716e060732e7560a42173541a0", null ],
+    [ "main", "river_8vert.html#acdef7a1fd863a6d3770c1268cb06add3", null ],
+    [ "BitangentWorld", "river_8vert.html#aad83ed286ac11de64337f79d25c367bc", null ],
+    [ "clipPlane", "river_8vert.html#a954f3c7fc513e820c04d9f8a909cb6b9", null ],
+    [ "clipSpaceCoords", "river_8vert.html#acdedf100cd7b85173bd38a56f275fa38", null ],
+    [ "FragPos", "river_8vert.html#a384469d8d569955b62c3dba92245e6e1", null ],
+    [ "LocalPos", "river_8vert.html#a1659db5a63aeffbf7ef818e6ae49424a", null ],
+    [ "material", "river_8vert.html#a70f322ad40daaf23a3787d77ca2dd7ef", null ],
+    [ "model", "river_8vert.html#a64083b98baf3a90a91315b137bb44b6d", null ],
+    [ "Normal", "river_8vert.html#a08e557a66ed99db8f20a778d7c34d2bd", null ],
+    [ "NormalWorld", "river_8vert.html#ac21987c98f9b47ed1494ced17a26fe0f", null ],
+    [ "projection", "river_8vert.html#a6f89a4fbf1a53a21ada7ca66387463a1", null ],
+    [ "TangentWorld", "river_8vert.html#a2d00cc0a6ba728297f0131f88bff86b4", null ],
+    [ "TexCoord", "river_8vert.html#ae02a897b42ed145c6a831724b9490581", null ],
+    [ "textureLayerCount", "river_8vert.html#acf8c0726fb8e1260d396ebf3bc909110", null ],
+    [ "time", "river_8vert.html#a251125d5d29683e1458005f28de9845f", null ],
+    [ "useInstancing", "river_8vert.html#ae2eff484c7eb3e0ccc3ca685f8704e44", null ],
+    [ "vertex_color", "river_8vert.html#a9534e00f23a7d171c07de48df72bdbb3", null ],
+    [ "vFadeFactor", "river_8vert.html#a38fa91aa55b083d56c168e0e7e3e3f64", null ],
+    [ "view", "river_8vert.html#a7ab66495f9aae7ab34147735223f7c6d", null ],
+    [ "vIsSelected", "river_8vert.html#a384ba39c0184d2f8db29f9aca2b734f4", null ],
+    [ "vObjectScale", "river_8vert.html#a768a8524ff7fb3b6769f8d8abb0f97f8", null ]
+];

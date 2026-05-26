@@ -1,0 +1,35 @@
+var class_assimp_1_1_base_importer =
+[
+    [ "TextFileMode", "class_assimp_1_1_base_importer.html#a9fe6b47937a7c897536cac1513b65eb7", [
+      [ "ALLOW_EMPTY", "class_assimp_1_1_base_importer.html#a9fe6b47937a7c897536cac1513b65eb7af10ad62259d2e54eff440019b345e309", null ],
+      [ "FORBID_EMPTY", "class_assimp_1_1_base_importer.html#a9fe6b47937a7c897536cac1513b65eb7ae507341521279743797bdce9f7a21081", null ]
+    ] ],
+    [ "BaseImporter", "class_assimp_1_1_base_importer.html#a699aebae893f17b5a5dd415ae7bee7f0", null ],
+    [ "~BaseImporter", "class_assimp_1_1_base_importer.html#aa09f8b01894b96c1fcd6a8f22b003deb", null ],
+    [ "CanRead", "class_assimp_1_1_base_importer.html#a13588d3396ba5b7ed1f1cb46e0945cfd", null ],
+    [ "CheckMagicToken", "class_assimp_1_1_base_importer.html#a6b42085bed85c180f080daab395e8832", null ],
+    [ "ConvertToUTF8", "class_assimp_1_1_base_importer.html#afc318aa0eb85b73f501156a50f3eb703", null ],
+    [ "ConvertUTF8toISO8859_1", "class_assimp_1_1_base_importer.html#af36cd260cc2e756e95ee89d06d7c76d5", null ],
+    [ "CopyVector", "class_assimp_1_1_base_importer.html#a3ce01553ca65d8cc8f1efc2174845d67", null ],
+    [ "CopyVector", "class_assimp_1_1_base_importer.html#abc1067a6780d7d6dbe457fef8abdb66a", null ],
+    [ "GetErrorText", "class_assimp_1_1_base_importer.html#a285229c6bf59116b4653944ef7087727", null ],
+    [ "GetException", "class_assimp_1_1_base_importer.html#a27198204f4ef728968df429880564d60", null ],
+    [ "GetExtension", "class_assimp_1_1_base_importer.html#a25edd42695863af078d2bab65077ce6c", null ],
+    [ "GetExtensionList", "class_assimp_1_1_base_importer.html#a7a658f1192a37e336ba98fe701918b31", null ],
+    [ "GetInfo", "class_assimp_1_1_base_importer.html#aea402563e886993c7b5c0d489288fa4c", null ],
+    [ "HasExtension", "class_assimp_1_1_base_importer.html#a4d3456d16f59cd28f456b79eabe206b0", null ],
+    [ "InternReadFile", "class_assimp_1_1_base_importer.html#ac67d9f5ceb26353d27d6be06cccad398", null ],
+    [ "ReadFile", "class_assimp_1_1_base_importer.html#a2f5938785f722ebde616a30160bccde1", null ],
+    [ "SearchFileHeaderForToken", "class_assimp_1_1_base_importer.html#abae9dd2ae64d8fbac94fa8702848f133", null ],
+    [ "SetFileScale", "class_assimp_1_1_base_importer.html#a11b61c90b472d900d4f7e2d2f2219dac", null ],
+    [ "SetupProperties", "class_assimp_1_1_base_importer.html#ac076d9136745e898d43d9ea8f0d0c586", null ],
+    [ "SimpleExtensionCheck", "class_assimp_1_1_base_importer.html#a329d0bf67681c92d07fafbb5c327a2f9", null ],
+    [ "TextFileToBuffer", "class_assimp_1_1_base_importer.html#a3a82f762127d9cb823276491fa701e3f", null ],
+    [ "UpdateImporterScale", "class_assimp_1_1_base_importer.html#ab436d48560abfbe0d0e987a4a6749be0", null ],
+    [ "Importer", "class_assimp_1_1_base_importer.html#ad2d8744585dcb094644b1caed04ac9ed", null ],
+    [ "fileScale", "class_assimp_1_1_base_importer.html#af85971f80c5f45fef8c3a3395e4bbe14", null ],
+    [ "importerScale", "class_assimp_1_1_base_importer.html#ad5bb9d0bff964c79b625c754b3adb04c", null ],
+    [ "m_ErrorText", "class_assimp_1_1_base_importer.html#abd2c9b86479c0c165e5d84d733e53373", null ],
+    [ "m_Exception", "class_assimp_1_1_base_importer.html#a7bf84fb733992558272add378e7d9525", null ],
+    [ "m_progress", "class_assimp_1_1_base_importer.html#aeb17ba9eee14fcdfe2c6f45bf940139d", null ]
+];

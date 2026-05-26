@@ -10,14 +10,28 @@
 
 // Perlin Noise terrain generator.
 // Generates a subdivided grid with noise-based Y displacement.
+/**
+ * @class PerlinNoiseGenerator
+ * @brief Procedural terrain heightmap generator using 2D Perlin noise and fractal octaves.
+ */
 class PerlinNoiseGenerator : public IGenerator
 {
 public:
+	/**
+	 * @brief Constructor setting default grid resolution, octaves, and amplitudes.
+	 */
 	PerlinNoiseGenerator();
+
 	~PerlinNoiseGenerator() override = default;
 
 	std::string GetName() const override { return "Perlin Noise"; }
 	void RenderUI() override;
+
+	/**
+	 * @brief Processes the input mesh data, displacing vertices based on 2D fractal noise.
+	 * @param input Optional input MeshData.
+	 * @return Modified or newly generated MeshData.
+	 */
 	MeshData Generate(const MeshData* input) override;
 
 	void SetOffset(float x, float z) { offsetX = x; offsetZ = z; }
@@ -38,11 +52,9 @@ public:
 	void SetGridSize(int g) { gridSize = g; }
 	void SetScale(float s) { scale = s; }
 
-	// Ridged multifractal mode
 	void SetRidged(bool r) { useRidged = r; }
 	bool GetRidged() const { return useRidged; }
 
-	// Offsets and Displacement mode
 	float GetOffsetX() const { return offsetX; }
 	float GetOffsetZ() const { return offsetZ; }
 	bool GetUseNormalDisplacement() const { return useNormalDisplacement; }
@@ -50,25 +62,37 @@ public:
 
 private:
 	// Configurable parameters
-	int gridSize;         // Grid resolution (gridSize x gridSize quads)
-	float scale;          // World-space size
-	float amplitude;      // Max height displacement
-	float frequency;      // Noise sampling frequency
-	int octaves;          // Fractal noise octaves
-	float persistence;    // Amplitude decay per octave
-	float offsetX;        // Sampling offset X
-	float offsetZ;        // Sampling offset Z
-	int seed;             // Random seed
-	bool useNormalDisplacement; // If true, displace along normal instead of just Y
-	bool useRidged;             // If true, use ridged multifractal noise (1.0 - abs(n))
+	int gridSize;         ///< Grid resolution size (gridSize x gridSize quads).
+	float scale;          ///< World-space scale dimensions of the plane.
+	float amplitude;      ///< Maximum height displacement magnitude.
+	float frequency;      ///< Noise sampling scale frequency.
+	int octaves;          ///< Total number of summation octaves.
+	float persistence;    ///< Amplitude damping factor per octave.
+	float offsetX;        ///< Coordinate X sampling offset.
+	float offsetZ;        ///< Coordinate Z sampling offset.
+	int seed;             ///< Randomization seed.
+	bool useNormalDisplacement; ///< If true, vertices displace along normal directions rather than strictly Y.
+	bool useRidged;             ///< If true, outputs ridged multifractal noise (1.0 - abs(noise)).
 
 	// Internal Perlin noise implementation
-	int permutation[512];
+	int permutation[512]; ///< Permutation lookup table for gradient selection.
+	
+	/**
+	 * @brief Pre-calculates the permutation table from the active seed.
+	 */
 	void InitPermutation();
 
 	float Fade(float t);
 	float Lerp(float a, float b, float t);
 	float Grad(int hash, float x, float y);
+	
+	/**
+	 * @brief Computes raw single-octave 2D Perlin noise.
+	 */
 	float PerlinNoise2D(float x, float y);
+
+	/**
+	 * @brief Combines multiple octaves to construct the final fractal height offset.
+	 */
 	float FractalNoise(float x, float y);
 };

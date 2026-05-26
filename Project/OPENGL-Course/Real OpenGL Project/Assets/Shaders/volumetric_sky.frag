@@ -1,18 +1,24 @@
 #version 460
 
+/**
+ * @file volumetric_sky.frag
+ * @brief Volumetric sky shader simulating daylight/night gradients, sunset transitions, horizon haze, Mie scattering, and procedural fractal noise clouds.
+ */
+
 out vec4 FragColor;
 
 in vec2 TexCoord;
-in vec3 WorldDir;
+in vec3 WorldDir; ///< Ray direction mapping into 3D space.
 
-uniform float time;
-uniform int cloudsEnabled;
-uniform float cloudsDensity;
-uniform float cloudsSpeed;
-uniform float cloudsSharpness;
+uniform float time; ///< Current animation timer.
+uniform int cloudsEnabled; ///< Set to 1 if procedural cloud generation is active.
+uniform float cloudsDensity; ///< Relative cloud coverage density value.
+uniform float cloudsSpeed; ///< Cloud wind speed offset multiplier.
+uniform float cloudsSharpness; ///< Cloud edge transition sharpness threshold.
 
-uniform vec3 sunDir;
-uniform vec3 sunColor;
+uniform vec3 sunDir; ///< Direction vector pointing towards the sun.
+uniform vec3 sunColor; ///< RGB intensity color of the sun light source.
+
 
 // Simple 2D Noise for clouds
 float hash(vec2 p) {

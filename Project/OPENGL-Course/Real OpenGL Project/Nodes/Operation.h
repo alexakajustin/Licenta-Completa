@@ -13,6 +13,10 @@ using json = nlohmann::json;
 //  Parameter System — type-safe, serializable parameter definitions
 // =====================================================================
 
+/**
+ * @enum ParamType
+ * @brief Identifies data types supported by procedural operation parameters.
+ */
 enum class ParamType
 {
 	Float,
@@ -32,17 +36,20 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ParamType, {
 	{ParamType::Enum,  "Enum"},
 })
 
-// A single parameter value (tagged union)
+/**
+ * @struct ParamValue
+ * @brief Tagged union containing parameter values parsed or compiled in operations.
+ */
 struct ParamValue
 {
-	ParamType type = ParamType::Float;
-	float floatVal = 0.0f;
-	int intVal = 0;
-	glm::vec2 vec2Val = glm::vec2(0.0f);
-	glm::vec3 vec3Val = glm::vec3(0.0f);
-	bool boolVal = false;
-	int enumVal = 0;          // Index into enumOptions
-	std::string stringVal;    // For display name in Enum mode
+	ParamType type = ParamType::Float; ///< Active data type.
+	float floatVal = 0.0f; ///< Float value payload.
+	int intVal = 0; ///< Integer value payload.
+	glm::vec2 vec2Val = glm::vec2(0.0f); ///< Vec2 value payload.
+	glm::vec3 vec3Val = glm::vec3(0.0f); ///< Vec3 value payload.
+	bool boolVal = false; ///< Boolean value payload.
+	int enumVal = 0;          ///< Index into enum options payload.
+	std::string stringVal;    ///< Friendly string display name.
 
 	// Convenience constructors
 	static ParamValue MakeFloat(float v)     { ParamValue p; p.type = ParamType::Float; p.floatVal = v; return p; }
@@ -80,12 +87,15 @@ struct ParamValue
 	}
 };
 
-// Definition of a parameter (metadata + default value)
+/**
+ * @struct ParamDef
+ * @brief Metadata definition of a single parameter, including constraints and defaults.
+ */
 struct ParamDef
 {
-	std::string name;         // Display name and key (must be unique per operation)
-	ParamType type;
-	ParamValue defaultValue;
+	std::string name;         ///< Unique lookup key name of parameter.
+	ParamType type; ///< Parameter data type.
+	ParamValue defaultValue; ///< Default value assignment.
 
 	// Range limits (for Float/Int sliders)
 	float minFloat = 0.0f;
@@ -154,16 +164,15 @@ struct ParamDef
 //  OperationContext — the workspace flowing through operations
 // =====================================================================
 
+/**
+ * @struct OperationContext
+ * @brief Context data block containing mesh streams, selection flags, variables, and textures flowing through operations.
+ */
 struct OperationContext
 {
-	// Primary mesh being modified by operations
-	MeshData mesh;
-
-	// Secondary mesh (for binary ops like merge, boolean)
-	MeshData secondaryMesh;
-
-	// Per-vertex selection mask (true = selected, empty = all selected)
-	std::vector<bool> selection;
+	MeshData mesh; ///< Primary mesh being processed/modified.
+	MeshData secondaryMesh; ///< Secondary mesh input for binary operations (merge, boolean, etc.).
+	std::vector<bool> selection; ///< Per-vertex selection mask flags.
 
 	// Named variables from input pins (allows operations to reference pin values)
 	std::map<std::string, float>     floatVars;
@@ -172,17 +181,18 @@ struct OperationContext
 	std::map<std::string, glm::vec3> vec3Vars;
 	std::map<std::string, bool>      boolVars;
 
-	// Transform list (propagated through for scatter workflows)
-	TransformList transforms;
+	TransformList transforms; ///< Propagated transform lists for scatter/instancing workflows.
 
-	// Source metadata (propagated through)
+	// Source metadata
 	std::string sourceObjectName = "(none)";
 	Material* sourceMaterial = nullptr;
 	Texture* sourceTexture = nullptr;
 	Texture* sourceNormalMap = nullptr;
 	std::vector<TextureLayer> textureLayers;
 
-	// Utility: check if a vertex is selected (empty selection = all selected)
+	/**
+	 * @brief Utility to query if a vertex is currently selected.
+	 */
 	bool IsVertexSelected(int index) const
 	{
 		if (selection.empty()) return true;
@@ -190,7 +200,9 @@ struct OperationContext
 		return selection[index];
 	}
 
-	// Utility: ensure selection mask matches vertex count
+	/**
+	 * @brief Resizes selection mask to match current vertex count.
+	 */
 	void EnsureSelectionSize()
 	{
 		int vertCount = mesh.GetVertexCount();
@@ -198,6 +210,9 @@ struct OperationContext
 			selection.assign(vertCount, true);
 	}
 
+	/**
+	 * @brief Reset and empty all active context data pools.
+	 */
 	void Clear()
 	{
 		mesh.Clear();
@@ -222,6 +237,10 @@ struct OperationContext
 //  Operation — base class for all composable mesh operations
 // =====================================================================
 
+/**
+ * @class Operation
+ * @brief Base class for all composable mesh deformation/generation operations in the node graph.
+ */
 class Operation
 {
 public:
@@ -232,20 +251,24 @@ public:
 	virtual std::string GetCategory() const = 0;
 
 	// --- Parameter Schema ---
-	// Returns the parameter definitions for this operation.
-	// Called once to build the UI and to initialize default values.
+	
+	/**
+	 * @brief Returns the metadata schemas/parameter definitions for this operation.
+	 */
 	virtual std::vector<ParamDef> GetParamDefs() const = 0;
 
 	// --- Execution ---
-	// Modifies the OperationContext in-place.
-	// Operations should be defensive: check for empty meshes, invalid params, etc.
+	
+	/**
+	 * @brief Modifies the target operation context block in-place.
+	 */
 	virtual void Execute(OperationContext& ctx) = 0;
 
 	// --- Parameter Access ---
-	// Get/set parameter values by name.
-	// These are populated from paramDefs defaults on creation,
-	// and can be overridden by the user in the UI or by serialization.
 
+	/**
+	 * @brief Fills the active parameters map with default settings.
+	 */
 	void InitDefaults()
 	{
 		auto defs = GetParamDefs();
@@ -305,15 +328,14 @@ public:
 	void SetBool(const std::string& name, bool v)        { params[name].boolVal = v;  params[name].type = ParamType::Bool; }
 	void SetEnum(const std::string& name, int v)         { params[name].enumVal = v;  params[name].type = ParamType::Enum; }
 
-	// Direct access to parameter map (for serialization and UI)
 	std::map<std::string, ParamValue>& GetParams() { return params; }
 	const std::map<std::string, ParamValue>& GetParams() const { return params; }
 
-	// --- UI Rendering ---
-	// Default implementation renders controls for all paramDefs.
-	// Override for custom UI if needed.
+	/**
+	 * @brief Default UI rendering for operation parameters.
+	 */
 	virtual void RenderUI();
 
 protected:
-	std::map<std::string, ParamValue> params;
+	std::map<std::string, ParamValue> params; ///< Map storage of active parameter values.
 };

@@ -1,10 +1,14 @@
 #version 400 core				
 
+/**
+ * @file shader.frag
+ * @brief Primary fragment shader for drawing meshes with support for cascaded shadow mapping, PBR/Phong lighting, normal mapping, and multi-texture height/slope blending.
+ */
+
 in vec4 vertex_color;	
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
-// in DirectionalLightSpacePos removed for CSM
 
 // TBN vectors from vertex shader
 in vec3 TangentWorld;
@@ -21,79 +25,103 @@ in float vFadeFactor;
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
 
+/**
+ * @struct Light
+ * @brief Base lighting parameters.
+ */
 struct Light {
-	vec3 colour;
-	float ambientIntensity;
-	float diffuseIntensity;
+	vec3 colour; ///< RGB light color.
+	float ambientIntensity; ///< Ambient lighting intensity.
+	float diffuseIntensity; ///< Diffuse lighting intensity.
 };
 
 
+/**
+ * @struct DirectionalLight
+ * @brief Directional light source configuration.
+ */
 struct DirectionalLight {
-	Light base;
-	vec3 direction;
+	Light base; ///< Base light parameters.
+	vec3 direction; ///< World-space direction pointing towards the light source.
 };
 
+/**
+ * @struct PointLight
+ * @brief Point light source configuration.
+ */
 struct PointLight
 {
-	Light base;
-	vec3 position;
-	float constant;
-	float linear;
-	float exponent;
+	Light base; ///< Base light parameters.
+	vec3 position; ///< World-space position coordinate.
+	float constant; ///< Constant attenuation factor.
+	float linear; ///< Linear attenuation factor.
+	float exponent; ///< Quadratic attenuation factor.
 };
 
+/**
+ * @struct SpotLight
+ * @brief Spot light source configuration.
+ */
 struct SpotLight
 {
-	PointLight base;
-	vec3 direction;
-	float edge;
+	PointLight base; ///< Base point light parameters.
+	vec3 direction; ///< Light cone direction.
+	float edge; ///< Cutoff angle in radians.
 };
 
+/**
+ * @struct Material
+ * @brief Custom material surface parameters.
+ */
 struct Material {
-	 float specularIntensity;
-	 float shininess;
-	 float sssScale;
-	 float sssDistortion;
-	 vec4 baseColor;
-	 vec2 tiling;
-	 vec2 offset;
+	 float specularIntensity; ///< Specular highlight reflection scale.
+	 float shininess; ///< Specular exponent shininess.
+	 float sssScale; ///< Subsurface scattering scale factor.
+	 float sssDistortion; ///< Subsurface scattering distortion factor.
+	 vec4 baseColor; ///< Base tint color.
+	 vec2 tiling; ///< UV tiling multiplier.
+	 vec2 offset; ///< UV offset coordinate translation.
 };
 
+/**
+ * @struct OmniShadowMap
+ * @brief Cube maps tracking point and spot light shadow maps.
+ */
 struct OmniShadowMap
 {
-	samplerCube shadowMap;
-	samplerCube shadowColorMap;
-	float farPlane;
+	samplerCube shadowMap; ///< Depth cubemap sampler.
+	samplerCube shadowColorMap; ///< Color cubemap sampler for transparent shadows.
+	float farPlane; ///< Far clipping plane distance.
 };
 
-uniform int pointLightCount;
-uniform int spotLightCount;
+uniform int pointLightCount; ///< Count of active point lights.
+uniform int spotLightCount; ///< Count of active spot lights.
 
-uniform DirectionalLight directionalLight;
-uniform PointLight pointLights[MAX_POINT_LIGHTS];
-uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
+uniform DirectionalLight directionalLight; ///< Active directional light.
+uniform PointLight pointLights[MAX_POINT_LIGHTS]; ///< Array of point lights.
+uniform SpotLight spotLights[MAX_SPOT_LIGHTS]; ///< Array of spot lights.
 
 
-uniform sampler2D theTexture;
-uniform int useDiffuseTexture;
-uniform sampler2D normalMap;
-uniform int useNormalMap;
-uniform sampler2DArray directionalShadowMap;
-uniform sampler2DArray directionalShadowColorMap;
-uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
+uniform sampler2D theTexture; ///< Base diffuse texture sampler (LOD 0 / primary).
+uniform int useDiffuseTexture; ///< Set to 1 if base texture should be sampled.
+uniform sampler2D normalMap; ///< Normal map texture sampler.
+uniform int useNormalMap; ///< Set to 1 if normal mapping is active.
+uniform sampler2DArray directionalShadowMap; ///< Array of cascaded directional shadow maps.
+uniform sampler2DArray directionalShadowColorMap; ///< Array of cascaded directional shadow color maps.
+uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS]; ///< Array of omni shadow maps.
 
-uniform mat4 directionalLightTransform[4];
-uniform float cascadeSplits[4];
+uniform mat4 directionalLightTransform[4]; ///< Transformation matrices mapping cascaded shadow map layers.
+uniform float cascadeSplits[4]; ///< Split distance values for cascaded shadow layers.
 uniform float lodDistances[3];
-uniform mat4 viewMatrix; // We need this to get view-space depth
+uniform mat4 viewMatrix; ///< View matrix to determine view-space camera depth.
 
 uniform Material material;
 
 // camera position
-uniform vec3 eyePosition;
+uniform vec3 eyePosition; ///< Camera position coordinate.
 
 // Selection highlight (0.0 = not selected, > 0 = selected)
-uniform float selectionTint;
+uniform float selectionTint; ///< Selection outline tint multiplier.
 
 // Debug Visualizers
 uniform bool debugLODColoring;
@@ -102,25 +130,30 @@ uniform vec3 lodDebugColor;
 // ========== Texture Layers ==========
 const int MAX_TEXTURE_LAYERS = 5;
 
+/**
+ * @struct TextureLayerData
+ * @brief Defines blending metrics, opacity, and limits for a single terrain blend layer.
+ */
 struct TextureLayerData {
-	int blendMode;       // 0=Normal, 1=Height, 2=Slope, 3=HeightSlope
-	float opacity;
-	float tiling;
-	float heightMin;
-	float heightMax;
-	float slopeMin;
-	float slopeMax;
-	int invert;
-	int hasNormalMap;       // 1 if this layer has a normal map
-	int hasDisplacementMap; // 1 if this layer has a displacement/height map
-	float displacementScale; // 0.1 default
+	int blendMode;       ///< Blending modes: 0=Normal, 1=Height, 2=Slope, 3=HeightSlope.
+	float opacity; ///< Blend opacity.
+	float tiling; ///< UV tiling factor.
+	float heightMin; ///< Lower height boundary.
+	float heightMax; ///< Upper height boundary.
+	float slopeMin; ///< Lower slope angle boundary.
+	float slopeMax; ///< Upper slope angle boundary.
+	int invert; ///< True to invert height calculations.
+	int hasNormalMap;       ///< True if this layer has a normal map.
+	int hasDisplacementMap; ///< True if this layer has a displacement map.
+	float displacementScale; ///< Displacement scaling factor.
 };
 
-uniform int textureLayerCount;
-uniform sampler2D textureLayers[MAX_TEXTURE_LAYERS];         // Diffuse samplers
-uniform sampler2D layerNormalMaps[MAX_TEXTURE_LAYERS];       // Normal map samplers
-uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS]; // Displacement samplers
-uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
+uniform int textureLayerCount; ///< Count of active texture blending layers.
+uniform sampler2D textureLayers[MAX_TEXTURE_LAYERS];         ///< Diffuse samplers.
+uniform sampler2D layerNormalMaps[MAX_TEXTURE_LAYERS];       ///< Normal map samplers.
+uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS]; ///< Displacement samplers.
+uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS]; ///< Parameter configurations for each layer.
+
 
 // Global override normal: set by layer blending, used by lighting functions
 vec3 gBlendedNormal = vec3(0.0, 1.0, 0.0);

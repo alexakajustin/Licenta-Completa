@@ -23,22 +23,65 @@
 #include "Rendering/Shader.h"
 #include <vector>
 
+/**
+ * @class Application
+ * @brief Main engine application controller managing systems lifecycle, rendering loop, and UI.
+ */
 class Application
 {
 public:
+	/**
+	 * @brief Constructor initializes basic timing fields.
+	 */
 	Application();
+
+	/**
+	 * @brief Destructor shuts down subsystem components.
+	 */
 	~Application();
 
+	/**
+	 * @brief Initializes the application window, OpenGL context, renderer, scene, and ImGui.
+	 * @return True if initialization succeeded, false otherwise.
+	 */
 	bool Init();
+
+	/**
+	 * @brief Starts and runs the main loop until the window is closed.
+	 */
 	void Run();
+
+	/**
+	 * @brief Performs cleanup of OpenGL assets and subsystems.
+	 */
 	void Shutdown();
 
 private:
+	/**
+	 * @brief Loads default textures and setups default resources.
+	 */
 	void LoadResources();
+
+	/**
+	 * @brief Creates the initial game object scene hierarchy and lights.
+	 */
 	void SetupScene();
+
+	/**
+	 * @brief Updates the projection matrix based on current window dimensions.
+	 */
 	void UpdateProjection();
+
+	/**
+	 * @brief Loads graphics options from the graphics_settings.json file.
+	 */
 	void LoadGraphicsSettings();
+
+	/**
+	 * @brief Saves current graphics settings to graphics_settings.json.
+	 */
 	void SaveGraphicsSettings();
+
 
 	// Core systems
 	Window mainWindow;

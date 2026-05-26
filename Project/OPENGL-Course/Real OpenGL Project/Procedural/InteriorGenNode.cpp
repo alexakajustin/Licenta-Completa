@@ -6,7 +6,8 @@
 #include "Rendering/Texture.h"
 #include "Rendering/TextureLayer.h"
 #include "Rendering/PrimitiveGenerator.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include <iostream>
 
 #include <thread>

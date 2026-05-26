@@ -1,0 +1,26 @@
+var debug__patched__shader_8vert =
+[
+    [ "PackedInstance", "struct_packed_instance.html", "struct_packed_instance" ],
+    [ "InstanceData", "struct_instance_data.html", "struct_instance_data" ],
+    [ "INST_ID", "debug__patched__shader_8vert.html#afb86288e68711e4b54060b2259325bbf", null ],
+    [ "IS_VERTEX_SHADER", "debug__patched__shader_8vert.html#a19f6771af59785e8e1f841629d8d7a67", null ],
+    [ "eulerToMat3", "debug__patched__shader_8vert.html#ae46ad67a88e2b37b40c80b7a7a682567", null ],
+    [ "layout", "debug__patched__shader_8vert.html#a866852d056ecc17eeefb3c4131de45af", null ],
+    [ "layout", "debug__patched__shader_8vert.html#a0333c0ad593a7da0ba92b8387e0a447d", null ],
+    [ "main", "debug__patched__shader_8vert.html#acdef7a1fd863a6d3770c1268cb06add3", null ],
+    [ "ResolveInstancedModelMatrix", "debug__patched__shader_8vert.html#a53953bb42cfc69152031d0b3de6418b6", null ],
+    [ "_instanceFadeFactor", "debug__patched__shader_8vert.html#a316a7b1c771f447119b458b0f7ed51c3", null ],
+    [ "_instanceIsSelected", "debug__patched__shader_8vert.html#a4c7155d7bb43392c80ba22309b39ebe6", null ],
+    [ "_unused_model", "debug__patched__shader_8vert.html#a28da74aabb9f43b5c416001e36764713", null ],
+    [ "clipPlane", "debug__patched__shader_8vert.html#a954f3c7fc513e820c04d9f8a909cb6b9", null ],
+    [ "FragPos", "debug__patched__shader_8vert.html#a384469d8d569955b62c3dba92245e6e1", null ],
+    [ "Normal", "debug__patched__shader_8vert.html#a08e557a66ed99db8f20a778d7c34d2bd", null ],
+    [ "projection", "debug__patched__shader_8vert.html#a6f89a4fbf1a53a21ada7ca66387463a1", null ],
+    [ "TexCoord", "debug__patched__shader_8vert.html#ae02a897b42ed145c6a831724b9490581", null ],
+    [ "time", "debug__patched__shader_8vert.html#a251125d5d29683e1458005f28de9845f", null ],
+    [ "useInstancing", "debug__patched__shader_8vert.html#ae2eff484c7eb3e0ccc3ca685f8704e44", null ],
+    [ "view", "debug__patched__shader_8vert.html#a7ab66495f9aae7ab34147735223f7c6d", null ],
+    [ "vIsSelected", "debug__patched__shader_8vert.html#a384ba39c0184d2f8db29f9aca2b734f4", null ],
+    [ "windSpeed", "debug__patched__shader_8vert.html#a213d1cf793d209a3df108fea09f0c50b", null ],
+    [ "windStrength", "debug__patched__shader_8vert.html#a1c2beb78a16698d910c331dec4e71767", null ]
+];

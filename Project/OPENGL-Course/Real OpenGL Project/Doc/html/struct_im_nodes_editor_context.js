@@ -1,0 +1,25 @@
+var struct_im_nodes_editor_context =
+[
+    [ "ImNodesEditorContext", "struct_im_nodes_editor_context.html#aa7036c419a2b6ecadfb6d7d0e143656a", null ],
+    [ "AutoPanningDelta", "struct_im_nodes_editor_context.html#a889ca0dedfe723b7cd0933b7a03358a4", null ],
+    [ "CanvasScale", "struct_im_nodes_editor_context.html#ac63959137b218f83e58eb4d677c9393b", null ],
+    [ "ClickInteraction", "struct_im_nodes_editor_context.html#ade500bc0b2efe2f9ef8468029e941c0c", null ],
+    [ "GridContentBounds", "struct_im_nodes_editor_context.html#a28d57d19f5673828e173844720660494", null ],
+    [ "Links", "struct_im_nodes_editor_context.html#ac8369b4ea7c4fad746070ecd6ebe353d", null ],
+    [ "MiniMapContentScreenSpace", "struct_im_nodes_editor_context.html#ab9233fe36a117ae247825183b5aadc29", null ],
+    [ "MiniMapEnabled", "struct_im_nodes_editor_context.html#a0c4fb1bc42135ef66358d1a0c29ddb56", null ],
+    [ "MiniMapLocation", "struct_im_nodes_editor_context.html#a3b897bf61703dea6887c77efc868a01c", null ],
+    [ "MiniMapNodeHoveringCallback", "struct_im_nodes_editor_context.html#ae99f6e35b3c7efe9a364b1f4b2513794", null ],
+    [ "MiniMapNodeHoveringCallbackUserData", "struct_im_nodes_editor_context.html#a97e6723bc38d5c280a225164c111f5f2", null ],
+    [ "MiniMapRectScreenSpace", "struct_im_nodes_editor_context.html#a07af8ab0f7eeced7ea5825f56612e455", null ],
+    [ "MiniMapScaling", "struct_im_nodes_editor_context.html#a298672eecf2fa89520ab414300e2237f", null ],
+    [ "MiniMapSizeFraction", "struct_im_nodes_editor_context.html#a9d5d953f54b4992b8a89459b8a47abe6", null ],
+    [ "NodeDepthOrder", "struct_im_nodes_editor_context.html#a6881bfd70f1e44607aab1e762e2d5ff8", null ],
+    [ "Nodes", "struct_im_nodes_editor_context.html#a4af7d6fc2e26d2f7328d847549f19ce1", null ],
+    [ "Panning", "struct_im_nodes_editor_context.html#aab1f7f0226382046d3a4439c273d9515", null ],
+    [ "Pins", "struct_im_nodes_editor_context.html#a9aa6468283c822c482957aa03c7843bc", null ],
+    [ "PrimaryNodeOffset", "struct_im_nodes_editor_context.html#a3991c79af0eaddfe0599d04c1be78c83", null ],
+    [ "SelectedLinkIndices", "struct_im_nodes_editor_context.html#a9365984648ab0cfc72b017c5e3377895", null ],
+    [ "SelectedNodeIndices", "struct_im_nodes_editor_context.html#a26a856728d369372a151246a1782b40b", null ],
+    [ "SelectedNodeOffsets", "struct_im_nodes_editor_context.html#a157f6694dfbebe94d7f353b1e4f3bda1", null ]
+];

@@ -1,0 +1,25 @@
+var class_node_builder_u_i =
+[
+    [ "NodeBuilderUI", "class_node_builder_u_i.html#a22d72c3e240455cb47dabe4ccc8af2a2", null ],
+    [ "~NodeBuilderUI", "class_node_builder_u_i.html#a49d0437e321e2d78bb241535717be690", null ],
+    [ "ClearEditor", "class_node_builder_u_i.html#a0c5a98d655e37d4ef8a4e202e92889e5", null ],
+    [ "GetSavedDefinitions", "class_node_builder_u_i.html#a7e30c10e304f9af06c21b0532d95098a", null ],
+    [ "HasDefinitionsLoaded", "class_node_builder_u_i.html#a7b8ca7ab580b8712a6487a899a137173", null ],
+    [ "LoadDefinitionForEditing", "class_node_builder_u_i.html#ac26ba48b932c89f50ca1f88356f989a2", null ],
+    [ "LoadSavedDefinitions", "class_node_builder_u_i.html#ae88a12fe031fb345d80514e8329360a2", null ],
+    [ "PinTypeDropdown", "class_node_builder_u_i.html#a34ea625d4e628f1a9a19fcb8025775fb", null ],
+    [ "PinTypeLabel", "class_node_builder_u_i.html#ae7327a71fee2780680d39eb2284cbf70", null ],
+    [ "Render", "class_node_builder_u_i.html#ab81e258e56ccab940b539eaab9660542", null ],
+    [ "RenderAddOperationPopup", "class_node_builder_u_i.html#a57f20fe5ab2f781509d4b9f24461a838", null ],
+    [ "SaveCurrentDefinition", "class_node_builder_u_i.html#a956601be257fe58e4c057199085d6288", null ],
+    [ "categoryBuffer", "class_node_builder_u_i.html#acf28ecca1fb0ecddba1bf3b09b1bb4d9", null ],
+    [ "currentDef", "class_node_builder_u_i.html#a171abf8a38f731d548b9af8a89d91a97", null ],
+    [ "definitionsLoaded", "class_node_builder_u_i.html#a40bda617d481dd88da4bdec249233792", null ],
+    [ "nameBuffer", "class_node_builder_u_i.html#af9aeceb55fffa64f89b5db8fa91c73c1", null ],
+    [ "newInputPinName", "class_node_builder_u_i.html#a6ac2ec4aef12b0652df120d014ee5088", null ],
+    [ "newInputPinType", "class_node_builder_u_i.html#a2dd2bddde62478254baf9236f863de6f", null ],
+    [ "newOutputPinName", "class_node_builder_u_i.html#a0d1f7ba49e1f251c911046bbf7332728", null ],
+    [ "newOutputPinType", "class_node_builder_u_i.html#a5d04b370933b0126a3a445add54dde58", null ],
+    [ "savedDefinitions", "class_node_builder_u_i.html#ae42a7a073ba26ae6264468fd3aa8bc13", null ],
+    [ "selectedOperationCategory", "class_node_builder_u_i.html#aaa4c5e38d5c4d9d5953cc635bda1b69a", null ]
+];

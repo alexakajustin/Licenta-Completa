@@ -16,56 +16,209 @@
 struct Frustum;
 struct GraphicsSettings;
 
+/**
+ * @class GameObject
+ * @brief Represents a node in the scene tree containing transformation, meshes, materials, and hierarchy links.
+ */
 class GameObject
 {
 public:
+	/**
+	 * @brief Default constructor creating a game object named "Unnamed Object".
+	 */
 	GameObject();
+
+	/**
+	 * @brief Custom constructor specifying the object name.
+	 * @param name Desired object name.
+	 */
 	GameObject(const std::string& name);
+
+	/**
+	 * @brief Virtual destructor releasing custom children and resources.
+	 */
 	virtual ~GameObject();
 
+	/**
+	 * @brief Performs deep clone replication of this GameObject.
+	 * @param newName Name of the cloned instance.
+	 * @return Pointer to cloned GameObject.
+	 */
 	GameObject* Clone(const std::string& newName);
 
 	// Getters
+	
+	/**
+	 * @brief Retrieves the object's string name.
+	 * @return Object name.
+	 */
 	std::string GetName() const { return name; }
+
+	/**
+	 * @brief Retrieves reference to local transform matrix controls.
+	 * Marks hierarchy dirtiness state upon retrieval.
+	 * @return Reference to local Transform.
+	 */
 	Transform& GetTransform() { SetDirty(); return transform; }
+
+	/**
+	 * @brief Retrieves constant reference to local transform.
+	 * @return Constant reference to Transform.
+	 */
 	const Transform& GetTransform() const { return transform; }
+
+	/**
+	 * @brief Computes combined world matrix including parent hierarchies.
+	 * @return 4x4 Transformation matrix.
+	 */
 	glm::mat4 GetWorldMatrix();
 
 	// Setters for components
+	
+	/**
+	 * @brief Sets the object's name.
+	 * @param newName New string name.
+	 */
 	void SetName(const std::string& newName) { name = newName; }
+
+	/**
+	 * @brief Links a loaded 3D Model resource component.
+	 * @param mdl Pointer to Model.
+	 */
 	void SetModel(Model* mdl);
+
+	/**
+	 * @brief Links a single procedural Mesh component.
+	 * @param msh Pointer to Mesh.
+	 */
 	void SetMesh(Mesh* msh);
+
+	/**
+	 * @brief Sets the diffuse texture.
+	 * @param tex Pointer to Texture.
+	 */
 	void SetTexture(Texture* tex) { texture = tex; }
+
+	/**
+	 * @brief Sets the tangent-space normal map.
+	 * @param normal Pointer to Normal map Texture.
+	 */
 	void SetNormalMap(Texture* normal) { normalMap = normal; }
+
+	/**
+	 * @brief Sets the custom rendering material parameters.
+	 * @param mat Pointer to Material.
+	 */
 	void SetMaterial(Material* mat) { material = mat; }
 
 	// Getters for components
+	
+	/**
+	 * @brief Gets linked Model.
+	 */
 	Model* GetModel() const { return model; }
+
+	/**
+	 * @brief Gets linked procedural Mesh.
+	 */
 	Mesh* GetMesh() const { return mesh; }
+
+	/**
+	 * @brief Gets linked diffuse texture.
+	 */
 	Texture* GetTexture() const { return texture; }
+
+	/**
+	 * @brief Gets linked normal map.
+	 */
 	Texture* GetNormalMap() const { return normalMap; }
+
+	/**
+	 * @brief Gets linked rendering material.
+	 */
 	Material* GetMaterial() const { return material; }
 	
 	// LOD Support
+	
+	/**
+	 * @brief Binds a specific mesh representation level for distance-based LOD culling.
+	 * @param level Target level index (0 to 2).
+	 * @param msh Pointer to level Mesh.
+	 */
 	void SetLODMesh(int level, Mesh* msh);
+
+	/**
+	 * @brief Gets a specific mesh LOD representation level.
+	 * @param level Target level index (0 to 2).
+	 * @return Pointer to target level Mesh.
+	 */
 	Mesh* GetLODMesh(int level) const;
+
+	/**
+	 * @brief Gets the total registered LOD levels.
+	 */
 	int GetLODCount() const { return lodCount; }
 
 	// Hierarchy
+	
+	/**
+	 * @brief Re-parents this node within the scene tree hierarchy.
+	 * @param newParent Target parent node.
+	 */
 	void SetParent(GameObject* newParent);
-	GameObject* GetParent() const { return parent; }
-	const std::vector<GameObject*>& GetChildren() const { return children; }
-	void AddChild(GameObject* child);
-	void RemoveChild(GameObject* child);
-	void Orphan(); // Fast hierarchy disconnection (no recursive searches)
 
+	/**
+	 * @brief Gets the current parent node.
+	 * @return Parent pointer or nullptr.
+	 */
+	GameObject* GetParent() const { return parent; }
+
+	/**
+	 * @brief Gets list of active children nodes.
+	 * @return Vector of GameObject pointers.
+	 */
+	const std::vector<GameObject*>& GetChildren() const { return children; }
+
+	/**
+	 * @brief Adds a child node to this node.
+	 * @param child Pointer to child GameObject.
+	 */
+	void AddChild(GameObject* child);
+
+	/**
+	 * @brief Removes a child node from this node.
+	 * @param child Pointer to child GameObject.
+	 */
+	void RemoveChild(GameObject* child);
+
+	/**
+	 * @brief Disconnects this node from its parent hierarchy without deleting it.
+	 */
+	void Orphan();
+
+	/**
+	 * @brief Configures whether parent scaling is inherited.
+	 */
 	void SetInheritScale(bool inherit) { inheritScale = inherit; }
+
+	/**
+	 * @brief Gets parent scale inheritance setting.
+	 */
 	bool GetInheritScale() const { return inheritScale; }
 
+	/**
+	 * @brief Sets rendering visibility flag.
+	 */
 	void SetVisible(bool visible) { isVisible = visible; }
+
+	/**
+	 * @brief Gets rendering visibility flag.
+	 */
 	bool GetVisible() const { return isVisible; }
 
-	// Render this object
+	/**
+	 * @brief Draws this object and all its children recursively.
+	 */
 	void Render(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor, 
 		GLint uniformTiling, GLint uniformOffset,
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap, 
@@ -73,7 +226,9 @@ public:
 		const GraphicsSettings* gs = nullptr,
 		const glm::mat4& parentMatrix = glm::mat4(1.0f), const Frustum* frustum = nullptr);
 
-	// Separate render for a single object (used by SceneManager batching/loop)
+	/**
+	 * @brief Draws this single object without traversing its children.
+	 */
 	void RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity, GLint uniformShininess, GLint uniformMaterialColor,
 		GLint uniformTiling, GLint uniformOffset,
 		GLint uniformUseNormalMap, GLint uniformUseDiffuseTexture, GLint uniformDiffuseTexture, GLint uniformNormalMap,
@@ -83,9 +238,21 @@ public:
 		bool shaderSupportsTessellation = false);
 
 	// Texture layers
+	
+	/**
+	 * @brief Gets the list of texture layers.
+	 */
 	std::vector<TextureLayer>& GetTextureLayers() { return textureLayers; }
 	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
+	
+	/**
+	 * @brief Appends a new texture layer.
+	 */
 	void AddTextureLayer(const TextureLayer& layer);
+
+	/**
+	 * @brief Removes a texture layer by index.
+	 */
 	void RemoveTextureLayer(int index);
 
 	// GPU Tessellation
@@ -107,7 +274,7 @@ public:
 	bool HasCustomMesh() const { return hasCustomMesh; }
 	void ClearCustomMesh() { hasCustomMesh = false; cpuMeshData.reset(); }
 
-	// Serialization helpers (track how the object was created)
+	// Serialization helpers
 	void SetPrimitiveType(const std::string& type) { primitiveType = type; }
 	const std::string& GetPrimitiveType() const { return primitiveType; }
 	void SetModelSourcePath(const std::string& path) { modelSourcePath = path; }
@@ -116,10 +283,21 @@ public:
 	void SetSaveInScene(bool save) { saveInScene = save; }
 	bool GetSaveInScene() const { return saveInScene; }
 
+	/**
+	 * @brief Calculates the world-space bounding box.
+	 */
 	void GetWorldBounds(glm::vec3& min, glm::vec3& max);
+
+	/**
+	 * @brief Calculates the world-space bounding sphere.
+	 */
 	void GetWorldBoundingSphere(glm::vec3& center, float& radius);
 	
-	void SetDirty(); // Dirties this and all children recursively
+	/**
+	 * @brief Dirties this and all children's cached transformations.
+	 */
+	void SetDirty();
+
 
 private:
 	std::string name;

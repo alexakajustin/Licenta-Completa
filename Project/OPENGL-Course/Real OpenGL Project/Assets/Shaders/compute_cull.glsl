@@ -1,109 +1,120 @@
 #version 430 core
 layout(local_size_x = 256) in;
 
-// =====================================================================
-// GPU Frustum + Distance Culling + LOD Classification Compute Shader
-//
-// For each instance, tests:
-//   1. Distance culling (skip instances beyond maxDrawDistance)
-//   2. Frustum culling (clip-space sphere test — 3 axis pairs)
-//   3. LOD classification (distance-based bucket assignment)
-//
-// Visible instances are written to LOD-specific output SSBOs.
-// Each LOD's indirect draw command instanceCount is atomically incremented.
-// =====================================================================
+/**
+ * @file compute_cull.glsl
+ * @brief GPU-driven Frustum Culling, Distance Culling, Hi-Z Occlusion Culling, and LOD Classification compute shader.
+ */
 
+/**
+ * @struct PackedInstance
+ * @brief Represents a single placed model instance in GPU memory.
+ */
 struct PackedInstance {
-    vec4 posAndScale;     // xyz = position, w = scale
-    vec4 rotAndFlags;     // xyz = euler degrees, w = flags
+    vec4 posAndScale;     ///< xyz = Position coordinates, w = Scale multiplier.
+    vec4 rotAndFlags;     ///< xyz = Euler rotation angles, w = Selection flags & fade factors.
 };
 
-// Binding 0: All instances (input — read only)
+/**
+ * @brief Read-only buffer containing all candidate instances to process.
+ */
 layout(std430, binding = 0) readonly buffer AllInstances {
     PackedInstance allInstances[];
 };
 
-// Binding 1: LOD 0 Visible instances (output)
+/**
+ * @brief Output buffer for visible instances assigned to LOD 0.
+ */
 layout(std430, binding = 1) writeonly buffer VisibleInstancesLOD0 {
     PackedInstance visibleLOD0[];
 };
 
-// Binding 2: LOD 0 Indirect draw command
+/**
+ * @brief Draw command parameters for LOD 0 indirect drawing.
+ */
 layout(std430, binding = 2) buffer DrawIndirectLOD0 {
-    uint indexCountLOD0;
-    uint instanceCountLOD0;
+    uint indexCountLOD0;     ///< Indices count per instance.
+    uint instanceCountLOD0;  ///< Atomic counter of visible LOD 0 instances.
     uint firstIndexLOD0;
     uint baseVertexLOD0;
     uint baseInstanceLOD0;
 };
 
-// Binding 3: LOD 1 Visible instances (optional)
+/**
+ * @brief Output buffer for visible instances assigned to LOD 1.
+ */
 layout(std430, binding = 3) writeonly buffer VisibleInstancesLOD1 {
     PackedInstance visibleLOD1[];
 };
 
-// Binding 4: LOD 2 Visible instances (optional)
+/**
+ * @brief Output buffer for visible instances assigned to LOD 2.
+ */
 layout(std430, binding = 4) writeonly buffer VisibleInstancesLOD2 {
     PackedInstance visibleLOD2[];
 };
 
-// Binding 5: LOD 1 Indirect draw command (optional)
+/**
+ * @brief Draw command parameters for LOD 1 indirect drawing.
+ */
 layout(std430, binding = 5) buffer DrawIndirectLOD1 {
     uint indexCountLOD1;
-    uint instanceCountLOD1;
+    uint instanceCountLOD1;  ///< Atomic counter of visible LOD 1 instances.
     uint firstIndexLOD1;
     uint baseVertexLOD1;
     uint baseInstanceLOD1;
 };
 
-// Binding 6: LOD 2 Indirect draw command (optional)
+/**
+ * @brief Draw command parameters for LOD 2 indirect drawing.
+ */
 layout(std430, binding = 6) buffer DrawIndirectLOD2 {
     uint indexCountLOD2;
-    uint instanceCountLOD2;
+    uint instanceCountLOD2;  ///< Atomic counter of visible LOD 2 instances.
     uint firstIndexLOD2;
     uint baseVertexLOD2;
     uint baseInstanceLOD2;
 };
 
-uniform mat4  viewProj;
-uniform vec3  cameraPos;
-uniform float maxDrawDistance;
-uniform float instanceBoundRadius;  // Bounding sphere radius of the shared mesh
-uniform uint  totalInstances;
-uniform vec3  meshBoundsCenter;     // Center of mesh AABB relative to origin (e.g. (0, 0.5, 0) for grass)
+uniform mat4  viewProj;            ///< Combined camera View-Projection matrix.
+uniform vec3  cameraPos;           ///< World-space camera position vector.
+uniform float maxDrawDistance;     ///< Maximum distance threshold for culling instances.
+uniform float instanceBoundRadius; ///< Radius of mesh bounding sphere.
+uniform uint  totalInstances;      ///< Total number of instances to process in this dispatch.
+uniform vec3  meshBoundsCenter;     ///< Center of the instance bounding sphere relative to origin.
 
 // Sphere culling (for omni light shadow pass)
-uniform vec3  lightPos;
-uniform int   useSphereCull;        // When 1, cull by distance from lightPos instead of frustum
+uniform vec3  lightPos;            ///< Position of light source (when omni casting).
+uniform int   useSphereCull;       ///< Set to 1 to enable sphere-based distance culling from light source.
 
 // LOD configuration
-uniform int   lodCount;             // 1, 2, or 3
-uniform float lodDistances[3];      // Max distance for each LOD level
+uniform int   lodCount;            ///< Active LOD count (1, 2, or 3).
+uniform float lodDistances[3];     ///< Boundaries distance for LOD 0->1, 1->2.
 
 // Hi-Z Occlusion Culling
-uniform int useHiZ;
-uniform vec2 screenSize;
-uniform float nearPlane;
-uniform float farPlane;
-uniform uint instanceOffset;  // For chunked dispatch: maps local id to global visibility index
-uniform mat4 hizViewProj;  // Camera VP for Hi-Z projection (may differ from viewProj in shadow pass)
-layout(binding = 15) uniform sampler2D hizMap;
+uniform int useHiZ;                ///< Set to 1 to enable Hi-Z occlusion test.
+uniform vec2 screenSize;           ///< Viewport screen resolution (width, height).
+uniform float nearPlane;           ///< Camera near plane distance.
+uniform float farPlane;            ///< Camera far plane distance.
+uniform uint instanceOffset;       ///< Global offset mapping for chunked dispatches.
+uniform mat4 hizViewProj;          ///< Target View-Projection matrix for occlusion checking.
+layout(binding = 15) uniform sampler2D hizMap; ///< Input Hi-Z depth map texture.
 
-// Two-Phase Occlusion Culling
-// phase 0 = Phase 1: only draw instances that were visible last frame (skip Hi-Z)
-// phase 1 = Phase 2: only test instances that were NOT visible, using fresh Hi-Z
-// phase 2 = Legacy single-phase mode (no visibility buffer, original behavior)
-uniform int phase;
+uniform int phase;                 ///< Phase index for two-phase occlusion culling.
 
-// Binding 7: Per-instance visibility from previous frame (persistent across frames)
-// 0 = was not visible last frame, 1 = was visible last frame
+/**
+ * @brief Visibility buffer tracking instance state from last frame.
+ */
 layout(std430, binding = 7) buffer VisibilityBuffer {
     uint visibility[];
 };
 
-// =====================================================================
-// Utility: Apply Euler Rotation (Z -> X -> Y order, matching C++ Transform)
-// =====================================================================
+/**
+ * @brief Utility function to apply Euler rotation in Z->X->Y order.
+ * @param p Local position coordinate to rotate.
+ * @param eulerDeg Euler angles vector in degrees.
+ * @return Rotated coordinate.
+ */
 vec3 rotateEulerZYX(vec3 p, vec3 eulerDeg) {
     vec3 rad = radians(eulerDeg);
     vec3 c = cos(rad);
@@ -133,8 +144,11 @@ vec3 rotateEulerZYX(vec3 p, vec3 eulerDeg) {
     return p3;
 }
 
-
+/**
+ * @brief Compute shader entry point. Checks visibility and classifies instances.
+ */
 void main()
+
 {
     uint id = gl_GlobalInvocationID.x;
     if (id >= totalInstances) return;

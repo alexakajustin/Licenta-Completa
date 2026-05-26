@@ -26,7 +26,8 @@
 #include "Rendering/Material.h"
 #include "Rendering/InstancedGroup.h"
 #include "Rendering/MeshSimplifier.h"
-#include "Scene/AssetManager.h"
+#include "Core/AssetManager.h"
+#include "Core/ServiceLocator.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -509,7 +510,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 
 					// Fallback: check parent's model source path (for scene-loaded modular trees)
 					if (!multiMeshModel && sourceObj && !sourceObj->GetModelSourcePath().empty())
-						multiMeshModel = AssetManager::Get().GetModel(sourceObj->GetModelSourcePath());
+						multiMeshModel = ServiceLocator::GetAssetManager()->GetModel(sourceObj->GetModelSourcePath());
 
 					// Also check children's models
 					if (!multiMeshModel && sourceObj) {
