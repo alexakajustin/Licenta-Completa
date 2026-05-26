@@ -10,19 +10,19 @@
 #include <cmath>
 #include <random>
 
-#include "Model.h"
-#include "Mesh.h"
+#include "Rendering/Model.h"
+#include "Rendering/Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "LightObject.h"
-#include "DebugOverlay.h"
+#include "Lighting/LightObject.h"
+#include "Editor/DebugOverlay.h"
 #include "External Libs/imnodes/imnodes.h"
-#include "PrimitiveGenerator.h"
-#include "AssetManager.h"
-#include "AllOperations.h"
-#include "SceneSerializer.h"
-#include "InteriorGenNode.h"
+#include "Rendering/PrimitiveGenerator.h"
+#include "Scene/AssetManager.h"
+#include "Nodes/AllOperations.h"
+#include "Scene/SceneSerializer.h"
+#include "Procedural/InteriorGenNode.h"
 #include <iostream>
 #include <map>
 #include <fstream>

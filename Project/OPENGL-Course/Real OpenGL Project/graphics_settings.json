@@ -19,7 +19,7 @@
     "shadowCascades": 2,
     "shadowDistance": 1000.0,
     "showWireframe": false,
-    "skyboxType": 1,
+    "skyboxType": 0,
     "ssaoBias": 0.02500000037252903,
     "ssaoBlurSize": 4,
     "ssaoEnabled": true,
@@ -40,5 +40,5 @@
     "universeSpeed": 0.0010000000474974513,
     "universeStarBrightness": 1.6390000581741333,
     "universeStarDensity": 2.0,
-    "volumetricSkyEnabled": true
+    "volumetricSkyEnabled": false
 }

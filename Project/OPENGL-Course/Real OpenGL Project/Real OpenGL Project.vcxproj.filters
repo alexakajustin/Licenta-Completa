@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version='1.0' encoding='utf-8'?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
@@ -13,52 +13,52 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  </ItemGroup>
+  <Filter Include="Lighting"><UniqueIdentifier>{35b4944b-d2f6-4ab1-947c-8ff5c71c4f02}</UniqueIdentifier></Filter><Filter Include="Rendering"><UniqueIdentifier>{befd7928-a188-428b-826d-ce998888c809}</UniqueIdentifier></Filter><Filter Include="Editor"><UniqueIdentifier>{1fff05ca-85e8-4b00-ab58-93da2d4721d7}</UniqueIdentifier></Filter><Filter Include="Nodes\Operations"><UniqueIdentifier>{658d8469-44c5-4385-ae3a-b7e0cb551b5b}</UniqueIdentifier></Filter><Filter Include="Procedural"><UniqueIdentifier>{74b73ad1-db82-4b4b-b8b7-39128fc2e15d}</UniqueIdentifier></Filter><Filter Include="Nodes"><UniqueIdentifier>{e9a64048-cf9c-4f98-8485-725e270b5676}</UniqueIdentifier></Filter><Filter Include="Simulation"><UniqueIdentifier>{ab8e1ec4-fa3b-4a7f-900e-8ddfcd04789a}</UniqueIdentifier></Filter><Filter Include="Nodes\Math"><UniqueIdentifier>{15300165-ca53-4450-8ab7-76caf974f5ca}</UniqueIdentifier></Filter><Filter Include="Scene"><UniqueIdentifier>{29728203-a452-4aba-9fa8-8f09911da8b3}</UniqueIdentifier></Filter><Filter Include="Core"><UniqueIdentifier>{838c9e35-95f5-44c4-9b83-a1a35b94ce21}</UniqueIdentifier></Filter></ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Mesh.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Mesh.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Shader.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Shader.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Window.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Core\Window.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Core\Camera.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Texture.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Light.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Lighting\Light.cpp">
+      <Filter>Lighting</Filter>
     </ClCompile>
-    <ClCompile Include="Material.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Material.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="DirectionalLight.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Lighting\DirectionalLight.cpp">
+      <Filter>Lighting</Filter>
     </ClCompile>
-    <ClCompile Include="PointLight.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Lighting\PointLight.cpp">
+      <Filter>Lighting</Filter>
     </ClCompile>
-    <ClCompile Include="SpotLight.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Lighting\SpotLight.cpp">
+      <Filter>Lighting</Filter>
     </ClCompile>
-    <ClCompile Include="Model.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Model.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="ShadowMap.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\ShadowMap.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="OmniShadowMap.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\OmniShadowMap.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Skybox.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Skybox.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="External Libs\ImGUI\imgui.cpp">
       <Filter>Source Files</Filter>
@@ -81,17 +81,17 @@
     <ClCompile Include="External Libs\ImGUI\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SceneManager.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\SceneManager.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Transform.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Core\Transform.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="GameObject.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\GameObject.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="LightObject.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Lighting\LightObject.cpp">
+      <Filter>Lighting</Filter>
     </ClCompile>
     <ClCompile Include="External Libs\GLM\glm\detail\dummy.cpp">
       <Filter>Source Files</Filter>
@@ -99,110 +99,110 @@
     <ClCompile Include="External Libs\GLM\glm\detail\glm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PrimitiveGenerator.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\PrimitiveGenerator.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AssetBrowser.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\AssetBrowser.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="AssetManager.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\AssetManager.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="DebugOverlay.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\DebugOverlay.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="EditorUI.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\EditorUI.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="InputHandler.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Core\InputHandler.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\Renderer.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="PerlinNoiseGenerator.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\PerlinNoiseGenerator.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="GenerationStack.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\GenerationStack.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="GenerationPipelineUI.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\GenerationPipelineUI.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="NodeGraph.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\NodeGraph.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="NodeEditorUI.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\NodeEditorUI.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="ScatterNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\ScatterNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="OutputNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\OutputNode.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="SceneInputNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\SceneInputNode.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="FluidSimulation.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Simulation\FluidSimulation.cpp">
+      <Filter>Simulation</Filter>
     </ClCompile>
-    <ClCompile Include="HydraulicErosionNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\HydraulicErosionNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
     <ClCompile Include="External Libs\imnodes\imnodes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CustomNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\CustomNode.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="CustomNodeDef.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\CustomNodeDef.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="NodeBuilderUI.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Editor\NodeBuilderUI.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="Operation.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Nodes\Operation.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
-    <ClCompile Include="SceneSerializer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\SceneSerializer.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="InstancedGroup.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\InstancedGroup.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="CascadedShadowMap.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Rendering\CascadedShadowMap.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="UndoActions.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\UndoActions.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="RiverNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\RiverNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="CityGridNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\CityGridNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="BuildingGenNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\BuildingGenNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="Planet.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Scene\Planet.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="SolarSystemNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\SolarSystemNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="BeautifulErosionNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\BeautifulErosionNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="InteriorDecorators.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\InteriorDecorators.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
-    <ClCompile Include="InteriorGenNode.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Procedural\InteriorGenNode.cpp">
+      <Filter>Procedural</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1515,53 +1515,53 @@
     <ClInclude Include="External Libs\GLM\glm\vector_relational.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Mesh.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="Shader.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Shader.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="Window.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\Window.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\Camera.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Texture.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Texture.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Light.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Lighting\Light.h">
+      <Filter>Lighting</Filter>
     </ClInclude>
-    <ClInclude Include="Material.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Material.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="DirectionalLight.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Lighting\DirectionalLight.h">
+      <Filter>Lighting</Filter>
     </ClInclude>
-    <ClInclude Include="PointLight.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Lighting\PointLight.h">
+      <Filter>Lighting</Filter>
     </ClInclude>
     <ClInclude Include="CommonValues.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SpotLight.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Lighting\SpotLight.h">
+      <Filter>Lighting</Filter>
     </ClInclude>
-    <ClInclude Include="Model.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Model.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="ShadowMap.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\ShadowMap.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="OmniShadowMap.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\OmniShadowMap.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="Skybox.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Skybox.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\ImGUI\imconfig.h">
       <Filter>Header Files</Filter>
@@ -1590,29 +1590,29 @@
     <ClInclude Include="External Libs\ImGUI\imstb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SceneManager.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\SceneManager.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Transform.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\Transform.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="GameObject.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\GameObject.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="LightObject.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Lighting\LightObject.h">
+      <Filter>Lighting</Filter>
     </ClInclude>
-    <ClInclude Include="FluidSimulation.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Simulation\FluidSimulation.h">
+      <Filter>Simulation</Filter>
     </ClInclude>
-    <ClInclude Include="Grid2D.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\Grid2D.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="HydraulicErosionNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\HydraulicErosionNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="SolarSystemNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\SolarSystemNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h">
       <Filter>Header Files</Filter>
@@ -2145,86 +2145,86 @@
     <ClInclude Include="External Libs\GLM\glm\vec4.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PrimitiveGenerator.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\PrimitiveGenerator.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="DebugOverlay.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\DebugOverlay.h">
+      <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AssetBrowser.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\AssetBrowser.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="AssetManager.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\AssetManager.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="EditorUI.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\EditorUI.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="InputHandler.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\InputHandler.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="UndoManager.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\UndoManager.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="UndoActions.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\UndoActions.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="ConstantNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\ConstantNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="MathNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\MathNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="CompareNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\CompareNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="BranchNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\BranchNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="FilterTransformListNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\FilterTransformListNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="ForEachNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\ForEachNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\Renderer.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="PerlinNoiseGenerator.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\PerlinNoiseGenerator.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="MeshData.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\MeshData.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="IGenerator.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\IGenerator.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="GenerationPipelineUI.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\GenerationPipelineUI.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="GenerationStack.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\GenerationStack.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="NodeGraph.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\NodeGraph.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="NodeEditorUI.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\NodeEditorUI.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="PerlinNoiseNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\PerlinNoiseNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="SceneInputNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\SceneInputNode.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="ScatterNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\ScatterNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="OutputNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\OutputNode.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
     <ClInclude Include="External Libs\imnodes\imnodes.h">
       <Filter>Header Files</Filter>
@@ -2232,83 +2232,83 @@
     <ClInclude Include="External Libs\imnodes\imnodes_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PerlinTerrainNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\PerlinTerrainNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="MergeMeshNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\MergeMeshNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="AssetManager.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\AssetManager.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="AllOperations.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\AllOperations.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="CustomNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\CustomNode.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="CustomNodeDef.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\CustomNodeDef.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="Frustum.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Core\Frustum.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="NodeBuilderUI.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Editor\NodeBuilderUI.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="Operation.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Operation.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="OperationRegistry.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\OperationRegistry.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="SceneSerializer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\SceneSerializer.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="TextureLayer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\TextureLayer.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="InstancedGroup.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\InstancedGroup.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="CascadedShadowMap.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\CascadedShadowMap.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="MeshSimplifier.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Rendering\MeshSimplifier.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="RiverNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\RiverNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
     <ClInclude Include="GraphicsSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CityGridNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\CityGridNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="BuildingGenNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\BuildingGenNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="Noise3D.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\Noise3D.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="ObjectIntersectionFilterNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Nodes\Math\ObjectIntersectionFilterNode.h">
+      <Filter>Nodes\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Planet.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Scene\Planet.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="BeautifulErosionNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\BeautifulErosionNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="InteriorDecorators.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\InteriorDecorators.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="InteriorGenNode.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\InteriorGenNode.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
-    <ClInclude Include="InteriorStructure.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Procedural\InteriorStructure.h">
+      <Filter>Procedural</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
