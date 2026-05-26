@@ -126,7 +126,7 @@ public:
 	void ClearSelection();
 	void DeleteSelectedInstances(class SceneManager* scene = nullptr);
 	void ExtractInstance(int index, class SceneManager* scene, bool skipReuploadAndSelect = false);
-	void ExtractInstances(const std::vector<int>& indices, class SceneManager* scene, bool skipReuploadAndSelect = false);
+	void ExtractInstances(const std::vector<int>& indices, class SceneManager* scene, class GameObject* parentGroup = nullptr, bool skipReuploadAndSelect = false);
 	void ReuploadGPU(); // Re-upload after batch extraction
 
 	// Cleanup

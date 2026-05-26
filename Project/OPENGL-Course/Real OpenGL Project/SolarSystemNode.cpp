@@ -76,7 +76,11 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		sun->SetParams(pParams);
 
 		if (savedMaterials.count(sunName) && savedMaterials[sunName]) {
+			// Delete the constructor-allocated material before overwriting with saved one
+			Material* constructorMat = sun->GetMaterial();
 			sun->SetMaterial(savedMaterials[sunName]);
+			delete constructorMat;
+			savedMaterials.erase(sunName); // Mark as consumed
 		}
 
 		sun->Generate();
@@ -179,7 +183,11 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		p->SetParams(pParams);
 
 		if (savedMaterials.count(planetName) && savedMaterials[planetName]) {
+			// Delete the constructor-allocated material before overwriting with saved one
+			Material* constructorMat = p->GetMaterial();
 			p->SetMaterial(savedMaterials[planetName]);
+			delete constructorMat;
+			savedMaterials.erase(planetName); // Mark as consumed
 		}
 
 		p->Generate();
@@ -193,7 +201,7 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 			if (Material* mat = p->GetMaterial()) {
 				mat->SetInt("isSun", 0);
-				mat->SetFloat("displacementHeight", dispDist(gen));
+				mat->SetFloat("displacementHeight", 0.1);
 				mat->SetFloat("seaLevel", seaLvl);
 				mat->SetFloat("sandLevel", sandLvl);
 				mat->SetFloat("grassLevel", grassLvl);
@@ -241,6 +249,12 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		if (progress) progress(50.0f + (50.0f * (float)i / planetCount), "Generating Planet " + std::to_string(i));
 	}
+
+	// Clean up any saved materials that were NOT reused (e.g. planet count decreased)
+	for (auto& [name, mat] : savedMaterials) {
+		delete mat;
+	}
+	savedMaterials.clear();
 
 	// Pass through input 0 to output 0
 	outputs[0].data = inputs[0].data;

@@ -21,7 +21,7 @@ Planet::Planet(const std::string& name) : GameObject(name) {
     mat->SetFloat("grassLevel", 0.6f);
     mat->SetFloat("rockLevel", 0.8f);
     mat->SetFloat("snowLevel", 0.9f);
-    mat->SetFloat("noiseScale", 1.0f);
+    mat->SetFloat("noiseScale", 0.01f);
     mat->SetInt("octaves", 6);
     mat->SetFloat("persistence", 0.5f);
     mat->SetFloat("lacunarity", 2.0f);
@@ -75,7 +75,7 @@ void Planet::Generate() {
         mat->SetFloat("grassLevel", 0.6f);
         mat->SetFloat("rockLevel", 0.8f);
         mat->SetFloat("snowLevel", 0.9f);
-        mat->SetFloat("noiseScale", 1.0f);
+        mat->SetFloat("noiseScale", 0.01f);
         mat->SetInt("octaves", 6);
         mat->SetFloat("persistence", 0.5f);
         mat->SetFloat("lacunarity", 2.0f);

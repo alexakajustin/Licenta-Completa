@@ -1921,14 +1921,29 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			if (ImGui::Button("Extract to GameObjects", ImVec2(-1, 0))) {
 				// We must extract group by group. Extracting modifies the cpuInstances and clears selection
 				// so we must gather first or be careful
+				GameObject* bulkParent = nullptr;
+				bool anySelected = false;
+
 				for (auto* group : scene.GetInstancedGroups()) {
 					if (group && !group->selectedInstanceIndices.empty()) {
-						// Pass true for skipReuploadAndSelect since we are extracting them fully,
-						// but wait, ExtractInstances handles ReuploadGPU if we pass false, which is better
-						// Actually wait, let's just use the group method
-						group->ExtractInstances(group->selectedInstanceIndices, &scene, false);
+						anySelected = true;
+						break;
 					}
 				}
+
+				if (anySelected) {
+					static int extractCounter = 1;
+					bulkParent = new GameObject("Extracted Scatters " + std::to_string(extractCounter++));
+					bulkParent->SetPrimitiveType("Empty");
+					scene.AddObject(bulkParent);
+
+					for (auto* group : scene.GetInstancedGroups()) {
+						if (group && !group->selectedInstanceIndices.empty()) {
+							group->ExtractInstances(group->selectedInstanceIndices, &scene, bulkParent, false);
+						}
+					}
+				}
+
 				// Clear any remaining selection to switch to the newly extracted objects
 				scene.ClearSelection();
 			}

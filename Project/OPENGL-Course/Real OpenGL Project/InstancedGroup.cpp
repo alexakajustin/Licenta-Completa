@@ -1260,7 +1260,7 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 // Instantiates a batch of scattered grass instances into real 
 // editable GameObjects, optimized with multithreading.
 // =====================================================================
-void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneManager* scene, bool skipReuploadAndSelect)
+void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneManager* scene, GameObject* parentGroup, bool skipReuploadAndSelect)
 {
 	if (indices.empty() || !scene) return;
 
@@ -1327,6 +1327,9 @@ void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneMana
 		newObjects[i]->SetNormalMap(normalMap);
 		for (const auto& layer : textureLayers) {
 			newObjects[i]->AddTextureLayer(layer);
+		}
+		if (parentGroup) {
+			parentGroup->AddChild(newObjects[i]);
 		}
 		scene->AddObject(newObjects[i]);
 	}

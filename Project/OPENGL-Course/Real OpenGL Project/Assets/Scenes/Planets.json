@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.5817580223083496,
-            -0.3420201241970062,
-            -0.7379565238952637
+            0.6123724579811096,
+            -0.5000000596046448,
+            -0.6123724579811096
         ],
-        "pitch": -20.0,
+        "pitch": -30.0,
         "position": [
-            -1150.6436767578125,
-            636.1497192382813,
-            1305.388671875
+            -137.8858184814453,
+            112.58330535888672,
+            137.8858184814453
         ],
-        "yaw": -51.75
+        "yaw": -45.0
     },
     "instancedGroups": [],
     "lights": [
@@ -38,8 +38,8 @@
         "nodes": [
             {
                 "editorPos": [
-                    58.0,
-                    260.0
+                    -2.0,
+                    102.0
                 ],
                 "generateSun": true,
                 "id": 1,
@@ -73,6 +73,7 @@
         {
             "customMeshPath": "Planets_SolarSystem_1_Sun.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "displacementHeight": 5.0,
                 "grassLevel": 0.6000000238418579,
@@ -116,6 +117,7 @@
             "name": "SolarSystem_1_Sun",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
                 "radius": 100.0,
                 "seed": 930,
@@ -142,20 +144,21 @@
                     0.0
                 ],
                 "scale": [
-                    2.0,
-                    2.0,
-                    2.0
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             }
         },
         {
             "customMeshPath": "Planets_SolarSystem_1_Planet_0.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
-                "displacementHeight": 4.191089630126953,
+                "displacementHeight": 0.10000000149011612,
                 "grassLevel": 0.40805160999298096,
                 "isSun": 0,
-                "lacunarity": 5.959531307220459,
+                "lacunarity": 5.385778903961182,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -174,9 +177,9 @@
                     1.0,
                     1.0
                 ],
-                "noiseScale": 2.4126200675964355,
+                "noiseScale": 1.691089391708374,
                 "octaves": 8,
-                "persistence": 0.43857789039611816,
+                "persistence": 0.589354395866394,
                 "radius": 8.267681121826172,
                 "rockLevel": 0.564824104309082,
                 "sandLevel": 0.23408620059490204,
@@ -195,6 +198,7 @@
             "name": "SolarSystem_1_Planet_0",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
                 "radius": 8.267681121826172,
                 "seed": 184,
@@ -230,11 +234,12 @@
         {
             "customMeshPath": "Planets_SolarSystem_1_Planet_1.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
-                "displacementHeight": 3.0167765617370605,
-                "grassLevel": 0.4857494831085205,
+                "displacementHeight": 0.10000000149011612,
+                "grassLevel": 0.6397840976715088,
                 "isSun": 0,
-                "lacunarity": 4.896111011505127,
+                "lacunarity": 4.319333076477051,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -253,30 +258,31 @@
                     1.0,
                     1.0
                 ],
-                "noiseScale": 1.0830047130584717,
+                "noiseScale": 0.5535794496536255,
                 "octaves": 4,
-                "persistence": 0.4196231961250305,
-                "radius": 14.348029136657715,
-                "rockLevel": 0.6818801164627075,
-                "sandLevel": 0.30189794301986694,
-                "seaLevel": 0.2619893550872803,
-                "seed": 654,
+                "persistence": 0.3874507248401642,
+                "radius": 23.722665786743164,
+                "rockLevel": 0.8290184736251831,
+                "sandLevel": 0.47762686014175415,
+                "seaLevel": 0.4614279270172119,
+                "seed": 374,
                 "shader_frag": "Assets/Shaders/planet.frag",
                 "shader_tcs": "Assets/Shaders/planet_tess.tcs",
                 "shader_tes": "Assets/Shaders/planet_tess.tes",
                 "shader_vert": "Assets/Shaders/planet.vert",
-                "snowLevel": 0.7345590591430664,
-                "temperature": 0.07626181840896606,
-                "tessDistance": 271.7401428222656,
+                "snowLevel": 0.9751491546630859,
+                "temperature": 0.34682291746139526,
+                "tessDistance": 318.61334228515625,
                 "tessLevel": 8.0
             },
             "modelPath": "",
             "name": "SolarSystem_1_Planet_1",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
-                "radius": 14.348029136657715,
-                "seed": 654,
+                "radius": 23.722665786743164,
+                "seed": 374,
                 "subdivisions": 6
             },
             "primitiveType": "Planet",
@@ -290,9 +296,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -9.597328186035156,
+                    915.587890625,
                     0.0,
-                    -1397.0135498046875
+                    -475.6968688964844
                 ],
                 "rotation": [
                     0.0,
@@ -309,11 +315,12 @@
         {
             "customMeshPath": "Planets_SolarSystem_1_Planet_2.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
-                "displacementHeight": 4.447370529174805,
-                "grassLevel": 0.7415165901184082,
+                "displacementHeight": 0.10000000149011612,
+                "grassLevel": 0.6794189810752869,
                 "isSun": 0,
-                "lacunarity": 6.152360916137695,
+                "lacunarity": 4.151463985443115,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -332,30 +339,31 @@
                     1.0,
                     1.0
                 ],
-                "noiseScale": 0.6009758710861206,
-                "octaves": 7,
-                "persistence": 0.5418704748153687,
-                "radius": 20.677356719970703,
-                "rockLevel": 0.937981367111206,
-                "sandLevel": 0.6080570220947266,
-                "seaLevel": 0.5631700158119202,
-                "seed": 810,
+                "noiseScale": 2.429295063018799,
+                "octaves": 8,
+                "persistence": 0.5171056389808655,
+                "radius": 25.182218551635742,
+                "rockLevel": 0.8666365742683411,
+                "sandLevel": 0.4932302236557007,
+                "seaLevel": 0.45083773136138916,
+                "seed": 657,
                 "shader_frag": "Assets/Shaders/planet.frag",
                 "shader_tcs": "Assets/Shaders/planet_tess.tcs",
                 "shader_tes": "Assets/Shaders/planet_tess.tes",
                 "shader_vert": "Assets/Shaders/planet.vert",
-                "snowLevel": 1.0,
-                "temperature": 0.19271129369735718,
-                "tessDistance": 303.38677978515625,
+                "snowLevel": 0.9722763299942017,
+                "temperature": 0.6012560129165649,
+                "tessDistance": 325.9111022949219,
                 "tessLevel": 8.0
             },
             "modelPath": "",
             "name": "SolarSystem_1_Planet_2",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
-                "radius": 20.677356719970703,
-                "seed": 810,
+                "radius": 25.182218551635742,
+                "seed": 657,
                 "subdivisions": 6
             },
             "primitiveType": "Planet",
@@ -369,9 +377,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -687.7738647460938,
+                    -207.35888671875,
                     0.0,
-                    -1031.5859375
+                    656.3270263671875
                 ],
                 "rotation": [
                     0.0,
@@ -388,11 +396,12 @@
         {
             "customMeshPath": "Planets_SolarSystem_1_Planet_3.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
-                "displacementHeight": 4.9880290031433105,
-                "grassLevel": 0.5733621120452881,
+                "displacementHeight": 0.10000000149011612,
+                "grassLevel": 0.5104384422302246,
                 "isSun": 0,
-                "lacunarity": 6.372467517852783,
+                "lacunarity": 6.982043743133545,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -411,30 +420,31 @@
                     1.0,
                     1.0
                 ],
-                "noiseScale": 1.1367074251174927,
+                "noiseScale": 0.7586290836334229,
                 "octaves": 7,
-                "persistence": 0.5211607217788696,
-                "radius": 14.100738525390625,
-                "rockLevel": 0.7463310360908508,
-                "sandLevel": 0.5039649605751038,
-                "seaLevel": 0.4763791561126709,
-                "seed": 325,
+                "persistence": 0.5498059391975403,
+                "radius": 22.93634033203125,
+                "rockLevel": 0.6795332431793213,
+                "sandLevel": 0.4116007685661316,
+                "seaLevel": 0.38703960180282593,
+                "seed": 931,
                 "shader_frag": "Assets/Shaders/planet.frag",
                 "shader_tcs": "Assets/Shaders/planet_tess.tcs",
                 "shader_tes": "Assets/Shaders/planet_tess.tes",
                 "shader_vert": "Assets/Shaders/planet.vert",
-                "snowLevel": 0.8795996904373169,
-                "temperature": 0.06918436288833618,
-                "tessDistance": 270.5036926269531,
+                "snowLevel": 0.7734977006912231,
+                "temperature": 0.35752469301223755,
+                "tessDistance": 314.68170166015625,
                 "tessLevel": 8.0
             },
             "modelPath": "",
             "name": "SolarSystem_1_Planet_3",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
-                "radius": 14.100738525390625,
-                "seed": 325,
+                "radius": 22.93634033203125,
+                "seed": 931,
                 "subdivisions": 6
             },
             "primitiveType": "Planet",
@@ -448,9 +458,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -1377.552978515625,
+                    352.0284423828125,
                     0.0,
-                    284.3843078613281
+                    -954.4946899414063
                 ],
                 "rotation": [
                     0.0,
@@ -467,11 +477,12 @@
         {
             "customMeshPath": "Planets_SolarSystem_1_Planet_4.mesh",
             "inheritScale": true,
+            "isVisible": true,
             "material": {
-                "displacementHeight": 3.0493524074554443,
-                "grassLevel": 0.7147752046585083,
+                "displacementHeight": 0.10000000149011612,
+                "grassLevel": 0.5601004958152771,
                 "isSun": 0,
-                "lacunarity": 5.578765392303467,
+                "lacunarity": 6.465636730194092,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -490,30 +501,31 @@
                     1.0,
                     1.0
                 ],
-                "noiseScale": 2.29893159866333,
-                "octaves": 6,
-                "persistence": 0.5495697855949402,
-                "radius": 14.092670440673828,
-                "rockLevel": 0.9051474332809448,
-                "sandLevel": 0.5600030422210693,
-                "seaLevel": 0.5179882645606995,
-                "seed": 26,
+                "noiseScale": 2.100740432739258,
+                "octaves": 7,
+                "persistence": 0.5711168050765991,
+                "radius": 23.430055618286133,
+                "rockLevel": 0.6627854108810425,
+                "sandLevel": 0.45554447174072266,
+                "seaLevel": 0.4387078881263733,
+                "seed": 791,
                 "shader_frag": "Assets/Shaders/planet.frag",
                 "shader_tcs": "Assets/Shaders/planet_tess.tcs",
                 "shader_tes": "Assets/Shaders/planet_tess.tes",
                 "shader_vert": "Assets/Shaders/planet.vert",
-                "snowLevel": 1.0,
-                "temperature": 0.40323036909103394,
-                "tessDistance": 270.4633483886719,
+                "snowLevel": 0.7922824621200562,
+                "temperature": 0.6816462874412537,
+                "tessDistance": 317.1502685546875,
                 "tessLevel": 8.0
             },
             "modelPath": "",
             "name": "SolarSystem_1_Planet_4",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "planet": {
-                "radius": 14.092670440673828,
-                "seed": 26,
+                "radius": 23.430055618286133,
+                "seed": 791,
                 "subdivisions": 6
             },
             "primitiveType": "Planet",
@@ -527,9 +539,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    455.5645446777344,
+                    -257.1136779785156,
                     0.0,
-                    840.0635986328125
+                    -519.6484985351563
                 ],
                 "rotation": [
                     0.0,

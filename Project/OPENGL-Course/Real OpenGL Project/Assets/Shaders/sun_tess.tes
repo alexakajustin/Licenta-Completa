@@ -79,7 +79,9 @@ float fBm(vec3 p) {
     float amp = 0.5; 
     float freq = noiseScale;
     vec3 offset = vec3(float(seed) * 0.123, float(seed) * 0.456, float(seed) * 0.789);
-    for(int i = 0; i < octaves; i++) {
+    const int MAX_OCTAVES = 8;
+    for(int i = 0; i < MAX_OCTAVES; i++) {
+        if(i >= octaves) break;
         val += amp * snoise((p + offset) * freq + vec3(time * 0.05));
         amp *= persistence; 
         freq *= lacunarity;
