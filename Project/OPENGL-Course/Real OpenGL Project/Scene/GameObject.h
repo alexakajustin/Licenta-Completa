@@ -10,8 +10,10 @@
 #include "Rendering/Texture.h"
 #include "Rendering/Material.h"
 #include <memory>
+#include <vector>
 #include "Rendering/MeshData.h"
 #include "Rendering/TextureLayer.h"
+#include "Component.h"
 
 struct Frustum;
 struct GraphicsSettings;
@@ -267,6 +269,45 @@ public:
 	void SetTessDisplacementBias(float val) { tessDisplacementBias = val; }
 	float GetTessDisplacementBias() const { return tessDisplacementBias; }
 
+	// --- Component System ---
+	template<typename T, typename... Args>
+	T* AddComponent(Args&&... args) {
+		auto component = std::make_unique<T>(this, std::forward<Args>(args)...);
+		T* ptr = component.get();
+		components.push_back(std::move(component));
+		ptr->Start();
+		return ptr;
+	}
+
+	template<typename T>
+	T* GetComponent() const {
+		for (const auto& comp : components) {
+			if (T* ptr = dynamic_cast<T*>(comp.get())) {
+				return ptr;
+			}
+		}
+		return nullptr;
+	}
+
+	template<typename T>
+	void RemoveComponent() {
+		for (auto it = components.begin(); it != components.end(); ++it) {
+			if (dynamic_cast<T*>(it->get())) {
+				components.erase(it);
+				break;
+			}
+		}
+	}
+
+	const std::vector<std::unique_ptr<Component>>& GetComponents() const {
+		return components;
+	}
+
+	// Will call Update on all components
+	void UpdateComponents(float deltaTime);
+	// ------------------------
+
+
 	// Mesh Persistence
 	void SetCPUMeshData(const MeshData& data);
 	void SetCPUMeshData(std::shared_ptr<MeshData> data);
@@ -306,6 +347,8 @@ private:
 	GameObject* parent = nullptr;
 	std::vector<GameObject*> children;
 	bool inheritScale = true;
+
+	std::vector<std::unique_ptr<Component>> components;
 
 	Model* model;      // For loaded .obj models
 	Mesh* mesh;        // For primitive meshes (LOD 0)

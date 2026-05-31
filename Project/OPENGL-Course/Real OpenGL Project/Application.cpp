@@ -318,13 +318,18 @@ void Application::Run()
 		// ========== Input: Editor vs Play Mode ==========
 		int activeTab = editorUI.GetWindowState().activeViewportTab;
 
-		// 1. Player Input (Only if Game tab is active)
+		// 1. Player Input and Logic Update (Only if Game tab is active for player, but logic always in PlayMode)
 		if (playState == PlayState::PlayMode)
 		{
 			Player* player = sceneManager.FindPlayer();
 			if (player && activeTab == 1 && !mainWindow.isCursorEnabled())
 			{
 				player->Update(deltaTime, mainWindow, sceneManager, gameCamera);
+			}
+
+			// Update components on all objects
+			for (auto* obj : sceneManager.GetObjects()) {
+				obj->UpdateComponents(deltaTime);
 			}
 		}
 

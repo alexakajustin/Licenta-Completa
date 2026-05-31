@@ -716,3 +716,10 @@ void GameObject::GetWorldBoundingSphere(glm::vec3& center, float& radius)
 	center = cachedSphereCenter;
 	radius = cachedSphereRadius;
 }
+
+void GameObject::UpdateComponents(float deltaTime)
+{
+	for (auto& comp : components) {
+		comp->Update(deltaTime);
+	}
+}

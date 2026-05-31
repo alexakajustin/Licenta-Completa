@@ -27,6 +27,7 @@
 #include "Scene/Planet.h"
 #include "Scene/Player.h"
 #include "External Libs/nlohmann/json.hpp"
+#include "Scene/BoxCollider.h"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -537,8 +538,8 @@ void EditorUI::UpdateViewportMetadata()
 		windowState.CheckMaximize(1); // Scene ID = 1
 
 		ImVec2 panelSize = ImGui::GetContentRegionAvail();
-		viewportSize = glm::vec2(panelSize.x, panelSize.y);
-		viewportPos = glm::vec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
+		// We no longer calculate viewportPos and viewportSize here because they don't account for the TabBar.
+		// They are updated properly inside RenderViewport, meaning input will use 1-frame delayed (but accurate) positions.
 		viewportHovered = ImGui::IsWindowHovered();
 	}
 	ImGui::End();
@@ -1011,7 +1012,11 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				// Save the content region start for overlay positioning
 				ImVec2 tabContentStart = ImGui::GetCursorPos();
 				ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-				ImVec2 viewportPos = ImGui::GetCursorScreenPos(); // For draw list overlays
+				ImVec2 screenPos = ImGui::GetCursorScreenPos(); // For draw list overlays
+
+				// Update exact viewport bounds for next frame's picking logic
+				this->viewportSize = glm::vec2(viewportPanelSize.x, viewportPanelSize.y);
+				this->viewportPos = glm::vec2(screenPos.x, screenPos.y);
 
 				// Render the scene texture
 				if (textureID != 0)
@@ -1113,8 +1118,8 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			glm::vec2 start = inputHandler->GetBoxSelectStart();
 			glm::vec2 end = inputHandler->GetBoxSelectEnd();
 
-			ImVec2 p1(viewportPos.x + start.x, viewportPos.y + start.y);
-			ImVec2 p2(viewportPos.x + end.x, viewportPos.y + end.y);
+			ImVec2 p1(screenPos.x + start.x, screenPos.y + start.y);
+			ImVec2 p2(screenPos.x + end.x, screenPos.y + end.y);
 
 			// Semi-transparent purple fill (matches engine theme)
 			drawList->AddRectFilled(p1, p2, IM_COL32(120, 60, 180, 40));
@@ -1962,6 +1967,22 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 					}
 					ImGui::EndDragDropTarget();
 				}
+			}
+
+			// --- Components ---
+			for (auto& comp : selected->GetComponents()) {
+				comp->DrawInspector();
+			}
+
+			ImGui::Separator();
+			if (ImGui::Button("Add Component")) {
+				ImGui::OpenPopup("AddComponentPopup");
+			}
+			if (ImGui::BeginPopup("AddComponentPopup")) {
+				if (ImGui::MenuItem("BoxCollider")) {
+					selected->AddComponent<BoxCollider>();
+				}
+				ImGui::EndPopup();
 			}
 		}
 		else if (showLightInspector)
