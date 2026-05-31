@@ -265,6 +265,17 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 {
 	if (nodes.empty()) return;
 
+	// === COMPONENT PRESERVATION SYSTEM ===
+	// Backup all components of procedural objects before execution.
+	// Since nodes might delete and recreate GameObjects, this ensures user-added
+	// components are not lost across generations.
+	std::map<std::string, std::vector<std::unique_ptr<Component>>> componentBackup;
+	for (auto* obj : scene.GetObjects()) {
+		if (obj && obj->HasComponents()) {
+			componentBackup[obj->GetName()] = obj->DetachAllComponents();
+		}
+	}
+
 	// Clear all pin data
 	for (auto* n : nodes)
 	{
@@ -898,6 +909,16 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 	{
 		for (auto& p : n->inputs) p.data.DeepClear();
 		for (auto& p : n->outputs) p.data.DeepClear();
+	}
+
+	// === COMPONENT PRESERVATION SYSTEM (RESTORE) ===
+	for (auto& [name, comps] : componentBackup) {
+		GameObject* obj = scene.FindObject(name);
+		if (obj) {
+			obj->AttachComponents(comps);
+		}
+		// If obj is null, it was deleted and not recreated by the graph.
+		// The components are intentionally lost in this case.
 	}
 
 	if (progressCallback) {

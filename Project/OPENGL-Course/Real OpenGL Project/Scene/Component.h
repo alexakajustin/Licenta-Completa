@@ -16,5 +16,6 @@ public:
     virtual void DrawInspector() {}
 
     GameObject* GetGameObject() const { return gameObject; }
+    void SetGameObject(GameObject* owner) { gameObject = owner; }
     virtual std::string GetName() const = 0;
 };

@@ -308,8 +308,22 @@ public:
 		}
 	}
 
+	bool HasComponents() const { return !components.empty(); }
+
 	const std::vector<std::unique_ptr<Component>>& GetComponents() const {
 		return components;
+	}
+
+	std::vector<std::unique_ptr<Component>> DetachAllComponents() {
+		return std::move(components);
+	}
+
+	void AttachComponents(std::vector<std::unique_ptr<Component>>& comps) {
+		for (auto& c : comps) {
+			c->SetGameObject(this);
+			components.push_back(std::move(c));
+		}
+		comps.clear();
 	}
 
 	// Will call Update on all components
