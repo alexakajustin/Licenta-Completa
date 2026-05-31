@@ -30,6 +30,7 @@
 #include "Scene/BoxCollider.h"
 #include "Scene/MeshCollider.h"
 #include "Scene/CapsuleCollider.h"
+#include "Scene/RigidBody.h"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -1169,18 +1170,9 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				if (!isPlaying)
 				{
 					// Not playing — show placeholder
-					bool hasPlayer = (scene.FindPlayer() != nullptr);
 					ImVec2 center(gamePanelSize.x * 0.5f, gamePanelSize.y * 0.5f);
-					ImGui::SetCursorPos(ImVec2(center.x - 120.0f, center.y - 20.0f));
-
-					if (hasPlayer)
-						ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "Press Play to start the game.");
-					else
-					{
-						ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f), "No Player in scene.");
-						ImGui::SetCursorPos(ImVec2(center.x - 140.0f, center.y + 5.0f));
-						ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Right-click Hierarchy to create a Player.");
-					}
+					ImGui::SetCursorPos(ImVec2(center.x - 150.0f, center.y - 10.0f));
+					ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "Press Play to start physics simulation.");
 				}
 				else if (gameTextureID != 0)
 				{
@@ -1991,6 +1983,13 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 				if (ImGui::MenuItem("CapsuleCollider")) {
 					selected->AddComponent<CapsuleCollider>();
+				}
+				if (ImGui::MenuItem("RigidBody")) {
+					if (!selected->GetComponent<RigidBody>()) {
+						selected->AddComponent<RigidBody>();
+					} else {
+						printf("[EditorUI] WARNING: A RigidBody component already exists on this GameObject.\n");
+					}
 				}
 				if (ImGui::MenuItem("Player")) {
 					// Only allow one Player component per scene

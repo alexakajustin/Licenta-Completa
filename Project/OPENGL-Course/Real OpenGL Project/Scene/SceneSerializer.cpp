@@ -11,6 +11,7 @@
 #include "Scene/BoxCollider.h"
 #include "Scene/MeshCollider.h"
 #include "Scene/CapsuleCollider.h"
+#include "Scene/RigidBody.h"
 #include "Scene/Player.h"
 #include "Scene/Planet.h"
 #include "Lighting/LightObject.h"
@@ -268,6 +269,15 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 						cJson["eyeHeight"] = p->GetEyeHeight();
 						cJson["jumpForce"] = p->GetJumpForce();
 						cJson["gravity"] = p->GetGravity();
+					}
+				} else if (comp->GetName() == "RigidBody") {
+					RigidBody* rb = dynamic_cast<RigidBody*>(comp.get());
+					if (rb) {
+						cJson["bodyType"] = static_cast<int>(rb->GetType());
+						cJson["mass"] = rb->GetMass();
+						cJson["friction"] = rb->GetFriction();
+						cJson["restitution"] = rb->GetRestitution();
+						cJson["lockRotation"] = rb->GetLockRotation();
 					}
 				}
 				compsArray.push_back(cJson);
@@ -768,6 +778,13 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 						p->SetEyeHeight(cJson.value("eyeHeight", 1.7f));
 						p->SetJumpForce(cJson.value("jumpForce", 5.0f));
 						p->SetGravity(cJson.value("gravity", 9.8f));
+					} else if (type == "RigidBody") {
+						RigidBody* rb = obj->AddComponent<RigidBody>();
+						rb->SetType(static_cast<RigidBody::BodyType>(cJson.value("bodyType", static_cast<int>(RigidBody::BodyType::Dynamic))));
+						rb->SetMass(cJson.value("mass", 1.0f));
+						rb->SetFriction(cJson.value("friction", 0.2f));
+						rb->SetRestitution(cJson.value("restitution", 0.0f));
+						rb->SetLockRotation(cJson.value("lockRotation", false));
 					}
 				}
 			}

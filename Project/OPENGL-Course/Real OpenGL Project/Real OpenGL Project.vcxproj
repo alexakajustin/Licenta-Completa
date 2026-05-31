@@ -90,15 +90,15 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -110,7 +110,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -118,8 +118,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -129,15 +129,15 @@
       <PreprocessorDefinitions>_WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,7 +149,7 @@
       <PreprocessorDefinitions>_WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -158,8 +158,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Check Unit Test|x64'">
@@ -169,15 +169,15 @@
       <PreprocessorDefinitions>_WIN64;_DEBUG;_CONSOLE;RUN_UNIT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -265,6 +265,8 @@
     <ClCompile Include="Tests\NoiseTests.cpp" />
     <ClCompile Include="Tests\RenderTests.cpp" />
     <ClCompile Include="Tests\LightingTests.cpp" />
+    <ClCompile Include="Simulation\PhysicsSystem.cpp" />
+    <ClCompile Include="Scene\RigidBody.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\CustomNodes\Alien_Sphere.json" />
@@ -618,6 +620,8 @@
     <ClInclude Include="Nodes\Math\BranchNode.h" />
     <ClInclude Include="Nodes\Math\FilterTransformListNode.h" />
     <ClInclude Include="Nodes\Math\ForEachNode.h" />
+    <ClInclude Include="Simulation\PhysicsSystem.h" />
+    <ClInclude Include="Scene\RigidBody.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\aabb.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\ai_assert.h" />
     <ClInclude Include="External Libs\ASSIMP\include\assimp\anim.h" />

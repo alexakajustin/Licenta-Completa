@@ -82,16 +82,11 @@ private:
 	/// Read mouse deltas and update yaw/pitch, clamping pitch to [-89, 89].
 	void ProcessMouseLook(float xChange, float yChange);
 
-	/// Resolve horizontal collisions against Box, Capsule, and Mesh colliders.
-	void ResolveHorizontalCollisions(glm::vec3& position, SceneManager& scene) const;
-
-	/// Query the scene for the ground height directly beneath the given XZ position.
-	/// Returns the Y coordinate of the terrain surface, or 0.0 if no terrain is found.
-	float QueryGroundHeight(const glm::vec3& position, SceneManager& scene) const;
-
 	/// Compute the front direction vector from yaw/pitch (horizontal only, for movement).
 	glm::vec3 GetFlatFront() const;
 
 	/// Compute the full front direction vector from yaw/pitch (for camera).
 	glm::vec3 GetLookDirection() const;
+	
+	bool mPhysicsInitialized = false;
 };

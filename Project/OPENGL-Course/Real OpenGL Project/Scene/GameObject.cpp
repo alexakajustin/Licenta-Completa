@@ -1,4 +1,9 @@
 #include "Scene/GameObject.h"
+#include "Scene/BoxCollider.h"
+#include "Scene/CapsuleCollider.h"
+#include "Scene/MeshCollider.h"
+#include "Scene/RigidBody.h"
+#include "Scene/Player.h"
 #include "CommonValues.h"
 #include "Application.h"
 #include <glm/gtx/norm.hpp>
@@ -24,7 +29,7 @@ GameObject* GameObject::Clone(const std::string& newName)
 	clone->transform = this->transform;
 	clone->inheritScale = this->inheritScale;
 
-	// Copy components
+	// Copy mesh components
 	clone->model = this->model;
 	if (this->mesh) {
 		clone->SetMesh(this->mesh);
@@ -45,6 +50,44 @@ GameObject* GameObject::Clone(const std::string& newName)
 
 	if (this->hasCustomMesh && this->cpuMeshData) {
 		clone->SetCPUMeshData(this->cpuMeshData); // Shared ref
+	}
+
+	// Copy components list (colliders first, then rigidbodies/players)
+	for (const auto& comp : this->components) {
+		if (auto* box = dynamic_cast<BoxCollider*>(comp.get())) {
+			auto* newBox = clone->AddComponent<BoxCollider>();
+			newBox->size = box->size;
+			newBox->offset = box->offset;
+			newBox->isTrigger = box->isTrigger;
+		}
+		else if (auto* capsule = dynamic_cast<CapsuleCollider*>(comp.get())) {
+			auto* newCapsule = clone->AddComponent<CapsuleCollider>();
+			newCapsule->height = capsule->height;
+			newCapsule->radius = capsule->radius;
+			newCapsule->offset = capsule->offset;
+		}
+		else if (auto* meshCol = dynamic_cast<MeshCollider*>(comp.get())) {
+			clone->AddComponent<MeshCollider>();
+		}
+	}
+
+	for (const auto& comp : this->components) {
+		if (auto* rb = dynamic_cast<RigidBody*>(comp.get())) {
+			auto* newRb = clone->AddComponent<RigidBody>();
+			newRb->SetType(rb->GetType());
+			newRb->SetMass(rb->GetMass());
+			newRb->SetFriction(rb->GetFriction());
+			newRb->SetRestitution(rb->GetRestitution());
+			newRb->SetLockRotation(rb->GetLockRotation());
+		}
+		else if (auto* player = dynamic_cast<Player*>(comp.get())) {
+			auto* newPlayer = clone->AddComponent<Player>();
+			newPlayer->SetMoveSpeed(player->GetMoveSpeed());
+			newPlayer->SetTurnSpeed(player->GetTurnSpeed());
+			newPlayer->SetEyeHeight(player->GetEyeHeight());
+			newPlayer->SetJumpForce(player->GetJumpForce());
+			newPlayer->SetGravity(player->GetGravity());
+		}
 	}
 
 	// Recursively clone children
@@ -628,7 +671,19 @@ void GameObject::RemoveTextureLayer(int index)
 const MeshData& GameObject::GetCPUMeshData() const
 {
 	static MeshData empty;
-	return cpuMeshData ? *cpuMeshData : empty;
+	if (cpuMeshData) {
+		return *cpuMeshData;
+	}
+	if (model) {
+		auto* nonConstThis = const_cast<GameObject*>(this);
+		nonConstThis->cpuMeshData = std::make_shared<MeshData>();
+		const auto& submeshes = model->GetMeshDataList();
+		for (const auto& submesh : submeshes) {
+			nonConstThis->cpuMeshData->Append(submesh);
+		}
+		return *cpuMeshData;
+	}
+	return empty;
 }
 
 void GameObject::GetWorldBounds(glm::vec3& min, glm::vec3& max)

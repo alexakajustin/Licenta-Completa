@@ -61,6 +61,7 @@ private:
 	// ========== Play Mode ==========
 	enum class PlayState { EditMode, PlayMode };
 	PlayState playState = PlayState::EditMode;
+	int lastActiveViewportTab = -1;
 
 	void StartPlayMode();
 	void StopPlayMode();

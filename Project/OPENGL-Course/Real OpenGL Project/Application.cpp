@@ -35,6 +35,11 @@
 
 #include "Core/AssetManager.h"
 #include "Core/ServiceLocator.h"
+#include "Simulation/PhysicsSystem.h"
+#include "Scene/RigidBody.h"
+#include "Scene/BoxCollider.h"
+#include "Scene/MeshCollider.h"
+#include "Scene/CapsuleCollider.h"
 
 // OpenGL Debug Callback
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -99,6 +104,7 @@ Application::Application()
 
 Application::~Application()
 {
+	PhysicsSystem::GetInstance().Shutdown();
 }
 
 bool Application::Init()
@@ -181,6 +187,8 @@ bool Application::Init()
 	assetBrowser.Init();
 
 	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
+
+	PhysicsSystem::GetInstance().Init();
 
 	return true;
 }
@@ -318,14 +326,48 @@ void Application::Run()
 		// ========== Input: Editor vs Play Mode ==========
 		int activeTab = editorUI.GetWindowState().activeViewportTab;
 
-		// 1. Player Input and Logic Update (Only if Game tab is active for player, but logic always in PlayMode)
 		if (playState == PlayState::PlayMode)
 		{
+			// Check for tab transitions to update cursor mode
+			if (activeTab != lastActiveViewportTab)
+			{
+				if (activeTab == 0) // Switched to Scene tab
+				{
+					glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+					mainWindow.setCursorEnabled(true);
+				}
+				else if (activeTab == 1) // Switched to Game tab
+				{
+					Player* player = sceneManager.FindPlayer();
+					if (player)
+					{
+						glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+						mainWindow.setCursorEnabled(false);
+					}
+					else
+					{
+						glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+						mainWindow.setCursorEnabled(true);
+					}
+				}
+				lastActiveViewportTab = activeTab;
+			}
+			// Auto-attach RigidBodies to any object that has a Collider but no RigidBody
+			// (Needed for Jolt physics to see procedural and existing colliders)
+			for (auto* obj : sceneManager.GetObjects()) {
+				if ((obj->GetComponent<BoxCollider>() || obj->GetComponent<CapsuleCollider>() || obj->GetComponent<MeshCollider>()) && !obj->GetComponent<RigidBody>()) {
+					RigidBody* rb = obj->AddComponent<RigidBody>();
+					rb->SetType(RigidBody::BodyType::Static);
+				}
+			}
+
 			Player* player = sceneManager.FindPlayer();
 			if (player && activeTab == 1)
 			{
 				player->Update(deltaTime, mainWindow, sceneManager, gameCamera);
 			}
+
+			PhysicsSystem::GetInstance().Update(deltaTime);
 
 			// Update components on all objects
 			for (auto* obj : sceneManager.GetObjects()) {
@@ -1364,15 +1406,9 @@ void Application::ResizeGameViewportFBO(int width, int height)
 
 void Application::StartPlayMode()
 {
-	Player* player = sceneManager.FindPlayer();
-	if (!player)
-	{
-		printf("[Application] Cannot start Play Mode: No Player in scene.\n");
-		return;
-	}
-
 	printf("[Application] Entering Play Mode.\n");
 	playState = PlayState::PlayMode;
+	lastActiveViewportTab = -1; // Reset tab tracking
 
 	// Backup all object transforms so we can restore them when stopping
 	transformBackups.clear();
@@ -1385,36 +1421,48 @@ void Application::StartPlayMode()
 		transformBackups[obj] = backup;
 	}
 
-	// Initialize game camera from the player's position + eye height and rotation
-	glm::vec3 playerPos = player->GetGameObject()->GetTransform().GetPosition();
-	glm::vec3 playerRot = player->GetGameObject()->GetTransform().GetRotation(); // Euler angles (pitch, yaw, roll)
-	
-	// Default OpenGL camera has yaw = -90.0f pointing along negative Z.
-	// If the player has 0 rotation in editor, they face along negative Z (yaw = -90.0f).
-	float initialYaw = -90.0f + playerRot.y;
-	float initialPitch = playerRot.x;
+	// Sync/Recreate Jolt bodies for any pre-existing RigidBodies
+	for (auto* obj : sceneManager.GetObjects())
+	{
+		if (auto* rb = obj->GetComponent<RigidBody>())
+		{
+			rb->RecreateBody();
+		}
+	}
 
-	gameCamera = Camera(
-		playerPos + glm::vec3(0.0f, player->GetEyeHeight(), 0.0f),
-		glm::vec3(0.0f, 1.0f, 0.0f),
-		initialYaw, initialPitch, 5.0f, 0.15f
-	);
+	Player* player = sceneManager.FindPlayer();
+	if (player)
+	{
+		// Initialize game camera from the player's position + eye height and rotation
+		glm::vec3 playerPos = player->GetGameObject()->GetTransform().GetPosition();
+		glm::vec3 playerRot = player->GetGameObject()->GetTransform().GetRotation(); // Euler angles (pitch, yaw, roll)
+		
+		// Default OpenGL camera has yaw = -90.0f pointing along negative Z.
+		// If the player has 0 rotation in editor, they face along negative Z (yaw = -90.0f).
+		float initialYaw = -90.0f + playerRot.y;
+		float initialPitch = playerRot.x;
 
-	// Reset the player's runtime physics state with initial rotation
-	player->ResetPlayState(initialYaw, initialPitch);
+		gameCamera = Camera(
+			playerPos + glm::vec3(0.0f, player->GetEyeHeight(), 0.0f),
+			glm::vec3(0.0f, 1.0f, 0.0f),
+			initialYaw, initialPitch, 5.0f, 0.15f
+		);
 
-	// Open the Game viewport tab automatically
-	editorUI.GetWindowState().pendingTabSwitch = 1;
+		// Reset the player's runtime physics state with initial rotation
+		player->ResetPlayState(initialYaw, initialPitch);
+	}
 
-	// Lock cursor for FPS controls
-	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	mainWindow.setCursorEnabled(false);
+	// Keep cursor enabled by default so the user can interact with the scene/editor.
+	// (They can lock/unlock it by pressing ESC or switching to the Game tab if a player exists).
+	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	mainWindow.setCursorEnabled(true);
 }
 
 void Application::StopPlayMode()
 {
 	printf("[Application] Exiting Play Mode.\n");
 	playState = PlayState::EditMode;
+	lastActiveViewportTab = -1; // Reset tab tracking
 
 	// Restore all object transforms to their pre-play state
 	for (auto& [obj, backup] : transformBackups)
@@ -1422,6 +1470,12 @@ void Application::StopPlayMode()
 		obj->GetTransform().SetPosition(backup.position);
 		obj->GetTransform().SetRotation(backup.rotation);
 		obj->GetTransform().SetScale(backup.scale);
+
+		// Recreate body at original transform to clear velocities and snap back
+		if (auto* rb = obj->GetComponent<RigidBody>())
+		{
+			rb->RecreateBody();
+		}
 	}
 	transformBackups.clear();
 
