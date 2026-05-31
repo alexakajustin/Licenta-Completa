@@ -64,6 +64,7 @@ private:
 	float moveSpeed  = 5.0f;
 	float turnSpeed  = 0.15f;
 	float eyeHeight  = 1.7f;    // Camera offset above the player's feet position
+	float radius     = 0.3f;    // Player horizontal collision radius
 	float jumpForce  = 6.0f;
 	float gravity    = 15.0f;
 
@@ -80,6 +81,9 @@ private:
 
 	/// Read mouse deltas and update yaw/pitch, clamping pitch to [-89, 89].
 	void ProcessMouseLook(float xChange, float yChange);
+
+	/// Resolve horizontal collisions against Box, Capsule, and Mesh colliders.
+	void ResolveHorizontalCollisions(glm::vec3& position, SceneManager& scene) const;
 
 	/// Query the scene for the ground height directly beneath the given XZ position.
 	/// Returns the Y coordinate of the terrain surface, or 0.0 if no terrain is found.

@@ -6,7 +6,7 @@
     "debugFreezeCulling": false,
     "debugLODColoring": false,
     "debugShowBounds": false,
-    "debugShowCulling": false,
+    "debugShowCulling": true,
     "debugShowHiZ": false,
     "enableOcclusionCulling": true,
     "godraysDecay": 0.800000011920929,

@@ -322,7 +322,7 @@ void Application::Run()
 		if (playState == PlayState::PlayMode)
 		{
 			Player* player = sceneManager.FindPlayer();
-			if (player && activeTab == 1 && !mainWindow.isCursorEnabled())
+			if (player && activeTab == 1)
 			{
 				player->Update(deltaTime, mainWindow, sceneManager, gameCamera);
 			}

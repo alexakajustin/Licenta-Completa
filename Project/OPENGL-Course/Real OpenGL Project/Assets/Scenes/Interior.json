@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.6123724579811096,
-            -0.5000000596046448,
-            -0.6123724579811096
+            0.015880992636084557,
+            0.9998477101325989,
+            -0.007237385492771864
         ],
-        "pitch": -30.0,
+        "pitch": 89.0,
         "position": [
-            -7.218682289123535,
-            3.4826557636260986,
-            2.578378677368164
+            -6.241415977478027,
+            2.4707226753234863,
+            0.6644533276557922
         ],
-        "yaw": -45.0
+        "yaw": -24.5
     },
     "instancedGroups": [],
     "lights": [
@@ -80,7 +80,7 @@
                 "start": 157
             }
         ],
-        "nextId": 345,
+        "nextId": 407,
         "nodes": [
             {
                 "doorHeight": 1.75,
@@ -3934,7 +3934,7 @@
         {
             "components": [
                 {
-                    "eyeHeight": 1.7000000476837158,
+                    "eyeHeight": 0.75,
                     "gravity": 15.0,
                     "jumpForce": 6.0,
                     "moveSpeed": 5.0,
@@ -3970,6 +3970,11 @@
             }
         },
         {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                }
+            ],
             "customMeshPath": "Interior_Interior_1_Interior_Walls.mesh",
             "inheritScale": true,
             "isVisible": true,

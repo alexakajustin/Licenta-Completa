@@ -240,6 +240,14 @@ struct MeshData
 	int GetVertexCount() const { return (int)vertices.size() / 14; }
 	int GetTriangleCount() const { return (int)indices.size() / 3; }
 
+	void GetTriangle(int triangleIndex, glm::vec3& v0, glm::vec3& v1, glm::vec3& v2) const
+	{
+		int baseIndex = triangleIndex * 3;
+		v0 = GetPosition(indices[baseIndex]);
+		v1 = GetPosition(indices[baseIndex + 1]);
+		v2 = GetPosition(indices[baseIndex + 2]);
+	}
+
 	float GetHeightAt(float x, float z, float radius = 0.0f) const
 	{
 		BuildHeightCacheIfNeeded();
