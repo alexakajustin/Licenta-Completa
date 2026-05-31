@@ -1406,6 +1406,22 @@ std::string SceneManager::GetSelectedName() const
 
 void SceneManager::SetSelectedIndex(int index, bool multiSelect, bool rangeSelect)
 {
+	if (index >= 0 && index < (int)objects.size()) {
+		GameObject* obj = objects[index];
+		GameObject* p = obj;
+		while (p) {
+			Player* player = dynamic_cast<Player*>(p);
+			if (player) {
+				auto it = std::find(objects.begin(), objects.end(), player);
+				if (it != objects.end()) {
+					index = (int)std::distance(objects.begin(), it);
+				}
+				break;
+			}
+			p = p->GetParent();
+		}
+	}
+
 	if (!multiSelect && !rangeSelect) {
 		selectedObjectIndices.clear();
 		selectedLightIndices.clear();
@@ -1573,8 +1589,21 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 			screenPos.y >= rectMin.y && screenPos.y <= rectMax.y) {
 			
 			if (IsVisible(screenPos, depth)) {
-				if (!IsObjectSelected(i)) {
-					selectedObjectIndices.push_back(i);
+				int finalIndex = i;
+				GameObject* p = objects[i];
+				while (p) {
+					Player* player = dynamic_cast<Player*>(p);
+					if (player) {
+						auto it = std::find(objects.begin(), objects.end(), player);
+						if (it != objects.end()) {
+							finalIndex = (int)std::distance(objects.begin(), it);
+						}
+						break;
+					}
+					p = p->GetParent();
+				}
+				if (!IsObjectSelected(finalIndex)) {
+					selectedObjectIndices.push_back(finalIndex);
 				}
 			}
 		}
@@ -2099,7 +2128,7 @@ void SceneManager::Paste()
 		// Clone again so we can paste multiple times
 		GameObject* clone = proto->Clone(proto->GetName());
 		objects.push_back(clone);
-		selectedObjectIndices.push_back((int)objects.size() - 1);
+		SetSelectedIndex((int)objects.size() - 1, true);
 	}
 
 	// Paste Lights

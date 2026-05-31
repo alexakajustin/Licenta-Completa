@@ -57,7 +57,7 @@ public:
 	float GetPitch()  const { return pitch; }
 
 	/// Reset runtime state (called when entering Play Mode)
-	void ResetPlayState();
+	void ResetPlayState(float initialYaw = -90.0f, float initialPitch = 0.0f);
 
 private:
 	// ===== Movement Parameters =====

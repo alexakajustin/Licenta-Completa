@@ -30,6 +30,7 @@ public:
 	GLfloat getYScrollChange();
 	bool* getMouseButtons() { return mouseButtons; }
 	bool isCursorEnabled() { return cursorEnabled; }
+	void setCursorEnabled(bool enabled) { cursorEnabled = enabled; }
 
 
 	void swapBuffers() { glfwSwapBuffers(mainWindow); }

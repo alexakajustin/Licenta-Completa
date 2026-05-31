@@ -82,10 +82,10 @@ void Player::Update(float deltaTime, Window& window, SceneManager& scene, Camera
 // State Reset
 // =====================================================================
 
-void Player::ResetPlayState()
+void Player::ResetPlayState(float initialYaw, float initialPitch)
 {
-	yaw = -90.0f;
-	pitch = 0.0f;
+	yaw = initialYaw;
+	pitch = initialPitch;
 	verticalVelocity = 0.0f;
 	grounded = true;
 }

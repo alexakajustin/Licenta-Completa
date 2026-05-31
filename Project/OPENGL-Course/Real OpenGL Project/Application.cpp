@@ -1380,22 +1380,30 @@ void Application::StartPlayMode()
 		transformBackups[obj] = backup;
 	}
 
-	// Initialize game camera from the player's position + eye height
+	// Initialize game camera from the player's position + eye height and rotation
 	glm::vec3 playerPos = player->GetTransform().GetPosition();
+	glm::vec3 playerRot = player->GetTransform().GetRotation(); // Euler angles (pitch, yaw, roll)
+	
+	// Default OpenGL camera has yaw = -90.0f pointing along negative Z.
+	// If the player has 0 rotation in editor, they face along negative Z (yaw = -90.0f).
+	float initialYaw = -90.0f + playerRot.y;
+	float initialPitch = playerRot.x;
+
 	gameCamera = Camera(
 		playerPos + glm::vec3(0.0f, player->GetEyeHeight(), 0.0f),
 		glm::vec3(0.0f, 1.0f, 0.0f),
-		-90.0f, 0.0f, 5.0f, 0.15f
+		initialYaw, initialPitch, 5.0f, 0.15f
 	);
 
-	// Reset the player's runtime physics state
-	player->ResetPlayState();
+	// Reset the player's runtime physics state with initial rotation
+	player->ResetPlayState(initialYaw, initialPitch);
 
 	// Open the Game viewport tab automatically
 	editorUI.GetWindowState().pendingTabSwitch = 1;
 
 	// Lock cursor for FPS controls
 	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	mainWindow.setCursorEnabled(false);
 }
 
 void Application::StopPlayMode()
@@ -1414,4 +1422,5 @@ void Application::StopPlayMode()
 
 	// Restore cursor for editor interaction
 	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	mainWindow.setCursorEnabled(true);
 }
