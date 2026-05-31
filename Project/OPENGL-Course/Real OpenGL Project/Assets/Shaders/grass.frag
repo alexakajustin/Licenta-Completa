@@ -138,7 +138,10 @@ vec3 CalcSpotLight(SpotLight sLight, vec3 normal, vec3 viewDir)
 
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
-	float offsetScale = 0.2 * (layer + 1); 
+	float offsetScale = 0.05;
+	if (layer == 1) offsetScale = 0.1;
+	if (layer == 2) offsetScale = 0.3;
+	if (layer == 3) offsetScale = 0.6;
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
 	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
@@ -148,8 +151,12 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	if(projCoords.z > 1.0) return 0.0;
 	
 	float current = projCoords.z;
-	// Adjusted for large 20000 world unit Z-range in the orthographic projection
+	
+	// Depth bias scaled by cascade layer
 	float bias = max(0.00005 * (1.0 - dot(normal, -lightDir)), 0.00001);
+	if (layer == 1) bias *= 1.5;
+	if (layer == 2) bias *= 3.0;
+	if (layer == 3) bias *= 6.0;
 	
 	float shadow = 0.0;
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);

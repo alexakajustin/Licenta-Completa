@@ -299,6 +299,15 @@ public:
 		}
 	}
 
+	void RemoveComponent(Component* comp) {
+		for (auto it = components.begin(); it != components.end(); ++it) {
+			if (it->get() == comp) {
+				components.erase(it);
+				break;
+			}
+		}
+	}
+
 	const std::vector<std::unique_ptr<Component>>& GetComponents() const {
 		return components;
 	}

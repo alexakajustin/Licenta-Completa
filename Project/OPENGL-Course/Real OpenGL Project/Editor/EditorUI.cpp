@@ -28,6 +28,8 @@
 #include "Scene/Player.h"
 #include "External Libs/nlohmann/json.hpp"
 #include "Scene/BoxCollider.h"
+#include "Scene/MeshCollider.h"
+#include "Scene/CapsuleCollider.h"
 #include <filesystem>
 #include <set>
 #include <cstring>
@@ -1970,8 +1972,17 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			}
 
 			// --- Components ---
+			Component* componentToRemove = nullptr;
 			for (auto& comp : selected->GetComponents()) {
+				ImGui::PushID(comp.get());
 				comp->DrawInspector();
+				if (ImGui::Button("Remove Component")) {
+					componentToRemove = comp.get();
+				}
+				ImGui::PopID();
+			}
+			if (componentToRemove) {
+				selected->RemoveComponent(componentToRemove);
 			}
 
 			ImGui::Separator();
@@ -1981,6 +1992,12 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			if (ImGui::BeginPopup("AddComponentPopup")) {
 				if (ImGui::MenuItem("BoxCollider")) {
 					selected->AddComponent<BoxCollider>();
+				}
+				if (ImGui::MenuItem("MeshCollider")) {
+					selected->AddComponent<MeshCollider>();
+				}
+				if (ImGui::MenuItem("CapsuleCollider")) {
+					selected->AddComponent<CapsuleCollider>();
 				}
 				ImGui::EndPopup();
 			}

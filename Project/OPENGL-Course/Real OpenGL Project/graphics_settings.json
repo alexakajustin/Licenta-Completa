@@ -17,7 +17,7 @@
     "lod2Distance": 1500.0,
     "renderDistance": 1000.0,
     "shadowCascades": 4,
-    "shadowDistance": 100.0,
+    "shadowDistance": 200.0,
     "showWireframe": false,
     "skyboxType": 0,
     "ssaoBias": 0.02500000037252903,

@@ -183,6 +183,8 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Scene\BoxCollider.cpp" />
+    <ClCompile Include="Scene\MeshCollider.cpp" />
+    <ClCompile Include="Scene\CapsuleCollider.cpp" />
     <ClCompile Include="Editor\AssetBrowser.cpp" />
     <ClCompile Include="Procedural\BeautifulErosionNode.cpp" />
     <ClCompile Include="Core\Camera.cpp" />
@@ -983,6 +985,8 @@
     <ClInclude Include="Application.h" />
     <ClInclude Include="Scene\Component.h" />
     <ClInclude Include="Scene\BoxCollider.h" />
+    <ClInclude Include="Scene\MeshCollider.h" />
+    <ClInclude Include="Scene\CapsuleCollider.h" />
     <ClInclude Include="Editor\AssetBrowser.h" />
     <ClInclude Include="Editor\EditorUI.h" />
     <ClInclude Include="Core\Frustum.h" />

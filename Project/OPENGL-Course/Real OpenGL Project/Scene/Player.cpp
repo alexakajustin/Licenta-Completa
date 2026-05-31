@@ -132,13 +132,102 @@ void Player::ProcessMouseLook(float xChange, float yChange)
 // Terrain Query
 // =====================================================================
 
+#include "Scene/BoxCollider.h"
+#include "Scene/MeshCollider.h"
+#include "Scene/CapsuleCollider.h"
+
 float Player::QueryGroundHeight(const glm::vec3& position, SceneManager& scene) const
 {
-	// Simple flat ground at Y=0 for now.
-	// TODO: Enhance with heightmap or raycast-based terrain queries.
-	(void)position;
-	(void)scene;
-	return 0.0f;
+	float highestGround = -1e10f;
+	bool foundGround = false;
+
+	// Ray from slightly above the player's feet straight down
+	glm::vec3 rayOrigin = position + glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 rayDir = glm::vec3(0.0f, -1.0f, 0.0f);
+
+	for (GameObject* obj : scene.GetObjects())
+	{
+		if (!obj || !obj->GetVisible() || obj == this) continue;
+
+		BoxCollider* collider = obj->GetComponent<BoxCollider>();
+		if (collider && !collider->isTrigger)
+		{
+			glm::mat4 invWorld = glm::inverse(obj->GetWorldMatrix());
+			glm::vec3 localOrigin = invWorld * glm::vec4(rayOrigin, 1.0f);
+			glm::vec3 localDir = invWorld * glm::vec4(rayDir, 0.0f);
+
+			glm::vec3 boxMin = collider->offset - collider->size * 0.5f;
+			glm::vec3 boxMax = collider->offset + collider->size * 0.5f;
+
+			float tmin = -1e10f;
+			float tmax = 1e10f;
+			bool hit = true;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				if (std::abs(localDir[i]) < 1e-6f)
+				{
+					if (localOrigin[i] < boxMin[i] || localOrigin[i] > boxMax[i])
+					{
+						hit = false;
+						break;
+					}
+				}
+				else
+				{
+					float t1 = (boxMin[i] - localOrigin[i]) / localDir[i];
+					float t2 = (boxMax[i] - localOrigin[i]) / localDir[i];
+					if (t1 > t2) std::swap(t1, t2);
+					if (t1 > tmin) tmin = t1;
+					if (t2 < tmax) tmax = t2;
+					if (tmin > tmax)
+					{
+						hit = false;
+						break;
+					}
+				}
+			}
+
+			// tmax > 0 ensures box is not behind the ray
+			// tmin >= -0.5f ensures ray starts outside or slightly inside the top boundary
+			if (hit && tmax >= 0.0f && tmin >= -0.5f)
+			{
+				float t = std::max(0.0f, tmin);
+				glm::vec3 hitPoint = rayOrigin + rayDir * t;
+				
+				if (hitPoint.y > highestGround)
+				{
+					highestGround = hitPoint.y;
+					foundGround = true;
+				}
+			}
+		}
+
+		MeshCollider* meshCollider = obj->GetComponent<MeshCollider>();
+		if (meshCollider)
+		{
+			glm::mat4 invWorld = glm::inverse(obj->GetWorldMatrix());
+			glm::vec4 localPos = invWorld * glm::vec4(position, 1.0f);
+
+			const MeshData& md = obj->GetCPUMeshData();
+			if (md.GetVertexCount() > 0)
+			{
+				float localHeight = md.GetHeightAt(localPos.x, localPos.z, 0.0f);
+				if (localHeight > -1e9f)
+				{
+					glm::vec4 worldPos = obj->GetWorldMatrix() * glm::vec4(localPos.x, localHeight, localPos.z, 1.0f);
+					if (worldPos.y > highestGround && worldPos.y < position.y + 1.5f)
+					{
+						highestGround = worldPos.y;
+						foundGround = true;
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback to 0.0f so player doesn't fall forever if they walk off the map
+	return foundGround ? highestGround : 0.0f;
 }
 
 // =====================================================================
