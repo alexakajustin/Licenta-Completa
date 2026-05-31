@@ -2,18 +2,20 @@
 #include "Core/Camera.h"
 #include "Core/Window.h"
 #include "Scene/SceneManager.h"
+#include "Scene/GameObject.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <cmath>
+#include <imgui.h>
 
 // =====================================================================
-// Construction
+// Lifecycle
 // =====================================================================
 
-Player::Player(const std::string& name)
-	: GameObject(name)
+Player::Player(GameObject* owner)
+	: Component(owner)
 {
 }
 
@@ -34,7 +36,7 @@ void Player::Update(float deltaTime, Window& window, SceneManager& scene, Camera
 	glm::vec3 moveDelta = ProcessKeyboard(window.getKeys(), deltaTime);
 
 	// 3. Apply horizontal movement to the player's transform
-	glm::vec3 pos = GetTransform().GetPosition();
+	glm::vec3 pos = gameObject->GetTransform().GetPosition();
 	pos.x += moveDelta.x;
 	pos.z += moveDelta.z;
 
@@ -68,7 +70,7 @@ void Player::Update(float deltaTime, Window& window, SceneManager& scene, Camera
 	}
 
 	// 6. Write back position to the transform
-	GetTransform().SetPosition(pos);
+	gameObject->GetTransform().SetPosition(pos);
 
 	// 7. Sync camera: position = player feet + eye height, orientation = yaw/pitch
 	glm::vec3 eyePos = pos + glm::vec3(0.0f, eyeHeight, 0.0f);
@@ -147,7 +149,7 @@ float Player::QueryGroundHeight(const glm::vec3& position, SceneManager& scene) 
 
 	for (GameObject* obj : scene.GetObjects())
 	{
-		if (!obj || !obj->GetVisible() || obj == this) continue;
+		if (!obj || !obj->GetVisible() || obj == gameObject) continue;
 
 		BoxCollider* collider = obj->GetComponent<BoxCollider>();
 		if (collider && !collider->isTrigger)
@@ -252,4 +254,16 @@ glm::vec3 Player::GetLookDirection() const
 	dir.y = sin(glm::radians(pitch));
 	dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	return glm::normalize(dir);
+}
+
+void Player::DrawInspector()
+{
+	if (ImGui::CollapsingHeader("Player", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat("Move Speed", &moveSpeed, 0.1f, 0.0f, 100.0f);
+		ImGui::DragFloat("Turn Speed", &turnSpeed, 0.1f, 0.0f, 1000.0f);
+		ImGui::DragFloat("Eye Height", &eyeHeight, 0.05f, 0.0f, 10.0f);
+		ImGui::DragFloat("Jump Force", &jumpForce, 0.1f, 0.0f, 50.0f);
+		ImGui::DragFloat("Gravity", &gravity, 0.1f, 0.0f, 100.0f);
+	}
 }

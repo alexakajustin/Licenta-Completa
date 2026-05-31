@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/GameObject.h"
+#include "Scene/Component.h"
 #include <glm/glm.hpp>
 
 class Camera;
@@ -12,17 +12,14 @@ class SceneManager;
  * @brief First-person player controller that drives a Camera during Play Mode.
  *
  * Design:
- *   - Inherits from GameObject so it participates in the scene hierarchy,
- *     serialization, and hierarchy panel like any other object.
- *   - Only ONE Player can exist in a scene at a time (enforced by SceneManager).
- *   - During Play Mode the Application calls Update() each frame, which reads
- *     keyboard/mouse input from the Window, applies WASD movement + gravity,
- *     snaps to terrain height, and writes the result into the supplied Camera.
+ *   - Inherits from Component so it can be attached to any GameObject.
+ *   - Only ONE Player component should exist in a scene at a time.
+ *   - During Play Mode the Application calls Update() each frame.
  */
-class Player : public GameObject
+class Player : public Component
 {
 public:
-	Player(const std::string& name = "Player");
+	Player(GameObject* owner);
 	~Player();
 
 	// ===== Core Update (called every frame during Play Mode) =====
@@ -58,6 +55,9 @@ public:
 
 	/// Reset runtime state (called when entering Play Mode)
 	void ResetPlayState(float initialYaw = -90.0f, float initialPitch = 0.0f);
+
+	std::string GetName() const override { return "Player"; }
+	void DrawInspector() override;
 
 private:
 	// ===== Movement Parameters =====

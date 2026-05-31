@@ -611,13 +611,6 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere", spawnPos); }
 			if (ImGui::MenuItem("3D Object -> Planet")) { scene.CreateGameObject("Planet", spawnPos); }
 			ImGui::Separator();
-			{
-				bool playerExists = (scene.FindPlayer() != nullptr);
-				if (playerExists) ImGui::BeginDisabled();
-				if (ImGui::MenuItem("Player")) { scene.CreateGameObject("Player", spawnPos); }
-				if (playerExists) ImGui::EndDisabled();
-			}
-			ImGui::Separator();
 			if (ImGui::BeginMenu("Light"))
 			{
 				if (ImGui::MenuItem("Point Light")) { scene.CreateLight(LightType::Point, spawnPos); }
@@ -1998,6 +1991,14 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				}
 				if (ImGui::MenuItem("CapsuleCollider")) {
 					selected->AddComponent<CapsuleCollider>();
+				}
+				if (ImGui::MenuItem("Player")) {
+					// Only allow one Player component per scene
+					if (!scene.FindPlayer()) {
+						selected->AddComponent<Player>();
+					} else {
+						printf("[EditorUI] WARNING: A Player component already exists in the scene.\n");
+					}
 				}
 				ImGui::EndPopup();
 			}

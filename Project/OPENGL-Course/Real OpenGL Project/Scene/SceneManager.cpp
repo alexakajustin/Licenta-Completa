@@ -306,7 +306,7 @@ Player* SceneManager::FindPlayer()
 {
 	for (auto* obj : objects)
 	{
-		Player* player = dynamic_cast<Player*>(obj);
+		Player* player = obj->GetComponent<Player>();
 		if (player) return player;
 	}
 	return nullptr;
@@ -1410,9 +1410,8 @@ void SceneManager::SetSelectedIndex(int index, bool multiSelect, bool rangeSelec
 		GameObject* obj = objects[index];
 		GameObject* p = obj;
 		while (p) {
-			Player* player = dynamic_cast<Player*>(p);
-			if (player) {
-				auto it = std::find(objects.begin(), objects.end(), player);
+			if (p->GetComponent<Player>()) {
+				auto it = std::find(objects.begin(), objects.end(), p);
 				if (it != objects.end()) {
 					index = (int)std::distance(objects.begin(), it);
 				}
@@ -1592,9 +1591,8 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 				int finalIndex = i;
 				GameObject* p = objects[i];
 				while (p) {
-					Player* player = dynamic_cast<Player*>(p);
-					if (player) {
-						auto it = std::find(objects.begin(), objects.end(), player);
+					if (p->GetComponent<Player>()) {
+						auto it = std::find(objects.begin(), objects.end(), p);
 						if (it != objects.end()) {
 							finalIndex = (int)std::distance(objects.begin(), it);
 						}
@@ -1696,27 +1694,7 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 		obj->SetMesh(PrimitiveGenerator::CreateSphere());
 	}
 	else if (type == "Planet") {
-		Planet* planet = new Planet(name);
-		planet->Generate();
-		obj = planet;
-	}
-	else if (type == "Player") {
-		// Enforce single player per scene
-		if (FindPlayer()) {
-			printf("[SceneManager] WARNING: A Player already exists in the scene. Only one Player is allowed.\n");
-			return;
-		}
-		obj = new Player("Player");
-		
-		// Add visual capsule (Cube scaled to 1x1.7x1)
-		GameObject* visuals = new GameObject("PlayerVisuals");
-		visuals->SetMesh(PrimitiveGenerator::CreateCube());
-		visuals->GetTransform().SetScale(glm::vec3(1.0f, 1.7f, 1.0f));
-		visuals->GetTransform().SetPosition(glm::vec3(0.0f, 1.7f / 2.0f, 0.0f)); // Shift up so feet are at pos.y!
-		visuals->SetPrimitiveType("Cube");
-		
-		obj->AddChild(visuals);
-		objects.push_back(visuals);
+		obj = new Planet("Planet");
 	}
 	else {
 		obj = new GameObject(name);

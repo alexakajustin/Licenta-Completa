@@ -8,6 +8,10 @@
 #include "Core/Camera.h"
 #include "Scene/SceneManager.h"
 #include "Scene/GameObject.h"
+#include "Scene/BoxCollider.h"
+#include "Scene/MeshCollider.h"
+#include "Scene/CapsuleCollider.h"
+#include "Scene/Player.h"
 #include "Scene/Planet.h"
 #include "Lighting/LightObject.h"
 #include "Lighting/DirectionalLight.h"
@@ -247,6 +251,41 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			objJson["tessellation"]["distance"] = obj->GetTessDistance();
 			objJson["tessellation"]["displacementScale"] = obj->GetTessDisplacementScale();
 			objJson["tessellation"]["displacementBias"] = obj->GetTessDisplacementBias();
+		}
+
+		// Components
+		const auto& components = obj->GetComponents();
+		if (!components.empty()) {
+			json compsArray = json::array();
+			for (const auto& comp : components) {
+				json cJson;
+				cJson["type"] = comp->GetName();
+				if (comp->GetName() == "BoxCollider") {
+					BoxCollider* bc = dynamic_cast<BoxCollider*>(comp.get());
+					if (bc) {
+						cJson["size"] = { bc->size.x, bc->size.y, bc->size.z };
+						cJson["offset"] = { bc->offset.x, bc->offset.y, bc->offset.z };
+						cJson["isTrigger"] = bc->isTrigger;
+					}
+				} else if (comp->GetName() == "CapsuleCollider") {
+					CapsuleCollider* cc = dynamic_cast<CapsuleCollider*>(comp.get());
+					if (cc) {
+						cJson["height"] = cc->height;
+						cJson["radius"] = cc->radius;
+					}
+				} else if (comp->GetName() == "Player") {
+					Player* p = dynamic_cast<Player*>(comp.get());
+					if (p) {
+						cJson["moveSpeed"] = p->GetMoveSpeed();
+						cJson["turnSpeed"] = p->GetTurnSpeed();
+						cJson["eyeHeight"] = p->GetEyeHeight();
+						cJson["jumpForce"] = p->GetJumpForce();
+						cJson["gravity"] = p->GetGravity();
+					}
+				}
+				compsArray.push_back(cJson);
+			}
+			objJson["components"] = compsArray;
 		}
 
 
@@ -712,6 +751,38 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				obj->SetTessDistance(tessJson.value("distance", 50.0f));
 				obj->SetTessDisplacementScale(tessJson.value("displacementScale", 1.0f));
 				obj->SetTessDisplacementBias(tessJson.value("displacementBias", -0.5f));
+			}
+
+			// Components
+			if (objJson.contains("components")) {
+				for (const auto& cJson : objJson["components"]) {
+					std::string type = cJson.value("type", "");
+					if (type == "BoxCollider") {
+						BoxCollider* bc = obj->AddComponent<BoxCollider>();
+						if (cJson.contains("size")) {
+							auto& s = cJson["size"];
+							bc->size = glm::vec3(s[0].get<float>(), s[1].get<float>(), s[2].get<float>());
+						}
+						if (cJson.contains("offset")) {
+							auto& o = cJson["offset"];
+							bc->offset = glm::vec3(o[0].get<float>(), o[1].get<float>(), o[2].get<float>());
+						}
+						bc->isTrigger = cJson.value("isTrigger", false);
+					} else if (type == "CapsuleCollider") {
+						CapsuleCollider* cc = obj->AddComponent<CapsuleCollider>();
+						cc->height = cJson.value("height", 1.7f);
+						cc->radius = cJson.value("radius", 0.5f);
+					} else if (type == "MeshCollider") {
+						obj->AddComponent<MeshCollider>();
+					} else if (type == "Player") {
+						Player* p = obj->AddComponent<Player>();
+						p->SetMoveSpeed(cJson.value("moveSpeed", 5.0f));
+						p->SetTurnSpeed(cJson.value("turnSpeed", 50.0f));
+						p->SetEyeHeight(cJson.value("eyeHeight", 1.7f));
+						p->SetJumpForce(cJson.value("jumpForce", 5.0f));
+						p->SetGravity(cJson.value("gravity", 9.8f));
+					}
+				}
 			}
 
 			// Culling Settings

@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.9552313685417175,
-            -0.24615328013896942,
-            0.1641387790441513
+            0.012394428253173828,
+            0.9998477101325989,
+            -0.012286734767258167
         ],
-        "pitch": -14.25,
+        "pitch": 89.0,
         "position": [
-            676.6631469726563,
-            223.10818481445313,
-            310.45001220703125
+            680.2280883789063,
+            219.8818359375,
+            309.3614807128906
         ],
-        "yaw": 9.75
+        "yaw": -44.75
     },
     "instancedGroups": [
         {
@@ -32,13 +32,13 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.8429999947547913,
+            "ambientIntensity": 0.5220000147819519,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 1.6859999895095825,
+            "diffuseIntensity": 1.8830000162124634,
             "direction": [
                 0.8237540125846863,
                 -0.4881644546985626,
@@ -71,7 +71,7 @@
                 "start": 80
             }
         ],
-        "nextId": 292,
+        "nextId": 360,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -400871,6 +400871,11 @@
     },
     "objects": [
         {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                }
+            ],
             "customMeshPath": "Base_Mountain_Water_Plane.mesh",
             "inheritScale": true,
             "isVisible": true,
@@ -401373,6 +401378,44 @@
                 "scale": [
                     1.0,
                     1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "eyeHeight": 1.7000000476837158,
+                    "gravity": 15.0,
+                    "jumpForce": 6.0,
+                    "moveSpeed": 5.0,
+                    "turnSpeed": 0.15000000596046448,
+                    "type": "Player"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Cube 9",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Cube",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    686.351806640625,
+                    217.68943786621094,
+                    303.2377624511719
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.7300000190734863,
                     1.0
                 ]
             }

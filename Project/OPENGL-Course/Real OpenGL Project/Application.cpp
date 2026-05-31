@@ -1386,8 +1386,8 @@ void Application::StartPlayMode()
 	}
 
 	// Initialize game camera from the player's position + eye height and rotation
-	glm::vec3 playerPos = player->GetTransform().GetPosition();
-	glm::vec3 playerRot = player->GetTransform().GetRotation(); // Euler angles (pitch, yaw, roll)
+	glm::vec3 playerPos = player->GetGameObject()->GetTransform().GetPosition();
+	glm::vec3 playerRot = player->GetGameObject()->GetTransform().GetRotation(); // Euler angles (pitch, yaw, roll)
 	
 	// Default OpenGL camera has yaw = -90.0f pointing along negative Z.
 	// If the player has 0 rotation in editor, they face along negative Z (yaw = -90.0f).
