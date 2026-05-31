@@ -26,7 +26,7 @@ public:
 	~EditorUI();
 
 	// Draw all editor panels (hierarchy + inspector)
-	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr);
+	void Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr, GLuint gameTextureID = 0, bool isPlaying = false);
 
 	// Viewport metadata update (to eliminate 1-frame lag)
 	void UpdateViewportMetadata();
@@ -37,13 +37,18 @@ public:
 	const std::string& GetPendingScenePath() const { return pendingScenePath; }
 	void ClearPendingSceneAction() { pendingSceneAction = SceneAction::None; pendingScenePath.clear(); }
 
-	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera = nullptr);
+	// Play/Stop actions (signaled from toolbar, handled by Application)
+	enum class PlayAction { None, Play, Stop };
+	PlayAction GetPendingPlayAction() const { return pendingPlayAction; }
+	void ClearPendingPlayAction() { pendingPlayAction = PlayAction::None; }
+
+	void RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera = nullptr, bool isPlaying = false);
 
 private:
 	void RenderHierarchy(SceneManager& scene, int bufferHeight, Camera* camera = nullptr);
 	void RenderHierarchyRecursive(SceneManager& scene, GameObject* obj, int index, Camera* camera, bool focusSelection = false, int targetIndex = -1);
 	void RenderInspector(SceneManager& scene, int bufferWidth, int bufferHeight);
-	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr);
+	void RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera = nullptr, const InputHandler* inputHandler = nullptr, GLuint gameTextureID = 0, bool isPlaying = false);
 
 	// Helper: Unity-style Vector3 input 
 	static bool DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float speed = 0.1f);
@@ -61,6 +66,8 @@ public:
 		bool isDebugOverlayOpen = true;
 		bool isNodeBuilderOpen = false; // Node Builder panel (off by default)
 		bool isGraphicsSettingsOpen = false; // Graphics settings panel (off by default)
+		int activeViewportTab = 0; // 0 = Scene, 1 = Game
+		int pendingTabSwitch = -1; // -1 = no switch; 0/1 = one-shot switch to Scene/Game
 		bool forceLayout = false;
 
 		// Constraints
@@ -116,6 +123,7 @@ private:
 	// Scene file action state
 	SceneAction pendingSceneAction = SceneAction::None;
 	std::string pendingScenePath;
+	PlayAction pendingPlayAction = PlayAction::None;
 
 	// Inspector undo tracking (continuous drag widgets)
 	bool inspectorIsEditing = false;

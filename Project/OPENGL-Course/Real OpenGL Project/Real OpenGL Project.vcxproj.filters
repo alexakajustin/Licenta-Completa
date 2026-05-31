@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -13,7 +13,37 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  <Filter Include="Lighting"><UniqueIdentifier>{35b4944b-d2f6-4ab1-947c-8ff5c71c4f02}</UniqueIdentifier></Filter><Filter Include="Rendering"><UniqueIdentifier>{befd7928-a188-428b-826d-ce998888c809}</UniqueIdentifier></Filter><Filter Include="Editor"><UniqueIdentifier>{1fff05ca-85e8-4b00-ab58-93da2d4721d7}</UniqueIdentifier></Filter><Filter Include="Nodes\Operations"><UniqueIdentifier>{658d8469-44c5-4385-ae3a-b7e0cb551b5b}</UniqueIdentifier></Filter><Filter Include="Procedural"><UniqueIdentifier>{74b73ad1-db82-4b4b-b8b7-39128fc2e15d}</UniqueIdentifier></Filter><Filter Include="Nodes"><UniqueIdentifier>{e9a64048-cf9c-4f98-8485-725e270b5676}</UniqueIdentifier></Filter><Filter Include="Simulation"><UniqueIdentifier>{ab8e1ec4-fa3b-4a7f-900e-8ddfcd04789a}</UniqueIdentifier></Filter><Filter Include="Nodes\Math"><UniqueIdentifier>{15300165-ca53-4450-8ab7-76caf974f5ca}</UniqueIdentifier></Filter><Filter Include="Scene"><UniqueIdentifier>{29728203-a452-4aba-9fa8-8f09911da8b3}</UniqueIdentifier></Filter><Filter Include="Core"><UniqueIdentifier>{838c9e35-95f5-44c4-9b83-a1a35b94ce21}</UniqueIdentifier></Filter></ItemGroup>
+    <Filter Include="Lighting">
+      <UniqueIdentifier>{35b4944b-d2f6-4ab1-947c-8ff5c71c4f02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{befd7928-a188-428b-826d-ce998888c809}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Editor">
+      <UniqueIdentifier>{1fff05ca-85e8-4b00-ab58-93da2d4721d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Nodes\Operations">
+      <UniqueIdentifier>{658d8469-44c5-4385-ae3a-b7e0cb551b5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Procedural">
+      <UniqueIdentifier>{74b73ad1-db82-4b4b-b8b7-39128fc2e15d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Nodes">
+      <UniqueIdentifier>{e9a64048-cf9c-4f98-8485-725e270b5676}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Simulation">
+      <UniqueIdentifier>{ab8e1ec4-fa3b-4a7f-900e-8ddfcd04789a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Nodes\Math">
+      <UniqueIdentifier>{15300165-ca53-4450-8ab7-76caf974f5ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{29728203-a452-4aba-9fa8-8f09911da8b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{838c9e35-95f5-44c4-9b83-a1a35b94ce21}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
@@ -108,9 +138,6 @@
     <ClCompile Include="Editor\AssetBrowser.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\AssetManager.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Editor\DebugOverlay.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
@@ -203,6 +230,33 @@
     </ClCompile>
     <ClCompile Include="Procedural\InteriorGenNode.cpp">
       <Filter>Procedural</Filter>
+    </ClCompile>
+    <ClCompile Include="Procedural\RoomOccupancy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\AssetManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ServiceLocator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\EngineTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\CoreTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\NoiseTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\RenderTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\LightingTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Player.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2309,6 +2363,18 @@
     </ClInclude>
     <ClInclude Include="Procedural\InteriorStructure.h">
       <Filter>Procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="Procedural\RoomOccupancy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\AssetManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ServiceLocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Player.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

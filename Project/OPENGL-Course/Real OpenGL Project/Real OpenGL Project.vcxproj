@@ -225,6 +225,7 @@
     <ClCompile Include="Rendering\PrimitiveGenerator.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Procedural\RiverNode.cpp" />
+    <ClCompile Include="Scene\Player.cpp" />
     <ClCompile Include="Scene\SceneManager.cpp" />
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
@@ -578,6 +579,8 @@
     <None Include="imgui.ini" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Core\AssetManager.h" />
+    <ClInclude Include="Core\ServiceLocator.h" />
     <ClInclude Include="Nodes\AllOperations.h" />
     <ClInclude Include="Scene\AssetManager.h" />
     <ClInclude Include="Procedural\BeautifulErosionNode.h" />
@@ -590,6 +593,7 @@
     <ClInclude Include="Nodes\CustomNodeDef.h" />
     <ClInclude Include="Editor\DebugOverlay.h" />
     <ClInclude Include="Lighting\DirectionalLight.h" />
+    <ClInclude Include="Scene\Player.h" />
     <ClInclude Include="Simulation\FluidSimulation.h" />
     <ClInclude Include="GraphicsSettings.h" />
     <ClInclude Include="Core\Grid2D.h" />

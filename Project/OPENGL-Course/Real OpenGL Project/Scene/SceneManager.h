@@ -18,6 +18,7 @@
 #include "Rendering/InstancedGroup.h"
 #include "Scene/UndoManager.h"
 
+class Player;
 struct GraphicsSettings;
 
 class SceneManager
@@ -30,6 +31,7 @@ public:
 	void AddObject(GameObject* obj);
 	void RemoveObject(const std::string& name);
 	GameObject* FindObject(const std::string& name);
+	Player* FindPlayer();
 	std::vector<GameObject*>& GetObjects() { return objects; }
 
 	// ========== Light Management ==========

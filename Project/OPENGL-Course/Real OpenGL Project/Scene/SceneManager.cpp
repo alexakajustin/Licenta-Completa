@@ -22,6 +22,7 @@
 #include "Scene/UndoActions.h"
 #include "GraphicsSettings.h"
 #include "Scene/Planet.h"
+#include "Scene/Player.h"
 #include "Editor/DebugOverlay.h"
 
 // =====================================================================
@@ -297,6 +298,16 @@ GameObject* SceneManager::FindObject(const std::string& name)
 	for (auto* obj : objects)
 	{
 		if (obj->GetName() == name) return obj;
+	}
+	return nullptr;
+}
+
+Player* SceneManager::FindPlayer()
+{
+	for (auto* obj : objects)
+	{
+		Player* player = dynamic_cast<Player*>(obj);
+		if (player) return player;
 	}
 	return nullptr;
 }
@@ -578,9 +589,22 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						glUniformMatrix4fv(targetShader->GetModelLocation(), 1, GL_FALSE, glm::value_ptr(modelMatrix));
 						
 						// Handle transparency for shadow color mapping
-						if (mat) {
-							GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
-							if (alphaLoc != -1) glUniform1f(alphaLoc, mat->GetAlpha());
+						GLint alphaLoc = glGetUniformLocation(targetShader->GetShaderID(), "materialAlpha");
+						if (alphaLoc != -1) {
+							glUniform1f(alphaLoc, mat ? mat->GetAlpha() : 1.0f);
+						}
+						
+						// Configure diffuse texture: if present, bind it and enable useDiffuseTexture;
+						// otherwise, explicitly disable useDiffuseTexture to prevent alpha-discarding.
+						GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
+						Texture* tex = obj->GetTexture();
+						if (tex && useDiffuseLoc != -1) {
+							glUniform1i(useDiffuseLoc, 1);
+							GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
+							if (texLoc != -1) glUniform1i(texLoc, 0);
+							tex->UseTexture();
+						} else if (useDiffuseLoc != -1) {
+							glUniform1i(useDiffuseLoc, 0);
 						}
 						
 						msh->RenderMesh();
@@ -589,6 +613,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					else if (overrideShader && mdl) {
 						glm::mat4 modelMatrix = obj->GetWorldMatrix();
 						glUniformMatrix4fv(targetShader->GetModelLocation(), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+						// Ensure useDiffuseTexture is disabled since RenderModelGeometryOnly does not bind textures
+						GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
+						if (useDiffuseLoc != -1) {
+							glUniform1i(useDiffuseLoc, 0);
+						}
+
 						mdl->RenderModelGeometryOnly();
 					}
 					// === FULL RENDER PATH (main pass only) ===
@@ -1639,6 +1670,24 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 		Planet* planet = new Planet(name);
 		planet->Generate();
 		obj = planet;
+	}
+	else if (type == "Player") {
+		// Enforce single player per scene
+		if (FindPlayer()) {
+			printf("[SceneManager] WARNING: A Player already exists in the scene. Only one Player is allowed.\n");
+			return;
+		}
+		obj = new Player("Player");
+		
+		// Add visual capsule (Cube scaled to 1x1.7x1)
+		GameObject* visuals = new GameObject("PlayerVisuals");
+		visuals->SetMesh(PrimitiveGenerator::CreateCube());
+		visuals->GetTransform().SetScale(glm::vec3(1.0f, 1.7f, 1.0f));
+		visuals->GetTransform().SetPosition(glm::vec3(0.0f, 1.7f / 2.0f, 0.0f)); // Shift up so feet are at pos.y!
+		visuals->SetPrimitiveType("Cube");
+		
+		obj->AddChild(visuals);
+		objects.push_back(visuals);
 	}
 	else {
 		obj = new GameObject(name);

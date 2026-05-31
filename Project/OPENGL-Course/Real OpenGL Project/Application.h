@@ -22,6 +22,7 @@
 #include "CommonValues.h"
 #include "Rendering/Shader.h"
 #include <vector>
+#include <unordered_map>
 
 /**
  * @class Application
@@ -57,6 +58,23 @@ public:
 	void Shutdown();
 
 private:
+	// ========== Play Mode ==========
+	enum class PlayState { EditMode, PlayMode };
+	PlayState playState = PlayState::EditMode;
+
+	void StartPlayMode();
+	void StopPlayMode();
+
+	// Transform backup for restoring scene state after Play Mode
+	struct TransformBackup {
+		glm::vec3 position;
+		glm::vec3 rotation;
+		glm::vec3 scale;
+	};
+	std::unordered_map<GameObject*, TransformBackup> transformBackups;
+
+	// Game camera (drives the player's view during play mode)
+	Camera gameCamera;
 	/**
 	 * @brief Loads default textures and setups default resources.
 	 */
@@ -117,6 +135,15 @@ private:
 	GLuint viewportDepth = 0;
 	int currentViewportWidth = 0;
 	int currentViewportHeight = 0;
+
+	// Game Viewport FBO (for the player camera during Play Mode)
+	void InitGameViewportFBO();
+	void ResizeGameViewportFBO(int width, int height);
+	GLuint gameViewportFBO = 0;
+	GLuint gameViewportTexture = 0;
+	GLuint gameViewportDepth = 0;
+	int currentGameViewportWidth = 0;
+	int currentGameViewportHeight = 0;
 
 	// Water Reflection FBO
 	void InitReflectionFBO();

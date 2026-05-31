@@ -24,6 +24,7 @@
 #include "Nodes/AllOperations.h"
 #include "Scene/SceneSerializer.h"
 #include "Procedural/InteriorGenNode.h"
+#include "Scene/Player.h"
 #include <iostream>
 #include <map>
 #include <fstream>
@@ -314,7 +315,24 @@ void Application::Run()
 
 
 
-		inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
+		// ========== Input: Editor vs Play Mode ==========
+		int activeTab = editorUI.GetWindowState().activeViewportTab;
+
+		// 1. Player Input (Only if Game tab is active)
+		if (playState == PlayState::PlayMode)
+		{
+			Player* player = sceneManager.FindPlayer();
+			if (player && activeTab == 1 && !mainWindow.isCursorEnabled())
+			{
+				player->Update(deltaTime, mainWindow, sceneManager, gameCamera);
+			}
+		}
+
+		// 2. Editor Camera Input (Only if Scene tab is active)
+		if (activeTab == 0)
+		{
+			inputHandler.UpdateCamera(mainWindow, camera, deltaTime);
+		}
 
 		// Debug info
 		debugOverlay.SetCameraInfo(camera.getCameraPosition(), camera.getCameraDirection());
@@ -326,7 +344,7 @@ void Application::Run()
 		// Since docking is not available, we use fixed window layout to emulate Unity
 		
 		// 1. Render Top Bar first
-		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph(), &camera);
+		editorUI.RenderMainMenuBar(sceneManager, sceneManager.GetNodeGraph(), &camera, playState == PlayState::PlayMode);
 
 		// Define the progress callback for both loading projects and executing graphs
 		std::string progressTitle = "Loading...";
@@ -389,6 +407,18 @@ void Application::Run()
 			ResizeRefractionFBO(vWidth, vHeight); // Full resolution for crisp refraction
 		}
 		glm::mat4 view = camera.calculateViewMatrix();
+		glm::vec3 activeCameraPos = camera.getCameraPosition();
+
+		// Override the entire rendering pipeline to use the Game Camera if the Game Tab is active
+		if (playState == PlayState::PlayMode && uiState.activeViewportTab == 1) {
+			int gw = currentGameViewportWidth > 0 ? currentGameViewportWidth : vWidth;
+			int gh = currentGameViewportHeight > 0 ? currentGameViewportHeight : vHeight;
+			if (gw < 1) gw = 1;
+			if (gh < 1) gh = 1;
+			projection = glm::perspective(glm::radians(60.0f), (float)gw / (float)gh, 0.1f, 20000.0f);
+			view = gameCamera.calculateViewMatrix();
+			activeCameraPos = gameCamera.getCameraPosition();
+		}
 
 		// Main render pass — clear backbuffer (the part around the UI)
 		glViewport(0, 0, fbw, fbh);
@@ -414,7 +444,7 @@ void Application::Run()
 		// Shadow passes
 		float shadowFar = graphicsSettings.shadowDistance;
 		debugOverlay.BeginPass("Shadow Maps");
-		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, camera.getCameraPosition(), projection, view, 0.1f, shadowFar, &graphicsSettings);
+		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, activeCameraPos, projection, view, 0.1f, shadowFar, &graphicsSettings);
 		for (unsigned int i = 0; i < pointLightCount; i++)
 			renderer.OmniShadowMapPass(&pointLights[i], sceneManager, &graphicsSettings);
 		for (unsigned int i = 0; i < spotLightCount; i++)
@@ -552,7 +582,7 @@ void Application::Run()
 			}
 
 			debugOverlay.BeginPass("Reflection");
-			renderer.ReflectionPass(projection, view, camera.getCameraPosition(), sceneManager,
+			renderer.ReflectionPass(projection, view, activeCameraPos, sceneManager,
 				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight, &graphicsSettings);
 			debugOverlay.EndPass("Reflection");
 		}
@@ -562,13 +592,13 @@ void Application::Run()
 		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// RENDER SKY AS BACKGROUND
-		if (graphicsSettings.volumetricSkyEnabled)
-		{
+		// Define sky rendering lambda so we can reuse it for both viewports
+		auto renderSky = [&](const glm::mat4& proj, const glm::mat4& vw) {
+			if (!graphicsSettings.volumetricSkyEnabled) return;
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_BLEND); // Solid background
-			glm::mat4 invProj = glm::inverse(projection);
-			glm::mat4 invView = glm::inverse(view);
+			glm::mat4 invProj = glm::inverse(proj);
+			glm::mat4 invView = glm::inverse(vw);
 
 			if (graphicsSettings.skyboxType == SkyboxType::Atmospheric)
 			{
@@ -602,10 +632,13 @@ void Application::Run()
 
 			RenderQuad();
 			glEnable(GL_DEPTH_TEST);
-		}
+		};
+
+		// RENDER SKY AS BACKGROUND FOR EDITOR VIEWPORT
+		renderSky(projection, view);
 
 		debugOverlay.BeginPass("Main Render");
-		renderer.RenderPass(projection, view, camera.getCameraPosition(), sceneManager,
+		renderer.RenderPass(projection, view, activeCameraPos, sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
 		
@@ -720,18 +753,25 @@ void Application::Run()
 		}
 
 		// Scene Selection (Move before depth clear so we can use scene depth)
-		inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI, viewportFBO);
+		if (activeTab == 0)
+		{
+			inputHandler.UpdateEditor(mainWindow, camera, sceneManager, projection, editorUI, viewportFBO);
+		}
 
 		// Render gizmos/icons AFTER SSAO so depth buffer had valid object data for SSAO
-		glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
-		glViewport(0, 0, currentViewportWidth, currentViewportHeight);
-		glClear(GL_DEPTH_BUFFER_BIT); // Always render gizmos/icons on top of the scene
-		sceneManager.RenderIcons(projection, view);
-		sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		if (activeTab == 0)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			glClear(GL_DEPTH_BUFFER_BIT); // Always render gizmos/icons on top of the scene
+			sceneManager.RenderIcons(projection, view);
+			sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
 
-		// Now render ImGui windows using centralized states over the scene
-		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera, &inputHandler);
+		// Both Scene and Game tabs now use the same fully-featured viewport texture. 
+		// The active camera is seamlessly swapped in the main pipeline depending on the active tab.
+		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera, &inputHandler, viewportTexture, playState == PlayState::PlayMode);
 		
 		assetBrowser.Render(sceneManager, uiState);
 		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
@@ -794,6 +834,21 @@ void Application::Run()
 		if (executeGraph) {
 			progressTitle = "Executing Node Graph...";
 			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, progressCallback);
+		}
+
+		// Handle pending Play/Stop actions
+		auto playAction = editorUI.GetPendingPlayAction();
+		if (playAction != EditorUI::PlayAction::None)
+		{
+			if (playAction == EditorUI::PlayAction::Play)
+			{
+				StartPlayMode();
+			}
+			else if (playAction == EditorUI::PlayAction::Stop)
+			{
+				StopPlayMode();
+			}
+			editorUI.ClearPendingPlayAction();
 		}
 	}
 
@@ -1245,4 +1300,118 @@ void Application::Shutdown()
 	ImGui_ImplGlfw_Shutdown();
 	ImNodes::DestroyContext();
 	ImGui::DestroyContext();
+}
+
+// =====================================================================
+// Game Viewport FBO
+// =====================================================================
+
+void Application::InitGameViewportFBO()
+{
+	int w = 640;
+	int h = 480;
+
+	currentGameViewportWidth = w;
+	currentGameViewportHeight = h;
+
+	glGenFramebuffers(1, &gameViewportFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, gameViewportFBO);
+
+	glGenTextures(1, &gameViewportTexture);
+	glBindTexture(GL_TEXTURE_2D, gameViewportTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gameViewportTexture, 0);
+
+	glGenTextures(1, &gameViewportDepth);
+	glBindTexture(GL_TEXTURE_2D, gameViewportDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gameViewportDepth, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("Game Viewport Framebuffer not complete!\n");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::ResizeGameViewportFBO(int width, int height)
+{
+	if (width < 1) width = 1;
+	if (height < 1) height = 1;
+	if (width == currentGameViewportWidth && height == currentGameViewportHeight && gameViewportTexture != 0) return;
+
+	currentGameViewportWidth = width;
+	currentGameViewportHeight = height;
+
+	glBindTexture(GL_TEXTURE_2D, gameViewportTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	glBindTexture(GL_TEXTURE_2D, gameViewportDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+}
+
+// =====================================================================
+// Play Mode State Transitions
+// =====================================================================
+
+void Application::StartPlayMode()
+{
+	Player* player = sceneManager.FindPlayer();
+	if (!player)
+	{
+		printf("[Application] Cannot start Play Mode: No Player in scene.\n");
+		return;
+	}
+
+	printf("[Application] Entering Play Mode.\n");
+	playState = PlayState::PlayMode;
+
+	// Backup all object transforms so we can restore them when stopping
+	transformBackups.clear();
+	for (auto* obj : sceneManager.GetObjects())
+	{
+		TransformBackup backup;
+		backup.position = obj->GetTransform().GetPosition();
+		backup.rotation = obj->GetTransform().GetRotation();
+		backup.scale = obj->GetTransform().GetScale();
+		transformBackups[obj] = backup;
+	}
+
+	// Initialize game camera from the player's position + eye height
+	glm::vec3 playerPos = player->GetTransform().GetPosition();
+	gameCamera = Camera(
+		playerPos + glm::vec3(0.0f, player->GetEyeHeight(), 0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f),
+		-90.0f, 0.0f, 5.0f, 0.15f
+	);
+
+	// Reset the player's runtime physics state
+	player->ResetPlayState();
+
+	// Open the Game viewport tab automatically
+	editorUI.GetWindowState().pendingTabSwitch = 1;
+
+	// Lock cursor for FPS controls
+	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+void Application::StopPlayMode()
+{
+	printf("[Application] Exiting Play Mode.\n");
+	playState = PlayState::EditMode;
+
+	// Restore all object transforms to their pre-play state
+	for (auto& [obj, backup] : transformBackups)
+	{
+		obj->GetTransform().SetPosition(backup.position);
+		obj->GetTransform().SetRotation(backup.rotation);
+		obj->GetTransform().SetScale(backup.scale);
+	}
+	transformBackups.clear();
+
+	// Restore cursor for editor interaction
+	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }

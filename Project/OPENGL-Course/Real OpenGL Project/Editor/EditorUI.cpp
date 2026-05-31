@@ -25,6 +25,7 @@
 #include "Scene/SceneSerializer.h"
 #include "Scene/UndoActions.h"
 #include "Scene/Planet.h"
+#include "Scene/Player.h"
 #include "External Libs/nlohmann/json.hpp"
 #include <filesystem>
 #include <set>
@@ -480,13 +481,13 @@ void EditorUI::UpdateLayoutVisual()
 
 
 
-void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera, const InputHandler* inputHandler)
+void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint sceneTextureID, Camera* camera, const InputHandler* inputHandler, GLuint gameTextureID, bool isPlaying)
 {
 	int bufferWidth, bufferHeight;
 	glfwGetFramebufferSize(glfwGetCurrentContext(), &bufferWidth, &bufferHeight);
 
 	RenderHierarchy(scene, bufferHeight, camera);
-	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, camera, inputHandler);
+	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, camera, inputHandler, gameTextureID, isPlaying);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 
 	// === Global Undo/Redo (works from ANY window) ===
@@ -525,10 +526,13 @@ void EditorUI::UpdateViewportMetadata()
 
 	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-	
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar;
 
-	if (ImGui::Begin("Scene", nullptr, windowFlags))
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	bool viewportHostOpen = ImGui::Begin("##ViewportHost", nullptr, windowFlags);
+	ImGui::PopStyleVar();
+
+	if (viewportHostOpen)
 	{
 		windowState.CheckMaximize(1); // Scene ID = 1
 
@@ -541,7 +545,7 @@ void EditorUI::UpdateViewportMetadata()
 }
 
 
-void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera)
+void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Camera* camera, bool isPlaying)
 {
 	glm::vec3 spawnPos = camera ? camera->getCameraPosition() + camera->getCameraDirection() * 10.0f : glm::vec3(0.0f);
 	if (ImGui::BeginMainMenuBar())
@@ -604,6 +608,13 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			if (ImGui::MenuItem("3D Object -> Sphere")) { scene.CreateGameObject("Sphere", spawnPos); }
 			if (ImGui::MenuItem("3D Object -> Planet")) { scene.CreateGameObject("Planet", spawnPos); }
 			ImGui::Separator();
+			{
+				bool playerExists = (scene.FindPlayer() != nullptr);
+				if (playerExists) ImGui::BeginDisabled();
+				if (ImGui::MenuItem("Player")) { scene.CreateGameObject("Player", spawnPos); }
+				if (playerExists) ImGui::EndDisabled();
+			}
+			ImGui::Separator();
 			if (ImGui::BeginMenu("Light"))
 			{
 				if (ImGui::MenuItem("Point Light")) { scene.CreateLight(LightType::Point, spawnPos); }
@@ -646,6 +657,37 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenu();
+		}
+
+		// ========== Play/Stop Toolbar (centered) ==========
+		{
+			float barWidth = ImGui::GetWindowWidth();
+			float buttonWidth = 80.0f;
+			float centerX = barWidth * 0.5f - buttonWidth * 0.5f;
+			ImGui::SameLine(centerX);
+
+			if (!isPlaying)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.75f, 0.3f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.5f, 0.15f, 1.0f));
+				if (ImGui::Button("Play", ImVec2(buttonWidth, 0)))
+				{
+					pendingPlayAction = PlayAction::Play;
+				}
+				ImGui::PopStyleColor(3);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.15f, 0.15f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.2f, 0.2f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
+				if (ImGui::Button("Stop", ImVec2(buttonWidth, 0)))
+				{
+					pendingPlayAction = PlayAction::Stop;
+				}
+				ImGui::PopStyleColor(3);
+			}
 		}
 
 		if (ImGui::BeginMenu("Templates"))
@@ -920,7 +962,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 	}
 }
 
-void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera, const InputHandler* inputHandler)
+void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera, const InputHandler* inputHandler, GLuint gameTextureID, bool isPlaying)
 {
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
@@ -940,24 +982,45 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	bool sceneOpen = ImGui::Begin("Scene", nullptr, windowFlags);
+	bool sceneOpen = ImGui::Begin("##ViewportHost", nullptr, windowFlags);
 	ImGui::PopStyleVar();
 
 	if (sceneOpen)
 	{
-		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		
-		// Render the scene texture (ensuring it fills the panel)
-		if (textureID != 0)
+		// ========== Tab Bar: Scene | Game ==========
+		if (ImGui::BeginTabBar("ViewportTabs", ImGuiTabBarFlags_None))
 		{
-			ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
-		}
+			// One-shot programmatic tab selection (only used when Application triggers a switch)
+			ImGuiTabItemFlags sceneTabFlags = 0;
+			ImGuiTabItemFlags gameTabFlags = 0;
+			if (windowState.pendingTabSwitch >= 0)
+			{
+				if (windowState.pendingTabSwitch == 0) sceneTabFlags = ImGuiTabItemFlags_SetSelected;
+				if (windowState.pendingTabSwitch == 1) gameTabFlags = ImGuiTabItemFlags_SetSelected;
+				windowState.pendingTabSwitch = -1; // Consume the one-shot
+			}
 
-		// Overlay interaction Capture
-		ImGui::SetCursorPos(ImVec2(0, 0));
+			// --- Scene Tab ---
+			if (ImGui::BeginTabItem("Scene", nullptr, sceneTabFlags))
+			{
+				windowState.activeViewportTab = 0;
+
+				// Save the content region start for overlay positioning
+				ImVec2 tabContentStart = ImGui::GetCursorPos();
+				ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+				ImVec2 viewportPos = ImGui::GetCursorScreenPos(); // For draw list overlays
+
+				// Render the scene texture
+				if (textureID != 0)
+				{
+					ImGui::Image((ImTextureID)(intptr_t)textureID, viewportPanelSize, ImVec2(0, 1), ImVec2(1, 0));
+				}
+
+		// Overlay interaction Capture (reset to tab content start, NOT window origin)
+		ImGui::SetCursorPos(tabContentStart);
 		ImGui::InvisibleButton("ViewportInteraction", viewportPanelSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
 		// Drag and Drop support for viewport
@@ -1093,6 +1156,42 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), speedText);
 			}
 		}
+
+				ImGui::EndTabItem();
+			} // End Scene tab
+
+			// --- Game Tab ---
+			if (ImGui::BeginTabItem("Game", nullptr, gameTabFlags))
+			{
+				windowState.activeViewportTab = 1;
+				ImVec2 gamePanelSize = ImGui::GetContentRegionAvail();
+
+				if (!isPlaying)
+				{
+					// Not playing — show placeholder
+					bool hasPlayer = (scene.FindPlayer() != nullptr);
+					ImVec2 center(gamePanelSize.x * 0.5f, gamePanelSize.y * 0.5f);
+					ImGui::SetCursorPos(ImVec2(center.x - 120.0f, center.y - 20.0f));
+
+					if (hasPlayer)
+						ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "Press Play to start the game.");
+					else
+					{
+						ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f), "No Player in scene.");
+						ImGui::SetCursorPos(ImVec2(center.x - 140.0f, center.y + 5.0f));
+						ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Right-click Hierarchy to create a Player.");
+					}
+				}
+				else if (gameTextureID != 0)
+				{
+					ImGui::Image((ImTextureID)(intptr_t)gameTextureID, gamePanelSize, ImVec2(0, 1), ImVec2(1, 0));
+				}
+
+				ImGui::EndTabItem();
+			} // End Game tab
+
+			ImGui::EndTabBar();
+		} // End tab bar
 	}
 	ImGui::End();
 }
@@ -1228,6 +1327,13 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 				if (ImGui::MenuItem("Point Light")) scene.CreateLight(LightType::Point, spawnPos);
 				if (ImGui::MenuItem("Spot Light")) scene.CreateLight(LightType::Spot, spawnPos);
 				ImGui::EndMenu();
+			}
+			ImGui::Separator();
+			{
+				bool playerExists = (scene.FindPlayer() != nullptr);
+				if (playerExists) ImGui::BeginDisabled();
+				if (ImGui::MenuItem("Create Player")) scene.CreateGameObject("Player", spawnPos);
+				if (playerExists) ImGui::EndDisabled();
 			}
 			ImGui::EndPopup();
 		}
