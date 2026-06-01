@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.1812112033367157,
-            -0.3131638169288635,
-            0.9322505593299866
+            0.7963775396347046,
+            -0.5519369840621948,
+            0.24728207290172577
         ],
-        "pitch": -18.25,
+        "pitch": -33.5,
         "position": [
-            -34.2559814453125,
-            172.93800354003906,
-            -53.93574905395508
+            259.41009521484375,
+            221.4282989501953,
+            -117.36859893798828
         ],
-        "yaw": 79.0
+        "yaw": 737.25
     },
     "instancedGroups": [
         {
@@ -50,7 +50,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 343,
+        "nextId": 484,
         "tabs": [
             {
                 "graph": {
@@ -76,7 +76,7 @@
                             "start": 8
                         }
                     ],
-                    "nextId": 343,
+                    "nextId": 484,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -187,7 +187,7 @@
                         },
                         {
                             "baseDepth": 1.0,
-                            "baseWidth": 15.0,
+                            "baseWidth": 10.0,
                             "editorPos": [
                                 650.0,
                                 150.0
@@ -197,12 +197,12 @@
                                 7
                             ],
                             "lakeVolumeMultiplier": 500.0,
-                            "lakeWaterOffset": -1.3949999809265137,
+                            "lakeWaterOffset": -1.2949999570846558,
                             "maxSteps": 1500,
                             "outputPins": [
                                 8
                             ],
-                            "riverWaterOffset": -0.0949999988079071,
+                            "riverWaterOffset": 0.0,
                             "smoothPasses": 6,
                             "springCount": 8,
                             "title": "River"
@@ -269,7 +269,7 @@
                             "start": 42
                         }
                     ],
-                    "nextId": 343,
+                    "nextId": 484,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -489,7 +489,7 @@
                             "start": 147
                         }
                     ],
-                    "nextId": 343,
+                    "nextId": 484,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -1246,7 +1246,7 @@
                     -5.0228424072265625
                 ],
                 "rotation": [
-                    -0.0,
+                    0.0,
                     0.0,
                     0.0
                 ],
