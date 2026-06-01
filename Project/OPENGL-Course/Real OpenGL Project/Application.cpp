@@ -513,13 +513,13 @@ void Application::Run()
 		if (hasWater) {
 			float minCamDist = 1e10f;
 			GameObject* bestWater = nullptr;
-			glm::vec3 camPos = camera.getCameraPosition();
+			glm::vec3 camPos = activeCameraPos;
 
 			for (auto* obj : sceneManager.GetObjects()) {
 				Material* mat = obj->GetMaterial();
 				if (mat && mat->GetShader()) {
 					std::string vPath = mat->GetShader()->GetVertexPath();
-					if (vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos) {
+					if (vPath.find("water.vert") != std::string::npos) {
 						float dist = glm::distance(obj->GetTransform().GetPosition(), camPos);
 						if (dist < minCamDist) {
 							minCamDist = dist;
@@ -854,6 +854,10 @@ void Application::Run()
 		auto sceneAction = editorUI.GetPendingSceneAction();
 		if (sceneAction != EditorUI::SceneAction::None)
 		{
+			if (playState == PlayState::PlayMode && (sceneAction == EditorUI::SceneAction::Load || sceneAction == EditorUI::SceneAction::New)) {
+				StopPlayMode();
+			}
+
 			if (sceneAction == EditorUI::SceneAction::Save)
 			{
 				SceneSerializer::SaveScene(editorUI.GetPendingScenePath(), sceneManager, &camera);

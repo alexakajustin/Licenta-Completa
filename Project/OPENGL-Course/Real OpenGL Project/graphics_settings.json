@@ -15,7 +15,7 @@
     "lod0Distance": 100.0,
     "lod1Distance": 500.0,
     "lod2Distance": 1000.0,
-    "renderDistance": 800.0,
+    "renderDistance": 1000.0,
     "shadowCascades": 2,
     "shadowDistance": 100.0,
     "showWireframe": false,

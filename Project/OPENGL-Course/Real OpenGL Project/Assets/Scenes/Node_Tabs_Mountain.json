@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.25146737694740295,
-            -0.15643447637557983,
-            0.9551400542259216
+            -0.9630005955696106,
+            -0.11320321261882782,
+            0.24457086622714996
         ],
-        "pitch": -9.0,
+        "pitch": -6.5,
         "position": [
-            387.93878173828125,
-            334.8305969238281,
-            -223.80738830566406
+            287.4814147949219,
+            157.6977081298828,
+            -135.44496154785156
         ],
-        "yaw": 1155.25
+        "yaw": 1245.75
     },
     "instancedGroups": [
         {
@@ -40,9 +40,9 @@
             ],
             "diffuseIntensity": 0.7059999704360962,
             "direction": [
-                -0.9186304211616516,
-                -0.2296576052904129,
-                0.3215206563472748
+                -0.4317741096019745,
+                -0.8892320394515991,
+                0.15112082660198212
             ],
             "name": "Sun",
             "type": "Directional"
@@ -50,7 +50,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 578,
+        "nextId": 719,
         "tabs": [
             {
                 "graph": {
@@ -76,7 +76,7 @@
                             "start": 8
                         }
                     ],
-                    "nextId": 578,
+                    "nextId": 719,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -269,7 +269,7 @@
                             "start": 42
                         }
                     ],
-                    "nextId": 578,
+                    "nextId": 719,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -489,7 +489,7 @@
                             "start": 147
                         }
                     ],
-                    "nextId": 578,
+                    "nextId": 719,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -834,28 +834,28 @@
                     0.8999999761581421
                 ],
                 "material_foamColor": [
-                    0.4856604337692261,
-                    0.5178301334381104,
-                    0.5181518197059631,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
-                "material_foamDistance": 15.25,
+                "material_foamDistance": 1.0,
                 "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
-                "material_specularIntensityOverride": 3.0,
+                "material_shininessOverride": 1024.0,
+                "material_specularIntensityOverride": 1.0,
                 "material_waterColorDeep": [
-                    0.2905597686767578,
-                    0.3227348029613495,
-                    0.3861386179924011,
+                    0.04119421914219856,
+                    0.16416852176189423,
+                    0.20462048053741455,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.19398967921733856,
-                    0.2808935344219208,
-                    0.45214521884918213,
-                    0.7020000219345093
+                    0.1813220977783203,
+                    0.20619511604309082,
+                    0.3069307208061218,
+                    1.0
                 ],
-                "material_waterDepthScale": 3.130000114440918,
+                "material_waterDepthScale": 0.6600000262260437,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
                 "material_waveSpeed": 0.15000000596046448,
@@ -923,8 +923,8 @@
                 ],
                 "material_foamDistance": 0.30000001192092896,
                 "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
-                "material_specularIntensityOverride": 3.0,
+                "material_shininessOverride": 1024.0,
+                "material_specularIntensityOverride": 1.0,
                 "material_waterColorDeep": [
                     0.0,
                     0.0,
@@ -939,9 +939,9 @@
                 ],
                 "material_waterDepthScale": 0.30000001192092896,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 0.7400000095367432,
+                "material_waveScale": 1.0,
                 "material_waveSpeed": 1.0,
-                "material_waveStrength": 0.05999999865889549,
+                "material_waveStrength": 0.5,
                 "shader_frag": "Assets/Shaders/water.frag",
                 "shader_vert": "Assets/Shaders/water.vert"
             },
@@ -1241,9 +1241,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    114.81856536865234,
-                    179.02542114257813,
-                    -5.0228424072265625
+                    115.88145446777344,
+                    158.323974609375,
+                    32.93341064453125
                 ],
                 "rotation": [
                     -0.0,
