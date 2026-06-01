@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.9580998420715332,
-            -0.11753739416599274,
-            0.2612079977989197
+            0.8291444182395935,
+            -0.5112931132316589,
+            0.2260507196187973
         ],
-        "pitch": -6.75,
+        "pitch": -30.75,
         "position": [
-            570.0071411132813,
-            237.54238891601563,
-            108.37325286865234
+            784.1491088867188,
+            220.57586669921875,
+            273.3011169433594
         ],
-        "yaw": -195.25
+        "yaw": 15.25
     },
     "instancedGroups": [
         {
@@ -71,7 +71,7 @@
                 "start": 80
             }
         ],
-        "nextId": 394,
+        "nextId": 411,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -103,7 +103,7 @@
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\terrain\\beach\\albedo.jpg",
-                        "tiling": 50.0
+                        "tiling": 100.0
                     },
                     {
                         "blendMode": 1,
@@ -115,7 +115,7 @@
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\terrain\\grass\\albedo.jpg",
-                        "tiling": 50.0
+                        "tiling": 100.0
                     },
                     {
                         "blendMode": 3,
@@ -127,7 +127,7 @@
                         "slopeMax": 0.27000001072883606,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\terrain\\rock\\albedo.jpg",
-                        "tiling": 50.0
+                        "tiling": 100.0
                     },
                     {
                         "blendMode": 1,
@@ -139,7 +139,7 @@
                         "slopeMax": 0.5,
                         "slopeMin": 0.0,
                         "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
-                        "tiling": 50.0
+                        "tiling": 100.0
                     }
                 ],
                 "cachedTexturePath": "",
@@ -400990,8 +400990,8 @@
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
-                    0.6000000238418579,
-                    0.10000000149011612
+                    0.49000000953674316,
+                    0.05999999865889549
                 ],
                 "material_causticsMap": "Assets/Textures/Water/caustics.png",
                 "material_dudvMap": "Assets/Textures/Water/dudv.png",
@@ -401008,9 +401008,9 @@
                     1.0,
                     1.0
                 ],
-                "material_foamDistance": 0.30000001192092896,
+                "material_foamDistance": 0.38999998569488525,
                 "material_fresnelPower": 4.0,
-                "material_shininessOverride": 256.0,
+                "material_shininessOverride": 255.7100067138672,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
                     0.06541842222213745,
@@ -401024,11 +401024,11 @@
                     1.0,
                     0.7020000219345093
                 ],
-                "material_waterDepthScale": 3.130000114440918,
+                "material_waterDepthScale": 7.019999980926514,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
-                "material_waveScale": 1.0,
-                "material_waveSpeed": 0.8899999856948853,
-                "material_waveStrength": 5.489999771118164,
+                "material_waveScale": 1.5299999713897705,
+                "material_waveSpeed": 0.09000000357627869,
+                "material_waveStrength": 2.140000104904175,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"
             },

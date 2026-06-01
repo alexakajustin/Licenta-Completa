@@ -1166,6 +1166,11 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			{
 				windowState.activeViewportTab = 1;
 				ImVec2 gamePanelSize = ImGui::GetContentRegionAvail();
+				ImVec2 screenPos = ImGui::GetCursorScreenPos();
+
+				// Update exact viewport bounds for rendering to match Game view size
+				this->viewportSize = glm::vec2(gamePanelSize.x, gamePanelSize.y);
+				this->viewportPos = glm::vec2(screenPos.x, screenPos.y);
 
 				if (!isPlaying)
 				{
