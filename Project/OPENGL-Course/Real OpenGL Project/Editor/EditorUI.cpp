@@ -656,37 +656,6 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			ImGui::EndMenu();
 		}
 
-		// ========== Play/Stop Toolbar (centered) ==========
-		{
-			float barWidth = ImGui::GetWindowWidth();
-			float buttonWidth = 80.0f;
-			float centerX = barWidth * 0.5f - buttonWidth * 0.5f;
-			ImGui::SameLine(centerX);
-
-			if (!isPlaying)
-			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.75f, 0.3f, 1.0f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.5f, 0.15f, 1.0f));
-				if (ImGui::Button("Play", ImVec2(buttonWidth, 0)))
-				{
-					pendingPlayAction = PlayAction::Play;
-				}
-				ImGui::PopStyleColor(3);
-			}
-			else
-			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.15f, 0.15f, 1.0f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.2f, 0.2f, 1.0f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
-				if (ImGui::Button("Stop", ImVec2(buttonWidth, 0)))
-				{
-					pendingPlayAction = PlayAction::Stop;
-				}
-				ImGui::PopStyleColor(3);
-			}
-		}
-
 		if (ImGui::BeginMenu("Templates"))
 		{
 			if (ImGui::MenuItem("Procedural Terrain"))
@@ -954,6 +923,37 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			}
 			ImGui::EndMenu();
 		}
+		// ========== Play/Stop Toolbar (centered) ==========
+		{
+			float barWidth = ImGui::GetWindowWidth();
+			float buttonWidth = 80.0f;
+			float centerX = barWidth * 0.5f - buttonWidth * 0.5f;
+			ImGui::SameLine(centerX);
+
+			if (!isPlaying)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.75f, 0.3f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.5f, 0.15f, 1.0f));
+				if (ImGui::Button("Play", ImVec2(buttonWidth, 0)))
+				{
+					pendingPlayAction = PlayAction::Play;
+				}
+				ImGui::PopStyleColor(3);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.15f, 0.15f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.2f, 0.2f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
+				if (ImGui::Button("Stop", ImVec2(buttonWidth, 0)))
+				{
+					pendingPlayAction = PlayAction::Stop;
+				}
+				ImGui::PopStyleColor(3);
+			}
+		}
+
 
 		ImGui::EndMainMenuBar();
 	}
