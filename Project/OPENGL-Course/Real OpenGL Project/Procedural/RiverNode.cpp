@@ -505,13 +505,39 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	MeshData riverMesh;
 	MeshData lakeMesh;
 	glm::vec3 up(0, 1, 0);
-	float waterMeshWidthMultiplier = 1.25f;
+	float waterMeshWidthMultiplier = 1.15f;
 	float yOffset = waterOffset;
+
+	// Helper: bilinear sample carved terrain height at a world XZ position
+	auto sampleCarvedTerrainAtWorld = [&](float wx, float wz) -> float {
+		float gxf = ((wx / terrainScale.x) + 1.0f) * 0.5f * (float)(gridRes - 1);
+		float gzf = ((wz / terrainScale.z) + 1.0f) * 0.5f * (float)(gridRes - 1);
+		int gx0 = std::max(0, std::min((int)std::floor(gxf), gridRes - 2));
+		int gz0 = std::max(0, std::min((int)std::floor(gzf), gridRes - 2));
+		float txs = glm::clamp(gxf - (float)gx0, 0.0f, 1.0f);
+		float tzs = glm::clamp(gzf - (float)gz0, 0.0f, 1.0f);
+		float h00 = data.vertices[(gz0 * gridRes + gx0) * 14 + 1];
+		float h10 = data.vertices[(gz0 * gridRes + gx0 + 1) * 14 + 1];
+		float h01 = data.vertices[((gz0 + 1) * gridRes + gx0) * 14 + 1];
+		float h11 = data.vertices[((gz0 + 1) * gridRes + gx0 + 1) * 14 + 1];
+		return glm::mix(glm::mix(h00, h10, txs), glm::mix(h01, h11, txs), tzs);
+	};
 
 	for (const auto& riverData : fineRivers)
 	{
 		int baseIdx = riverMesh.GetVertexCount();
 		int emittedVerts = 0;
+
+		// Pre-scan: find the first segment that enters a lake for smooth blending
+		int lakeEntryIdx = -1;
+		float lakeEntryLevel = -1.0f;
+		for (size_t j = 0; j < riverData.path.size(); j++) {
+			if (riverData.path[j].lakeLevel > -1.0f) {
+				lakeEntryIdx = (int)j;
+				lakeEntryLevel = riverData.path[j].lakeLevel;
+				break;
+			}
+		}
 
 		for (size_t i = 0; i < riverData.path.size(); i++)
 		{
@@ -530,8 +556,18 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
 			float currentDepth = baseDepth * std::pow(riverData.path[i].volume, 0.35f);
-			if (riverData.path[i].lakeLevel > -1.0f) posY = riverData.path[i].lakeLevel;
-			else posY = riverData.path[i].height - (currentDepth * 0.5f);
+			if (riverData.path[i].lakeLevel > -1.0f) {
+				posY = riverData.path[i].lakeLevel;
+			} else {
+				posY = riverData.path[i].height - (currentDepth * 0.5f);
+				// Smoothly blend river height toward lake level as we approach the lake
+				const int blendRange = 24;
+				if (lakeEntryIdx > 0 && (int)i < lakeEntryIdx && (int)i > lakeEntryIdx - blendRange) {
+					float blendT = 1.0f - (float)(lakeEntryIdx - (int)i) / (float)blendRange;
+					blendT = blendT * blendT * (3.0f - 2.0f * blendT); // smoothstep
+					posY = glm::mix(posY, lakeEntryLevel, blendT);
+				}
+			}
 
 			glm::vec3 dir;
 			if (i == 0) {
@@ -575,6 +611,14 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			float localWidth = currentWidth * waterMeshWidthMultiplier;
 			glm::vec3 pL = center - right * localWidth;
 			glm::vec3 pR = center + right * localWidth;
+
+			// Clamp left/right vertices below the carved terrain to prevent bank clipping
+			if (riverData.path[i].lakeLevel < 0.0f) {
+				float terrainL = sampleCarvedTerrainAtWorld(pL.x, pL.z);
+				float terrainR = sampleCarvedTerrainAtWorld(pR.x, pR.z);
+				if (pL.y > terrainL - 0.1f) pL.y = terrainL - 0.1f;
+				if (pR.y > terrainR - 0.1f) pR.y = terrainR - 0.1f;
+			}
 
 			float vCoord = (float)i * 0.025f; // V texture coordinate for river flow direction
 			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
@@ -622,8 +666,14 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 	std::map<int, int> terrainToWaterIdx;
 	for (int idx : expandedPixels) {
+		// Skip lake vertices where original terrain is above the water level
+		// This prevents the flat lake mesh from extending through terrain ridges
+		float origH = originalHeights[idx];
+		float wLevel = lakeWaterLevel[idx];
+		if (origH > wLevel + 0.3f) continue;
+
 		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
-		float y_pos = lakeWaterLevel[idx] + yOffset;
+		float y_pos = wLevel + yOffset;
 		lakeMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
 		terrainToWaterIdx[idx] = lakeMesh.GetVertexCount() - 1;
 	}
