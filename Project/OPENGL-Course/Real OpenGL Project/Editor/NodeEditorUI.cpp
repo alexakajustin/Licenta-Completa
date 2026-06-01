@@ -21,10 +21,12 @@
 #include "Procedural/InteriorGenNode.h"
 #include "Nodes/Math/ObjectIntersectionFilterNode.h"
 #include "Procedural/SolarSystemNode.h"
+#include "Scene/SceneManager.h"
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
 #include "External Libs/imnodes/imnodes.h"
+#include <cstdint>
 
 NodeEditorUI::NodeEditorUI()
 	: isOpen(true)
@@ -35,11 +37,14 @@ NodeEditorUI::~NodeEditorUI()
 {
 }
 
-bool NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState)
+NodeEditorAction NodeEditorUI::Render(SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState)
 {
-	if (!uiState.isNodeEditorOpen) return false;
+	if (!uiState.isNodeEditorOpen) return NodeEditorAction::None;
 
-	bool executeRequested = false;
+	NodeEditorAction action = NodeEditorAction::None;
+
+	// Get active graph reference
+	NodeGraph& graph = scene.GetNodeGraph();
 
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 	float winWidth = displaySize.x;
@@ -54,7 +59,7 @@ bool NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		pos = ImVec2(0, menuHeight);
 		size = ImVec2(winWidth, winHeight - menuHeight);
 	} else if (uiState.maximizedWindowID != -1) { // Something ELSE maximized
-		return false;
+		return NodeEditorAction::None;
 	}
 
 	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
@@ -75,21 +80,106 @@ bool NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				if (ImGui::MenuItem("Clear Graph")) { graph.Clear(); }
+				if (ImGui::MenuItem("Clear Active Tab")) { graph.Clear(); }
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Execute"))
 			{
-				if (ImGui::MenuItem("Execute Graph")) { executeRequested = true; }
+				if (ImGui::MenuItem("Execute Entire Pipeline")) { action = NodeEditorAction::ExecutePipeline; }
+				if (ImGui::MenuItem("Execute Active Tab Only")) { action = NodeEditorAction::ExecuteActiveTab; }
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenuBar();
 		}
 
-		// Toolbar
-		if (ImGui::Button("Execute Graph"))
+		// ========== TAB BAR ==========
+		auto& tabs = scene.GetGraphTabs();
+		int activeTab = scene.GetActiveTabIndex();
+
+		ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.15f, 0.15f, 0.20f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.30f, 0.30f, 0.45f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.20f, 0.25f, 0.40f, 1.0f));
+
+		if (ImGui::BeginTabBar("##GraphTabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs))
 		{
-			executeRequested = true;
+			int tabToRemove = -1;
+			for (int i = 0; i < (int)tabs.size(); i++)
+			{
+				bool isOpen = true;
+				bool showClose = (int)tabs.size() > 1; // Don't show X on the last remaining tab
+
+				ImGuiTabItemFlags flags = 0;
+				if (i == activeTab && activeTab != lastActiveTab)
+					flags |= ImGuiTabItemFlags_SetSelected;
+
+				bool tabVisible = false;
+				std::string tabId = tabs[i].name + "###GraphTab_" + std::to_string(reinterpret_cast<uint64_t>(tabs[i].graph.get()));
+				
+				if (showClose)
+					tabVisible = ImGui::BeginTabItem(tabId.c_str(), &isOpen, flags);
+				else
+					tabVisible = ImGui::BeginTabItem(tabId.c_str(), nullptr, flags);
+
+				if (tabVisible)
+				{
+					if (scene.GetActiveTabIndex() != i)
+						scene.SetActiveTabIndex(i);
+					ImGui::EndTabItem();
+				}
+
+				// Double-click to rename
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+				{
+					renameTargetIndex = i;
+					strncpy_s(renameBuf, sizeof(renameBuf), tabs[i].name.c_str(), _TRUNCATE);
+					ImGui::OpenPopup("RenameTabPopup");
+				}
+
+				if (!isOpen && showClose)
+					tabToRemove = i;
+			}
+
+			// "+" button to add new tab
+			if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+			{
+				scene.AddGraphTab("New Tab");
+				scene.SetActiveTabIndex((int)tabs.size() - 1);
+			}
+
+			ImGui::EndTabBar();
+
+			if (tabToRemove >= 0)
+				scene.RemoveGraphTab(tabToRemove);
+		}
+
+		ImGui::PopStyleColor(3);
+
+		// Rename popup
+		if (ImGui::BeginPopup("RenameTabPopup"))
+		{
+			ImGui::Text("Rename Tab:");
+			if (ImGui::InputText("##RenameInput", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
+					scene.RenameGraphTab(renameTargetIndex, renameBuf);
+				renameTargetIndex = -1;
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("OK"))
+			{
+				if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
+					scene.RenameGraphTab(renameTargetIndex, renameBuf);
+				renameTargetIndex = -1;
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
+		// Toolbar
+		if (ImGui::Button("Execute Pipeline"))
+		{
+			action = NodeEditorAction::ExecutePipeline;
 		}
 		ImGui::SameLine();
 		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "|  Right-click to add nodes");
@@ -174,7 +264,9 @@ bool NodeEditorUI::Render(NodeGraph& graph, SceneManager& scene, Texture* defaul
 	}
 	ImGui::End();
 
-	return executeRequested;
+	lastActiveTab = scene.GetActiveTabIndex();
+
+	return action;
 }
 
 

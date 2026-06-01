@@ -1596,7 +1596,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				std::string newName = nameBuf;
 				if (oldName != newName) {
 					selected->SetName(newName);
-					scene.GetNodeGraph().NotifyObjectRenamed(oldName, newName);
+					scene.NotifyAllGraphsObjectRenamed(oldName, newName);
 				}
 			}
 			ImGui::PopItemWidth();

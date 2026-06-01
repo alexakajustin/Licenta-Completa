@@ -32,8 +32,10 @@
 SceneManager::SceneManager()
 	: pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), debugCubeMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr)
+	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), debugCubeMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr),
+	  sharedNextId(std::make_shared<int>(1))
 {
+	EnsureDefaultTab();
 }
 
 SceneManager::~SceneManager()
@@ -1272,8 +1274,103 @@ void SceneManager::Clear()
 	
 	selectedObjectIndices.clear();
 	selectedLightIndices.clear();
-	nodeGraph.Clear();
+	ClearGraphs();
 	undoManager.Clear();
+}
+
+// =====================================================================
+// Multi-Tab Graph Management
+// =====================================================================
+
+void SceneManager::SetActiveTabIndex(int index)
+{
+	if (index >= 0 && index < (int)graphTabs.size())
+		activeTabIndex = index;
+}
+
+void SceneManager::AddGraphTab(const std::string& name)
+{
+	GraphTab tab;
+	tab.name = name;
+	tab.graph = std::make_unique<NodeGraph>(sharedNextId);
+	graphTabs.push_back(std::move(tab));
+}
+
+void SceneManager::RemoveGraphTab(int index)
+{
+	if ((int)graphTabs.size() <= 1) return; // Always keep at least one tab
+	if (index < 0 || index >= (int)graphTabs.size()) return;
+
+	graphTabs.erase(graphTabs.begin() + index);
+
+	// Adjust active tab index
+	if (activeTabIndex > index)
+		activeTabIndex--;
+	else if (activeTabIndex >= (int)graphTabs.size())
+		activeTabIndex = (int)graphTabs.size() - 1;
+}
+
+void SceneManager::RenameGraphTab(int index, const std::string& newName)
+{
+	if (index >= 0 && index < (int)graphTabs.size())
+		graphTabs[index].name = newName;
+}
+
+void SceneManager::ClearGraphs()
+{
+	graphTabs.clear();
+	activeTabIndex = 0;
+	*sharedNextId = 1;
+	EnsureDefaultTab();
+}
+
+void SceneManager::EnsureDefaultTab()
+{
+	if (graphTabs.empty())
+		AddGraphTab("Main");
+}
+
+void SceneManager::ExecutePipeline(Texture* defaultTex, Material* defaultMat, std::function<void(float, float, const std::string&)> progressCallback)
+{
+	int totalTabs = (int)graphTabs.size();
+	if (totalTabs == 0) return;
+
+	for (int t = 0; t < totalTabs; t++)
+	{
+		const std::string& tabName = graphTabs[t].name;
+		NodeGraph& graph = *graphTabs[t].graph;
+
+		// Wrap the progress callback to include tab name and scale across pipeline
+		auto tabCallback = [&](float overall, float node, const std::string& msg) {
+			if (progressCallback) {
+				float tabStart = ((float)t / (float)totalTabs) * 100.0f;
+				float tabSpan  = 100.0f / (float)totalTabs;
+				float scaledOverall = tabStart + (overall / 100.0f) * tabSpan;
+				progressCallback(scaledOverall, node, "[" + tabName + "] " + msg);
+			}
+		};
+
+		graph.Execute(*this, defaultTex, defaultMat, tabCallback);
+	}
+}
+
+GraphNode* SceneManager::FindNodeInAllGraphs(int nodeId, NodeGraph** outGraph)
+{
+	for (auto& tab : graphTabs)
+	{
+		GraphNode* node = tab.graph->FindNode(nodeId);
+		if (node) {
+			if (outGraph) *outGraph = tab.graph.get();
+			return node;
+		}
+	}
+	return nullptr;
+}
+
+void SceneManager::NotifyAllGraphsObjectRenamed(const std::string& oldName, const std::string& newName)
+{
+	for (auto& tab : graphTabs)
+		tab.graph->NotifyObjectRenamed(oldName, newName);
 }
 
 // =====================================================================

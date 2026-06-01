@@ -107,6 +107,11 @@ NodeGraph::NodeGraph() : nextId(1)
 {
 }
 
+NodeGraph::NodeGraph(std::shared_ptr<int> sharedNextId)
+	: nextId(1), m_sharedNextId(sharedNextId)
+{
+}
+
 NodeGraph::~NodeGraph()
 {
 	Clear();
@@ -931,7 +936,7 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 json NodeGraph::Serialize() const
 {
 	json j;
-	j["nextId"] = nextId;
+	j["nextId"] = GetNextIdValue();
 
 	json nodesArray = json::array();
 	for (auto* n : nodes) nodesArray.push_back(n->Serialize());
@@ -955,7 +960,13 @@ void NodeGraph::Deserialize(const json& j, SceneManager& scene)
 {
 	Clear();
 	generatedObjectNames.clear();
-	nextId = j.value("nextId", 1);
+	int loadedNextId = j.value("nextId", 1);
+	if (m_sharedNextId) {
+		if (loadedNextId > *m_sharedNextId)
+			*m_sharedNextId = loadedNextId;
+	} else {
+		nextId = loadedNextId;
+	}
 
 	if (j.contains("nodes"))
 	{

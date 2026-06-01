@@ -821,7 +821,7 @@ void Application::Run()
 		editorUI.Render(sceneManager, projection, view, camera.getCameraPosition(), viewportTexture, &camera, &inputHandler, viewportTexture, playState == PlayState::PlayMode);
 		
 		assetBrowser.Render(sceneManager, uiState);
-		bool executeGraph = nodeEditorUI.Render(sceneManager.GetNodeGraph(), sceneManager, &plainTexture, &plainMaterial, uiState);
+		NodeEditorAction graphAction = nodeEditorUI.Render(sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
 		editorUI.RenderGraphicsSettings(&sceneManager);
 
@@ -861,14 +861,12 @@ void Application::Run()
 			else if (sceneAction == EditorUI::SceneAction::Load)
 			{
 				progressTitle = "Loading Project...";
-				sceneManager.GetNodeGraph().Clear();
 				SceneSerializer::LoadScene(editorUI.GetPendingScenePath(), sceneManager,
 					mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
 					&plainTexture, &plainMaterial, &camera, progressCallback);
 			}
 			else if (sceneAction == EditorUI::SceneAction::New)
 			{
-				sceneManager.GetNodeGraph().Clear();
 				sceneManager.Clear();
 				pointLightCount = 0;
 				spotLightCount = 0;
@@ -878,8 +876,12 @@ void Application::Run()
 		}
 
 
-		if (executeGraph) {
-			progressTitle = "Executing Node Graph...";
+		if (graphAction == NodeEditorAction::ExecutePipeline) {
+			progressTitle = "Executing Pipeline...";
+			sceneManager.ExecutePipeline(&plainTexture, &plainMaterial, progressCallback);
+		}
+		else if (graphAction == NodeEditorAction::ExecuteActiveTab) {
+			progressTitle = "Executing Active Tab...";
 			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, progressCallback);
 		}
 

@@ -117,7 +117,29 @@ public:
 	void SetDefaultResources(Texture* tex, Material* mat) { defaultTexture = tex; defaultMaterial = mat; }
 	void SetMainShader(Shader* s) { mainShader = s; }
 	Shader* GetMainShader() const { return mainShader; }
-	NodeGraph& GetNodeGraph() { return nodeGraph; }
+	NodeGraph& GetNodeGraph() { return *graphTabs[activeTabIndex].graph; }
+
+	// ========== Multi-Tab Graph Management ==========
+	struct GraphTab {
+		std::string name;
+		std::unique_ptr<NodeGraph> graph;
+	};
+
+	std::vector<GraphTab>& GetGraphTabs() { return graphTabs; }
+	const std::vector<GraphTab>& GetGraphTabs() const { return graphTabs; }
+	int GetActiveTabIndex() const { return activeTabIndex; }
+	void SetActiveTabIndex(int index);
+
+	void AddGraphTab(const std::string& name);
+	void RemoveGraphTab(int index);
+	void RenameGraphTab(int index, const std::string& newName);
+	void ClearGraphs();
+	void EnsureDefaultTab();
+
+	void ExecutePipeline(Texture* defaultTex, Material* defaultMat, std::function<void(float, float, const std::string&)> progressCallback = nullptr);
+	GraphNode* FindNodeInAllGraphs(int nodeId, NodeGraph** outGraph = nullptr);
+	void NotifyAllGraphsObjectRenamed(const std::string& oldName, const std::string& newName);
+	std::shared_ptr<int>& GetSharedNextId() { return sharedNextId; }
 
 	// ========== Undo/Redo ==========
 	UndoManager& GetUndoManager() { return undoManager; }
@@ -271,7 +293,9 @@ private:
 	float renderDistanceMultiplier = 1.0f;
 	float shadowDistanceMultiplier = 1.0f;
 
-	NodeGraph nodeGraph;
+	std::vector<GraphTab> graphTabs;
+	int activeTabIndex = 0;
+	std::shared_ptr<int> sharedNextId;
 	UndoManager undoManager;
 
 	GraphicsSettings* graphicsSettings = nullptr;

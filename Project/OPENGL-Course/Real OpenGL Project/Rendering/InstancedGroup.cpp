@@ -1209,7 +1209,7 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
 			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
 		{
-			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
 			if (node && node->title == "Scatter") {
 				scatterNode = static_cast<ScatterNode*>(node);
 			}
@@ -1299,7 +1299,7 @@ void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneMana
 		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
 			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
 		{
-			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
 			if (node && node->title == "Scatter") {
 				scatterNode = static_cast<ScatterNode*>(node);
 			}
@@ -1394,7 +1394,7 @@ void InstancedGroup::DeleteSelectedInstances(SceneManager* scene)
 		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
 			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
 		{
-			GraphNode* node = scene->GetNodeGraph().FindNode(nodeID);
+			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
 			if (node && node->title == "Scatter") {
 				scatterNode = static_cast<ScatterNode*>(node);
 			}

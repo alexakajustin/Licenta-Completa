@@ -116,9 +116,22 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 		j["camera"] = cam;
 	}
 
-	// ========== Serialize Node Graph (The "Recipe") ==========
-	json graphJson = scene.GetNodeGraph().Serialize();
-	j["nodeGraph"] = graphJson;
+	// ========== Serialize Node Graphs (Multi-Tab Pipeline) ==========
+	{
+		json graphsJson;
+		graphsJson["nextId"] = *scene.GetSharedNextId();
+		graphsJson["activeTabIndex"] = scene.GetActiveTabIndex();
+
+		json tabsArray = json::array();
+		for (const auto& tab : scene.GetGraphTabs()) {
+			json tabJson;
+			tabJson["name"] = tab.name;
+			tabJson["graph"] = tab.graph->Serialize();
+			tabsArray.push_back(tabJson);
+		}
+		graphsJson["tabs"] = tabsArray;
+		j["nodeGraphs"] = graphsJson;
+	}
 
 	// ========== Serialize Objects (The "Results") ==========
 	std::map<GameObject*, int> ptrToSavedIndex;
@@ -439,7 +452,6 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 	// ========== Clear existing scene ==========
 	scene.Clear();
-	scene.GetNodeGraph().Clear();
 	pointLightCount = 0;
 	spotLightCount = 0;
 
@@ -1079,13 +1091,52 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 		}
 	}
 
-	// ========== Load Node Graph (The "Recipe") ==========
-	if (j.contains("nodeGraph"))
-	{
-		if (progressCallback) progressCallback(40.0f, 0.0f, "Restoring Node Graph...");
+	// ========== Load Node Graphs (Multi-Tab Pipeline) ==========
+	bool hasGraphs = false;
 
+	if (j.contains("nodeGraphs"))
+	{
+		// New multi-tab format
+		if (progressCallback) progressCallback(40.0f, 0.0f, "Restoring Node Graphs...");
+
+		const auto& graphsJson = j["nodeGraphs"];
+		int nextId = graphsJson.value("nextId", 1);
+		*scene.GetSharedNextId() = nextId;
+
+		scene.GetGraphTabs().clear();
+		int loadedActiveTab = graphsJson.value("activeTabIndex", 0);
+
+		if (graphsJson.contains("tabs"))
+		{
+			for (const auto& tabJson : graphsJson["tabs"])
+			{
+				std::string tabName = tabJson.value("name", "Unnamed");
+				scene.AddGraphTab(tabName);
+				auto& tab = scene.GetGraphTabs().back();
+				if (tabJson.contains("graph"))
+					tab.graph->Deserialize(tabJson["graph"], scene);
+			}
+		}
+
+		scene.EnsureDefaultTab();
+		scene.SetActiveTabIndex(loadedActiveTab);
+		hasGraphs = true;
+	}
+	else if (j.contains("nodeGraph"))
+	{
+		// Legacy single-graph format — import into default tab
+		if (progressCallback) progressCallback(40.0f, 0.0f, "Restoring Node Graph (Legacy)...");
+
+		scene.GetGraphTabs().clear();
+		scene.AddGraphTab("Main");
+		scene.SetActiveTabIndex(0);
 		scene.GetNodeGraph().Deserialize(j["nodeGraph"], scene);
-		
+		hasGraphs = true;
+		printf("[SceneSerializer] Legacy single-graph imported into 'Main' tab.\n");
+	}
+
+	if (hasGraphs)
+	{
 		if (progressCallback) progressCallback(45.0f, 0.0f, "Waiting for Assets...");
 
 		// Wait for all assets to finish loading before auto-execution.
@@ -1094,9 +1145,9 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 		if (progressCallback) progressCallback(50.0f, 0.0f, "Executing Generation Pipeline...");
 
-		// AUTO-EXECUTE: Recreate the millions of objects
-		scene.GetNodeGraph().Execute(scene, defaultTexture, defaultMaterial, progressCallback);
-		printf("[SceneSerializer] Node Graph restored and auto-executed.\n");
+		// AUTO-EXECUTE: Recreate the millions of objects across all tabs
+		scene.ExecutePipeline(defaultTexture, defaultMaterial, progressCallback);
+		printf("[SceneSerializer] Node Graphs restored and auto-executed (%d tabs).\n", (int)scene.GetGraphTabs().size());
 	}
 
 	printf("[SceneSerializer] Scene loaded from: %s (%d objects, %d lights)\n",

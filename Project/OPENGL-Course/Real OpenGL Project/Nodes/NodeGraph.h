@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 #include <glm/glm.hpp>
 #include "Rendering/MeshData.h"
 
@@ -100,6 +101,7 @@ class NodeGraph
 {
 public:
 	NodeGraph();
+	explicit NodeGraph(std::shared_ptr<int> sharedNextId);
 	~NodeGraph();
 
 	/**
@@ -135,9 +137,12 @@ public:
 	std::vector<GraphNode*>& GetNodes() { return nodes; }
 	std::vector<Link>& GetLinks() { return links; }
 
-	int NextLinkId() { return nextId++; }
-	int NextNodeId() { return nextId++; }
-	int NextPinId() { return nextId++; }
+	int NextLinkId() { return m_sharedNextId ? (*m_sharedNextId)++ : nextId++; }
+	int NextNodeId() { return m_sharedNextId ? (*m_sharedNextId)++ : nextId++; }
+	int NextPinId()  { return m_sharedNextId ? (*m_sharedNextId)++ : nextId++; }
+
+	void SetSharedNextId(std::shared_ptr<int> shared) { m_sharedNextId = shared; }
+	int GetNextIdValue() const { return m_sharedNextId ? *m_sharedNextId : nextId; }
 
 	json Serialize() const;
 	void Deserialize(const json& j, SceneManager& scene);
@@ -159,6 +164,7 @@ private:
 	std::vector<GraphNode*> nodes;
 	std::vector<Link> links;
 	int nextId;
+	std::shared_ptr<int> m_sharedNextId;
 
 	/**
 	 * @brief Sorts nodes topologically to define a valid dependency execution order.
