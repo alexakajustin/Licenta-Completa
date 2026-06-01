@@ -381,7 +381,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		float lvl = -1.0f; if (lakeHitIdx >= 0 && lakeMask[gz * gridRes + gx]) lvl = lakeLevel;
 		finePath.push_back({ pt, coarseVolume.back(), lvl, 0.0f });
 
-		auto getOriginalH = [&](int x, int z) -> float { return originalHeights[clampGrid(z) * gridRes + clampGrid(x)]; };
+		auto getOriginalH = [&](int x, int z) -> float { return data.vertices[(clampGrid(z) * gridRes + clampGrid(x)) * 14 + 1]; };
 		for (auto& fp : finePath) {
 			int x0 = clampGrid((int)std::floor(fp.pos.x)); int x1 = clampGrid(x0 + 1);
 			int z0 = clampGrid((int)std::floor(fp.pos.y)); int z1 = clampGrid(z0 + 1);
@@ -412,6 +412,29 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		int idx = clampGrid(path[lastIdx].z) * gridRes + clampGrid(path[lastIdx].x);
 		if (pathID[idx] != currentPathID) isMerged = true;
 
+		if (lakeHitIdx >= 0) {
+			float targetVisualWater = lakeLevel + lakeWaterOffset;
+			int entryIdx = -1;
+			for (size_t i = 0; i < finePath.size(); i++) {
+				if (finePath[i].lakeLevel > -1.0f) {
+					entryIdx = (int)i;
+					break;
+				}
+			}
+			if (entryIdx >= 0 && entryIdx < (int)finePath.size() - 1) {
+				float startH = finePath[entryIdx].height;
+				if (startH > targetVisualWater) {
+					for (size_t i = entryIdx; i < finePath.size(); i++) {
+						float t = (float)(i - entryIdx) / (float)(finePath.size() - 1 - entryIdx);
+						float slopedH = glm::mix(startH, targetVisualWater, t);
+						if (finePath[i].height > slopedH) {
+							finePath[i].height = slopedH;
+						}
+					}
+				}
+			}
+		}
+
 		fineRivers.push_back({finePath, isMerged});
 		currentPathID++;
 	}
@@ -440,22 +463,33 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				for (int rx = -gridRadius; rx <= gridRadius; rx++) {
 					int nx = cx + rx;
 					int nz = cz + rz;
-					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes && !lakeMask[nz * gridRes + nx]) {
-						float dx = (float)nx - pt.pos.x;
-						float dz = (float)nz - pt.pos.y;
-						float dist = std::sqrt(dx * dx + dz * dz);
-						float worldDist = dist * (terrainScale.x / gridRes);
+					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+						bool isSubmerged = false;
+						if (lakeMask[nz * gridRes + nx]) {
+							float visualLakeWater = lakeWaterLevel[nz * gridRes + nx] + lakeWaterOffset;
+							float preRiverHeight = std::min(originalHeights[nz * gridRes + nx], lakeWaterLevel[nz * gridRes + nx] - baseDepth);
+							if (preRiverHeight < visualLakeWater) {
+								isSubmerged = true;
+							}
+						}
+						
+						if (!isSubmerged) {
+							float dx = (float)nx - pt.pos.x;
+							float dz = (float)nz - pt.pos.y;
+							float dist = std::sqrt(dx * dx + dz * dz);
+							float worldDist = dist * (terrainScale.x / gridRes);
 
-						if (worldDist <= currentWidth) {
-							float t = glm::clamp(worldDist / currentWidth, 0.0f, 1.0f);
-							t = t * t * (3.0f - 2.0f * t);
-							
-							float bankHeight = originalHeights[nz * gridRes + nx];
-							float riverBedHeight = pt.height - currentDepth;
-							float targetHeight = glm::mix(riverBedHeight, bankHeight, t);
-							
-							if (targetHeight < data.vertices[(nz * gridRes + nx) * 14 + 1]) {
-								data.vertices[(nz * gridRes + nx) * 14 + 1] = targetHeight;
+							if (worldDist <= currentWidth) {
+								float t = glm::clamp(worldDist / currentWidth, 0.0f, 1.0f);
+								t = t * t * (3.0f - 2.0f * t);
+								
+								float bankHeight = originalHeights[nz * gridRes + nx];
+								float riverBedHeight = pt.height - currentDepth;
+								float targetHeight = glm::mix(riverBedHeight, bankHeight, t);
+								
+								if (targetHeight < data.vertices[(nz * gridRes + nx) * 14 + 1]) {
+									data.vertices[(nz * gridRes + nx) * 14 + 1] = targetHeight;
+								}
 							}
 						}
 					}

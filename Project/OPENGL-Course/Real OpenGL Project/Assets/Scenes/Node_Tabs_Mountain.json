@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.7963775396347046,
-            -0.5519369840621948,
-            0.24728207290172577
+            0.8598806262016296,
+            -0.4809887707233429,
+            -0.171041339635849
         ],
-        "pitch": -33.5,
+        "pitch": -28.75,
         "position": [
-            259.41009521484375,
-            221.4282989501953,
-            -117.36859893798828
+            95.30195617675781,
+            311.58380126953125,
+            -185.6447296142578
         ],
-        "yaw": 737.25
+        "yaw": 1068.75
     },
     "instancedGroups": [
         {
@@ -50,7 +50,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 484,
+        "nextId": 531,
         "tabs": [
             {
                 "graph": {
@@ -76,7 +76,7 @@
                             "start": 8
                         }
                     ],
-                    "nextId": 484,
+                    "nextId": 531,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -197,12 +197,12 @@
                                 7
                             ],
                             "lakeVolumeMultiplier": 500.0,
-                            "lakeWaterOffset": -1.2949999570846558,
+                            "lakeWaterOffset": -1.9950000047683716,
                             "maxSteps": 1500,
                             "outputPins": [
                                 8
                             ],
-                            "riverWaterOffset": 0.0,
+                            "riverWaterOffset": 0.699999988079071,
                             "smoothPasses": 6,
                             "springCount": 8,
                             "title": "River"
@@ -269,7 +269,7 @@
                             "start": 42
                         }
                     ],
-                    "nextId": 484,
+                    "nextId": 531,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -489,7 +489,7 @@
                             "start": 147
                         }
                     ],
-                    "nextId": 484,
+                    "nextId": 531,
                     "nodes": [
                         {
                             "cachedModelPath": "",
