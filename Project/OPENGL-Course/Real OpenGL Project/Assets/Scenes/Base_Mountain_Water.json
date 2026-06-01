@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.012394428253173828,
-            0.9998477101325989,
-            -0.012286734767258167
+            -0.9580998420715332,
+            -0.11753739416599274,
+            0.2612079977989197
         ],
-        "pitch": 89.0,
+        "pitch": -6.75,
         "position": [
-            680.2280883789063,
-            219.8818359375,
-            309.3614807128906
+            570.0071411132813,
+            237.54238891601563,
+            108.37325286865234
         ],
-        "yaw": -44.75
+        "yaw": -195.25
     },
     "instancedGroups": [
         {
@@ -71,7 +71,7 @@
                 "start": 80
             }
         ],
-        "nextId": 360,
+        "nextId": 394,
         "nodes": [
             {
                 "cachedModelPath": "",
@@ -400874,6 +400874,14 @@
             "components": [
                 {
                     "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
                 }
             ],
             "customMeshPath": "Base_Mountain_Water_Plane.mesh",
@@ -400898,7 +400906,7 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\terrain\\beach\\albedo.jpg",
-                    "tiling": 50.0
+                    "tiling": 100.0
                 },
                 {
                     "blendMode": 1,
@@ -400912,7 +400920,7 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\terrain\\grass\\albedo.jpg",
-                    "tiling": 50.0
+                    "tiling": 100.0
                 },
                 {
                     "blendMode": 3,
@@ -400926,7 +400934,7 @@
                     "slopeMax": 0.27000001072883606,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\terrain\\rock\\albedo.jpg",
-                    "tiling": 50.0
+                    "tiling": 100.0
                 },
                 {
                     "blendMode": 1,
@@ -400940,7 +400948,7 @@
                     "slopeMax": 0.5,
                     "slopeMin": 0.0,
                     "texturePath": "Assets\\Textures\\Terrain_Snow\\snow_02_diff_1k.jpg",
-                    "tiling": 50.0
+                    "tiling": 100.0
                 }
             ],
             "texturePath": "",
@@ -401391,31 +401399,44 @@
                     "moveSpeed": 5.0,
                     "turnSpeed": 0.15000000596046448,
                     "type": "Player"
+                },
+                {
+                    "height": 2.5500001907348633,
+                    "radius": 0.30000001192092896,
+                    "type": "CapsuleCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": true,
+                    "mass": 80.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
                 }
             ],
             "inheritScale": true,
             "isVisible": true,
             "modelPath": "",
-            "name": "Cube 9",
+            "name": "Player 9",
             "normalMapPath": "",
             "parent": "",
             "parentIndex": -1,
-            "primitiveType": "Cube",
+            "primitiveType": "Player",
             "texturePath": "",
             "transform": {
                 "position": [
-                    686.351806640625,
-                    217.68943786621094,
-                    303.2377624511719
+                    561.6067504882813,
+                    237.00711059570313,
+                    108.723388671875
                 ],
                 "rotation": [
-                    0.0,
+                    -0.0,
                     0.0,
                     0.0
                 ],
                 "scale": [
                     1.0,
-                    1.7300000190734863,
+                    1.0,
                     1.0
                 ]
             }

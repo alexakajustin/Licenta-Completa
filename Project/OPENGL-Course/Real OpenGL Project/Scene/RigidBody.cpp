@@ -72,14 +72,14 @@ void RigidBody::CreateBody() {
         std::string prim = gameObject->GetPrimitiveType();
         glm::vec3 scale = gameObject->GetTransform().GetScale();
 
-        if (prim == "Plane") {
+        if (prim == "Plane" && !gameObject->HasCustomMesh()) {
             // Plane primitive goes from -1 to 1 in X and Z.
             shape = new JPH::BoxShape(ToJolt(glm::vec3(1.0f * scale.x, 0.05f, 1.0f * scale.z)));
             std::cout << "[Physics] Created Plane BoxShape for " << gameObject->GetName() << std::endl;
-        } else if (prim == "Cube") {
+        } else if (prim == "Cube" && !gameObject->HasCustomMesh()) {
             shape = new JPH::BoxShape(ToJolt(glm::vec3(0.5f * scale.x, 0.5f * scale.y, 0.5f * scale.z)));
             std::cout << "[Physics] Created Cube BoxShape for " << gameObject->GetName() << std::endl;
-        } else if (prim == "Sphere") {
+        } else if (prim == "Sphere" && !gameObject->HasCustomMesh()) {
             shape = new JPH::SphereShape(1.0f * scale.x);
             std::cout << "[Physics] Created Sphere SphereShape for " << gameObject->GetName() << " with radius " << (1.0f * scale.x) << std::endl;
         } else {
