@@ -146,35 +146,35 @@ NodeEditorAction NodeEditorUI::Render(SceneManager& scene, Texture* defaultTex, 
 				scene.SetActiveTabIndex((int)tabs.size() - 1);
 			}
 
-			ImGui::EndTabBar();
-
 			if (tabToRemove >= 0)
 				scene.RemoveGraphTab(tabToRemove);
+
+			// Rename popup
+			if (ImGui::BeginPopup("RenameTabPopup"))
+			{
+				ImGui::Text("Rename Tab:");
+				if (ImGui::InputText("##RenameInput", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue))
+				{
+					if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
+						scene.RenameGraphTab(renameTargetIndex, renameBuf);
+					renameTargetIndex = -1;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("OK"))
+				{
+					if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
+						scene.RenameGraphTab(renameTargetIndex, renameBuf);
+					renameTargetIndex = -1;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndPopup();
+			}
+
+			ImGui::EndTabBar();
 		}
 
 		ImGui::PopStyleColor(3);
-
-		// Rename popup
-		if (ImGui::BeginPopup("RenameTabPopup"))
-		{
-			ImGui::Text("Rename Tab:");
-			if (ImGui::InputText("##RenameInput", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue))
-			{
-				if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
-					scene.RenameGraphTab(renameTargetIndex, renameBuf);
-				renameTargetIndex = -1;
-				ImGui::CloseCurrentPopup();
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("OK"))
-			{
-				if (renameTargetIndex >= 0 && renameTargetIndex < (int)tabs.size())
-					scene.RenameGraphTab(renameTargetIndex, renameBuf);
-				renameTargetIndex = -1;
-				ImGui::CloseCurrentPopup();
-			}
-			ImGui::EndPopup();
-		}
 
 		// Toolbar
 		if (ImGui::Button("Execute Pipeline"))
