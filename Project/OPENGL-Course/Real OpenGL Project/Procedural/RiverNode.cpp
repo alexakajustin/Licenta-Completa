@@ -551,17 +551,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			glm::vec3 center(posX, posY + yOffset, posZ);
 			
 			// --- TERRAIN-AWARE MESH BURIAL ---
-			// Push segments backward and RE-SAMPLE terrain height at the new position.
-			// This ensures the buried part of the mesh follows the topography behind the source.
+			// Push segments backward horizontally.
+			// This ensures the buried part of the mesh starts inside the mountain behind the source.
 			if (i < 8 && riverData.path.size() >= 2) {
 				float pushDist = 20.0f * (1.0f - (float)i / 8.0f);
 				center -= dir * pushDist;
-				
-				// Sample terrain at the new "inside" position
-				int gx = std::max(0, std::min((int)(((center.x / terrainScale.x) + 1.0f) * 0.5f * (gridRes - 1)), gridRes - 1));
-				int gz = std::max(0, std::min((int)(((center.z / terrainScale.z) + 1.0f) * 0.5f * (gridRes - 1)), gridRes - 1));
-				float h = originalHeights[gz * gridRes + gx];
-				center.y = h + yOffset - 2.0f; // Sink it 2m deep!
 			}
 
 			float volume = riverData.path[i].volume;
