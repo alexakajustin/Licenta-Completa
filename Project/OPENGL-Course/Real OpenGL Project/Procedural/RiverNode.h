@@ -54,7 +54,8 @@ private:
 	int maxSteps = 500; ///< Maximum step distance for a river stream path.
 	float baseDepth = 0.08f; ///< Base carving depth of the river.
 	float baseWidth = 15.0f; ///< Base carving width of the river.
-	float waterOffset = -0.005f; ///< Vertical offset constraint to place water meshes slightly below banks.
+	float riverWaterOffset = -0.005f; ///< Vertical offset constraint for river water meshes.
+	float lakeWaterOffset = -0.005f; ///< Vertical offset constraint for lake water meshes.
 	int smoothPasses = 8; ///< Post-carving height smoothing passes.
 	float lakeVolumeMultiplier = 500.0f; ///< Volume scale factor for flat lake regions.
 

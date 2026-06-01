@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.1115485206246376,
-            -0.40274670720100403,
-            0.9084888696670532
+            0.1812112033367157,
+            -0.3131638169288635,
+            0.9322505593299866
         ],
-        "pitch": -23.75,
+        "pitch": -18.25,
         "position": [
-            -127.51807403564453,
-            299.3172912597656,
-            -163.52175903320313
+            -34.2559814453125,
+            172.93800354003906,
+            -53.93574905395508
         ],
-        "yaw": 457.0
+        "yaw": 79.0
     },
     "instancedGroups": [
         {
@@ -50,7 +50,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 249,
+        "nextId": 343,
         "tabs": [
             {
                 "graph": {
@@ -76,7 +76,7 @@
                             "start": 8
                         }
                     ],
-                    "nextId": 249,
+                    "nextId": 343,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -144,7 +144,7 @@
                                     "slopeMax": 0.2199999988079071,
                                     "slopeMin": 0.0,
                                     "texturePath": "Assets\\Textures\\terrain\\rock\\albedo.jpg",
-                                    "tiling": 50.0
+                                    "tiling": 200.0
                                 }
                             ],
                             "cachedTexturePath": "",
@@ -197,14 +197,15 @@
                                 7
                             ],
                             "lakeVolumeMultiplier": 500.0,
+                            "lakeWaterOffset": -1.3949999809265137,
                             "maxSteps": 1500,
                             "outputPins": [
                                 8
                             ],
+                            "riverWaterOffset": -0.0949999988079071,
                             "smoothPasses": 6,
                             "springCount": 8,
-                            "title": "River",
-                            "waterOffset": 0.004999999888241291
+                            "title": "River"
                         },
                         {
                             "depositionConstant": 0.019999999552965164,
@@ -222,7 +223,7 @@
                             ],
                             "rainRate": 1.0,
                             "simulationSteps": 60,
-                            "smoothPasses": 0,
+                            "smoothPasses": 2,
                             "title": "Hydraulic Erosion"
                         },
                         {
@@ -268,7 +269,7 @@
                             "start": 42
                         }
                     ],
-                    "nextId": 249,
+                    "nextId": 343,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -336,7 +337,7 @@
                                     "slopeMax": 0.2199999988079071,
                                     "slopeMin": 0.0,
                                     "texturePath": "Assets\\Textures\\terrain\\rock\\albedo.jpg",
-                                    "tiling": 50.0
+                                    "tiling": 200.0
                                 }
                             ],
                             "cachedTexturePath": "",
@@ -488,7 +489,7 @@
                             "start": 147
                         }
                     ],
-                    "nextId": 249,
+                    "nextId": 343,
                     "nodes": [
                         {
                             "cachedModelPath": "",
@@ -556,7 +557,7 @@
                                     "slopeMax": 0.2199999988079071,
                                     "slopeMin": 0.0,
                                     "texturePath": "Assets\\Textures\\terrain\\rock\\albedo.jpg",
-                                    "tiling": 50.0
+                                    "tiling": 200.0
                                 }
                             ],
                             "cachedTexturePath": "",
@@ -857,7 +858,7 @@
                 "material_waterDepthScale": 3.130000114440918,
                 "material_waterNormalMap": "Assets/Textures/Water/normal.png",
                 "material_waveScale": 1.0,
-                "material_waveSpeed": 0.8899999856948853,
+                "material_waveSpeed": 0.15000000596046448,
                 "material_waveStrength": 5.489999771118164,
                 "shader_frag": "Assets/Shaders/river.frag",
                 "shader_vert": "Assets/Shaders/river.vert"

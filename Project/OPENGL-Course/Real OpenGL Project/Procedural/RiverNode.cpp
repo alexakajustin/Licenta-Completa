@@ -26,7 +26,8 @@ RiverNode::RiverNode(NodeGraph& graph)
 	maxSteps = 1500;
 	baseDepth = 1.0f;
 	baseWidth = 8.0f;
-	waterOffset = 0.005f;
+	riverWaterOffset = 0.005f;
+	lakeWaterOffset = 0.005f;
 	smoothPasses = 8;
 	lakeVolumeMultiplier = 500.0f;
 }
@@ -38,7 +39,8 @@ json RiverNode::Serialize() const
 	j["maxSteps"] = maxSteps;
 	j["baseDepth"] = baseDepth;
 	j["baseWidth"] = baseWidth;
-	j["waterOffset"] = waterOffset;
+	j["riverWaterOffset"] = riverWaterOffset;
+	j["lakeWaterOffset"] = lakeWaterOffset;
 	j["smoothPasses"] = smoothPasses;
 	j["lakeVolumeMultiplier"] = lakeVolumeMultiplier;
 	return j;
@@ -51,7 +53,8 @@ void RiverNode::Deserialize(const json& j)
 	maxSteps = j.value("maxSteps", 500);
 	baseDepth = j.value("baseDepth", 0.08f);
 	baseWidth = j.value("baseWidth", 15.0f);
-	waterOffset = j.value("waterOffset", -0.005f);
+	riverWaterOffset = j.value("riverWaterOffset", j.value("waterOffset", -0.005f));
+	lakeWaterOffset = j.value("lakeWaterOffset", j.value("waterOffset", -0.005f));
 	smoothPasses = j.value("smoothPasses", 8);
 	lakeVolumeMultiplier = j.value("lakeVolumeMultiplier", 500.0f);
 }
@@ -62,7 +65,8 @@ void RiverNode::RenderContent(SceneManager* scene)
 	ImGui::DragInt("Max Length", &maxSteps, 10, 10, 2000);
 	ImGui::DragFloat("Base Depth", &baseDepth, 0.1f, 0.0f, 50.0f);
 	ImGui::DragFloat("Base Width", &baseWidth, 0.1f, 0.1f, 100.0f);
-	ImGui::DragFloat("Water Offset", &waterOffset, 0.1f, -10.0f, 10.0f);
+	ImGui::DragFloat("River Offset", &riverWaterOffset, 0.1f, -10.0f, 10.0f);
+	ImGui::DragFloat("Lake Offset", &lakeWaterOffset, 0.1f, -10.0f, 10.0f);
 	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 30);
 	ImGui::Separator();
 	ImGui::Text("Appearance");
@@ -506,7 +510,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	MeshData lakeMesh;
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.15f;
-	float yOffset = waterOffset;
+	float rOffset = riverWaterOffset;
 
 	// Helper: bilinear sample carved terrain height at a world XZ position
 	auto sampleCarvedTerrainAtWorld = [&](float wx, float wz) -> float {
@@ -584,7 +588,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 			
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
-			glm::vec3 center(posX, posY + yOffset, posZ);
+			glm::vec3 center(posX, posY + rOffset, posZ);
 			
 			// --- TERRAIN-AWARE MESH BURIAL ---
 			// Push segments backward horizontally.
@@ -673,7 +677,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		if (origH > wLevel + 0.3f) continue;
 
 		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
-		float y_pos = wLevel + yOffset;
+		float y_pos = wLevel + lakeWaterOffset;
 		lakeMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
 		terrainToWaterIdx[idx] = lakeMesh.GetVertexCount() - 1;
 	}
