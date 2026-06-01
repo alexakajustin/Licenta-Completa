@@ -543,6 +543,23 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
+		// Calculate the true visual intersection with the offset lake
+		int visualLakeEntryIdx = -1;
+		float targetLakeLevel = 0.0f;
+		if (lakeEntryIdx > -1) {
+			targetLakeLevel = lakeEntryLevel + (lakeWaterOffset - rOffset);
+			for (size_t j = 0; j < riverData.path.size(); j++) {
+				float cDepth = baseDepth * std::pow(riverData.path[j].volume, 0.35f);
+				float rHeight = riverData.path[j].height - (cDepth * 0.5f);
+				if (rHeight <= targetLakeLevel) {
+					visualLakeEntryIdx = (int)j;
+					break;
+				}
+			}
+			// If it never technically goes below the offset lake (lake offset is extremely low),
+			// it will just flow to the end of its path normally.
+		}
+
 		for (size_t i = 0; i < riverData.path.size(); i++)
 		{
 			float fx = riverData.path[i].pos.x;
@@ -560,16 +577,19 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
 			float currentDepth = baseDepth * std::pow(riverData.path[i].volume, 0.35f);
-			if (riverData.path[i].lakeLevel > -1.0f) {
-				posY = riverData.path[i].lakeLevel;
+			float naturalHeight = riverData.path[i].height - (currentDepth * 0.5f);
+			
+			if (visualLakeEntryIdx > -1 && (int)i >= visualLakeEntryIdx) {
+				// Inside the visual lake, keep river flat at lake level
+				posY = targetLakeLevel;
 			} else {
-				posY = riverData.path[i].height - (currentDepth * 0.5f);
-				// Smoothly blend river height toward lake level as we approach the lake
+				posY = naturalHeight;
+				// Smoothly blend river height toward lake level just before visual entry
 				const int blendRange = 24;
-				if (lakeEntryIdx > 0 && (int)i < lakeEntryIdx && (int)i > lakeEntryIdx - blendRange) {
-					float blendT = 1.0f - (float)(lakeEntryIdx - (int)i) / (float)blendRange;
+				if (visualLakeEntryIdx > 0 && (int)i > visualLakeEntryIdx - blendRange) {
+					float blendT = 1.0f - (float)(visualLakeEntryIdx - (int)i) / (float)blendRange;
 					blendT = blendT * blendT * (3.0f - 2.0f * blendT); // smoothstep
-					posY = glm::mix(posY, lakeEntryLevel, blendT);
+					posY = glm::mix(posY, targetLakeLevel, blendT);
 				}
 			}
 
@@ -610,6 +630,16 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			if (riverData.isMerged && i > riverData.path.size() - 6) {
 				float t = (float)(riverData.path.size() - 1 - i) / 5.0f;
 				currentWidth *= t;
+			}
+			
+			// Thin out river as it enters the visual lake to prevent artifacting
+			if (visualLakeEntryIdx > 0) {
+				if ((int)i >= visualLakeEntryIdx) {
+					currentWidth = 0.0f; // Inside lake, river is fully merged
+				} else if ((int)i > visualLakeEntryIdx - 16) {
+					float t = (float)(visualLakeEntryIdx - (int)i) / 16.0f;
+					currentWidth *= (t * t * (3.0f - 2.0f * t)); // smoothstep tapering
+				}
 			}
 			
 			float localWidth = currentWidth * waterMeshWidthMultiplier;
