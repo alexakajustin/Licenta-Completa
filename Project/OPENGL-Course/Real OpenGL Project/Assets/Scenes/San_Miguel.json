@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.9040424823760986,
-            -0.40274670720100403,
-            -0.14318624138832092
+            0.8540221452713013,
+            -0.4107188284397125,
+            0.31930598616600037
         ],
-        "pitch": -23.75,
+        "pitch": -24.25,
         "position": [
-            40.455780029296875,
-            3.28878116607666,
-            2.454822540283203
+            22.56389808654785,
+            0.38269299268722534,
+            4.583552837371826
         ],
-        "yaw": -171.0
+        "yaw": -339.5
     },
     "instancedGroups": [],
     "lights": [
@@ -48,6 +48,98 @@
     },
     "objects": [
         {
+            "components": [
+                {
+                    "eyeHeight": 1.7000000476837158,
+                    "gravity": 15.0,
+                    "jumpForce": 6.0,
+                    "moveSpeed": 5.0,
+                    "turnSpeed": 0.15000000596046448,
+                    "type": "Player"
+                },
+                {
+                    "height": 0.15000000596046448,
+                    "radius": 0.30000001192092896,
+                    "type": "CapsuleCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": true,
+                    "mass": 80.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Player 282",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Player",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    28.053375244140625,
+                    -0.04019998013973236,
+                    3.4959352016448975
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Plane 283",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    28.566585540771484,
+                    -1.2001999616622925,
+                    5.200430393218994
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ]
+            }
+        },
+        {
             "inheritScale": true,
             "isVisible": true,
             "modelPath": "Assets\\Scenes\\San Miguel\\san-miguel-low-poly.obj",
@@ -59,9 +151,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    9.407974243164063,
+                    -0.8042455911636353,
+                    1.8646358251571655
                 ],
                 "rotation": [
                     0.0,
@@ -115,7 +207,7 @@
             "name": "Batch_0 (64 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -192,7 +284,7 @@
             "name": "Batch_1 (7 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -270,7 +362,7 @@
             "name": "Batch_2 (55 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -348,7 +440,7 @@
             "name": "Batch_3 (21 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -426,7 +518,7 @@
             "name": "Batch_4 (21 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -503,7 +595,7 @@
             "name": "Batch_5 (126 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -580,7 +672,7 @@
             "name": "Batch_6 (84 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -657,7 +749,7 @@
             "name": "Batch_7 (161 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -734,7 +826,7 @@
             "name": "Batch_8 (42 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -811,7 +903,7 @@
             "name": "Batch_9 (20 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -890,7 +982,7 @@
             "name": "Batch_10 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -968,7 +1060,7 @@
             "name": "Batch_11 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1047,7 +1139,7 @@
             "name": "Batch_12 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1124,7 +1216,7 @@
             "name": "Batch_13 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1203,7 +1295,7 @@
             "name": "Batch_14 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1282,7 +1374,7 @@
             "name": "Batch_15 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1361,7 +1453,7 @@
             "name": "Batch_16 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1438,7 +1530,7 @@
             "name": "Batch_17 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1517,7 +1609,7 @@
             "name": "Batch_18 (7 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1595,7 +1687,7 @@
             "name": "Batch_19 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1673,7 +1765,7 @@
             "name": "Batch_20 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1751,7 +1843,7 @@
             "name": "Batch_21 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1829,7 +1921,7 @@
             "name": "Batch_22 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1907,7 +1999,7 @@
             "name": "Batch_23 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1985,7 +2077,7 @@
             "name": "Batch_24 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2063,7 +2155,7 @@
             "name": "Batch_25 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2141,7 +2233,7 @@
             "name": "Batch_26 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2219,7 +2311,7 @@
             "name": "Batch_27 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2298,7 +2390,7 @@
             "name": "Batch_28 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2375,7 +2467,7 @@
             "name": "Batch_29 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2453,7 +2545,7 @@
             "name": "Batch_30 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2531,7 +2623,7 @@
             "name": "Batch_31 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2609,7 +2701,7 @@
             "name": "Batch_32 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2688,7 +2780,7 @@
             "name": "Batch_33 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2766,7 +2858,7 @@
             "name": "Batch_34 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2844,7 +2936,7 @@
             "name": "Batch_35 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2922,7 +3014,7 @@
             "name": "Batch_36 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3000,7 +3092,7 @@
             "name": "Batch_37 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3078,7 +3170,7 @@
             "name": "Batch_38 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3156,7 +3248,7 @@
             "name": "Batch_39 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3234,7 +3326,7 @@
             "name": "Batch_40 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3312,7 +3404,7 @@
             "name": "Batch_41 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3390,7 +3482,7 @@
             "name": "Batch_42 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3468,7 +3560,7 @@
             "name": "Batch_43 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3546,7 +3638,7 @@
             "name": "Batch_44 (5 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3624,7 +3716,7 @@
             "name": "Batch_45 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3702,7 +3794,7 @@
             "name": "Batch_46 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3780,7 +3872,7 @@
             "name": "Batch_47 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3858,7 +3950,7 @@
             "name": "Batch_48 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -3936,7 +4028,7 @@
             "name": "Batch_49 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4014,7 +4106,7 @@
             "name": "Batch_50 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4092,7 +4184,7 @@
             "name": "Batch_51 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4170,7 +4262,7 @@
             "name": "Batch_52 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4248,7 +4340,7 @@
             "name": "Batch_53 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4326,7 +4418,7 @@
             "name": "Batch_54 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4404,7 +4496,7 @@
             "name": "Batch_55 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4482,7 +4574,7 @@
             "name": "Batch_56 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4560,7 +4652,7 @@
             "name": "Batch_57 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4638,7 +4730,7 @@
             "name": "Batch_58 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4716,7 +4808,7 @@
             "name": "Batch_59 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4794,7 +4886,7 @@
             "name": "Batch_60 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4872,7 +4964,7 @@
             "name": "Batch_61 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4950,7 +5042,7 @@
             "name": "Batch_62 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5028,7 +5120,7 @@
             "name": "Batch_63 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5106,7 +5198,7 @@
             "name": "Batch_64 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5184,7 +5276,7 @@
             "name": "Batch_65 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5262,7 +5354,7 @@
             "name": "Batch_66 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5340,7 +5432,7 @@
             "name": "Batch_67 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5418,7 +5510,7 @@
             "name": "Batch_68 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5496,7 +5588,7 @@
             "name": "Batch_69 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5574,7 +5666,7 @@
             "name": "Batch_70 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5652,7 +5744,7 @@
             "name": "Batch_71 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5731,7 +5823,7 @@
             "name": "Batch_72 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5809,7 +5901,7 @@
             "name": "Batch_73 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5888,7 +5980,7 @@
             "name": "Batch_74 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5967,7 +6059,7 @@
             "name": "Batch_75 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6045,7 +6137,7 @@
             "name": "Batch_76 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6123,7 +6215,7 @@
             "name": "Batch_77 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6201,7 +6293,7 @@
             "name": "Batch_78 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6279,7 +6371,7 @@
             "name": "Batch_79 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6357,7 +6449,7 @@
             "name": "Batch_80 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6435,7 +6527,7 @@
             "name": "Batch_81 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6513,7 +6605,7 @@
             "name": "Batch_82 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6591,7 +6683,7 @@
             "name": "Batch_83 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6669,7 +6761,7 @@
             "name": "Batch_84 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6747,7 +6839,7 @@
             "name": "Batch_85 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6826,7 +6918,7 @@
             "name": "Batch_86 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6904,7 +6996,7 @@
             "name": "Batch_87 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -6982,7 +7074,7 @@
             "name": "Batch_88 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7060,7 +7152,7 @@
             "name": "Batch_89 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7138,7 +7230,7 @@
             "name": "Batch_90 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7216,7 +7308,7 @@
             "name": "Batch_91 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7294,7 +7386,7 @@
             "name": "Batch_92 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7372,7 +7464,7 @@
             "name": "Batch_93 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7450,7 +7542,7 @@
             "name": "Batch_94 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7528,7 +7620,7 @@
             "name": "Batch_95 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7606,7 +7698,7 @@
             "name": "Batch_96 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7684,7 +7776,7 @@
             "name": "Batch_97 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7762,7 +7854,7 @@
             "name": "Batch_98 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7840,7 +7932,7 @@
             "name": "Batch_99 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7918,7 +8010,7 @@
             "name": "Batch_100 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -7996,7 +8088,7 @@
             "name": "Batch_101 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8074,7 +8166,7 @@
             "name": "Batch_102 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8152,7 +8244,7 @@
             "name": "Batch_103 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8230,7 +8322,7 @@
             "name": "Batch_104 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8308,7 +8400,7 @@
             "name": "Batch_105 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8386,7 +8478,7 @@
             "name": "Batch_106 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8464,7 +8556,7 @@
             "name": "Batch_107 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8542,7 +8634,7 @@
             "name": "Batch_108 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8620,7 +8712,7 @@
             "name": "Batch_109 (9 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8698,7 +8790,7 @@
             "name": "Batch_110 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8776,7 +8868,7 @@
             "name": "Batch_111 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8854,7 +8946,7 @@
             "name": "Batch_112 (10 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -8932,7 +9024,7 @@
             "name": "Batch_113 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9010,7 +9102,7 @@
             "name": "Batch_114 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9088,7 +9180,7 @@
             "name": "Batch_115 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9166,7 +9258,7 @@
             "name": "Batch_116 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9244,7 +9336,7 @@
             "name": "Batch_117 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9322,7 +9414,7 @@
             "name": "Batch_118 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9400,7 +9492,7 @@
             "name": "Batch_119 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9478,7 +9570,7 @@
             "name": "Batch_120 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9556,7 +9648,7 @@
             "name": "Batch_121 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9634,7 +9726,7 @@
             "name": "Batch_122 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9712,7 +9804,7 @@
             "name": "Batch_123 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9790,7 +9882,7 @@
             "name": "Batch_124 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9868,7 +9960,7 @@
             "name": "Batch_125 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -9946,7 +10038,7 @@
             "name": "Batch_126 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10024,7 +10116,7 @@
             "name": "Batch_127 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10102,7 +10194,7 @@
             "name": "Batch_128 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10180,7 +10272,7 @@
             "name": "Batch_129 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10258,7 +10350,7 @@
             "name": "Batch_130 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10336,7 +10428,7 @@
             "name": "Batch_131 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10414,7 +10506,7 @@
             "name": "Batch_132 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10492,7 +10584,7 @@
             "name": "Batch_133 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10570,7 +10662,7 @@
             "name": "Batch_134 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10648,7 +10740,7 @@
             "name": "Batch_135 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10726,7 +10818,7 @@
             "name": "Batch_136 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10804,7 +10896,7 @@
             "name": "Batch_137 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10882,7 +10974,7 @@
             "name": "Batch_138 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -10960,7 +11052,7 @@
             "name": "Batch_139 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11038,7 +11130,7 @@
             "name": "Batch_140 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11116,7 +11208,7 @@
             "name": "Batch_141 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11194,7 +11286,7 @@
             "name": "Batch_142 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11272,7 +11364,7 @@
             "name": "Batch_143 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11350,7 +11442,7 @@
             "name": "Batch_144 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11428,7 +11520,7 @@
             "name": "Batch_145 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11506,7 +11598,7 @@
             "name": "Batch_146 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11584,7 +11676,7 @@
             "name": "Batch_147 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11662,7 +11754,7 @@
             "name": "Batch_148 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11740,7 +11832,7 @@
             "name": "Batch_149 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11818,7 +11910,7 @@
             "name": "Batch_150 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11896,7 +11988,7 @@
             "name": "Batch_151 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -11974,7 +12066,7 @@
             "name": "Batch_152 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12052,7 +12144,7 @@
             "name": "Batch_153 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12130,7 +12222,7 @@
             "name": "Batch_154 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12208,7 +12300,7 @@
             "name": "Batch_155 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12286,7 +12378,7 @@
             "name": "Batch_156 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12364,7 +12456,7 @@
             "name": "Batch_157 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12442,7 +12534,7 @@
             "name": "Batch_158 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12520,7 +12612,7 @@
             "name": "Batch_159 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12598,7 +12690,7 @@
             "name": "Batch_160 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12676,7 +12768,7 @@
             "name": "Batch_161 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12754,7 +12846,7 @@
             "name": "Batch_162 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12832,7 +12924,7 @@
             "name": "Batch_163 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12910,7 +13002,7 @@
             "name": "Batch_164 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -12988,7 +13080,7 @@
             "name": "Batch_165 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13066,7 +13158,7 @@
             "name": "Batch_166 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13144,7 +13236,7 @@
             "name": "Batch_167 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13222,7 +13314,7 @@
             "name": "Batch_168 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13300,7 +13392,7 @@
             "name": "Batch_169 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13379,7 +13471,7 @@
             "name": "Batch_170 (24 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13457,7 +13549,7 @@
             "name": "Batch_171 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13536,7 +13628,7 @@
             "name": "Batch_172 (24 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13615,7 +13707,7 @@
             "name": "Batch_173 (21 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13693,7 +13785,7 @@
             "name": "Batch_174 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13772,7 +13864,7 @@
             "name": "Batch_175 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13850,7 +13942,7 @@
             "name": "Batch_176 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -13928,7 +14020,7 @@
             "name": "Batch_177 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14007,7 +14099,7 @@
             "name": "Batch_178 (18 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14086,7 +14178,7 @@
             "name": "Batch_179 (8 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14165,7 +14257,7 @@
             "name": "Batch_180 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14244,7 +14336,7 @@
             "name": "Batch_181 (15 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14322,7 +14414,7 @@
             "name": "Batch_182 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14401,7 +14493,7 @@
             "name": "Batch_183 (152 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14479,7 +14571,7 @@
             "name": "Batch_184 (28 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14557,7 +14649,7 @@
             "name": "Batch_185 (28 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14636,7 +14728,7 @@
             "name": "Batch_186 (32 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14714,7 +14806,7 @@
             "name": "Batch_187 (32 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14792,7 +14884,7 @@
             "name": "Batch_188 (71 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14870,7 +14962,7 @@
             "name": "Batch_189 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -14948,7 +15040,7 @@
             "name": "Batch_190 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15026,7 +15118,7 @@
             "name": "Batch_191 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15104,7 +15196,7 @@
             "name": "Batch_192 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15182,7 +15274,7 @@
             "name": "Batch_193 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15260,7 +15352,7 @@
             "name": "Batch_194 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15338,7 +15430,7 @@
             "name": "Batch_195 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15416,7 +15508,7 @@
             "name": "Batch_196 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15494,7 +15586,7 @@
             "name": "Batch_197 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15572,7 +15664,7 @@
             "name": "Batch_198 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15651,7 +15743,7 @@
             "name": "Batch_199 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15730,7 +15822,7 @@
             "name": "Batch_200 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15809,7 +15901,7 @@
             "name": "Batch_201 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15887,7 +15979,7 @@
             "name": "Batch_202 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -15965,7 +16057,7 @@
             "name": "Batch_203 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16043,7 +16135,7 @@
             "name": "Batch_204 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16121,7 +16213,7 @@
             "name": "Batch_205 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16199,7 +16291,7 @@
             "name": "Batch_206 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16278,7 +16370,7 @@
             "name": "Batch_207 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16356,7 +16448,7 @@
             "name": "Batch_208 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16435,7 +16527,7 @@
             "name": "Batch_209 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16513,7 +16605,7 @@
             "name": "Batch_210 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16592,7 +16684,7 @@
             "name": "Batch_211 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16671,7 +16763,7 @@
             "name": "Batch_212 (7 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16748,7 +16840,7 @@
             "name": "Batch_213 (19 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16826,7 +16918,7 @@
             "name": "Batch_214 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16904,7 +16996,7 @@
             "name": "Batch_215 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -16982,7 +17074,7 @@
             "name": "Batch_216 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17060,7 +17152,7 @@
             "name": "Batch_217 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17138,7 +17230,7 @@
             "name": "Batch_218 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17216,7 +17308,7 @@
             "name": "Batch_219 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17294,7 +17386,7 @@
             "name": "Batch_220 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17372,7 +17464,7 @@
             "name": "Batch_221 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17450,7 +17542,7 @@
             "name": "Batch_222 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17528,7 +17620,7 @@
             "name": "Batch_223 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17606,7 +17698,7 @@
             "name": "Batch_224 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17684,7 +17776,7 @@
             "name": "Batch_225 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17762,7 +17854,7 @@
             "name": "Batch_226 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17840,7 +17932,7 @@
             "name": "Batch_227 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17918,7 +18010,7 @@
             "name": "Batch_228 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -17996,7 +18088,7 @@
             "name": "Batch_229 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18074,7 +18166,7 @@
             "name": "Batch_230 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18153,7 +18245,7 @@
             "name": "Batch_231 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18231,7 +18323,7 @@
             "name": "Batch_232 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18309,7 +18401,7 @@
             "name": "Batch_233 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18387,7 +18479,7 @@
             "name": "Batch_234 (5 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18466,7 +18558,7 @@
             "name": "Batch_235 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18545,7 +18637,7 @@
             "name": "Batch_236 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18623,7 +18715,7 @@
             "name": "Batch_237 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18701,7 +18793,7 @@
             "name": "Batch_238 (18 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18779,7 +18871,7 @@
             "name": "Batch_239 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18856,7 +18948,7 @@
             "name": "Batch_240 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -18933,7 +19025,7 @@
             "name": "Batch_241 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19011,7 +19103,7 @@
             "name": "Batch_242 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19089,7 +19181,7 @@
             "name": "Batch_243 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19168,7 +19260,7 @@
             "name": "Batch_244 (21 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19247,7 +19339,7 @@
             "name": "Batch_245 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19326,7 +19418,7 @@
             "name": "Batch_246 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19405,7 +19497,7 @@
             "name": "Batch_247 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19484,7 +19576,7 @@
             "name": "Batch_248 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19563,7 +19655,7 @@
             "name": "Batch_249 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19642,7 +19734,7 @@
             "name": "Batch_250 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19720,7 +19812,7 @@
             "name": "Batch_251 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19799,7 +19891,7 @@
             "name": "Batch_252 (7 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19877,7 +19969,7 @@
             "name": "Batch_253 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -19955,7 +20047,7 @@
             "name": "Batch_254 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20033,7 +20125,7 @@
             "name": "Batch_255 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20111,7 +20203,7 @@
             "name": "Batch_256 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20190,7 +20282,7 @@
             "name": "Batch_257 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20269,7 +20361,7 @@
             "name": "Batch_258 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20348,7 +20440,7 @@
             "name": "Batch_259 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20427,7 +20519,7 @@
             "name": "Batch_260 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20506,7 +20598,7 @@
             "name": "Batch_261 (18 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20584,7 +20676,7 @@
             "name": "Batch_262 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20663,7 +20755,7 @@
             "name": "Batch_263 (8 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20740,7 +20832,7 @@
             "name": "Batch_264 (7 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20782,43 +20874,63 @@
             "inheritScale": true,
             "isVisible": true,
             "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
                 "material.baseColor": [
-                    0.10000000149011612,
-                    0.10000000149011612,
-                    0.10000000149011612,
-                    1.0
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.8500000238418579
                 ],
-                "material.normalMap": "Assets\\Scenes\\San Miguel\\water_bump.png",
                 "material.offset": [
                     0.0,
                     0.0
                 ],
-                "material.shininess": 1024.0,
-                "material.specularColor": [
-                    0.25,
-                    0.25,
-                    0.25
-                ],
-                "material.specularIntensity": 0.25,
+                "material.shininess": 128.0,
+                "material.specularIntensity": 2.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
                 ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                "material_causticsMap": "Assets/Textures/Water/caustics.png",
+                "material_dudvMap": "Assets/Textures/Water/dudv.png",
+                "material_dudvStrength": 0.019999999552965164,
+                "material_dudvTiling": 0.0,
+                "material_foamColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material_foamDistance": 0.30000001192092896,
+                "material_fresnelPower": 4.0,
+                "material_shininessOverride": 256.0,
+                "material_specularIntensityOverride": 3.0,
+                "material_waterColorDeep": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.9490000009536743
+                ],
+                "material_waterColorShallow": [
+                    0.0,
+                    0.24300000071525574,
+                    0.3059999942779541,
+                    0.7020000219345093
+                ],
+                "material_waterDepthScale": 0.30000001192092896,
+                "material_waterNormalMap": "Assets/Textures/Water/normal.png",
+                "material_waveScale": 0.7400000095367432,
+                "material_waveSpeed": 1.0,
+                "material_waveStrength": 0.05999999865889549,
+                "shader_frag": "Assets/Shaders/water.frag",
+                "shader_vert": "Assets/Shaders/water.vert"
             },
             "modelPath": "",
             "name": "Batch_265 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20896,7 +21008,7 @@
             "name": "Batch_266 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -20974,7 +21086,7 @@
             "name": "Batch_267 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21051,7 +21163,7 @@
             "name": "Batch_268 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21130,7 +21242,7 @@
             "name": "Batch_269 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21209,7 +21321,7 @@
             "name": "Batch_270 (3 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21288,7 +21400,7 @@
             "name": "Batch_271 (4 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21367,7 +21479,7 @@
             "name": "Batch_272 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21446,7 +21558,7 @@
             "name": "Batch_273 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21525,7 +21637,7 @@
             "name": "Batch_274 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21604,7 +21716,7 @@
             "name": "Batch_275 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21683,7 +21795,7 @@
             "name": "Batch_276 (1 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21762,7 +21874,7 @@
             "name": "Batch_277 (8 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21841,7 +21953,7 @@
             "name": "Batch_278 (6 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21920,7 +22032,7 @@
             "name": "Batch_279 (2 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -21999,7 +22111,7 @@
             "name": "Batch_280 (8 meshes)",
             "normalMapPath": "",
             "parent": "san-miguel-low-poly (Root)",
-            "parentIndex": 0,
+            "parentIndex": 2,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -22033,98 +22145,6 @@
                     1.0,
                     1.0,
                     1.0
-                ]
-            }
-        },
-        {
-            "components": [
-                {
-                    "eyeHeight": 1.7000000476837158,
-                    "gravity": 15.0,
-                    "jumpForce": 6.0,
-                    "moveSpeed": 5.0,
-                    "turnSpeed": 0.15000000596046448,
-                    "type": "Player"
-                },
-                {
-                    "height": 0.15000000596046448,
-                    "radius": 0.30000001192092896,
-                    "type": "CapsuleCollider"
-                },
-                {
-                    "bodyType": 2,
-                    "friction": 0.20000000298023224,
-                    "lockRotation": true,
-                    "mass": 80.0,
-                    "restitution": 0.0,
-                    "type": "RigidBody"
-                }
-            ],
-            "inheritScale": true,
-            "isVisible": true,
-            "modelPath": "",
-            "name": "Player 282",
-            "normalMapPath": "",
-            "parent": "",
-            "parentIndex": -1,
-            "primitiveType": "Player",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    25.80455207824707,
-                    -0.04020002856850624,
-                    1.7789602279663086
-                ],
-                "rotation": [
-                    -0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "components": [
-                {
-                    "type": "MeshCollider"
-                },
-                {
-                    "bodyType": 0,
-                    "friction": 0.20000000298023224,
-                    "lockRotation": false,
-                    "mass": 1.0,
-                    "restitution": 0.0,
-                    "type": "RigidBody"
-                }
-            ],
-            "inheritScale": true,
-            "isVisible": true,
-            "modelPath": "",
-            "name": "Plane 283",
-            "normalMapPath": "",
-            "parent": "",
-            "parentIndex": -1,
-            "primitiveType": "Plane",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    28.566585540771484,
-                    -0.4002000093460083,
-                    5.200430393218994
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    100.0,
-                    1.0,
-                    100.0
                 ]
             }
         }
