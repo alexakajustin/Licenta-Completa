@@ -464,11 +464,14 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
 							}
 						}
-						for (size_t i = 0; i < splits.size(); ++i) {
+						for (size_t i = 0; i < 4; ++i) {
 							char buf[64];
 							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
 							GLint sLoc = glGetUniformLocation(s->GetShaderID(), buf);
-							if (sLoc != -1) glUniform1f(sLoc, splits[i]);
+							if (sLoc != -1) {
+								float val = (i < splits.size()) ? splits[i] : 1000000.0f;
+								glUniform1f(sLoc, val);
+							}
 						}
 					}
 					// View matrix for depth calculation
@@ -968,11 +971,14 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
 							}
 						}
-						for (size_t i = 0; i < splits.size(); ++i) {
+						for (size_t i = 0; i < 4; ++i) {
 							char buf[64];
 							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
 							GLint sLoc = glGetUniformLocation(sid, buf);
-							if (sLoc != -1) glUniform1f(sLoc, splits[i]);
+							if (sLoc != -1) {
+								float val = (i < splits.size()) ? splits[i] : 1000000.0f;
+								glUniform1f(sLoc, val);
+							}
 						}
 					}
 					

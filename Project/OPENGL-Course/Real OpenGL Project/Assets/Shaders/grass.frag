@@ -136,11 +136,13 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
 	float texelSizeWS = (splitDist * 2.5) / texSize.x;
 
-	// Normal offset scales with texel size and slope
+	float cosAlpha = clamp(dot(normal, -lightDir), 0.0, 1.0);
+
+	// Normal offset scales with texel size and slope. We keep a 20% minimum offset
+	// even when facing the light to prevent acne on flat surfaces under direct light.
 	float offsetScale = texelSizeWS * 0.8;
 	offsetScale = max(offsetScale, 0.015); // Min 1.5cm offset
-
-	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
+	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (0.2 + 0.8 * (1.0 - cosAlpha)));
 	
 	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -150,10 +152,23 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	
 	float current = projCoords.z;
 	
-	// A small, slope-scaled depth bias in NDC space.
-	// Since depth range scales with splitDist, this constant bias represents 
-	// a world-space bias that scales with cascade size.
-	float bias = max(0.00003 * (1.0 - dot(normal, -lightDir)), 0.00001);
+	// Slope-scaled depth bias in NDC space to prevent texel quantization acne
+	float tanTheta = sqrt(1.0 - cosAlpha * cosAlpha) / max(cosAlpha, 0.0001);
+	
+	// Approx radius to find the depth range range of the orthographic projection
+	float approxRadius = splitDist * 1.25;
+	float zMult = max(2000.0, approxRadius * 4.0);
+	float depthRange = 2.0 * zMult;
+	
+	// World-space bias: starts at 0.4 texels and scales up steeply with slope (2.0x slope scale)
+	// to completely cover the depth variation across the PCF footprint at grazing angles.
+	float biasWS = texelSizeWS * (0.4 + tanTheta * 2.0);
+	
+	// Clamp the world-space bias to prevent extreme Peter Panning at grazing angles,
+	// while ensuring it's large enough to cover texel quantization.
+	biasWS = clamp(biasWS, 0.01, 4.0); // 1cm min, 4m max
+	
+	float bias = biasWS / depthRange;
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / texSize;
@@ -193,6 +208,10 @@ float CalcDirectionalShadowFactor()
 		}
 	}
 	if (layer == -1) layer = 3;
+
+	// Clamp selected cascade layer to the actual number of layers present in the texture array
+	int maxLayer = textureSize(directionalShadowMap, 0).z - 1;
+	layer = min(layer, maxLayer);
 
 	vec3 lightDir = normalize(directionalLight.direction);
 	return GetShadowFactorAtLayer(layer, normalize(Normal), lightDir);
