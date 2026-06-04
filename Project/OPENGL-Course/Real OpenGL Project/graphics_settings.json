@@ -20,12 +20,6 @@
     "shadowDistance": 50.0,
     "showWireframe": false,
     "skyboxType": 0,
-    "ssaoBias": 0.002199999988079071,
-    "ssaoBlurSize": 8,
-    "ssaoEnabled": false,
-    "ssaoIntensity": 1.5,
-    "ssaoKernelSize": 64,
-    "ssaoRadius": 0.5,
     "universeNebulaColor1": [
         0.5,
         0.20000000298023224,
