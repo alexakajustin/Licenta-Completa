@@ -20,6 +20,10 @@ public:
 	GLuint GetShadowWidth() { return shadowWidth; }
 	GLuint GetShadowHeight() { return shadowHeight; }
 
+	GLuint GetFBO() const { return FBO; }
+	GLuint GetTextureID() const { return shadowMap; }
+	GLuint GetColorTextureID() const { return shadowColorMap; }
+
 	~ShadowMap();
 protected:
 	//these are ids

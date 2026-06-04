@@ -4,9 +4,7 @@
 // Instanced Omni Shadow Vertex Shader
 //
 // Reads per-instance packed transforms from an SSBO and renders
-// into the omni (cube map) shadow map. Outputs world-space positions
-// for the geometry shader to project onto all 6 cube faces.
-// Includes wind animation so shadows match the animated grass blades.
+// into the omni (cube map) shadow map.
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
@@ -21,6 +19,7 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
     PackedInstance instances[];
 };
 
+uniform mat4 lightMatrix;
 uniform float farPlane;
 
 struct Material {
@@ -32,9 +31,9 @@ struct Material {
 };
 uniform Material material;
 
-out vec4 FragPos;
-out vec2 TexCoord;
-out float vFadeFactor;
+out vec4 FragPosOut;
+out vec2 TexCoordOut;
+out float vFadeFactorOut;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -67,11 +66,11 @@ void main()
     
     vec3 worldPos = rotatedPos + instancePos;
     
-    // Output world position for geometry shader (matches omni_shadow_map.vert convention)
-    FragPos = vec4(worldPos, 1.0);
-    gl_Position = vec4(worldPos, 1.0);
+    // Output projected position for this face
+    FragPosOut = vec4(worldPos, 1.0);
+    gl_Position = lightMatrix * vec4(worldPos, 1.0);
     
-    TexCoord = tex * material.tiling + material.offset;
+    TexCoordOut = tex * material.tiling + material.offset;
     float rawW = inst.rotAndFlags.w;
-    vFadeFactor = (rawW > 5.0) ? (rawW - 10.0) : rawW;
+    vFadeFactorOut = (rawW > 5.0) ? (rawW - 10.0) : rawW;
 }

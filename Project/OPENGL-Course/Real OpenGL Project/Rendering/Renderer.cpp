@@ -33,13 +33,13 @@ void Renderer::Init()
 {
 	mainShader.CreateFromFiles("Assets/Shaders/shader.vert", "Assets/Shaders/shader.frag");
 	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
-	omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
+	omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.frag");
 
 	// GPU-Driven Instanced Rendering shaders (OpenGL 4.3+)
 	instancedCullShader.CreateComputeShader("Assets/Shaders/compute_cull.glsl");
 	instancedRenderShader.CreateFromFiles("Assets/Shaders/instanced_object.vert", "Assets/Shaders/shader.frag");
 	instancedShadowShader.CreateFromFiles("Shaders/instanced_shadow.vert", "Shaders/instanced_shadow.frag");
-	instancedOmniShadowShader.CreateFromFiles("Shaders/instanced_omni_shadow.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
+	instancedOmniShadowShader.CreateFromFiles("Shaders/instanced_omni_shadow.vert", "Shaders/omni_shadow_map.frag");
 
 	tessShader.CreateFromFiles(
 		"Assets/Shaders/shader_tess.vert",
@@ -153,45 +153,64 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 
 void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene, const GraphicsSettings* gs)
 {
-	omniShadowShader.UseShader();
-
 	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
-
-	light->GetShadowMap()->Write();
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // default alpha 1.0
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-	GLint shadowModelLoc = omniShadowShader.GetModelLocation();
-	GLint omniLightPosLoc = omniShadowShader.getOmniLightPosLocation();
-	GLint farPlaneLoc = omniShadowShader.getFarPlaneLocation();
-
-	glUniform3f(omniLightPosLoc, light->GetPosition().x, light->GetPosition().y, light->GetPosition().z);
-	glUniform1f(farPlaneLoc, light->GetFarPlane());
-	omniShadowShader.SetLightMatrices(light->CalculateLightTransform());
-
-	omniShadowShader.Validate();
 
 	float sw = (float)light->GetShadowMap()->GetShadowWidth();
 	float sh = (float)light->GetShadowMap()->GetShadowHeight();
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), glm::mat4(1.0f), gs, light->GetFarPlane());
-
-	// GPU-Driven Instanced Groups — omni shadow pass
 	float time = (float)glfwGetTime();
-	auto& groups = scene.GetInstancedGroups();
-	if (!groups.empty() && instancedCullShader.GetShaderID()) {
-		instancedOmniShadowShader.UseShader();
-		instancedOmniShadowShader.SetLightMatrices(light->CalculateLightTransform());
-		for (auto* group : groups) {
-			if (!group) continue;
-			group->CullAndDrawShadowOmni(
-				instancedCullShader.GetShaderID(),
-				instancedOmniShadowShader,
-				light->GetPosition(),
-				light->GetFarPlane(),
-				light->GetPosition(),
-				gs,
-				time
-			);
+
+	// Calculate all 6 face view-projection matrices
+	std::vector<glm::mat4> lightMatrices = light->CalculateLightTransform();
+
+	// Bind the FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, light->GetShadowMap()->GetFBO());
+
+	for (int face = 0; face < 6; face++) {
+		// Attach the specific face of the depth and color cubemaps to FBO
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, light->GetShadowMap()->GetTextureID(), 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, light->GetShadowMap()->GetColorTextureID(), 0);
+
+		// Clear depth and color for this face
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // Default alpha 1.0
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+		// Render standard scene objects
+		omniShadowShader.UseShader();
+		GLint shadowModelLoc = omniShadowShader.GetModelLocation();
+		GLint omniLightPosLoc = omniShadowShader.getOmniLightPosLocation();
+		GLint farPlaneLoc = omniShadowShader.getFarPlaneLocation();
+		GLint lightMatLoc = glGetUniformLocation(omniShadowShader.GetShaderID(), "lightMatrix");
+
+		glUniform3f(omniLightPosLoc, light->GetPosition().x, light->GetPosition().y, light->GetPosition().z);
+		glUniform1f(farPlaneLoc, light->GetFarPlane());
+		if (lightMatLoc != -1) {
+			glUniformMatrix4fv(lightMatLoc, 1, GL_FALSE, glm::value_ptr(lightMatrices[face]));
+		}
+		omniShadowShader.Validate();
+
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), lightMatrices[face], gs, light->GetFarPlane());
+
+		// Render GPU-Driven Instanced Groups
+		auto& groups = scene.GetInstancedGroups();
+		if (!groups.empty() && instancedCullShader.GetShaderID()) {
+			instancedOmniShadowShader.UseShader();
+			GLint instLightMatLoc = glGetUniformLocation(instancedOmniShadowShader.GetShaderID(), "lightMatrix");
+			if (instLightMatLoc != -1) {
+				glUniformMatrix4fv(instLightMatLoc, 1, GL_FALSE, glm::value_ptr(lightMatrices[face]));
+			}
+			
+			for (auto* group : groups) {
+				if (!group) continue;
+				group->CullAndDrawShadowOmni(
+					instancedCullShader.GetShaderID(),
+					instancedOmniShadowShader,
+					light->GetPosition(),
+					light->GetFarPlane(),
+					light->GetPosition(),
+					gs,
+					time
+				);
+			}
 		}
 	}
 

@@ -166,6 +166,8 @@ private:
 	uint32_t lastVisibleCount = 0;
 	float meshBoundRadius = 1.0f;
 	glm::vec3 meshBoundsCenter = glm::vec3(0.0f); // Center of mesh AABB relative to origin
+	glm::vec3 groupBoundsMin = glm::vec3(0.0f);   // Overall group AABB min
+	glm::vec3 groupBoundsMax = glm::vec3(0.0f);   // Overall group AABB max
 
 	// Spatial chunking for 10M+ scale
 	struct Chunk {

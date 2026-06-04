@@ -63,6 +63,16 @@ void InstancedGroup::Setup(Mesh* mesh,
 	meshBoundRadius = glm::length(extents);
 	meshBoundsCenter = (minB + maxB) * 0.5f; // Center of AABB relative to mesh origin
 
+	// Compute overall group AABB (for quick CPU-side early out culling)
+	groupBoundsMin = glm::vec3(FLT_MAX);
+	groupBoundsMax = glm::vec3(-FLT_MAX);
+	for (const auto& inst : instances) {
+		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+		float r = meshBoundRadius * inst.positionAndScale.w;
+		groupBoundsMin = glm::min(groupBoundsMin, pos - glm::vec3(r));
+		groupBoundsMax = glm::max(groupBoundsMax, pos + glm::vec3(r));
+	}
+
 	// Initialize all LOD levels — LOD1/LOD2 start as nullptr (fall back to sharedMesh)
 	// MeshSimplifier will override them with simplified meshes if the mesh is complex enough.
 	// For simple meshes (grass quads), density-based culling in the compute shader handles LOD.
@@ -345,7 +355,24 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	if (useChunking) {
 		CullAndDrawChunked(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
 	} else {
-		CullAndDrawFlat(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
+		// CPU-side group pre-cull (flat mode)
+		bool skip = false;
+		if (!isShadowPass) {
+			Frustum frustum = Frustum::CreateFrustumFromMatrix(projection * view);
+			if (!frustum.IsBoxVisible(groupBoundsMin, groupBoundsMax)) {
+				skip = true;
+			} else {
+				glm::vec3 groupCenter = (groupBoundsMin + groupBoundsMax) * 0.5f;
+				float groupRadius = glm::length(groupBoundsMax - groupBoundsMin) * 0.5f;
+				if (glm::length(groupCenter - cameraPos) - groupRadius > finalMaxDist) {
+					skip = true;
+				}
+			}
+		}
+
+		if (!skip) {
+			CullAndDrawFlat(cullShaderID, renderShader, projection, view, cameraPos, finalMaxDist, gs, isShadowPass);
+		}
 	}
 }
 
@@ -666,6 +693,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowIndirectBuffer);
 
 	// Dispatch for each chunk (or flat)
+	bool skipDispatch = false;
 	if (useChunking) {
 		Frustum lightFrustum = Frustum::CreateFrustumFromMatrix(lightViewProj);
 
@@ -685,61 +713,76 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 			glDispatchCompute(numGroups, 1, 1);
 		}
 	} else {
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
-		GLint prog;
-		glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
-		glUniform1ui(glGetUniformLocation(prog, "totalInstances"), totalCount);
+		// CPU-side group pre-cull (flat mode)
+		Frustum lightFrustum = Frustum::CreateFrustumFromMatrix(lightViewProj);
+		if (!lightFrustum.IsBoxVisible(groupBoundsMin, groupBoundsMax)) {
+			skipDispatch = true;
+		} else {
+			glm::vec3 groupCenter = (groupBoundsMin + groupBoundsMax) * 0.5f;
+			float groupRadius = glm::length(groupBoundsMax - groupBoundsMin) * 0.5f;
+			float distToGroup = glm::length(groupCenter - cameraPos) - groupRadius;
+			if (distToGroup > finalShadowDist) {
+				skipDispatch = true;
+			}
+		}
 
-		GLuint numGroups = (totalCount + 255) / 256;
-		glDispatchCompute(numGroups, 1, 1);
+		if (!skipDispatch) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+			GLint prog;
+			glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+			glUniform1ui(glGetUniformLocation(prog, "totalInstances"), totalCount);
+
+			GLuint numGroups = (totalCount + 255) / 256;
+			glDispatchCompute(numGroups, 1, 1);
+		}
 	}
 
-	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+	if (!skipDispatch) {
+		glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
-	// ================================================================
-	// PHASE 2: Render into shadow map using instanced shadow shader
-	// ================================================================
-	shadowShader.UseShader();
-	GLuint sid = shadowShader.GetShaderID();
+		// ================================================================
+		// PHASE 2: Render into shadow map using instanced shadow shader
+		// ================================================================
+		shadowShader.UseShader();
+		GLuint sid = shadowShader.GetShaderID();
 
-	// Set light transform
-	shadowShader.SetDirectionalLightTransform(lightViewProj);
+		// Set light transform
+		shadowShader.SetDirectionalLightTransform(lightViewProj);
 
+		// Material tiling/offset (default identity so TexCoord isn't zeroed out)
+		glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
+		glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
 
+		// Set material alpha (for shadow color map)
+		GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");
+		if (alphaLoc != -1) {
+			float alpha = material ? material->GetAlpha() : 1.0f;
+			glUniform1f(alphaLoc, alpha);
+		}
 
-	// Material tiling/offset (default identity so TexCoord isn't zeroed out)
-	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
-	glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
+		// Alpha testing uniforms (for foliage with transparent textures)
+		GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
+		if (useDiffuseLoc != -1) {
+			int useTex = texture ? 1 : 0;
+			glUniform1i(useDiffuseLoc, useTex);
+		}
+		if (texture) {
+			glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
+			texture->UseTexture();
+		}
 
-	// Set material alpha (for shadow color map)
-	GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");
-	if (alphaLoc != -1) {
-		float alpha = material ? material->GetAlpha() : 1.0f;
-		glUniform1f(alphaLoc, alpha);
+		// Disable face culling for thin double-sided foliage (grass blades, leaves)
+		glDisable(GL_CULL_FACE);
+
+		// Bind shadow visible SSBO for vertex shader
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
+
+		// Draw using LOD 0 mesh only (full detail for shadows)
+		sharedMesh->RenderIndirect(shadowIndirectBuffer);
+
+		// Restore face culling
+		glEnable(GL_CULL_FACE);
 	}
-
-	// Alpha testing uniforms (for foliage with transparent textures)
-	GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
-	if (useDiffuseLoc != -1) {
-		int useTex = texture ? 1 : 0;
-		glUniform1i(useDiffuseLoc, useTex);
-	}
-	if (texture) {
-		glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
-		texture->UseTexture();
-	}
-
-	// Disable face culling for thin double-sided foliage (grass blades, leaves)
-	glDisable(GL_CULL_FACE);
-
-	// Bind shadow visible SSBO for vertex shader
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
-
-	// Draw using LOD 0 mesh only (full detail for shadows)
-	sharedMesh->RenderIndirect(shadowIndirectBuffer);
-
-	// Restore face culling
-	glEnable(GL_CULL_FACE);
 }
 
 // =====================================================================
@@ -797,6 +840,7 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowIndirectBuffer);
 
 	// Dispatch for each chunk (or flat)
+	bool skipDispatch = false;
 	if (useChunking) {
 		// Distance-based chunk pre-cull (light position)
 		for (auto& chunk : chunks) {
@@ -811,67 +855,79 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 			glDispatchCompute(numGroups, 1, 1);
 		}
 	} else {
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
-		GLint prog;
-		glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
-		glUniform1ui(glGetUniformLocation(prog, "totalInstances"), totalCount);
+		// CPU-side group pre-cull (flat mode)
+		glm::vec3 groupCenter = (groupBoundsMin + groupBoundsMax) * 0.5f;
+		float groupRadius = glm::length(groupBoundsMax - groupBoundsMin) * 0.5f;
+		float distToLight = glm::length(groupCenter - lightPos) - groupRadius;
+		if (distToLight > cullDistance) {
+			skipDispatch = true;
+		}
 
-		GLuint numGroups = (totalCount + 255) / 256;
-		glDispatchCompute(numGroups, 1, 1);
+		if (!skipDispatch) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+			GLint prog;
+			glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+			glUniform1ui(glGetUniformLocation(prog, "totalInstances"), totalCount);
+
+			GLuint numGroups = (totalCount + 255) / 256;
+			glDispatchCompute(numGroups, 1, 1);
+		}
 	}
 
-	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+	if (!skipDispatch) {
+		glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
-	// ================================================================
-	// PHASE 2: Render into omni shadow map using instanced omni shadow shader
-	// ================================================================
-	shadowShader.UseShader();
-	GLuint sid = shadowShader.GetShaderID();
+		// ================================================================
+		// PHASE 2: Render into omni shadow map using instanced omni shadow shader
+		// ================================================================
+		shadowShader.UseShader();
+		GLuint sid = shadowShader.GetShaderID();
 
-	// Set omni light uniforms
-	GLint lightPosLoc = glGetUniformLocation(sid, "lightPos");
-	if (lightPosLoc != -1) {
-		glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+		// Set omni light uniforms
+		GLint lightPosLoc = glGetUniformLocation(sid, "lightPos");
+		if (lightPosLoc != -1) {
+			glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+		}
+		GLint omniLightPosLoc = glGetUniformLocation(sid, "omniLightPos");
+		if (omniLightPosLoc != -1) {
+			glUniform3fv(omniLightPosLoc, 1, glm::value_ptr(lightPos));
+		}
+		glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
+
+		// Material tiling/offset (default to identity for shadows)
+		glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
+		glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
+
+		// Set material alpha (for shadow color map)
+		GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");
+		if (alphaLoc != -1) {
+			float alpha = material ? material->GetAlpha() : 1.0f;
+			glUniform1f(alphaLoc, alpha);
+		}
+
+		// Alpha testing uniforms
+		GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
+		if (useDiffuseLoc != -1) {
+			int useTex = texture ? 1 : 0;
+			glUniform1i(useDiffuseLoc, useTex);
+		}
+		if (texture) {
+			glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
+			texture->UseTexture();
+		}
+
+		// Disable face culling for thin double-sided foliage (grass blades, leaves)
+		glDisable(GL_CULL_FACE);
+
+		// Bind shadow visible SSBO for vertex shader
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
+
+		// Draw using LOD 0 mesh only (full detail for shadows)
+		sharedMesh->RenderIndirect(shadowIndirectBuffer);
+
+		// Restore face culling
+		glEnable(GL_CULL_FACE);
 	}
-	GLint omniLightPosLoc = glGetUniformLocation(sid, "omniLightPos");
-	if (omniLightPosLoc != -1) {
-		glUniform3fv(omniLightPosLoc, 1, glm::value_ptr(lightPos));
-	}
-	glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
-
-	// Material tiling/offset (default to identity for shadows)
-	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
-	glUniform2f(glGetUniformLocation(sid, "material.offset"), 0.0f, 0.0f);
-
-	// Set material alpha (for shadow color map)
-	GLint alphaLoc = glGetUniformLocation(sid, "materialAlpha");
-	if (alphaLoc != -1) {
-		float alpha = material ? material->GetAlpha() : 1.0f;
-		glUniform1f(alphaLoc, alpha);
-	}
-
-	// Alpha testing uniforms
-	GLint useDiffuseLoc = glGetUniformLocation(sid, "useDiffuseTexture");
-	if (useDiffuseLoc != -1) {
-		int useTex = texture ? 1 : 0;
-		glUniform1i(useDiffuseLoc, useTex);
-	}
-	if (texture) {
-		glUniform1i(glGetUniformLocation(sid, "theTexture"), 0);
-		texture->UseTexture();
-	}
-
-	// Disable face culling for thin double-sided foliage (grass blades, leaves)
-	glDisable(GL_CULL_FACE);
-
-	// Bind shadow visible SSBO for vertex shader
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, shadowVisibleSSBO);
-
-	// Draw using LOD 0 mesh only (full detail for shadows)
-	sharedMesh->RenderIndirect(shadowIndirectBuffer);
-
-	// Restore face culling
-	glEnable(GL_CULL_FACE);
 }
 
 // =====================================================================
@@ -968,6 +1024,7 @@ void InstancedGroup::CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
 
 	// Dispatch (flat or chunked)
+	bool skipDispatch = false;
 	if (useChunking) {
 		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
 		uint32_t chunkOffset = 0;
@@ -992,23 +1049,38 @@ void InstancedGroup::CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader
 			chunkOffset += chunk.instanceCount;
 		}
 	} else {
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
-		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
-		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
-		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
-		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+		// CPU-side group pre-cull (flat mode)
+		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
+		if (!frustum.IsBoxVisible(groupBoundsMin, groupBoundsMax)) {
+			skipDispatch = true;
+		} else {
+			glm::vec3 groupCenter = (groupBoundsMin + groupBoundsMax) * 0.5f;
+			float groupRadius = glm::length(groupBoundsMax - groupBoundsMin) * 0.5f;
+			if (glm::length(groupCenter - cameraPos) - groupRadius > finalMaxDist) {
+				skipDispatch = true;
+			}
+		}
 
-		glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
-		glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
-		glDispatchCompute((totalCount + 255) / 256, 1, 1);
+		if (!skipDispatch) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+			glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
+			glDispatchCompute((totalCount + 255) / 256, 1, 1);
+		}
 	}
 
-	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
-
-	// Render Phase 1 results
-	RenderLODs(renderShader, projection, view, cameraPos, gs, false);
+	if (!skipDispatch) {
+		glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+		// Render Phase 1 results
+		RenderLODs(renderShader, projection, view, cameraPos, gs, false);
+	}
 }
 
 // =====================================================================
@@ -1093,6 +1165,7 @@ void InstancedGroup::CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader
 	glUniform2f(glGetUniformLocation(cullShaderID, "screenSize"), (float)screenWidth, (float)screenHeight);
 
 	// Dispatch (flat or chunked)
+	bool skipDispatch = false;
 	if (useChunking) {
 		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
 		uint32_t chunkOffset = 0;
@@ -1117,20 +1190,36 @@ void InstancedGroup::CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader
 			chunkOffset += chunk.instanceCount;
 		}
 	} else {
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
-		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
-		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
-		if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
-		if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+		// CPU-side group pre-cull (flat mode)
+		Frustum frustum = Frustum::CreateFrustumFromMatrix(viewProj);
+		if (!frustum.IsBoxVisible(groupBoundsMin, groupBoundsMax)) {
+			skipDispatch = true;
+		} else {
+			glm::vec3 groupCenter = (groupBoundsMin + groupBoundsMax) * 0.5f;
+			float groupRadius = glm::length(groupBoundsMax - groupBoundsMin) * 0.5f;
+			if (glm::length(groupCenter - cameraPos) - groupRadius > finalMaxDist) {
+				skipDispatch = true;
+			}
+		}
 
-		glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
-		glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
-		glDispatchCompute((totalCount + 255) / 256, 1, 1);
+		if (!skipDispatch) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[0].visibleSSBO);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, lodLevels[1].visibleSSBO);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, lodLevels[2].visibleSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lodLevels[0].indirectBuffer);
+			if (lodCount > 1) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, lodLevels[1].indirectBuffer);
+			if (lodCount > 2) glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lodLevels[2].indirectBuffer);
+
+			glUniform1ui(glGetUniformLocation(cullShaderID, "instanceOffset"), 0);
+			glUniform1ui(glGetUniformLocation(cullShaderID, "totalInstances"), totalCount);
+			glDispatchCompute((totalCount + 255) / 256, 1, 1);
+		}
 	}
 
-	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+	if (!skipDispatch) {
+		glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+	}
 
 	// Render Phase 2 results
 	RenderLODs(renderShader, projection, view, cameraPos, gs, false);

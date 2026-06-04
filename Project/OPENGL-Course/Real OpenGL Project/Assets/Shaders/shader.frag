@@ -416,19 +416,23 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	return shadow;
 }
 
-float CalcOmniShadowFactor(PointLight light, int shadowIndex)
+float CalcOmniShadowFactor(PointLight light, int shadowIndex, float currentDepth)
 {
 	// get fragment to light ( depth ) POSITION
 	vec3 fragToLight = FragPos - light.position;
-	 // find the closest point that can block out the current point and cast shadow
-	float currentDepth = length(fragToLight);
 
 	float shadow = 0.0;
 	float bias = 0.05;
-	int samples = 20;
 	
 	float viewDistance = length(eyePosition - FragPos);
 	float diskRadius = (1.0 + (viewDistance / omniShadowMaps[shadowIndex].farPlane)) / 75.0; 
+
+	int samples = 20;
+	if (viewDistance > 60.0) {
+		samples = 8;
+	} else if (viewDistance > 30.0) {
+		samples = 12;
+	}
 
 	for(int i = 0; i < samples; i++)
 	{
@@ -494,12 +498,24 @@ vec3 CalcPointLight(PointLight pLight, int shadowIndex, vec3 baseColor)
 {
 	vec3 direction = FragPos - pLight.position; // get the vector from point light to fragment = direction
 	float distance = length(direction);
+
+	// Early out if fragment is beyond the light's shadow far plane
+	float farPlane = omniShadowMaps[shadowIndex].farPlane;
+	if (distance >= farPlane) {
+		return vec3(0.0);
+	}
+
 	direction = normalize(direction);
 
-	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
+	// Also check if attenuation makes it negligible
+	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
+	if (attenuation > 250.0) {
+		return vec3(0.0);
+	}
+
+	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex, distance);
 
 	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, baseColor);
-	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
 
 	return (lightFinal / attenuation);
 }
