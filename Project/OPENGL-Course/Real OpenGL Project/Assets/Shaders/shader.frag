@@ -322,13 +322,16 @@ float random(vec3 seed, int i){
 
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
-	// Normal Offset Bias: Offset world position along normal to prevent acne
-	// Normal Offset Bias: Offset world position along normal to prevent acne.
-	// We scale the offset by the layer because distant cascades have larger texels.
-	float offsetScale = 0.05;
-	if (layer == 1) offsetScale = 0.1;
-	if (layer == 2) offsetScale = 0.3;
-	if (layer == 3) offsetScale = 0.6;
+	// Calculate the split distance of this cascade
+	float splitDist = cascadeSplits[layer];
+
+	// World-space texel size approximation
+	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
+	float texelSizeWS = (splitDist * 2.5) / texSize.x;
+
+	// Normal offset scales with texel size and slope
+	float offsetScale = texelSizeWS * 0.8;
+	offsetScale = max(offsetScale, 0.015); // Min 1.5cm offset
 
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
@@ -340,14 +343,12 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	
 	float current = projCoords.z;
 	
-	// Depth bias scaled by cascade layer.
-	float bias = max(0.0002 * (1.0 - dot(normal, -lightDir)), 0.00002);
-	if (layer == 1) bias *= 1.5;
-	if (layer == 2) bias *= 3.0;
-	if (layer == 3) bias *= 6.0;
+	// A small, slope-scaled depth bias in NDC space.
+	// Since depth range scales with splitDist, this constant bias represents 
+	// a world-space bias that scales with cascade size.
+	float bias = max(0.00003 * (1.0 - dot(normal, -lightDir)), 0.00001);
 	
 	float shadow = 0.0;
-	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
 	vec2 texelSize = 1.0 / texSize;
 	
 	float angle = random(FragPos, 0) * 6.283185;
@@ -585,61 +586,85 @@ void CalcLayeredSurface(out vec3 outColor)
         vec3 layerWorldNorm = geometryNormal;
         float tiling = layerData[i].tiling;
 
-		// Terrain/Structured modes: Triplanar Mapping with per-axis POM
-		// Each axis gets independent POM-displaced UVs to prevent seams
-		// at the boundary where the dominant projection axis switches.
-
-		// Per-axis base UVs from the original object-space position
-		vec2 uvX = LocalPos.zy * tiling;
-		vec2 uvY = LocalPos.xz * tiling;
-		vec2 uvZ = LocalPos.xy * tiling;
-
-		// Freeze derivatives from the ORIGINAL (un-displaced) UVs.
-		// POM shifts UVs non-linearly, which corrupts hardware dFdx/dFdy
-		// and causes mipmap banding at axis transitions.
-		vec2 duvX_dx = dFdx(uvX); vec2 duvX_dy = dFdy(uvX);
-		vec2 duvY_dx = dFdx(uvY); vec2 duvY_dy = dFdy(uvY);
-		vec2 duvZ_dx = dFdx(uvZ); vec2 duvZ_dy = dFdy(uvZ);
-
-		// Apply POM independently per projection axis
-		if (layerData[i].hasDisplacementMap == 1) {
-			vec3 viewDirWorld = normalize(eyePosition - FragPos);
-
-			// X-plane (cliffs facing X): UV = pos.zy, depth = viewDir.x
-			if (triWeights.x > 0.01) {
-				vec3 vdt = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
-				uvX = CalcParallaxUVs(uvX, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+		if (layerData[i].blendMode == 0) {
+			// Normal mode: use mesh UVs (2D)
+			vec2 layerUV = TexCoord * tiling;
+            
+			if (layerData[i].hasDisplacementMap == 1) {
+				vec3 viewDirWorld = normalize(eyePosition - FragPos);
+				vec3 viewDirTangent = normalize(transpose(TBN) * viewDirWorld);
+				layerUV = CalcParallaxUVs(layerUV, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
 			}
-			// Y-plane (flat ground): UV = pos.xz, depth = viewDir.y
-			if (triWeights.y > 0.01) {
-				vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
-				uvY = CalcParallaxUVs(uvY, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+            
+			layerSample = texture(textureLayers[i], layerUV);
+			
+			// Alpha discard for cutout textures in layered materials
+			if (layerSample.a < 0.5) {
+				discard;
 			}
-			// Z-plane (cliffs facing Z): UV = pos.xy, depth = viewDir.z
-			if (triWeights.z > 0.01) {
-				vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
-				uvZ = CalcParallaxUVs(uvZ, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+            
+			if (layerData[i].hasNormalMap == 1) {
+				vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
+				layerNorm = normalize(layerNorm * 2.0 - 1.0);
+				layerWorldNorm = TangentToWorld(layerNorm, TBN);
 			}
-		}
+		} else {
+			// Terrain/Structured modes: Triplanar Mapping with per-axis POM
+			// Each axis gets independent POM-displaced UVs to prevent seams
+			// at the boundary where the dominant projection axis switches.
 
-		// Sample diffuse per-axis using textureGrad with frozen derivatives
-		vec3 xDiff = textureGrad(textureLayers[i], uvX, duvX_dx, duvX_dy).rgb;
-		vec3 yDiff = textureGrad(textureLayers[i], uvY, duvY_dx, duvY_dy).rgb;
-		vec3 zDiff = textureGrad(textureLayers[i], uvZ, duvZ_dx, duvZ_dy).rgb;
-		layerSample.rgb = xDiff * triWeights.x + yDiff * triWeights.y + zDiff * triWeights.z;
-		layerSample.a = 1.0;
+			// Per-axis base UVs from the original object-space position
+			vec2 uvX = LocalPos.zy * tiling;
+			vec2 uvY = LocalPos.xz * tiling;
+			vec2 uvZ = LocalPos.xy * tiling;
 
-		// Sample normal maps per-axis with frozen derivatives
-		if (layerData[i].hasNormalMap == 1) {
-			vec3 xNorm = textureGrad(layerNormalMaps[i], uvX, duvX_dx, duvX_dy).rgb * 2.0 - 1.0;
-			vec3 yNorm = textureGrad(layerNormalMaps[i], uvY, duvY_dx, duvY_dy).rgb * 2.0 - 1.0;
-			vec3 zNorm = textureGrad(layerNormalMaps[i], uvZ, duvZ_dx, duvZ_dy).rgb * 2.0 - 1.0;
+			// Freeze derivatives from the ORIGINAL (un-displaced) UVs.
+			// POM shifts UVs non-linearly, which corrupts hardware dFdx/dFdy
+			// and causes mipmap banding at axis transitions.
+			vec2 duvX_dx = dFdx(uvX); vec2 duvX_dy = dFdy(uvX);
+			vec2 duvY_dx = dFdx(uvY); vec2 duvY_dy = dFdy(uvY);
+			vec2 duvZ_dx = dFdx(uvZ); vec2 duvZ_dy = dFdy(uvZ);
 
-			vec3 xWorld = vec3(xNorm.z * sign(geometryNormal.x), xNorm.y, xNorm.x);
-			vec3 yWorld = vec3(yNorm.x, yNorm.z * sign(geometryNormal.y), yNorm.y);
-			vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z * sign(geometryNormal.z));
+			// Apply POM independently per projection axis
+			if (layerData[i].hasDisplacementMap == 1) {
+				vec3 viewDirWorld = normalize(eyePosition - FragPos);
 
-			layerWorldNorm = normalize(xWorld * triWeights.x + yWorld * triWeights.y + zWorld * triWeights.z);
+				// X-plane (cliffs facing X): UV = pos.zy, depth = viewDir.x
+				if (triWeights.x > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
+					uvX = CalcParallaxUVs(uvX, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+				// Y-plane (flat ground): UV = pos.xz, depth = viewDir.y
+				if (triWeights.y > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
+					uvY = CalcParallaxUVs(uvY, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+				// Z-plane (cliffs facing Z): UV = pos.xy, depth = viewDir.z
+				if (triWeights.z > 0.01) {
+					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
+					uvZ = CalcParallaxUVs(uvZ, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+				}
+			}
+
+			// Sample diffuse per-axis using textureGrad with frozen derivatives
+			vec3 xDiff = textureGrad(textureLayers[i], uvX, duvX_dx, duvX_dy).rgb;
+			vec3 yDiff = textureGrad(textureLayers[i], uvY, duvY_dx, duvY_dy).rgb;
+			vec3 zDiff = textureGrad(textureLayers[i], uvZ, duvZ_dx, duvZ_dy).rgb;
+			layerSample.rgb = xDiff * triWeights.x + yDiff * triWeights.y + zDiff * triWeights.z;
+			layerSample.a = 1.0;
+
+			// Sample normal maps per-axis with frozen derivatives
+			if (layerData[i].hasNormalMap == 1) {
+				vec3 xNorm = textureGrad(layerNormalMaps[i], uvX, duvX_dx, duvX_dy).rgb * 2.0 - 1.0;
+				vec3 yNorm = textureGrad(layerNormalMaps[i], uvY, duvY_dx, duvY_dy).rgb * 2.0 - 1.0;
+				vec3 zNorm = textureGrad(layerNormalMaps[i], uvZ, duvZ_dx, duvZ_dy).rgb * 2.0 - 1.0;
+
+				vec3 xWorld = vec3(xNorm.z * sign(geometryNormal.x), xNorm.y, xNorm.x);
+				vec3 yWorld = vec3(yNorm.x, yNorm.z * sign(geometryNormal.y), yNorm.y);
+				vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z * sign(geometryNormal.z));
+
+				layerWorldNorm = normalize(xWorld * triWeights.x + yWorld * triWeights.y + zWorld * triWeights.z);
+			}
 		}
 
 		// Compute blend weight

@@ -129,10 +129,17 @@ vec3 CalcSpotLight(SpotLight sLight, vec3 normal, vec3 viewDir)
 
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
-	float offsetScale = 0.05;
-	if (layer == 1) offsetScale = 0.1;
-	if (layer == 2) offsetScale = 0.3;
-	if (layer == 3) offsetScale = 0.6;
+	// Calculate the split distance of this cascade
+	float splitDist = cascadeSplits[layer];
+
+	// World-space texel size approximation
+	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
+	float texelSizeWS = (splitDist * 2.5) / texSize.x;
+
+	// Normal offset scales with texel size and slope
+	float offsetScale = texelSizeWS * 0.8;
+	offsetScale = max(offsetScale, 0.015); // Min 1.5cm offset
+
 	vec3 worldPosWithOffset = FragPos + normal * (offsetScale * (1.0 - dot(normal, -lightDir)));
 	
 	vec4 fragPosLightSpace = directionalLightTransform[layer] * vec4(worldPosWithOffset, 1.0);
@@ -143,14 +150,12 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	
 	float current = projCoords.z;
 	
-	// Depth bias scaled by cascade layer
-	float bias = max(0.00005 * (1.0 - dot(normal, -lightDir)), 0.00001);
-	if (layer == 1) bias *= 1.5;
-	if (layer == 2) bias *= 3.0;
-	if (layer == 3) bias *= 6.0;
+	// A small, slope-scaled depth bias in NDC space.
+	// Since depth range scales with splitDist, this constant bias represents 
+	// a world-space bias that scales with cascade size.
+	float bias = max(0.00003 * (1.0 - dot(normal, -lightDir)), 0.00001);
 	
 	float shadow = 0.0;
-	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
 	vec2 texelSize = 1.0 / texSize;
 	
 	float angle = random(FragPos, 0) * 6.283185;
