@@ -199,11 +199,24 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			mat->SetFloat("tessLevel", 8.0f);
 			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
 
-			// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
-			float temp = 0.5f;
-			if (maxRadius > minRadius) {
-				temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
+			// Calculate temperature based on surface-to-surface distance (closest point of planet to sun surface)
+			// Sun radius is sunScale (if generated), planet radius is s.
+			float safeMax = std::max(maxRadius, minRadius + 1.0f);
+			float actualSunRadius = generateSun ? sunScale : 0.0f;
+			float surfDist = r - actualSunRadius - s;
+			
+			// The minimum possible surface distance allowed by overlap check is 50.0f.
+			float minSurfDist = 50.0f;
+			float maxSurfDist = std::max(safeMax - actualSunRadius - s, minSurfDist + 10.0f);
+			float currentSurfDist = std::max(surfDist, minSurfDist);
+
+			float temp = 0.0f;
+			float intensity = sqrt(minSurfDist / currentSurfDist);
+			float minIntensity = sqrt(minSurfDist / maxSurfDist);
+			if (1.0f - minIntensity > 0.0001f) {
+				temp = glm::clamp((intensity - minIntensity) / (1.0f - minIntensity), 0.0f, 1.0f);
 			}
+
 			mat->SetFloat("temperature", temp);
 		}
 
