@@ -297,11 +297,61 @@ void SceneManager::DeleteGameObject(GameObject* obj)
 
 GameObject* SceneManager::FindObject(const std::string& name)
 {
+	std::unordered_set<GameObject*> visited;
+	std::function<GameObject*(GameObject*)> searchRecursive = [&](GameObject* current) -> GameObject* {
+		if (!current || visited.count(current)) return nullptr;
+		visited.insert(current);
+		if (current->GetName() == name) return current;
+		for (auto* child : current->GetChildren()) {
+			GameObject* found = searchRecursive(child);
+			if (found) return found;
+		}
+		return nullptr;
+	};
+
 	for (auto* obj : objects)
 	{
-		if (obj->GetName() == name) return obj;
+		if (obj && !obj->GetParent()) {
+			GameObject* found = searchRecursive(obj);
+			if (found) return found;
+		}
+	}
+
+	for (auto* obj : objects)
+	{
+		if (obj) {
+			GameObject* found = searchRecursive(obj);
+			if (found) return found;
+		}
 	}
 	return nullptr;
+}
+
+void SceneManager::GetAllObjects(std::vector<GameObject*>& outList)
+{
+	outList.clear();
+	std::unordered_set<GameObject*> visited;
+
+	std::function<void(GameObject*)> collect = [&](GameObject* obj) {
+		if (!obj || visited.count(obj)) return;
+		visited.insert(obj);
+		outList.push_back(obj);
+		for (auto* child : obj->GetChildren()) {
+			collect(child);
+		}
+	};
+
+	for (auto* obj : objects) {
+		if (obj && !obj->GetParent()) {
+			collect(obj);
+		}
+	}
+
+	for (auto* obj : objects) {
+		if (obj) {
+			collect(obj);
+		}
+	}
 }
 
 Player* SceneManager::FindPlayer()

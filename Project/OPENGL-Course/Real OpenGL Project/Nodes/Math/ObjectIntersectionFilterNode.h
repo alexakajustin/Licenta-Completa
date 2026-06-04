@@ -53,12 +53,13 @@ public:
 	void RenderContent(SceneManager* scene) override
 	{
 		if (!scene) return;
-		auto& objects = scene->GetObjects();
+		std::vector<GameObject*> allObjects;
+		scene->GetAllObjects(allObjects);
 
 		// Selection Dropdown
 		if (ImGui::BeginCombo("Target Object", targetName.empty() ? "(none)" : targetName.c_str()))
 		{
-			for (auto* obj : objects)
+			for (auto* obj : allObjects)
 			{
 				bool isSelected = (targetName == obj->GetName());
 				if (ImGui::Selectable(obj->GetName().c_str(), isSelected))

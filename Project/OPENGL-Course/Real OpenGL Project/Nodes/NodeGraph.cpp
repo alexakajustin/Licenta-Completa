@@ -751,42 +751,29 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 		if (node->title == "Output")
 		{
 			OutputNode* updateNode = static_cast<OutputNode*>(node);
-			int targetIdx = updateNode->GetTargetIndex();
 			std::string targetName = updateNode->GetTargetName();
 			Pin& meshInput = node->inputs[0];
 
+			GameObject* target = nullptr;
 			if (updateNode->IsSameAsInput())
 			{
-				targetIdx = -1;
-				if (meshInput.data.sourceObjectName != "(none)")
+				if (meshInput.data.sourceObjectName != "(none)" && !meshInput.data.sourceObjectName.empty())
 				{
-					for (int i = 0; i < (int)objects.size(); i++)
-						if (objects[i]->GetName() == meshInput.data.sourceObjectName) { targetIdx = i; break; }
+					target = scene.FindObject(meshInput.data.sourceObjectName);
 				}
 			}
-			else if (targetIdx < 0 || targetIdx >= (int)objects.size() || objects[targetIdx]->GetName() != targetName)
+			else
 			{
-				// Resolve by name for manual target mode
-				targetIdx = -1;
-				if (targetName != "(none)")
+				if (targetName != "(none)" && !targetName.empty())
 				{
-					for (int i = 0; i < (int)objects.size(); i++)
-					{
-						if (objects[i]->GetName() == targetName)
-						{
-							targetIdx = i;
-							updateNode->SetTargetIndex(i, targetName);
-							break;
-						}
-					}
+					target = scene.FindObject(targetName);
 				}
 			}
 			
-			if (targetIdx >= 0 && targetIdx < (int)objects.size())
+			if (target)
 			{
 				if (updateNode->ShouldUpdateMesh() && meshInput.data.type == PinDataType::Mesh && !meshInput.data.meshData.vertices.empty())
 				{
-					GameObject* target = objects[targetIdx];
 					MeshData& uploadData = meshInput.data.meshData;
 
 					// If the mesh data was scaled/rotated in the pipeline, we must un-scale/un-rotate it
@@ -837,7 +824,9 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					bool isShared = false;
 					if (target->GetMesh())
 					{
-						for (auto* obj : objects)
+						std::vector<GameObject*> allObjects;
+						scene.GetAllObjects(allObjects);
+						for (auto* obj : allObjects)
 						{
 							if (obj != target && obj->GetMesh() == target->GetMesh())
 							{

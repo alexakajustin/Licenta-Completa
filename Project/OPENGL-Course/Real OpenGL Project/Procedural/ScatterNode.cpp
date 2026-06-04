@@ -116,17 +116,18 @@ void ScatterNode::RenderContent(SceneManager* scene)
 	ImGui::TextDisabled("Spawning Mode: Forced Instancing");
 	if (scene)
 	{
-		auto& objects = scene->GetObjects();
+		std::vector<GameObject*> allObjects;
+		scene->GetAllObjects(allObjects);
 
 		if (ImGui::BeginCombo("Spawning Parent", targetParentName.c_str()))
 		{
-			for (int i = 0; i < (int)objects.size(); i++)
+			for (int i = 0; i < (int)allObjects.size(); i++)
 			{
-				bool isSelected = (targetParentIndex == i);
-				if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
+				bool isSelected = (targetParentName == allObjects[i]->GetName());
+				if (ImGui::Selectable(allObjects[i]->GetName().c_str(), isSelected))
 				{
 					targetParentIndex = i;
-					targetParentName = objects[i]->GetName();
+					targetParentName = allObjects[i]->GetName();
 				}
 			}
 			ImGui::EndCombo();

@@ -31,6 +31,7 @@ public:
 	void AddObject(GameObject* obj);
 	void RemoveObject(const std::string& name);
 	GameObject* FindObject(const std::string& name);
+	void GetAllObjects(std::vector<GameObject*>& outList);
 	Player* FindPlayer();
 	std::vector<GameObject*>& GetObjects() { return objects; }
 

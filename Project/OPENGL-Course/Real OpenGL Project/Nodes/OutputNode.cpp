@@ -18,7 +18,8 @@ OutputNode::OutputNode(NodeGraph& graph)
 void OutputNode::RenderContent(SceneManager* scene)
 {
 	if (!scene) return;
-	auto& objects = scene->GetObjects();
+	std::vector<GameObject*> allObjects;
+	scene->GetAllObjects(allObjects);
 
 	ImGui::Checkbox("Same As Input", &sameAsInput);
 	ImGui::SameLine();
@@ -26,51 +27,46 @@ void OutputNode::RenderContent(SceneManager* scene)
 
 	if (!sameAsInput)
 	{
-		// RE-VALIDATE: If reference is lost or index shifted, try to find by name
-	bool valid = false;
-	if (targetIndex >= 0 && targetIndex < (int)objects.size())
-	{
-		if (objects[targetIndex]->GetName() == targetName) valid = true;
-	}
-
-	if (!valid && targetName != "(none)")
-	{
-		// Try to recover index by name
-		targetIndex = -1;
-		for (int i = 0; i < (int)objects.size(); i++)
+		// RE-VALIDATE: If reference is lost or name shifted, try to find
+		bool valid = false;
+		if (targetName != "(none)" && !targetName.empty())
 		{
-			if (objects[i]->GetName() == targetName)
-			{
-				targetIndex = i;
+			GameObject* target = scene->FindObject(targetName);
+			if (target) {
 				valid = true;
-				break;
+				// Resolve index in flat allObjects list for UI state
+				targetIndex = -1;
+				for (int i = 0; i < (int)allObjects.size(); i++) {
+					if (allObjects[i] == target) {
+						targetIndex = i;
+						break;
+					}
+				}
 			}
 		}
 
-		// If still not found, object was deleted
 		if (!valid)
 		{
 			targetName = "(none)";
 			targetIndex = -1;
 		}
-	}
 
-	if (ImGui::BeginCombo("Target Object", targetName.c_str()))
-	{
-		for (int i = 0; i < (int)objects.size(); i++)
+		if (ImGui::BeginCombo("Target Object", targetName.c_str()))
 		{
-			bool isSelected = (targetIndex == i);
-			if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
+			for (int i = 0; i < (int)allObjects.size(); i++)
 			{
-				targetIndex = i;
-				targetName = objects[i]->GetName();
+				bool isSelected = (targetName == allObjects[i]->GetName());
+				if (ImGui::Selectable(allObjects[i]->GetName().c_str(), isSelected))
+				{
+					targetIndex = i;
+					targetName = allObjects[i]->GetName();
+				}
 			}
+			ImGui::EndCombo();
 		}
-		ImGui::EndCombo();
-	}
 
-	if (targetIndex >= 0 && targetIndex < (int)objects.size())
-		ImGui::TextColored(ImVec4(0, 1, 0, 1), "Target: %s", objects[targetIndex]->GetName().c_str());
+		if (targetIndex >= 0 && targetIndex < (int)allObjects.size())
+			ImGui::TextColored(ImVec4(0, 1, 0, 1), "Target: %s", allObjects[targetIndex]->GetName().c_str());
 	}
 }
 

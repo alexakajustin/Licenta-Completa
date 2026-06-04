@@ -36,18 +36,19 @@ void SceneInputNode::CleanupFallbacks()
 void SceneInputNode::RenderContent(SceneManager* scene)
 {
 	if (!scene) return;
-	auto& objects = scene->GetObjects();
+	std::vector<GameObject*> allObjects;
+	scene->GetAllObjects(allObjects);
 
 	if (ImGui::BeginCombo("Object", selectedName.c_str()))
 	{
-		for (int i = 0; i < (int)objects.size(); i++)
+		for (int i = 0; i < (int)allObjects.size(); i++)
 		{
-			bool isSelected = (selectedIndex == i);
+			bool isSelected = (selectedName == allObjects[i]->GetName());
 			ImGui::PushID(i);
-			if (ImGui::Selectable(objects[i]->GetName().c_str(), isSelected))
+			if (ImGui::Selectable(allObjects[i]->GetName().c_str(), isSelected))
 			{
 				selectedIndex = i;
-				selectedName = objects[i]->GetName();
+				selectedName = allObjects[i]->GetName();
 			}
 			ImGui::PopID();
 		}
@@ -183,29 +184,12 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (selectedName == "(none)") return;
 
-	auto& objects = scene.GetObjects();
-	GameObject* obj = nullptr;
-
-	// Resolve index by name if needed (essential for load from file)
-	if (selectedIndex < 0 || selectedIndex >= (int)objects.size() || objects[selectedIndex]->GetName() != selectedName)
-	{
-		selectedIndex = -1;
-		for (int i = 0; i < (int)objects.size(); i++)
-		{
-			if (objects[i]->GetName() == selectedName)
-			{
-				selectedIndex = i;
-				break;
-			}
-		}
-	}
-
+	GameObject* obj = scene.FindObject(selectedName);
 	MeshData data;
 	bool found = false;
 
-	if (selectedIndex >= 0 && selectedIndex < (int)objects.size())
+	if (obj)
 	{
-		obj = objects[selectedIndex];
 		outputs[0].data.sourceObject = obj;
 		outputs[0].data.sourceObjectName = selectedName;
 
@@ -268,6 +252,13 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					}
 					if (!currentData.vertices.empty()) currentFound = true;
 				}
+			}
+
+			// 5. Final fallback: if no primitive/model was resolved, use the custom mesh if available
+			if (!currentFound && current->HasCustomMesh())
+			{
+				currentData = current->GetCPUMeshData();
+				currentFound = true;
 			}
 
 			if (currentFound && !currentData.vertices.empty())
@@ -339,7 +330,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		{
 			cachedPrimitiveType = obj->GetPrimitiveType();
 			cachedModelPath = obj->GetModelSourcePath();
-			cachedPosition = obj->GetTransform().GetPosition();
+			cachedPosition = glm::vec3(obj->GetWorldMatrix()[3]);
 			cachedRotation = obj->GetTransform().GetRotation();
 			cachedScale = obj->GetTransform().GetScale();
 
@@ -493,7 +484,7 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		// we can keep the GameObject's actual transform scale/rotation in the scene
 		// without experiencing the double-scaling bug.
 		TransformData t;
-		t.position = obj ? obj->GetTransform().GetPosition() : cachedPosition;
+		t.position = obj ? glm::vec3(obj->GetWorldMatrix()[3]) : cachedPosition;
 		t.rotation = obj ? obj->GetTransform().GetRotation() : cachedRotation;
 		t.scale = obj ? obj->GetTransform().GetScale() : cachedScale;
 		outputs[0].data.transforms.push_back(t);
