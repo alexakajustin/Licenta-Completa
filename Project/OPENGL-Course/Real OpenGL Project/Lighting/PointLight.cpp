@@ -34,15 +34,15 @@ PointLight::PointLight(GLfloat shadowWidth, GLfloat shadowHeight,
 void PointLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation, GLuint diffuseIntensityLocation, GLuint positionLocation,
   GLuint constantLocation, GLuint linearLocation, GLuint exponentLocation)
 {
-	glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
-	glUniform1f(ambientIntensityLocation, ambientIntensity);
-	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
+	if (ambientColourLocation != (GLuint)-1) glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
+	if (ambientIntensityLocation != (GLuint)-1) glUniform1f(ambientIntensityLocation, ambientIntensity);
+	if (diffuseIntensityLocation != (GLuint)-1) glUniform1f(diffuseIntensityLocation, diffuseIntensity);
 	
-	glUniform3f(positionLocation, position.x, position.y, position.z);
+	if (positionLocation != (GLuint)-1) glUniform3f(positionLocation, position.x, position.y, position.z);
 
-	glUniform1f(constantLocation, constant);
-	glUniform1f(linearLocation, linear);
-	glUniform1f(exponentLocation, exponent);
+	if (constantLocation != (GLuint)-1) glUniform1f(constantLocation, constant);
+	if (linearLocation != (GLuint)-1) glUniform1f(linearLocation, linear);
+	if (exponentLocation != (GLuint)-1) glUniform1f(exponentLocation, exponent);
 }
 
 GLfloat PointLight::GetFarPlane()

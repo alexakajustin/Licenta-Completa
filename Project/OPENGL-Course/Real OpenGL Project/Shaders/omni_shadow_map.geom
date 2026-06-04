@@ -10,13 +10,13 @@ layout(triangle_strip, max_vertices=18) out;
 // perspective projection and view from light to all sides of the cube LRUDFB
 uniform mat4 lightMatrices[6];
 
-in vec4 FragPos[];
+in vec4 FragPosGS[];
 out vec4 FragPosOut;
 
 // Passthrough for instanced omni shadow (texture coords and fade factor)
-in vec2 TexCoord[];
+in vec2 TexCoordGS[];
 out vec2 TexCoordOut;
-in float vFadeFactor[];
+in float vFadeFactorGS[];
 out float vFadeFactorOut;
 
 void main()
@@ -30,12 +30,12 @@ void main()
 		// go to each vertex position in the IN triangle 
 		for(int i = 0; i < 3; i++)
 		{
-			FragPosOut = FragPos[i];
-			TexCoordOut = TexCoord[i];
-			vFadeFactorOut = vFadeFactor[i];
+			FragPosOut = FragPosGS[i];
+			TexCoordOut = TexCoordGS[i];
+			vFadeFactorOut = vFadeFactorGS[i];
 
 			// define the position to 'emit' the vertex in the world
-			gl_Position = lightMatrices[face] * FragPos[i]; // projection * view
+			gl_Position = lightMatrices[face] * FragPosGS[i]; // projection * view
 			EmitVertex();
 		}
 		EndPrimitive();

@@ -4,17 +4,17 @@ layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 tex;
 layout (location = 2) in vec3 norm;
 
-out vec3 WorldPos_CS_in;
-out vec2 TexCoord_CS_in;
-out vec3 Normal_CS_in;
-out vec3 LocalPos_CS_in;
+out vec3 WorldPos;
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 LocalPos;
 
 uniform mat4 model;
 
 void main()
 {
-    LocalPos_CS_in = pos;
-    WorldPos_CS_in = (model * vec4(pos, 1.0)).xyz;
-    TexCoord_CS_in = tex;
-    Normal_CS_in = mat3(transpose(inverse(model))) * norm;
+    LocalPos = pos;
+    WorldPos = (model * vec4(pos, 1.0)).xyz;
+    TexCoord = tex;
+    Normal = mat3(transpose(inverse(model))) * norm;
 }

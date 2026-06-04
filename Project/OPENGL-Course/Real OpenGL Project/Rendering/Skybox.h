@@ -23,6 +23,8 @@ public:
 	
 	void DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
 
+	GLuint GetTextureID() const { return textureId; }
+
 	~Skybox();
 private:
 	Mesh* skyMesh;

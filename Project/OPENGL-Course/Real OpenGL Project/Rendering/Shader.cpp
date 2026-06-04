@@ -18,16 +18,51 @@ Shader::Shader()
 	uniformUseNormalMap = -1;
 	uniformDirectionalLightTransform = -1;
 	uniformDirectionalShadowMap = -1;
+	uniformDirectionalShadowColorMap = -1;
 	uniformOmniLightPos = -1;
 	uniformFarPlane = -1;
 	uniformTiling = -1;
 	uniformOffset = -1;
+	
+	uniformDirectionalLight.uniformColour = -1;
+	uniformDirectionalLight.uniformAmbientIntensity = -1;
+	uniformDirectionalLight.uniformDiffuseIntensity = -1;
+	uniformDirectionalLight.uniformDirection = -1;
+
 	uniformPointLightCount = -1;
 	uniformSpotLightCount = -1;
 	pointLightCount = 0;
 	spotLightCount = 0;
 
 	for (int i = 0; i < 6; i++) uniformLightMatrices[i] = -1;
+
+	for (int i = 0; i < MAX_POINT_LIGHTS; i++) {
+		uniformPointLight[i].uniformColour = -1;
+		uniformPointLight[i].uniformAmbientIntensity = -1;
+		uniformPointLight[i].uniformDiffuseIntensity = -1;
+		uniformPointLight[i].uniformPosition = -1;
+		uniformPointLight[i].uniformConstant = -1;
+		uniformPointLight[i].uniformLinear = -1;
+		uniformPointLight[i].uniformExponent = -1;
+	}
+
+	for (int i = 0; i < MAX_SPOT_LIGHTS; i++) {
+		uniformSpotLight[i].uniformColour = -1;
+		uniformSpotLight[i].uniformAmbientIntensity = -1;
+		uniformSpotLight[i].uniformDiffuseIntensity = -1;
+		uniformSpotLight[i].uniformPosition = -1;
+		uniformSpotLight[i].uniformConstant = -1;
+		uniformSpotLight[i].uniformLinear = -1;
+		uniformSpotLight[i].uniformExponent = -1;
+		uniformSpotLight[i].uniformDirection = -1;
+		uniformSpotLight[i].uniformEdge = -1;
+	}
+
+	for (int i = 0; i < MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS; i++) {
+		uniformOmniShadowMap[i].shadowMap = -1;
+		uniformOmniShadowMap[i].shadowColorMap = -1;
+		uniformOmniShadowMap[i].farPlane = -1;
+	}
 }
 
 Shader::~Shader()
@@ -494,8 +529,44 @@ void Shader::ClearShader()
 	uniformFarPlane = -1;
 	uniformTiling = -1;
 	uniformOffset = -1;
+
+	uniformDirectionalLight.uniformColour = -1;
+	uniformDirectionalLight.uniformAmbientIntensity = -1;
+	uniformDirectionalLight.uniformDiffuseIntensity = -1;
+	uniformDirectionalLight.uniformDirection = -1;
+
 	uniformPointLightCount = -1;
 	uniformSpotLightCount = -1;
+
+	for (int i = 0; i < 6; i++) uniformLightMatrices[i] = -1;
+
+	for (int i = 0; i < MAX_POINT_LIGHTS; i++) {
+		uniformPointLight[i].uniformColour = -1;
+		uniformPointLight[i].uniformAmbientIntensity = -1;
+		uniformPointLight[i].uniformDiffuseIntensity = -1;
+		uniformPointLight[i].uniformPosition = -1;
+		uniformPointLight[i].uniformConstant = -1;
+		uniformPointLight[i].uniformLinear = -1;
+		uniformPointLight[i].uniformExponent = -1;
+	}
+
+	for (int i = 0; i < MAX_SPOT_LIGHTS; i++) {
+		uniformSpotLight[i].uniformColour = -1;
+		uniformSpotLight[i].uniformAmbientIntensity = -1;
+		uniformSpotLight[i].uniformDiffuseIntensity = -1;
+		uniformSpotLight[i].uniformPosition = -1;
+		uniformSpotLight[i].uniformConstant = -1;
+		uniformSpotLight[i].uniformLinear = -1;
+		uniformSpotLight[i].uniformExponent = -1;
+		uniformSpotLight[i].uniformDirection = -1;
+		uniformSpotLight[i].uniformEdge = -1;
+	}
+
+	for (int i = 0; i < MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS; i++) {
+		uniformOmniShadowMap[i].shadowMap = -1;
+		uniformOmniShadowMap[i].shadowColorMap = -1;
+		uniformOmniShadowMap[i].farPlane = -1;
+	}
 }
 
 std::string Shader::ReadFile(const char* fileLocation)
@@ -631,38 +702,44 @@ void Shader::SetSpotLights(SpotLight* spotLight, unsigned int lightCount, unsign
 
 void Shader::SetTexture(GLuint textureUnit)
 {
-	glUniform1i(uniformTexture, textureUnit);
+	if (uniformTexture != -1) glUniform1i(uniformTexture, textureUnit);
 }
 
 void Shader::SetNormalMap(GLuint textureUnit)
 {
-	glUniform1i(uniformNormalMap, textureUnit);
+	if (uniformNormalMap != -1) glUniform1i(uniformNormalMap, textureUnit);
 }
 
 void Shader::SetUseNormalMap(bool useNormalMap)
 {
-	glUniform1i(uniformUseNormalMap, useNormalMap ? 1 : 0);
+	if (uniformUseNormalMap != -1) glUniform1i(uniformUseNormalMap, useNormalMap ? 1 : 0);
 }
 
 void Shader::SetDirectionalShadowMap(GLuint textureUnit)
 {
-	glUniform1i(uniformDirectionalShadowMap, textureUnit);
+	if (uniformDirectionalShadowMap != -1) glUniform1i(uniformDirectionalShadowMap, textureUnit);
 }
 
 void Shader::SetDirectionalShadowColorMap(GLuint textureUnit)
 {
-	glUniform1i(uniformDirectionalShadowColorMap, textureUnit);
+	if (uniformDirectionalShadowColorMap != -1) glUniform1i(uniformDirectionalShadowColorMap, textureUnit);
 }
 
 void Shader::SetDirectionalLightTransform(glm::mat4 lTransform)
 {
-	glUniformMatrix4fv(uniformDirectionalLightTransform, 1, GL_FALSE, glm::value_ptr(lTransform));
+	if (uniformDirectionalLightTransform != -1)
+	{
+		glUniformMatrix4fv(uniformDirectionalLightTransform, 1, GL_FALSE, glm::value_ptr(lTransform));
+	}
 }
 
 void Shader::SetLightMatrices(std::vector<glm::mat4> lightMatrices)
 {
 	for (size_t i = 0; i < 6; i++)
 	{
-		glUniformMatrix4fv(uniformLightMatrices[i], 1, GL_FALSE, glm::value_ptr(lightMatrices[i]));
+		if (uniformLightMatrices[i] != -1)
+		{
+			glUniformMatrix4fv(uniformLightMatrices[i], 1, GL_FALSE, glm::value_ptr(lightMatrices[i]));
+		}
 	}
 }

@@ -35,6 +35,7 @@ struct Material {
 	 vec4 baseColor;
 	 vec2 tiling;
 	 vec2 offset;
+	 float reflectivity;
 };
 
 uniform int textureLayerCount;

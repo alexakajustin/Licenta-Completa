@@ -7,9 +7,9 @@ uniform mat4 model;
 uniform mat4 lightMatrix;
 uniform int useInstancing;
 
-out vec4 FragPosOut;
-out vec2 TexCoordOut;
-out float vFadeFactorOut;
+out vec4 FragPosGS;
+out vec2 TexCoordGS;
+out float vFadeFactorGS;
 
 void main()
 {
@@ -19,10 +19,10 @@ void main()
 	}
 	// Project using the face's lightMatrix
 	vec4 worldPos = modelMatrix * vec4(pos, 1.0);
-	FragPosOut = worldPos;
+	FragPosGS = worldPos;
 	gl_Position = lightMatrix * worldPos;
 	
 	// Default values for non-instanced omni shadows (instanced version overrides these)
-	TexCoordOut = vec2(0.0);
-	vFadeFactorOut = 0.0;
+	TexCoordGS = vec2(0.0);
+	vFadeFactorGS = 0.0;
 }

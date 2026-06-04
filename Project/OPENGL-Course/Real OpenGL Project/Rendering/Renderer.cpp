@@ -17,7 +17,8 @@ Renderer::Renderer()
 	  uniformEyePosition(-1), uniformSpecularIntensity(-1), uniformShininess(-1),
 	  uniformTiling(-1), uniformOffset(-1),
 	  uniformOmniLightPos(-1), uniformFarPlane(-1), 
-	  uniformUseNormalMap(-1), uniformUseDiffuseTexture(-1), uniformUseInstancing(-1)
+	  uniformUseNormalMap(-1), uniformUseDiffuseTexture(-1), uniformUseInstancing(-1),
+	  proceduralSkyTextureId(0), skyboxFBO(0), skyboxQuadVAO(0), skyboxQuadVBO(0)
 {
 }
 
@@ -27,6 +28,11 @@ Renderer::~Renderer()
 		delete shader;
 	}
 	instancedShaderCache.clear();
+
+	if (proceduralSkyTextureId) glDeleteTextures(1, &proceduralSkyTextureId);
+	if (skyboxFBO) glDeleteFramebuffers(1, &skyboxFBO);
+	if (skyboxQuadVAO) glDeleteVertexArrays(1, &skyboxQuadVAO);
+	if (skyboxQuadVBO) glDeleteBuffers(1, &skyboxQuadVBO);
 }
 
 void Renderer::Init()
@@ -53,6 +59,22 @@ void Renderer::Init()
 		"Assets/Shaders/directional_shadow_map_tess.tes",
 		"Shaders/directional_shadow_map.frag"
 	);
+
+	// Initialize procedural sky cubemap texture (256x256 per face)
+	glGenTextures(1, &proceduralSkyTextureId);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, proceduralSkyTextureId);
+	for (unsigned int i = 0; i < 6; ++i) {
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+	volumetricSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/volumetric_sky.frag");
+	universeSkyShader.CreateFromFiles("Assets/Shaders/volumetric_sky.vert", "Assets/Shaders/universe_sky.frag");
 	
 	CacheUniforms();
 }
@@ -227,6 +249,8 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture,
 						  const Frustum* debugFrustum, const GraphicsSettings* gs)
 {
+	UpdateProceduralSkybox(mainLight, gs, (float)glfwGetTime());
+
 	if (gs && gs->showWireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	} else {
@@ -348,6 +372,8 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 							  SpotLight* spotLights, unsigned int spotLightCount,
 							  int fbw, int fbh, float waterHeight, const GraphicsSettings* gs)
 {
+	UpdateProceduralSkybox(mainLight, gs, (float)glfwGetTime());
+
 	if (gs && gs->showWireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	} else {
@@ -614,4 +640,120 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 	
 	instancedShaderCache[cacheKey] = hybrid;
 	return hybrid;
+}
+
+void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const GraphicsSettings* gs, float time)
+{
+	if (!gs || !gs->volumetricSkyEnabled) return;
+
+	// 1. Create FBO and Quad VAO/VBO if not initialized
+	if (skyboxFBO == 0) {
+		glGenFramebuffers(1, &skyboxFBO);
+	}
+	if (skyboxQuadVAO == 0) {
+		float quadVertices[] = {
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		glGenVertexArrays(1, &skyboxQuadVAO);
+		glGenBuffers(1, &skyboxQuadVBO);
+		glBindVertexArray(skyboxQuadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, skyboxQuadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+		glBindVertexArray(0);
+	}
+
+	// 2. Set viewport to match the cubemap size
+	GLint oldViewport[4];
+	glGetIntegerv(GL_VIEWPORT, oldViewport);
+	glViewport(0, 0, 256, 256);
+
+	GLint oldFBO = 0;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
+
+	// 3. Bind FBO and disable testing/blending for screen-space draw
+	glBindFramebuffer(GL_FRAMEBUFFER, skyboxFBO);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
+	// 4. Select shader
+	Shader* skyShader = nullptr;
+	if (gs->skyboxType == SkyboxType::Atmospheric) {
+		skyShader = &volumetricSkyShader;
+	} else if (gs->skyboxType == SkyboxType::Universe) {
+		skyShader = &universeSkyShader;
+	}
+	if (!skyShader) {
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+		glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+		return;
+	}
+
+	skyShader->UseShader();
+
+	// 5. Setup Projection and View matrices for the 6 faces
+	glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 invProj = glm::inverse(proj);
+
+	glm::mat4 views[] = {
+		glm::lookAt(glm::vec3(0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // POSITIVE_X
+		glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // NEGATIVE_X
+		glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)), // POSITIVE_Y
+		glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)), // NEGATIVE_Y
+		glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // POSITIVE_Z
+		glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))  // NEGATIVE_Z
+	};
+
+	// 6. Upload common uniforms
+	glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "time"), time);
+	if (gs->skyboxType == SkyboxType::Atmospheric) {
+		glm::vec3 sunDir = *mainLight.GetDirectionPtr();
+		glm::vec3 dirToSun = -glm::normalize(sunDir);
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+		glUniform1i(glGetUniformLocation(skyShader->GetShaderID(), "cloudsEnabled"), gs->cloudsEnabled ? 1 : 0);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsDensity"), gs->cloudsDensity);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsSpeed"), gs->cloudsSpeed);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsSharpness"), gs->cloudsSharpness);
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithDay"), 1, glm::value_ptr(gs->zenithDay));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonDay"), 1, glm::value_ptr(gs->horizonDay));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithSunset"), 1, glm::value_ptr(gs->zenithSunset));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonSunset"), 1, glm::value_ptr(gs->horizonSunset));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithNight"), 1, glm::value_ptr(gs->zenithNight));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonNight"), 1, glm::value_ptr(gs->horizonNight));
+	} else {
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "starDensity"), gs->universeStarDensity);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "starBrightness"), gs->universeStarBrightness);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "nebulaIntensity"), gs->universeNebulaIntensity);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "universeSpeed"), gs->universeSpeed);
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "nebulaColor1"), 1, glm::value_ptr(gs->universeNebulaColor1));
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "nebulaColor2"), 1, glm::value_ptr(gs->universeNebulaColor2));
+	}
+
+	glBindVertexArray(skyboxQuadVAO);
+
+	for (int i = 0; i < 6; i++) {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, proceduralSkyTextureId, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glm::mat4 invView = glm::inverse(views[i]);
+		glUniformMatrix4fv(glGetUniformLocation(skyShader->GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+		glUniformMatrix4fv(glGetUniformLocation(skyShader->GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	glBindVertexArray(0);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 }

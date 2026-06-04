@@ -27,18 +27,18 @@ void SpotLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLo
 	GLuint constantLocation, GLuint linearLocation, GLuint exponentLocation,
 	GLuint edgeLocation)
 {
-	glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
-	glUniform1f(ambientIntensityLocation, ambientIntensity);
-	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
+	if (ambientColourLocation != (GLuint)-1) glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
+	if (ambientIntensityLocation != (GLuint)-1) glUniform1f(ambientIntensityLocation, ambientIntensity);
+	if (diffuseIntensityLocation != (GLuint)-1) glUniform1f(diffuseIntensityLocation, diffuseIntensity);
 
-	glUniform3f(positionLocation, position.x, position.y, position.z);
+	if (positionLocation != (GLuint)-1) glUniform3f(positionLocation, position.x, position.y, position.z);
 
-	glUniform1f(constantLocation, constant);
-	glUniform1f(linearLocation, linear);
-	glUniform1f(exponentLocation, exponent);
+	if (constantLocation != (GLuint)-1) glUniform1f(constantLocation, constant);
+	if (linearLocation != (GLuint)-1) glUniform1f(linearLocation, linear);
+	if (exponentLocation != (GLuint)-1) glUniform1f(exponentLocation, exponent);
 
-	glUniform3f(directionLocation, direction.x, direction.y, direction.z);
-	glUniform1f(edgeLocation, cosf(glm::radians(edge)));
+	if (directionLocation != (GLuint)-1) glUniform3f(directionLocation, direction.x, direction.y, direction.z);
+	if (edgeLocation != (GLuint)-1) glUniform1f(edgeLocation, cosf(glm::radians(edge)));
 }
 
 void SpotLight::SetFlash(glm::vec3 pos, glm::vec3 dir)

@@ -30,6 +30,14 @@ struct GraphicsSettings {
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
 
+	// Day/Night transition colors
+	glm::vec3 zenithDay = glm::vec3(0.05f, 0.15f, 0.5f);
+	glm::vec3 horizonDay = glm::vec3(0.3f, 0.5f, 0.8f);
+	glm::vec3 zenithSunset = glm::vec3(0.02f, 0.02f, 0.1f);
+	glm::vec3 horizonSunset = glm::vec3(0.6f, 0.2f, 0.05f);
+	glm::vec3 zenithNight = glm::vec3(0.005f, 0.005f, 0.01f);
+	glm::vec3 horizonNight = glm::vec3(0.01f, 0.01f, 0.02f);
+
 	// Skybox Selection
 	SkyboxType skyboxType = SkyboxType::Atmospheric;
 

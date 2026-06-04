@@ -120,6 +120,8 @@ public:
 	 */
 	Shader& GetMainShader() { return mainShader; }
 
+	const Skybox& GetSkybox() const { return skybox; }
+
 	/**
 	 * @brief Gets reference to terrain displacement tessellation shader.
 	 */
@@ -140,6 +142,8 @@ public:
 	 */
 	Shader* GetInstancedShader(Shader* original);
 
+	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
+
 
 private:
 	Shader mainShader;
@@ -152,6 +156,15 @@ private:
 	Shader tessShader;             // Tessellation shader (vert+tcs+tes+frag) for GPU displacement
 	Shader directionalShadowTessShader; // Tessellation shader for shadow pass
 	Skybox skybox;
+
+	GLuint proceduralSkyTextureId = 0;
+	GLuint skyboxFBO = 0;
+	GLuint skyboxQuadVAO = 0;
+	GLuint skyboxQuadVBO = 0;
+	Shader volumetricSkyShader;
+	Shader universeSkyShader;
+
+	void UpdateProceduralSkybox(DirectionalLight& mainLight, const GraphicsSettings* gs, float time);
 
 	// Cached uniform locations (fetched once at init)
 	GLint uniformModel, uniformProjection, uniformView, uniformEyePosition,

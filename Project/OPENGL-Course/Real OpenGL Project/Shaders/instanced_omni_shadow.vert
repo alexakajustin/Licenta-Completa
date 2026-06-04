@@ -31,9 +31,9 @@ struct Material {
 };
 uniform Material material;
 
-out vec4 FragPosOut;
-out vec2 TexCoordOut;
-out float vFadeFactorOut;
+out vec4 FragPosGS;
+out vec2 TexCoordGS;
+out float vFadeFactorGS;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -67,10 +67,10 @@ void main()
     vec3 worldPos = rotatedPos + instancePos;
     
     // Output projected position for this face
-    FragPosOut = vec4(worldPos, 1.0);
+    FragPosGS = vec4(worldPos, 1.0);
     gl_Position = lightMatrix * vec4(worldPos, 1.0);
     
-    TexCoordOut = tex * material.tiling + material.offset;
+    TexCoordGS = tex * material.tiling + material.offset;
     float rawW = inst.rotAndFlags.w;
-    vFadeFactorOut = (rawW > 5.0) ? (rawW - 10.0) : rawW;
+    vFadeFactorGS = (rawW > 5.0) ? (rawW - 10.0) : rawW;
 }

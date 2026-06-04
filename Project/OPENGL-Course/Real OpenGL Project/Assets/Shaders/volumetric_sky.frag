@@ -19,6 +19,13 @@ uniform float cloudsSharpness; ///< Cloud edge transition sharpness threshold.
 uniform vec3 sunDir; ///< Direction vector pointing towards the sun.
 uniform vec3 sunColor; ///< RGB intensity color of the sun light source.
 
+uniform vec3 zenithDay;
+uniform vec3 horizonDay;
+uniform vec3 zenithSunset;
+uniform vec3 horizonSunset;
+uniform vec3 zenithNight;
+uniform vec3 horizonNight;
+
 
 // Simple 2D Noise for clouds
 float hash(vec2 p) {
@@ -54,17 +61,7 @@ void main()
     vec3 normalizedWorldDir = normalize(WorldDir);
     float h = max(normalizedWorldDir.y, 0.0);
     
-    // Base sky colors based on sun height
     float sunHeight = sunDir.y;
-    
-    // Day/Night transition colors
-    vec3 zenithDay = vec3(0.05, 0.15, 0.5);
-    vec3 horizonDay = vec3(0.3, 0.5, 0.8);
-    vec3 zenithSunset = vec3(0.02, 0.02, 0.1);
-    vec3 horizonSunset = vec3(0.6, 0.2, 0.05);
-    vec3 zenithNight = vec3(0.005, 0.005, 0.01);
-    vec3 horizonNight = vec3(0.01, 0.01, 0.02);
-
     float sunsetFactor = smoothstep(0.5, -0.1, sunHeight);
     float nightFactor = smoothstep(-0.1, -0.5, sunHeight);
 

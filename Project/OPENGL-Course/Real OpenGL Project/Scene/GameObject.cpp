@@ -359,6 +359,13 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		glUniform2f(uniformTiling, 1.0f, 1.0f);
 		glUniform2f(uniformOffset, 0.0f, 0.0f);
 
+		GLint activeProgram = (shaderID == 0) ? 0 : shaderID;
+		if (activeProgram == 0) {
+			glGetIntegerv(GL_CURRENT_PROGRAM, &activeProgram);
+		}
+		GLint reflectivityLoc = glGetUniformLocation(activeProgram, "material.reflectivity");
+		if (reflectivityLoc != -1) glUniform1f(reflectivityLoc, 0.0f);
+
 		static GLuint cachedAlphaShader2 = 0;
 		static GLint cachedAlphaLoc2 = -1;
 		if (cachedAlphaShader2 != shaderID) { cachedAlphaShader2 = shaderID; cachedAlphaLoc2 = glGetUniformLocation(shaderID, "materialAlpha"); }

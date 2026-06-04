@@ -2,10 +2,10 @@
 
 layout (vertices = 3) out;
 
-in vec3 WorldPos_CS_in[];
-in vec2 TexCoord_CS_in[];
-in vec3 Normal_CS_in[];
-in vec3 LocalPos_CS_in[];
+in vec3 WorldPos[];
+in vec2 TexCoord[];
+in vec3 Normal[];
+in vec3 LocalPos[];
 
 out vec3 WorldPos_ES_in[];
 out vec2 TexCoord_ES_in[];
@@ -26,16 +26,16 @@ float GetTessLevel(float distance0, float distance1)
 
 void main()
 {
-    WorldPos_ES_in[gl_InvocationID] = WorldPos_CS_in[gl_InvocationID];
-    TexCoord_ES_in[gl_InvocationID] = TexCoord_CS_in[gl_InvocationID];
-    Normal_ES_in[gl_InvocationID] = Normal_CS_in[gl_InvocationID];
-    LocalPos_ES_in[gl_InvocationID] = LocalPos_CS_in[gl_InvocationID];
+    WorldPos_ES_in[gl_InvocationID] = WorldPos[gl_InvocationID];
+    TexCoord_ES_in[gl_InvocationID] = TexCoord[gl_InvocationID];
+    Normal_ES_in[gl_InvocationID] = Normal[gl_InvocationID];
+    LocalPos_ES_in[gl_InvocationID] = LocalPos[gl_InvocationID];
 
     if (gl_InvocationID == 0)
     {
-        float d0 = distance(eyePosition, WorldPos_CS_in[0]);
-        float d1 = distance(eyePosition, WorldPos_CS_in[1]);
-        float d2 = distance(eyePosition, WorldPos_CS_in[2]);
+        float d0 = distance(eyePosition, WorldPos[0]);
+        float d1 = distance(eyePosition, WorldPos[1]);
+        float d2 = distance(eyePosition, WorldPos[2]);
 
         gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
         gl_TessLevelOuter[1] = GetTessLevel(d2, d0);

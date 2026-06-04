@@ -45,6 +45,7 @@
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return; // Skip notification noise
+	if (id == 0x20072) return; // Skip NVIDIA video memory to host memory copy performance warning
 	
 	struct MessageState {
 		int count;
@@ -615,6 +616,12 @@ void Application::Run()
 					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
 					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
 					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonDay"), 1, glm::value_ptr(graphicsSettings.horizonDay));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithSunset"), 1, glm::value_ptr(graphicsSettings.zenithSunset));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
+					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
 				}
 				else if (graphicsSettings.skyboxType == SkyboxType::Universe)
 				{
@@ -668,6 +675,12 @@ void Application::Run()
 				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
 				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
 				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonDay"), 1, glm::value_ptr(graphicsSettings.horizonDay));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithSunset"), 1, glm::value_ptr(graphicsSettings.zenithSunset));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
+				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
 			}
 			else if (graphicsSettings.skyboxType == SkyboxType::Universe)
 			{

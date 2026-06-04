@@ -62,6 +62,7 @@ struct Material {
     vec4 baseColor; 
     vec2 tiling; 
     vec2 offset; 
+    float reflectivity;
 };
 uniform Material material;
 uniform sampler2D material_dudvMap; ///< DuDv UV distortion map texture.

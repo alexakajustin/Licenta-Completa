@@ -64,6 +64,9 @@ public:
 	float GetShininess() const { return GetFloat("material.shininess"); }
 	void SetShininess(float val) { SetFloat("material.shininess", val); }
 
+	float GetReflectivity() const { return GetFloat("material.reflectivity"); }
+	void SetReflectivity(float val) { SetFloat("material.reflectivity", val); }
+
 	glm::vec2 GetTiling() const { return GetVec2("material.tiling"); }
 	void SetTiling(glm::vec2 val) { SetVec2("material.tiling", val); }
 

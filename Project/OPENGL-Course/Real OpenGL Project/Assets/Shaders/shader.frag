@@ -79,6 +79,7 @@ struct Material {
 	 vec4 baseColor; ///< Base tint color.
 	 vec2 tiling; ///< UV tiling multiplier.
 	 vec2 offset; ///< UV offset coordinate translation.
+	 float reflectivity;
 };
 
 /**
@@ -114,7 +115,7 @@ uniform float lodDistances[3];
 uniform mat4 viewMatrix; ///< View matrix to determine view-space camera depth.
 
 uniform Material material;
-
+uniform samplerCube skybox;
 // camera position
 uniform vec3 eyePosition; ///< Camera position coordinate.
 
@@ -772,6 +773,14 @@ void main()
 
 	// 3. Final output
 	vec3 finalColor = finalLight;
+
+	// Environment Map Reflections
+	if (material.reflectivity > 0.0) {
+		vec3 viewDir = normalize(FragPos - eyePosition);
+		vec3 reflectDir = reflect(viewDir, normalize(GetEffectiveNormal()));
+		vec3 reflectionColor = texture(skybox, reflectDir).rgb;
+		finalColor += reflectionColor * material.reflectivity;
+	}
 
 	// Selection highlight: additive yellow tint
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

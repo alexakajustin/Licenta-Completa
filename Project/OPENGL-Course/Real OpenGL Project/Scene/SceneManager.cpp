@@ -436,6 +436,17 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glUniform1i(refractionMapLoc, 16); // Binding 16
 			}
 
+			GLint skyboxLoc = glGetUniformLocation(s->GetShaderID(), "skybox");
+			if (skyboxLoc != -1 && renderer) {
+				glActiveTexture(GL_TEXTURE2);
+				if (gs && gs->volumetricSkyEnabled) {
+					glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetProceduralSkyTextureID());
+				} else {
+					glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetSkybox().GetTextureID());
+				}
+				glUniform1i(skyboxLoc, 2);
+			}
+
 			// Screen size is required for depth sampling via gl_FragCoord
 			GLint screenSizeLoc = glGetUniformLocation(s->GetShaderID(), "screenSize");
 			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenWidth > 0.0f ? screenWidth : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
