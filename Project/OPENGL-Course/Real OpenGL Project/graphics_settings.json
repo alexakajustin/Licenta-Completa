@@ -15,9 +15,9 @@
     "lod0Distance": 100.0,
     "lod1Distance": 500.0,
     "lod2Distance": 1000.0,
-    "renderDistance": 500.0,
-    "shadowCascades": 1,
-    "shadowDistance": 50.0,
+    "renderDistance": 2000.0,
+    "shadowCascades": 4,
+    "shadowDistance": 500.0,
     "showWireframe": false,
     "skyboxType": 0,
     "universeNebulaColor1": [

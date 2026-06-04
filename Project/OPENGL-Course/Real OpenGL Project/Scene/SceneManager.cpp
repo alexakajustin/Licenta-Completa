@@ -1791,7 +1791,9 @@ void SceneManager::CreateGameObject(const std::string& type, glm::vec3 spawnPos)
 		obj->SetMesh(PrimitiveGenerator::CreateSphere());
 	}
 	else if (type == "Planet") {
-		obj = new Planet("Planet");
+		Planet* planet = new Planet(name);
+		planet->Generate();
+		obj = planet;
 	}
 	else {
 		obj = new GameObject(name);
