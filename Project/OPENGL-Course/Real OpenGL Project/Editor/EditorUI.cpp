@@ -676,10 +676,11 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
 				nodeGraph.AddLink(noise->outputs[0].id, output->inputs[0].id);
 
-				// Auto-setup: try to find "Plane"
+				// Auto-setup: try to find "Plane" or "Plane X"
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					if (scene.GetObjects()[i]->GetName() == "Plane") {
-						input->SetSelection(i, "Plane");
+					std::string name = scene.GetObjects()[i]->GetName();
+					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
+						input->SetSelection(i, name);
 						break;
 					}
 				}
@@ -708,14 +709,14 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				// Connect Rock Input to Scatter
 				nodeGraph.AddLink(rockInput->outputs[0].id, scatter->inputs[1].id);
 
-				// Auto-setup: try to find "Plane" and "Cube 1"
+				// Auto-setup: try to find "Plane" and "Cube"
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
 					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane") {
-						groundInput->SetSelection(i, "Plane");
+					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
+						groundInput->SetSelection(i, name);
 					}
-					if (name == "Cube 1") {
-						rockInput->SetSelection(i, "Cube 1");
+					if (name == "Cube 1" || name == "Cube" || name.rfind("Cube ", 0) == 0) {
+						rockInput->SetSelection(i, name);
 					}
 				}
 			}
@@ -750,10 +751,12 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				// Auto-setup defaults
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
 					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane") {
-						groundInput->SetSelection(i, "Plane");
+					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
+						groundInput->SetSelection(i, name);
 					}
-					if (name == "grass 1" || name == "Sphere 1" || name == "Cube 1") {
+					if (name == "grass 1" || name.rfind("grass ", 0) == 0 ||
+						name == "Sphere 1" || name.rfind("Sphere ", 0) == 0 ||
+						name == "Cube 1" || name.rfind("Cube ", 0) == 0) {
 						objectInput->SetSelection(i, name);
 					}
 				}
@@ -807,8 +810,9 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 
 				// Auto-assign Plane and set good erosion defaults
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					if (scene.GetObjects()[i]->GetName() == "Plane") {
-						input->SetSelection(i, "Plane");
+					std::string name = scene.GetObjects()[i]->GetName();
+					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
+						input->SetSelection(i, name);
 						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
 						break;
 					}
@@ -855,8 +859,9 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 
 				// Auto-assign Plane and set good erosion defaults
 				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					if (scene.GetObjects()[i]->GetName() == "Plane") {
-						input->SetSelection(i, "Plane");
+					std::string name = scene.GetObjects()[i]->GetName();
+					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
+						input->SetSelection(i, name);
 						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
 						break;
 					}

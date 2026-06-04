@@ -208,32 +208,127 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		obj = objects[selectedIndex];
 		outputs[0].data.sourceObject = obj;
 		outputs[0].data.sourceObjectName = selectedName;
-		
-		// 1. ALWAYS prefer the displaced/custom mesh if the object has one
-		if (obj->HasCustomMesh() && !forceOriginalPrimitive)
-		{
-			data = obj->GetCPUMeshData();
-			found = true;
-		}
-		// 2. Otherwise generate the primitive base
-		else if (obj->GetPrimitiveType() == "Plane") { data = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
-		else if (obj->GetPrimitiveType() == "Sphere") { data = PrimitiveGenerator::GetSphereData(); found = true; }
-		else if (obj->GetPrimitiveType() == "Cube") { data = PrimitiveGenerator::GetCubeData(); found = true; }
-		// 3. Extract from Model if available (clean asset geometry)
-		else if (obj->GetModel() && !obj->GetModel()->GetMeshDataList().empty())
-		{
-			const auto& meshes = obj->GetModel()->GetMeshDataList();
-			for (const auto& m : meshes)
+
+		// We will recursively collect all mesh data from obj and its descendants.
+		// To bake local transforms relative to the root object, we transform descendant vertices
+		// from descendant space to root space. To do this, we transform by the descendant's world matrix
+		// and then by the inverse of the root's world position translation matrix (to keep the vertices
+		// relative to the root's position, while baking root's rotation/scale).
+		glm::vec3 rootWorldPos = glm::vec3(obj->GetWorldMatrix()[3]);
+		glm::mat4 rootWorldPosInv = glm::translate(glm::mat4(1.0f), -rootWorldPos);
+
+		bool collectedAny = false;
+
+		std::function<void(GameObject*)> collectMesh = [&](GameObject* current) {
+			if (!current) return;
+
+			MeshData currentData;
+			bool currentFound = false;
+
+			// 1. ALWAYS prefer the displaced/custom mesh if the object has one
+			if (current->HasCustomMesh() && !forceOriginalPrimitive)
 			{
-				int baseIdx = (int)data.vertices.size() / 14;
-				data.vertices.insert(data.vertices.end(), m.vertices.begin(), m.vertices.end());
-				for (unsigned int idx : m.indices)
+				currentData = current->GetCPUMeshData();
+				currentFound = true;
+			}
+			// 2. Otherwise generate the primitive base
+			else if (current->GetPrimitiveType() == "Plane") { currentData = PrimitiveGenerator::GetPlaneData(512, 512); currentFound = true; }
+			else if (current->GetPrimitiveType() == "Sphere") { currentData = PrimitiveGenerator::GetSphereData(); currentFound = true; }
+			else if (current->GetPrimitiveType() == "Cube") { currentData = PrimitiveGenerator::GetCubeData(); currentFound = true; }
+			// 3. Extract from Model if available (clean asset geometry)
+			else if (current->GetModel() && !current->GetModel()->GetMeshDataList().empty())
+			{
+				const auto& meshes = current->GetModel()->GetMeshDataList();
+				for (const auto& m : meshes)
 				{
-					data.indices.push_back(idx + baseIdx);
+					int baseIdx = (int)currentData.vertices.size() / 14;
+					currentData.vertices.insert(currentData.vertices.end(), m.vertices.begin(), m.vertices.end());
+					for (unsigned int idx : m.indices)
+					{
+						currentData.indices.push_back(idx + baseIdx);
+					}
+				}
+				if (!currentData.vertices.empty()) currentFound = true;
+			}
+			// 4. Fallback: If it has a model source path, try to load it from the AssetManager
+			else if (!current->GetModelSourcePath().empty())
+			{
+				Model* m = ServiceLocator::GetAssetManager()->GetModel(current->GetModelSourcePath());
+				if (m)
+				{
+					const auto& meshes = m->GetMeshDataList();
+					for (const auto& meshData : meshes)
+					{
+						int baseIdx = (int)currentData.vertices.size() / 14;
+						currentData.vertices.insert(currentData.vertices.end(), meshData.vertices.begin(), meshData.vertices.end());
+						for (unsigned int idx : meshData.indices)
+						{
+							currentData.indices.push_back(idx + baseIdx);
+						}
+					}
+					if (!currentData.vertices.empty()) currentFound = true;
 				}
 			}
-			if (!data.vertices.empty()) found = true;
-		}
+
+			if (currentFound && !currentData.vertices.empty())
+			{
+				// T = rootWorldPosInv * current->GetWorldMatrix()
+				glm::mat4 localToRoot = rootWorldPosInv * current->GetWorldMatrix();
+				glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(localToRoot)));
+
+				int startIdx = (int)data.vertices.size() / 14;
+
+				// Transform vertices
+				for (size_t v = 0; v < currentData.vertices.size(); v += 14)
+				{
+					// Position
+					glm::vec4 pos(currentData.vertices[v + 0], currentData.vertices[v + 1], currentData.vertices[v + 2], 1.0f);
+					pos = localToRoot * pos;
+
+					// Normal
+					glm::vec3 norm(currentData.vertices[v + 5], currentData.vertices[v + 6], currentData.vertices[v + 7]);
+					if (glm::length(norm) > 0.001f) {
+						norm = glm::normalize(normalMatrix * norm);
+					}
+
+					// Tangent
+					glm::vec3 tang(currentData.vertices[v + 8], currentData.vertices[v + 9], currentData.vertices[v + 10]);
+					if (glm::length(tang) > 0.001f) {
+						tang = glm::normalize(normalMatrix * tang);
+					}
+
+					// Bitangent
+					glm::vec3 bitang(currentData.vertices[v + 11], currentData.vertices[v + 12], currentData.vertices[v + 13]);
+					if (glm::length(bitang) > 0.001f) {
+						bitang = glm::normalize(normalMatrix * bitang);
+					}
+
+					data.AddVertex(pos.x, pos.y, pos.z,
+								   currentData.vertices[v + 3], currentData.vertices[v + 4], // UV
+								   norm.x, norm.y, norm.z,
+								   tang.x, tang.y, tang.z,
+								   bitang.x, bitang.y, bitang.z);
+				}
+
+				// Append indices
+				for (unsigned int idx : currentData.indices)
+				{
+					data.indices.push_back(idx + startIdx);
+				}
+
+				collectedAny = true;
+			}
+
+			// Recurse children
+			for (auto* child : current->GetChildren())
+			{
+				collectMesh(child);
+			}
+		};
+
+		collectMesh(obj);
+
+		if (collectedAny) found = true;
 
 		// Even if no mesh was found (empty container), we still "found" the object itself 
 		// for hierarchy and transform propagation (essential for modular trees).
@@ -298,30 +393,35 @@ void SceneInputNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 
 	if (found) {
-		glm::vec3 scale = obj ? obj->GetTransform().GetScale() : cachedScale;
-		glm::vec3 rotation = obj ? obj->GetTransform().GetRotation() : cachedRotation;
+		// Only transform using cachedScale / cachedRotation if the object was deleted (obj is null)
+		// because the recursive collectMesh call above already bakes the relative transforms
+		// of the root and child GameObjects.
+		if (!obj) {
+			glm::vec3 scale = cachedScale;
+			glm::vec3 rotation = cachedRotation;
 
-		// Transform only POSITIONS using rotation and scale of the parent/source object.
-		// Normals, tangents, and bitangents are left in local space — the vertex shader
-		// already applies transpose(inverse(model)) for normals, and pipeline nodes
-		// (PerlinNoise, Erosion, River) recompute normals from displaced positions.
-		if (rotation != glm::vec3(0.0f) || scale != glm::vec3(1.0f))
-		{
-			glm::mat4 rotMatrix(1.0f);
-			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-			rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-			glm::mat4 transformMatrix = glm::scale(rotMatrix, scale);
-
-			for (size_t v = 0; v < data.vertices.size(); v += 14)
+			// Transform only POSITIONS using rotation and scale of the parent/source object.
+			// Normals, tangents, and bitangents are left in local space — the vertex shader
+			// already applies transpose(inverse(model)) for normals, and pipeline nodes
+			// (PerlinNoise, Erosion, River) recompute normals from displaced positions.
+			if (rotation != glm::vec3(0.0f) || scale != glm::vec3(1.0f))
 			{
-				// Position (0, 1, 2)
-				glm::vec4 pos(data.vertices[v + 0], data.vertices[v + 1], data.vertices[v + 2], 1.0f);
-				pos = transformMatrix * pos;
-				data.vertices[v + 0] = pos.x;
-				data.vertices[v + 1] = pos.y;
-				data.vertices[v + 2] = pos.z;
+				glm::mat4 rotMatrix(1.0f);
+				rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+				rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+				rotMatrix = glm::rotate(rotMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+				glm::mat4 transformMatrix = glm::scale(rotMatrix, scale);
+
+				for (size_t v = 0; v < data.vertices.size(); v += 14)
+				{
+					// Position (0, 1, 2)
+					glm::vec4 pos(data.vertices[v + 0], data.vertices[v + 1], data.vertices[v + 2], 1.0f);
+					pos = transformMatrix * pos;
+					data.vertices[v + 0] = pos.x;
+					data.vertices[v + 1] = pos.y;
+					data.vertices[v + 2] = pos.z;
+				}
 			}
 		}
 

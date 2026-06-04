@@ -2026,11 +2026,11 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 		newObj->GetTransform().SetPosition(spawnPos);
 		newObj->SetModelSourcePath(path.string());
 		
+		// Set the model source so obj->GetModel() works for both single and multi-mesh models.
+		newObj->SetModel(model);
 		// Set the mesh directly so LOD switching works (Model::RenderModel bypasses LOD)
 		if (model->GetMeshCount() == 1) {
 			newObj->SetMesh(model->GetMesh(0));
-		} else {
-			newObj->SetModel(model);
 		}
 		
 		unsigned int matIdx = model->GetMaterialIndex(0);
