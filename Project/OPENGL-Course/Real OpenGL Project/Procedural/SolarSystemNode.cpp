@@ -12,10 +12,7 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	if (progress) progress(0.0f, "Cleaning up old solar system...");
 
 	// Cache previous states of existing spawned planets/sun to preserve manual inspector customizations
-	std::map<std::string, glm::vec3> savedPositions;
 	std::map<std::string, glm::vec3> savedRotations;
-	std::map<std::string, glm::vec3> savedScales;
-	std::map<std::string, PlanetParams> savedPlanetParams;
 	std::map<std::string, Material*> savedMaterials;
 
 	for (const auto& name : spawnedObjects) {
@@ -27,13 +24,8 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			}
 		}
 		if (existing) {
-			savedPositions[name] = existing->GetTransform().GetPosition();
 			savedRotations[name] = existing->GetTransform().GetRotation();
-			savedScales[name] = existing->GetTransform().GetScale();
 			savedMaterials[name] = existing->GetMaterial();
-			if (Planet* pr = dynamic_cast<Planet*>(existing)) {
-				savedPlanetParams[name] = pr->GetParams();
-			}
 
 			// Clean detach to avoid accidental deletion
 			existing->SetMaterial(nullptr);
@@ -66,13 +58,9 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		std::string sunName = basePrefix + "Sun";
 		Planet* sun = new Planet(sunName);
 		PlanetParams pParams;
-		if (savedPlanetParams.count(sunName)) {
-			pParams = savedPlanetParams[sunName];
-		} else {
-			pParams.radius = sunScale;
-			pParams.subdivisions = 6;
-			pParams.seed = seedDist(gen);
-		}
+		pParams.radius = sunScale;
+		pParams.subdivisions = 6;
+		pParams.seed = seedDist(gen);
 		sun->SetParams(pParams);
 
 		if (savedMaterials.count(sunName) && savedMaterials[sunName]) {
@@ -98,21 +86,18 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				mat->SetInt("octaves", 6);
 				mat->SetFloat("persistence", 0.5f);
 				mat->SetFloat("lacunarity", 2.0f);
-				mat->SetFloat("tessLevel", 8.0f);
-				mat->SetFloat("tessDistance", pParams.radius * 5.0f + 200.0f);
 			}
 		}
 
-		if (savedPositions.count(sunName)) {
-			sun->GetTransform().SetPosition(savedPositions[sunName]);
-		} else {
-			sun->GetTransform().SetPosition(center);
+		if (Material* mat = sun->GetMaterial()) {
+			mat->SetFloat("displacementHeight", pParams.radius * 0.05f);
+			mat->SetFloat("tessLevel", 8.0f);
+			mat->SetFloat("tessDistance", pParams.radius * 5.0f + 200.0f);
 		}
+
+		sun->GetTransform().SetPosition(center);
 		if (savedRotations.count(sunName)) {
 			sun->GetTransform().SetRotation(savedRotations[sunName]);
-		}
-		if (savedScales.count(sunName)) {
-			sun->GetTransform().SetScale(savedScales[sunName]);
 		}
 
 		scene.AddObject(sun);
@@ -174,12 +159,8 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		// Set radius before Generate() so the mesh is generated at the right size
 		PlanetParams pParams;
-		if (savedPlanetParams.count(planetName)) {
-			pParams = savedPlanetParams[planetName];
-		} else {
-			pParams.radius = s;
-			pParams.seed = seedDist(gen);
-		}
+		pParams.radius = s;
+		pParams.seed = seedDist(gen);
 		p->SetParams(pParams);
 
 		if (savedMaterials.count(planetName) && savedMaterials[planetName]) {
@@ -211,31 +192,28 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 				mat->SetInt("octaves", octavesDist(gen));
 				mat->SetFloat("persistence", persistDist(gen));
 				mat->SetFloat("lacunarity", lacunDist(gen));
-				mat->SetFloat("tessLevel", 8.0f);
-				mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
-
-				// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
-				float temp = 0.5f;
-				if (maxRadius > minRadius) {
-					temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
-				}
-				mat->SetFloat("temperature", temp);
 			}
 		}
 
-		if (savedPositions.count(planetName)) {
-			p->GetTransform().SetPosition(savedPositions[planetName]);
-		} else {
-			p->GetTransform().SetPosition(pos);
+		if (Material* mat = p->GetMaterial()) {
+			mat->SetFloat("tessLevel", 8.0f);
+			mat->SetFloat("tessDistance", s * 5.0f + 200.0f);
+
+			// Calculate temperature based on distance to sun (minRadius = hot, maxRadius = cold)
+			float temp = 0.5f;
+			if (maxRadius > minRadius) {
+				temp = 1.0f - glm::clamp((r - minRadius) / (maxRadius - minRadius), 0.0f, 1.0f);
+			}
+			mat->SetFloat("temperature", temp);
 		}
+
+		p->GetTransform().SetPosition(pos);
 		if (savedRotations.count(planetName)) {
 			p->GetTransform().SetRotation(savedRotations[planetName]);
-		}
-		if (savedScales.count(planetName)) {
-			p->GetTransform().SetScale(savedScales[planetName]);
 		} else {
-			p->GetTransform().SetScale(glm::vec3(1.0f));
+			p->GetTransform().SetRotation(glm::vec3(0.0f));
 		}
+		p->GetTransform().SetScale(glm::vec3(1.0f));
 
 		scene.AddObject(p);
 		spawnedObjects.insert(planetName);
@@ -267,14 +245,14 @@ void SolarSystemNode::RenderContent(SceneManager* scene)
 	ImGui::PushID(this);
 
 	ImGui::DragInt("Planet Count", &planetCount, 1.0f, 0, 100);
-	ImGui::DragFloat("Min Radius", &minRadius, 1.0f, 10.0f, 10000.0f);
-	ImGui::DragFloat("Max Radius", &maxRadius, 1.0f, 10.0f, 10000.0f);
-	ImGui::DragFloat("Min Scale", &minScale, 0.1f, 0.1f, 1000.0f);
-	ImGui::DragFloat("Max Scale", &maxScale, 0.1f, 0.1f, 1000.0f);
+	ImGui::DragFloat("MIN_DISTANCE (from sun)", &minRadius, 1.0f, 10.0f, 10000.0f);
+	ImGui::DragFloat("MAX_DISTANCE (from sun)", &maxRadius, 1.0f, 10.0f, 10000.0f);
+	ImGui::DragFloat("MIN_SCALE (planet scale)", &minScale, 0.1f, 0.1f, 1000.0f);
+	ImGui::DragFloat("MAX_SCALE (planet scale)", &maxScale, 0.1f, 0.1f, 1000.0f);
 
 	ImGui::Checkbox("Generate Sun", &generateSun);
 	if (generateSun) {
-		ImGui::DragFloat("Sun Scale", &sunScale, 1.0f, 1.0f, 10000.0f);
+		ImGui::DragFloat("SUN_DIMENSION", &sunScale, 1.0f, 1.0f, 10000.0f);
 	}
 
 	if (ImGui::InputInt("Seed", &seed)) {}
