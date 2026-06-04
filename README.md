@@ -86,6 +86,47 @@ To bypass CPU bottlenecks when rendering massive scenes, the engine processes cu
 * **File Parser & Serializer:** nlohmann/json
 * **Asset Loading:** Assimp
 
+## Build Instructions
+
+Before compiling the main project, you must build the **Jolt Physics** static library with settings that match the main project's runtime configuration.
+
+### 1. Build Jolt Physics
+1. Open a terminal and navigate to the Jolt build folder:
+   ```bash
+   cd "Project/OPENGL-Course/Real OpenGL Project/External Libs/joltphysics/Build/"
+   ```
+2. Generate the Visual Studio project files. To prevent linker errors, you must compile Jolt with the dynamic runtime library (`/MD`) by disabling the static MSVC runtime option:
+   * **For Visual Studio 2026:**
+     ```bash
+     .\cmake_vs2026_cl.bat -DUSE_STATIC_MSVC_RUNTIME_LIBRARY=OFF
+     ```
+   * **For Visual Studio 2022:**
+     ```bash
+     .\cmake_vs2022_cl.bat -DUSE_STATIC_MSVC_RUNTIME_LIBRARY=OFF
+     ```
+3. Compile the `Jolt` library target in the configurations you plan to run (e.g., **Release** for Release builds, **Debug** for Debug and Check Unit Test builds):
+   * **For Release configurations:**
+     ```bash
+     # VS 2026
+     cmake --build VS2026_CL --config Release --target Jolt
+     # VS 2022
+     cmake --build VS2022_CL --config Release --target Jolt
+     ```
+   * **For Debug / Check Unit Test configurations:**
+     ```bash
+     # VS 2026
+     cmake --build VS2026_CL --config Debug --target Jolt
+     # VS 2022
+     cmake --build VS2022_CL --config Debug --target Jolt
+     ```
+
+
+### 2. Build the Main Project
+1. Open `Project/OPENGL-Course/Real OpenGL Project.sln` in Visual Studio.
+2. Select your desired configuration (e.g., `Debug` or `Release` for `x64`) and build the solution.
+
+---
+
 ## Repository Structure
 
 * `/Project`: Core engine source code (renderer, scene graph, shader compiler, nodes).
@@ -93,3 +134,4 @@ To bypass CPU bottlenecks when rendering massive scenes, the engine processes cu
 
 ---
 *Developed as an Academic Bachelor's Thesis.*
+

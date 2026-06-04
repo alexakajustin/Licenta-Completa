@@ -97,7 +97,7 @@
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\Win32;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc143-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -136,7 +136,7 @@
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -176,7 +176,7 @@
       <LargeAddressAware>true</LargeAddressAware>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)External Libs\GLFW\lib-vc2022;$(ProjectDir)External Libs\GLEW\lib\Release\x64;$(ProjectDir)External Libs\ASSIMP\lib;$(ProjectDir)External Libs\joltphysics\Build\VS2026_CL\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc142-mt.lib;Jolt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
