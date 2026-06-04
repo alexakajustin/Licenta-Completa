@@ -318,7 +318,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	DirectionalLight* dLight, PointLight* pLights, unsigned int pCount,
 	SpotLight* sLights, unsigned int sCount,
 	float time, const Frustum* frustum, Shader* overrideShader, float screenWidth, float screenHeight, class Renderer* renderer, 
-	GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs)
+	GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture, glm::vec4 clipPlane, glm::mat4 shadowTransform, const GraphicsSettings* gs,
+	float customCullDistance)
 {
 	// ================================================================
 	// CPU Hi-Z readback DISABLED — no longer needed since object-level
@@ -480,10 +481,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// ===== MULTI-LAYER CULLING PIPELINE =====
 			bool isCulled = false;
 
-			if (frustum) {
+			if (frustum || customCullDistance > 0.0f) {
 				glm::vec3 bmin, bmax;
 				obj->GetWorldBounds(bmin, bmax);
-
+ 
 				// GEOMETRIC SHRINK: Pull the AABB inside by a tiny amount (2cm). 
 				// This helps with precision issues without culling thin objects like trees.
 				float shrinkAmount = 0.02f;
@@ -493,7 +494,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				if (bmin.x > bmax.x) std::swap(bmin.x, bmax.x);
 				if (bmin.y > bmax.y) std::swap(bmin.y, bmax.y);
 				if (bmin.z > bmax.z) std::swap(bmin.z, bmax.z);
-
+ 
 				bool isWater = false;
 				if (mat && mat->GetShader()) {
 					std::string vPath = mat->GetShader()->GetVertexPath();
@@ -501,36 +502,36 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						isWater = true;
 					}
 				}
-
+ 
 				bool cameraInside = (cameraPos.x >= bmin.x && cameraPos.x <= bmax.x && 
 									 cameraPos.z >= bmin.z && cameraPos.z <= bmax.z);
-
+ 
 				bool isReflection = (!overrideShader && sceneDepthTexture == 0);
-
+ 
 				if (!cameraInside && !isWater && !isReflection) 
 				{
 					float dx = glm::max(bmin.x - cameraPos.x, glm::max(0.0f, cameraPos.x - bmax.x));
 					float dy = glm::max(bmin.y - cameraPos.y, glm::max(0.0f, cameraPos.y - bmax.y));
 					float dz = glm::max(bmin.z - cameraPos.z, glm::max(0.0f, cameraPos.z - bmax.z));
 					float distSq = dx*dx + dy*dy + dz*dz;
-
-					float maxDist = 2000.0f;
-					if (graphicsSettings) {
+ 
+					float maxDist = customCullDistance > 0.0f ? customCullDistance : 2000.0f;
+					if (customCullDistance <= 0.0f && graphicsSettings) {
 						maxDist = overrideShader ? graphicsSettings->shadowDistance : graphicsSettings->renderDistance;
 					}
-
+ 
 					glm::vec3 sphereCenter; float sphereRadius;
 					obj->GetWorldBoundingSphere(sphereCenter, sphereRadius);
-
+ 
 					if (distSq > maxDist * maxDist) isCulled = true;
-					else if (!frustum->IsSphereVisible(sphereCenter, sphereRadius)) isCulled = true;
-					else if (!overrideShader && screenHeight > 0.0f && !Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) isCulled = true;
-					else if (!frustum->IsBoxVisible(bmin, bmax)) isCulled = true;
+					else if (frustum && !frustum->IsSphereVisible(sphereCenter, sphereRadius)) isCulled = true;
+					else if (frustum && !overrideShader && screenHeight > 0.0f && !Frustum::IsLargeEnough(sphereCenter, sphereRadius, 0.5f, projection, screenHeight, cameraPos)) isCulled = true;
+					else if (frustum && !frustum->IsBoxVisible(bmin, bmax)) isCulled = true;
 					// GPU-Driven Occlusion Culling (NVIDIA-style compute shader)
 					// Uses previous frame's Hi-Z results with 1-frame latency.
 					// CRITICAL: We must NOT apply camera-based occlusion culling during override shader passes (like shadow maps).
 					// Shadow casting objects must be rendered into the shadow map even if they are occluded from the player's view.
-					else if (!overrideShader && !isCulled && objectCullReady && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
+					else if (frustum && !overrideShader && !isCulled && objectCullReady && graphicsSettings && graphicsSettings->enableOcclusionCulling) {
 						auto it = objectCullIndexMap.find(obj);
 						if (it != objectCullIndexMap.end()) {
 							int cullIdx = it->second;

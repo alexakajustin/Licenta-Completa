@@ -1,46 +1,210 @@
 {
     "camera": {
         "front": [
-            -0.03482504189014435,
-            -0.06540313363075256,
-            -0.9972510933876038
+            -0.8493762016296387,
+            -0.4617486000061035,
+            0.25563308596611023
         ],
-        "pitch": -3.75,
+        "pitch": -27.5,
         "position": [
-            -3.4890315532684326,
-            3.776080846786499,
-            -6.179993629455566
+            6.1579060554504395,
+            4.856034278869629,
+            -14.36963939666748
         ],
-        "yaw": 268.0
+        "yaw": -196.75
     },
-    "instancedGroups": [],
+    "instancedGroups": [
+        {
+            "instanceDataPath": "Model_Scatter_Instanced_5_statue_1.inst",
+            "name": "Scatter_Instanced_5_statue 1",
+            "sourceObjectName": "statue 1"
+        }
+    ],
     "lights": [
         {
-            "ambientIntensity": 0.4000000059604645,
+            "ambientIntensity": 0.0,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.6000000238418579,
+            "diffuseIntensity": 0.0,
             "direction": [
-                -0.9186304211616516,
-                -0.2296576052904129,
-                0.3215206563472748
+                -20.0,
+                -5.0,
+                7.0
             ],
             "name": "Sun",
             "type": "Directional"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Point Light 1",
+            "position": [
+                0.3313802480697632,
+                1.7740553617477417,
+                -11.538722038269043
+            ],
+            "type": "Point"
         }
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 1,
+        "nextId": 12,
         "tabs": [
             {
                 "graph": {
-                    "links": [],
-                    "nextId": 1,
-                    "nodes": []
+                    "links": [
+                        {
+                            "end": 6,
+                            "id": 10,
+                            "start": 2
+                        },
+                        {
+                            "end": 7,
+                            "id": 11,
+                            "start": 4
+                        }
+                    ],
+                    "nextId": 12,
+                    "nodes": [
+                        {
+                            "cachedModelPath": "",
+                            "cachedNormalMapPath": "",
+                            "cachedPosition": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "cachedPrimitiveType": "Plane",
+                            "cachedRotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "cachedScale": [
+                                100.0,
+                                1.0,
+                                100.0
+                            ],
+                            "cachedTextureLayers": [],
+                            "cachedTexturePath": "",
+                            "editorPos": [
+                                50.0,
+                                50.0
+                            ],
+                            "forceOriginalPrimitive": true,
+                            "hasCachedMaterial": false,
+                            "id": 1,
+                            "inputPins": [],
+                            "outputPins": [
+                                2
+                            ],
+                            "selectedName": "Plane",
+                            "title": "Scene Input"
+                        },
+                        {
+                            "cachedMatColor": [
+                                0.6000000238418579,
+                                0.6000000238418579,
+                                0.6000000238418579
+                            ],
+                            "cachedMatOffset": [
+                                0.0,
+                                0.0
+                            ],
+                            "cachedMatShininess": 32.0,
+                            "cachedMatSpecular": 0.5,
+                            "cachedMatTiling": [
+                                1.0,
+                                1.0
+                            ],
+                            "cachedModelPath": "Assets\\Models\\statue.obj",
+                            "cachedNormalMapPath": "",
+                            "cachedPosition": [
+                                0.5516054034233093,
+                                -0.031169891357421875,
+                                -9.5142822265625
+                            ],
+                            "cachedPrimitiveType": "",
+                            "cachedRotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "cachedScale": [
+                                1.0,
+                                1.0,
+                                1.0
+                            ],
+                            "cachedTextureLayers": [
+                                {
+                                    "blendMode": 0,
+                                    "heightMax": 100.0,
+                                    "heightMin": 0.0,
+                                    "invert": false,
+                                    "normalMapPath": "",
+                                    "opacity": 1.0,
+                                    "slopeMax": 0.5,
+                                    "slopeMin": 0.0,
+                                    "texturePath": "Assets/Textures/Auxiliars/statue.png",
+                                    "tiling": 1.0
+                                }
+                            ],
+                            "cachedTexturePath": "",
+                            "editorPos": [
+                                50.0,
+                                250.0
+                            ],
+                            "forceOriginalPrimitive": true,
+                            "hasCachedMaterial": true,
+                            "id": 3,
+                            "inputPins": [],
+                            "outputPins": [
+                                4
+                            ],
+                            "selectedName": "statue 1",
+                            "title": "Scene Input"
+                        },
+                        {
+                            "alignToNormal": true,
+                            "count": 200,
+                            "createdGroupNames": [
+                                "Scatter_Instanced_5_statue 1"
+                            ],
+                            "deletionVolumes": [],
+                            "editorPos": [
+                                300.0,
+                                150.0
+                            ],
+                            "id": 5,
+                            "inputPins": [
+                                6,
+                                7
+                            ],
+                            "maxScale": 1.2000000476837158,
+                            "minScale": 0.800000011920929,
+                            "outputPins": [
+                                8,
+                                9
+                            ],
+                            "randomRotation": true,
+                            "seed": 42,
+                            "spawnAsObjects": true,
+                            "spawnedMap": {},
+                            "targetParentName": "(none)",
+                            "title": "Scatter"
+                        }
+                    ]
                 },
                 "name": "Main"
             }
@@ -85,9 +249,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -105,9 +269,7 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "Assets\\Models\\statue.obj",
             "name": "statue 1",
@@ -134,9 +296,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -0.2907620668411255,
-                    -0.03540754318237305,
-                    -9.894923210144043
+                    0.5516054034233093,
+                    -0.031169891357421875,
+                    -9.5142822265625
                 ],
                 "rotation": [
                     0.0,
@@ -154,33 +316,17 @@
             "inheritScale": true,
             "isVisible": true,
             "modelPath": "",
-            "name": "Cube 2",
+            "name": "Scatter_Group_5_statue 1",
             "normalMapPath": "",
             "parent": "",
             "parentIndex": -1,
-            "primitiveType": "Cube",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Auxiliars\\statue.png",
-                    "tiling": 1.0
-                }
-            ],
+            "primitiveType": "",
             "texturePath": "",
             "transform": {
                 "position": [
-                    -2.91571307182312,
-                    2.3153328895568848,
-                    -9.055274963378906
+                    0.0,
+                    0.0,
+                    0.0
                 ],
                 "rotation": [
                     0.0,

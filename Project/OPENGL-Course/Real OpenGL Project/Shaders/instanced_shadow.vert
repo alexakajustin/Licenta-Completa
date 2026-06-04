@@ -21,8 +21,6 @@ layout(std430, binding = 1) readonly buffer VisibleInstances {
 };
 
 uniform mat4 directionalLightTransform;
-uniform float time;
-uniform int windEnabled;
 
 struct Material {
     float specularIntensity;
@@ -52,22 +50,6 @@ mat3 eulerToMat3(vec3 euler) {
     return rz * ry * rx;
 }
 
-// Procedural wind displacement (must match instanced_object.vert exactly!)
-vec3 calcWind(vec3 worldPos, float vertexHeight, float t) {
-    if (windEnabled == 0) return vec3(0.0);
-    
-    float tipFactor = vertexHeight * vertexHeight;
-    
-    float wind1 = sin(worldPos.x * 0.5 + t * 1.2) * 0.3;
-    float wind2 = sin(worldPos.z * 0.7 + t * 0.8) * 0.2;
-    float wind3 = sin((worldPos.x + worldPos.z) * 0.3 + t * 2.5) * 0.1;
-    
-    float windX = (wind1 + wind3) * tipFactor;
-    float windZ = (wind2 + wind3 * 0.5) * tipFactor;
-    
-    return vec3(windX, 0.0, windZ);
-}
-
 void main()
 {
     PackedInstance inst = instances[gl_InstanceID];
@@ -81,11 +63,7 @@ void main()
     vec3 scaledPos = pos * instanceScale;
     vec3 rotatedPos = rotMat * scaledPos;
     
-    // Wind animation (synchronized with camera pass)
-    float vertexHeight = clamp(pos.y, 0.0, 1.0);
-    vec3 wind = calcWind(instancePos, vertexHeight, time);
-    
-    vec3 worldPos = rotatedPos + instancePos + wind;
+    vec3 worldPos = rotatedPos + instancePos;
     
     TexCoord = tex * material.tiling + material.offset;
     float rawW = inst.rotAndFlags.w;

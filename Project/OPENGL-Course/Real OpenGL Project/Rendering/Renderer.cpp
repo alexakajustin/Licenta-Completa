@@ -173,7 +173,7 @@ void Renderer::OmniShadowMapPass(PointLight* light, SceneManager& scene, const G
 
 	float sw = (float)light->GetShadowMap()->GetShadowWidth();
 	float sh = (float)light->GetShadowMap()->GetShadowHeight();
-	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this);
+	scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), light->GetPosition(), nullptr, nullptr, 0, nullptr, 0, 0.0f, nullptr, &omniShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), glm::mat4(1.0f), gs, light->GetFarPlane());
 
 	// GPU-Driven Instanced Groups — omni shadow pass
 	float time = (float)glfwGetTime();

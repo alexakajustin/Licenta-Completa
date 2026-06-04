@@ -492,10 +492,16 @@ void Application::Run()
 		float shadowFar = graphicsSettings.shadowDistance;
 		debugOverlay.BeginPass("Shadow Maps");
 		renderer.DirectionalShadowMapPass(&mainLight, sceneManager, activeCameraPos, projection, view, 0.1f, shadowFar, &graphicsSettings);
-		for (unsigned int i = 0; i < pointLightCount; i++)
-			renderer.OmniShadowMapPass(&pointLights[i], sceneManager, &graphicsSettings);
-		for (unsigned int i = 0; i < spotLightCount; i++)
-			renderer.OmniShadowMapPass(&spotLights[i], sceneManager, &graphicsSettings);
+		for (unsigned int i = 0; i < pointLightCount; i++) {
+			if (currentFrustum.IsSphereVisible(pointLights[i].GetPosition(), pointLights[i].GetFarPlane())) {
+				renderer.OmniShadowMapPass(&pointLights[i], sceneManager, &graphicsSettings);
+			}
+		}
+		for (unsigned int i = 0; i < spotLightCount; i++) {
+			if (currentFrustum.IsSphereVisible(spotLights[i].GetPosition(), spotLights[i].GetFarPlane())) {
+				renderer.OmniShadowMapPass(&spotLights[i], sceneManager, &graphicsSettings);
+			}
+		}
 		debugOverlay.EndPass("Shadow Maps");
 
 		// 1. Reflection Pass (if there is water)
