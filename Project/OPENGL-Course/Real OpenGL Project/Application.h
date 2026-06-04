@@ -164,18 +164,10 @@ private:
 	int refractionWidth = 0;
 	int refractionHeight = 0;
 
-	// SSAO
-	void InitSSAO();
+	// Post-processing
+	void InitPostEffects();
 	void RenderQuad();
 	
-	GLuint ssaoFBO = 0, ssaoBlurFBO = 0;
-	GLuint ssaoColorBuffer = 0, ssaoColorBufferBlur = 0;
-	GLuint noiseTexture = 0;
-	std::vector<glm::vec3> ssaoKernel;
-
-	Shader ssaoShader;
-	Shader ssaoBlurShader;
-	Shader ssaoApplyShader;
 	Shader godrayShader;
 	Shader volumetricSkyShader;
 	Shader universeSkyShader;

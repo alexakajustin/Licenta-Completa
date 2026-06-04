@@ -41,8 +41,6 @@ struct SpotLight {
 struct Material {
     float specularIntensity;
     float shininess;
-    float sssScale;
-    float sssDistortion;
     vec4 baseColor;
     vec2 tiling;
     vec2 offset;
@@ -102,14 +100,7 @@ vec3 CalcGrassLightByDirection(Light base, vec3 direction, vec3 normal, vec3 vie
     float wrappedDiffuse = max(0.0, (diffuseFactor + 0.5) / 1.5);
     vec3 diffuse = base.colour * base.diffuseIntensity * wrappedDiffuse;
     
-    // 3. Fake Subsurface Scattering (Translucency)
-    float sssDistortion = max(material.sssDistortion, 0.2); 
-    float sssScale = max(material.sssScale, 2.0);
-    vec3 backLightDir = normalize(lightDir + normal * sssDistortion);
-    float sssPower = pow(clamp(dot(viewDir, -backLightDir), 0.0, 1.0), 4.0) * sssScale;
-    vec3 sss = base.colour * base.diffuseIntensity * sssPower * 0.5;
-    
-    return ambient + diffuse + sss;
+    return ambient + diffuse;
 }
 
 vec3 CalcPointLight(PointLight pLight, vec3 normal, vec3 viewDir)

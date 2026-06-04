@@ -290,10 +290,6 @@ void main() {
     float spec = pow(NdotH, specPower) * (specPower + 2.0) * 0.125; // energy conservation
     vec3 specularLight = directionalLight.base.colour * spec * specInt;
     
-    // Subsurface scattering
-    float sss = pow(max(0.0, dot(viewDir, directionalLight.direction)), 10.0) * absorption;
-    vec3 sssColor = shallowCol * sss * 0.4;
-    
     // Point lights
     vec3 pointContrib = vec3(0.0);
     for(int i = 0; i < pointLightCount; i++) {
@@ -307,7 +303,7 @@ void main() {
     
     // Combine
     vec3 totalLight = ambientLight + diffuseLight + pointContrib;
-    vec3 finalColor = baseWater * totalLight + specularLight + sssColor;
+    vec3 finalColor = baseWater * totalLight + specularLight;
     
     // Sun flare on water surface when looking toward light (Spout-style)
     float sunFlare = pow(clamp(dot(directionalLight.direction, -viewDir), 0.0, 1.0), 10.0);

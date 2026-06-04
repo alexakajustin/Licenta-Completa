@@ -76,8 +76,6 @@ struct SpotLight
 struct Material {
 	 float specularIntensity; ///< Specular highlight reflection scale.
 	 float shininess; ///< Specular exponent shininess.
-	 float sssScale; ///< Subsurface scattering scale factor.
-	 float sssDistortion; ///< Subsurface scattering distortion factor.
 	 vec4 baseColor; ///< Base tint color.
 	 vec2 tiling; ///< UV tiling multiplier.
 	 vec2 offset; ///< UV offset coordinate translation.
@@ -448,7 +446,7 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 	
 	return shadow;
 }
-vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float sssThickness, vec3 baseColor) 
+vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 baseColor) 
 {
 	vec3 effectiveNormal = GetEffectiveNormal();
 
@@ -478,46 +476,18 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, float
 		}
 	}
 
-	// Subsurface Scattering
-	vec3 sssColor = vec3(0.0);
-	if (material.baseColor.a < 1.0)
-	{
-		// thickness dictates how much light permeates through
-		float scatPower = exp(-sssThickness * material.sssScale);
-		
-		// warp phase: shines through when backlit
-		vec3 L = normalize(-direction);
-		vec3 V = normalize(eyePosition - FragPos);
-		vec3 H = normalize(L - effectiveNormal * material.sssDistortion);
-		float phase = pow(clamp(dot(V, -H), 0.0, 1.0), 4.0) * 0.5;
-		
-		sssColor = light.colour * light.diffuseIntensity * scatPower * phase * baseColor;
-	}
-
 	// Specular light is purely ADDED on top (dielectric), diffuse/ambient is MULTIPLIED by baseColor
 	vec3 diffuseAmbient = baseColor * (ambientColour + (1.0 - shadowFactor) * diffuseColor);
 	vec3 finalSpecular = (1.0 - shadowFactor) * specularColour;
 
-	return diffuseAmbient + finalSpecular + sssColor;
+	return diffuseAmbient + finalSpecular;
 }
 
 vec3 CalcDirectionalLight(vec3 baseColor) 
 {
 	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
 	
-	float sssThickness = 0.0;
-	if (material.baseColor.a < 1.0) 
-	{
-		// For SSS, we use the first cascade (layer 0) as it's typically used for close-range detail.
-		vec4 fragPosLightSpaceSSS = directionalLightTransform[0] * vec4(FragPos, 1.0);
-		vec3 projCoordsSSS = (fragPosLightSpaceSSS.xyz / fragPosLightSpaceSSS.w) * 0.5 + 0.5;
-		
-		// Sample depth from first cascade
-		float closestDepth = texture(directionalShadowMap, vec3(projCoordsSSS.xy, 0.0)).r;
-		sssThickness = max(projCoordsSSS.z - closestDepth, 0.0);
-	}
-
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, sssThickness, baseColor);
+	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, baseColor);
 }
 
 vec3 CalcPointLight(PointLight pLight, int shadowIndex, vec3 baseColor) 
@@ -528,15 +498,7 @@ vec3 CalcPointLight(PointLight pLight, int shadowIndex, vec3 baseColor)
 
 	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
 
-	float sssThickness = 0.0;
-	if (material.baseColor.a < 1.0)
-	{
-		float currentDepth = length(FragPos - pLight.position);
-		float closestDepth = texture(omniShadowMaps[shadowIndex].shadowMap, direction).r * omniShadowMaps[shadowIndex].farPlane;
-		sssThickness = max(currentDepth - closestDepth, 0.0) / omniShadowMaps[shadowIndex].farPlane;
-	}
-
-	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, sssThickness, baseColor);
+	vec3 lightFinal = CalcLightByDirection(pLight.base, direction, shadowFactor, baseColor);
 	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
 
 	return (lightFinal / attenuation);

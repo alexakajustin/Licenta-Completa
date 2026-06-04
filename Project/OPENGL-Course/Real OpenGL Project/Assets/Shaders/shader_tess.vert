@@ -25,8 +25,6 @@ uniform vec4 clipPlane;
 struct Material {
 	float specularIntensity;
 	float shininess;
-	float sssScale;
-	float sssDistortion;
 	vec4 baseColor;
 	vec2 tiling;
 	vec2 offset;

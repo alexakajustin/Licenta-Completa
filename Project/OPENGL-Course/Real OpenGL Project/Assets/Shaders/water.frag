@@ -59,8 +59,6 @@ uniform SpotLight spotLights[16];
 struct Material { 
     float specularIntensity; 
     float shininess; 
-    float sssScale; 
-    float sssDistortion; 
     vec4 baseColor; 
     vec2 tiling; 
     vec2 offset; 
@@ -189,9 +187,7 @@ void main() {
     // 6. Final Lighting & Transparency (Finished Look)
     vec3 lighting = CalcLight(directionalLight.base, directionalLight.direction, worldNormal, viewDir);
     
-    // Subsurface Scattering (Sun bleed)
-    float sss = pow(max(0.0, dot(viewDir, -directionalLight.direction)), 12.0) * depthFactor;
-    lighting += (material_waterColorShallow == vec4(0.0) ? vec3(0.4, 0.8, 0.7) : material_waterColorShallow.rgb) * sss * 0.4;
+
 
     for(int i=0; i<pointLightCount; i++) lighting += CalcLight(pointLights[i].base, normalize(pointLights[i].position - FragPos), worldNormal, viewDir);
     

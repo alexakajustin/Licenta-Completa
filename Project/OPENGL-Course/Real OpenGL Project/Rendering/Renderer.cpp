@@ -316,8 +316,7 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 
 	// Disable blending for overlays
 	glDisable(GL_BLEND);
-	// NOTE: Gizmo/icon rendering moved to Application::Run() AFTER the SSAO pass,
-	// so that the depth buffer retains valid object data for SSAO sampling.
+	// NOTE: Gizmo/icon rendering is handled in Application::Run()
 }
 
 void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view,

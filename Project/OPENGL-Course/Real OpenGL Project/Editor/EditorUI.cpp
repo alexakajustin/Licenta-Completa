@@ -2169,45 +2169,7 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			ImGui::SliderInt("Shadow Cascades", &graphicsSettingsPtr->shadowCascades, 1, 4);
 		}
 
-		if (ImGui::CollapsingHeader("Screen Space Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
-		{
-			// Enable toggle
-			ImGui::Checkbox("Enable SSAO", &graphicsSettingsPtr->ssaoEnabled);
-			ImGui::Separator();
 
-			// Disable controls when SSAO is off
-			if (!graphicsSettingsPtr->ssaoEnabled) {
-				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
-				ImGui::BeginDisabled();
-			}
-
-			ImGui::Text("Quality");
-			ImGui::SliderInt("Kernel Samples", &graphicsSettingsPtr->ssaoKernelSize, 4, 64);
-			ImGui::SliderInt("Blur Size", &graphicsSettingsPtr->ssaoBlurSize, 2, 8);
-
-			ImGui::Spacing();
-			ImGui::Text("Effect");
-			ImGui::SliderFloat("Radius", &graphicsSettingsPtr->ssaoRadius, 0.01f, 5.0f, "%.3f");
-			ImGui::SliderFloat("Bias", &graphicsSettingsPtr->ssaoBias, 0.0f, 0.2f, "%.4f");
-			ImGui::SliderFloat("Intensity", &graphicsSettingsPtr->ssaoIntensity, 0.1f, 5.0f, "%.2f");
-
-			ImGui::Spacing();
-			ImGui::Separator();
-
-			if (ImGui::Button("Reset Defaults##SSAO", ImVec2(-1, 0)))
-			{
-				graphicsSettingsPtr->ssaoRadius = 0.5f;
-				graphicsSettingsPtr->ssaoBias = 0.025f;
-				graphicsSettingsPtr->ssaoIntensity = 1.5f;
-				graphicsSettingsPtr->ssaoKernelSize = 64;
-				graphicsSettingsPtr->ssaoBlurSize = 4;
-			}
-
-			if (!graphicsSettingsPtr->ssaoEnabled) {
-				ImGui::EndDisabled();
-				ImGui::PopStyleVar();
-			}
-		}
 
 		if (ImGui::CollapsingHeader("Sky & Environment", ImGuiTreeNodeFlags_DefaultOpen))
 		{

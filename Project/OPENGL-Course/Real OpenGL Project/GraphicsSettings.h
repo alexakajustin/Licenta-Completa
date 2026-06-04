@@ -10,14 +10,6 @@ enum class SkyboxType {
 };
 
 struct GraphicsSettings {
-	// SSAO
-	bool ssaoEnabled = true;
-	float ssaoRadius = 0.5f;
-	float ssaoBias = 0.025f;
-	float ssaoIntensity = 1.5f;
-	int ssaoKernelSize = 64;   // 1-64
-	int ssaoBlurSize = 4;      // 2, 4, 6, 8
-
 	// Culling & LOD Distances (Base values, before multipliers)
 	float lod0Distance = 50.0f;    // Full detail within 50 units
 	float lod1Distance = 150.0f;   // 50% detail at 50-150 units

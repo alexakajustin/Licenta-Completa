@@ -159,20 +159,6 @@ TEST_CASE("Shader Compilation - Compute Shaders")
 // =====================================================================
 TEST_CASE("Shader Compilation - Post-Processing & Sky Shaders")
 {
-    SUBCASE("SSAO shader")
-    {
-        CheckVertFrag("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao.frag");
-    }
-
-    SUBCASE("SSAO blur shader")
-    {
-        CheckVertFrag("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_blur.frag");
-    }
-
-    SUBCASE("SSAO apply shader")
-    {
-        CheckVertFrag("Assets/Shaders/ssao.vert", "Assets/Shaders/ssao_apply.frag");
-    }
 
     SUBCASE("Godray shader")
     {
