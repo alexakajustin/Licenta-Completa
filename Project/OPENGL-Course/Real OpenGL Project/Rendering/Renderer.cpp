@@ -723,15 +723,28 @@ void Renderer::RenderSceneCubemapPass(
 
 	if (hasBounds) {
 		glm::vec3 localSize = localMax - localMin;
-		int flatAxis = -1;
-		for (int i = 0; i < 3; ++i) {
-			if (localSize[i] < 0.1f) {
+		int flatAxis = 0;
+		float minDim = localSize[0];
+		float maxDim = localSize[0];
+		
+		for (int i = 1; i < 3; ++i) {
+			if (localSize[i] < minDim) {
+				minDim = localSize[i];
 				flatAxis = i;
-				break;
+			}
+			if (localSize[i] > maxDim) {
+				maxDim = localSize[i];
 			}
 		}
 
-		if (flatAxis != -1) {
+		// A surface is near-flat if its thickness (smallest dimension) is less than 15% of its width/length
+		// and it is relatively thin overall in local space (e.g. less than 1.0 units).
+		bool isNearFlat = (minDim < maxDim * 0.15f) && (minDim < 1.0f);
+		if (minDim < 0.1f) {
+			isNearFlat = true; // Always count ultra-thin surfaces
+		}
+
+		if (isNearFlat) {
 			glm::mat4 invWorld = glm::inverse(obj->GetWorldMatrix());
 			glm::vec3 localCam = glm::vec3(invWorld * glm::vec4(cameraPos, 1.0f));
 

@@ -774,19 +774,23 @@ void main()
 	// 3. Final output
 	vec3 finalColor = finalLight;
 
-	// Environment Map Reflections
-	// Bind the skybox cubemap normally, or swap in a scene-rendered cubemap
-	// from C++ (glBindTexture on the same unit) for per-object reflections.
+	// Environment Map Reflections with smooth distance-based fade to prevent far-away parallax warping
 	if (material.reflectivity > 0.0) {
-		    vec3 viewDir = normalize(eyePosition - FragPos);
-    vec3 reflectDir = reflect(-viewDir, normalize(GetEffectiveNormal()));
-		vec3 reflectionColor = texture(skybox, reflectDir).rgb;
+		float distToCam = distance(eyePosition, FragPos);
+		float fadeFactor = 1.0 - smoothstep(50.0, 150.0, distToCam);
+		float activeReflectivity = material.reflectivity * fadeFactor;
 		
-		// Ensure black/dark materials still show neutral reflections (min 30% intensity)
-		vec3 reflectionTint = max(baseColor, vec3(0.3));
-		
-		// Add the reflection on top of the lighting (tinted and modulated)
-		finalColor += reflectionColor * reflectionTint * material.reflectivity;
+		if (activeReflectivity > 0.001) {
+			vec3 viewDir = normalize(eyePosition - FragPos);
+			vec3 reflectDir = reflect(-viewDir, normalize(GetEffectiveNormal()));
+			vec3 reflectionColor = texture(skybox, reflectDir).rgb;
+			
+			// Ensure black/dark materials still show neutral reflections (min 30% intensity)
+			vec3 reflectionTint = max(baseColor, vec3(0.3));
+			
+			// Add the reflection on top of the lighting (tinted and modulated)
+			finalColor += reflectionColor * reflectionTint * activeReflectivity;
+		}
 	}
 
 	// Selection highlight: additive yellow tint
