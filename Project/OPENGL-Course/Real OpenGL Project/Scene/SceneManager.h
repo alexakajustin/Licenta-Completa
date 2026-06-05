@@ -167,6 +167,11 @@ public:
 	int GetHiZHeight() const { return hizHeight; }
 	void GenerateHiZDebug(float nearPlane, float farPlane);
 
+	// Exclude a specific object from rendering (e.g. self during reflection map capture)
+	void SetExcludeObject(GameObject* obj) { excludeObject = obj; }
+	GameObject* GetExcludeObject() const { return excludeObject; }
+
+
 private:
 	std::vector<GameObject*> objects;
 	std::vector<LightObject*> lights;
@@ -301,4 +306,6 @@ private:
 	UndoManager undoManager;
 
 	GraphicsSettings* graphicsSettings = nullptr;
+
+	GameObject* excludeObject = nullptr;
 };

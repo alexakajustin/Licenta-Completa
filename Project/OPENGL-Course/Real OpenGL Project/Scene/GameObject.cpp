@@ -122,6 +122,19 @@ GameObject::~GameObject()
 	for (auto* child : children) {
 		child->parent = nullptr;
 	}
+
+	if (customCubemapId) {
+		glDeleteTextures(1, &customCubemapId);
+		customCubemapId = 0;
+	}
+	if (customCubemapFbo) {
+		glDeleteFramebuffers(1, &customCubemapFbo);
+		customCubemapFbo = 0;
+	}
+	if (customCubemapDepthRbo) {
+		glDeleteRenderbuffers(1, &customCubemapDepthRbo);
+		customCubemapDepthRbo = 0;
+	}
 }
 
 void GameObject::SetParent(GameObject* newParent)

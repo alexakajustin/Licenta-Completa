@@ -102,6 +102,30 @@ void Skybox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 	glDepthMask(GL_TRUE);
 }
 
+void Skybox::DrawSkyboxFromCubemap(GLuint cubemapId, glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
+{
+	viewMatrix = glm::mat4(glm::mat3(viewMatrix));
+
+	glDepthMask(GL_FALSE);
+
+	skyShader->UseShader();
+
+	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapId);
+
+	skyShader->Validate();
+
+	skyMesh->RenderMesh();
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+	glDepthMask(GL_TRUE);
+}
+
 Skybox::~Skybox()
 {
 }

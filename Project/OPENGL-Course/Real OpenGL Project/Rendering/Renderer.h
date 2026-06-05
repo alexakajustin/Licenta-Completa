@@ -144,6 +144,31 @@ public:
 
 	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
 
+	/**
+	 * @brief Renders the scene into a cubemap from the given world position.
+	 *        Used as a per-frame environment map for dynamic object reflections.
+	 * @param capturePos  World-space position to capture from.
+	 * @param scene       Scene to render.
+	 * @param mainLight   Directional light.
+	 * @param pointLights Array of point lights.
+	 * @param pointLightCount Active point light count.
+	 * @param spotLights  Array of spot lights.
+	 * @param spotLightCount Active spot light count.
+	 * @param gs          Graphics settings.
+	 */
+	void RenderSceneCubemapPass(
+		class GameObject* obj, const glm::vec3& cameraPos, SceneManager& scene,
+		DirectionalLight& mainLight,
+		PointLight* pointLights, unsigned int pointLightCount,
+		SpotLight* spotLights, unsigned int spotLightCount,
+		const GraphicsSettings* gs);
+
+	/// Returns the scene environment cubemap rendered this frame.
+	GLuint GetSceneCubemapID() const { return sceneCubemapId; }
+
+	/// Returns true if currently rendering a dynamic cubemap face to prevent recursive feedback bindings.
+	bool IsRenderingCubemap() const { return isRenderingCubemap; }
+
 
 private:
 	Shader mainShader;
@@ -157,10 +182,17 @@ private:
 	Shader directionalShadowTessShader; // Tessellation shader for shadow pass
 	Skybox skybox;
 
+	bool isRenderingCubemap = false;
+
 	GLuint proceduralSkyTextureId = 0;
 	GLuint skyboxFBO = 0;
 	GLuint skyboxQuadVAO = 0;
 	GLuint skyboxQuadVBO = 0;
+
+	// Scene environment cubemap (128x128 per face, rendered once per frame)
+	GLuint sceneCubemapId  = 0;
+	GLuint sceneCubemapFBO = 0;
+	GLuint sceneCubemapDepthRBO = 0;
 	Shader volumetricSkyShader;
 	Shader universeSkyShader;
 

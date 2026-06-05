@@ -269,6 +269,14 @@ public:
 	void SetTessDisplacementBias(float val) { tessDisplacementBias = val; }
 	float GetTessDisplacementBias() const { return tessDisplacementBias; }
 
+	// Custom cubemap reflections resources
+	GLuint GetCustomCubemapID() const { return customCubemapId; }
+	void SetCustomCubemapID(GLuint id) { customCubemapId = id; }
+	GLuint GetCustomCubemapFBO() const { return customCubemapFbo; }
+	void SetCustomCubemapFBO(GLuint fbo) { customCubemapFbo = fbo; }
+	GLuint GetCustomCubemapDepthRBO() const { return customCubemapDepthRbo; }
+	void SetCustomCubemapDepthRBO(GLuint rbo) { customCubemapDepthRbo = rbo; }
+
 	// --- Component System ---
 	template<typename T, typename... Args>
 	T* AddComponent(Args&&... args) {
@@ -415,4 +423,8 @@ private:
 	glm::vec3 cachedSphereCenter = glm::vec3(0.0f);
 	float cachedSphereRadius = 0.0f;
 	bool boundsDirty = true;
+
+	GLuint customCubemapId = 0;
+	GLuint customCubemapFbo = 0;
+	GLuint customCubemapDepthRbo = 0;
 };

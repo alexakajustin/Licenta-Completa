@@ -115,7 +115,7 @@ uniform float lodDistances[3];
 uniform mat4 viewMatrix; ///< View matrix to determine view-space camera depth.
 
 uniform Material material;
-uniform samplerCube skybox;
+uniform samplerCube skybox; ///< Reflection cubemap. Bind the skybox OR a scene cubemap per-object from C++.
 // camera position
 uniform vec3 eyePosition; ///< Camera position coordinate.
 
@@ -775,9 +775,11 @@ void main()
 	vec3 finalColor = finalLight;
 
 	// Environment Map Reflections
+	// Bind the skybox cubemap normally, or swap in a scene-rendered cubemap
+	// from C++ (glBindTexture on the same unit) for per-object reflections.
 	if (material.reflectivity > 0.0) {
-		vec3 viewDir = normalize(FragPos - eyePosition);
-		vec3 reflectDir = reflect(viewDir, normalize(GetEffectiveNormal()));
+		    vec3 viewDir = normalize(eyePosition - FragPos);
+    vec3 reflectDir = reflect(-viewDir, normalize(GetEffectiveNormal()));
 		vec3 reflectionColor = texture(skybox, reflectDir).rgb;
 		
 		// Ensure black/dark materials still show neutral reflections (min 30% intensity)

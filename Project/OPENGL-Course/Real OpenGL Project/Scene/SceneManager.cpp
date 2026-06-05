@@ -439,7 +439,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			GLint skyboxLoc = glGetUniformLocation(s->GetShaderID(), "skybox");
 			if (skyboxLoc != -1 && renderer) {
 				glActiveTexture(GL_TEXTURE2);
-				if (gs && gs->volumetricSkyEnabled) {
+				// Prefer the scene cubemap: it captures sky + all other models,
+				// so reflective objects (spheres, statues) correctly mirror the scene.
+				// If currently rendering a cubemap face, fall back to avoid feedback loops.
+				GLuint sceneCubemap = (!renderer->IsRenderingCubemap()) ? renderer->GetSceneCubemapID() : 0;
+				if (sceneCubemap != 0) {
+					glBindTexture(GL_TEXTURE_CUBE_MAP, sceneCubemap);
+				} else if (gs && gs->volumetricSkyEnabled) {
 					glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetProceduralSkyTextureID());
 				} else {
 					glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetSkybox().GetTextureID());
@@ -533,6 +539,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		// 1. Collect and Render Single Objects
 		for (auto* obj : queue) {
 			if (!obj->GetVisible()) continue;
+			if (obj == excludeObject) continue;
 			
 			Mesh* msh = obj->GetMesh();
 			Model* mdl = obj->GetModel();
@@ -745,6 +752,17 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cachedRenderLocs.normalMap = glGetUniformLocation(sid, "normalMap");
 					}
 
+					// Bind the object's custom local cubemap if it exists
+					bool boundCustomCubemap = false;
+					if (!overrideShader && renderer && !renderer->IsRenderingCubemap()) {
+						GLuint customCubemap = obj->GetCustomCubemapID();
+						if (customCubemap != 0) {
+							glActiveTexture(GL_TEXTURE2);
+							glBindTexture(GL_TEXTURE_CUBE_MAP, customCubemap);
+							boundCustomCubemap = true;
+						}
+					}
+
 					obj->RenderSingle(
 						targetShader->GetModelLocation(), targetShader->GetSpecularIntensityLocation(), targetShader->GetShininessLocation(),
 						cachedRenderLocs.baseColor,
@@ -755,6 +773,19 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cachedRenderLocs.normalMap,
 						cameraPos, graphicsSettings, sid, targetShader->HasTessellation()
 					);
+
+					// Restore default/procedural skybox cube map
+					if (boundCustomCubemap) {
+						glActiveTexture(GL_TEXTURE2);
+						GLuint sceneCubemap = renderer->GetSceneCubemapID();
+						if (sceneCubemap != 0) {
+							glBindTexture(GL_TEXTURE_CUBE_MAP, sceneCubemap);
+						} else if (gs && gs->volumetricSkyEnabled) {
+							glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetProceduralSkyTextureID());
+						} else {
+							glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetSkybox().GetTextureID());
+						}
+					}
 
 					if (!overrideShader && DebugOverlay::GetInstance()) {
 						DebugOverlay::GetInstance()->EndObject();

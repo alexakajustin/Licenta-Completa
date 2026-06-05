@@ -23,6 +23,9 @@ public:
 	
 	void DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
 
+	/// Draw the skybox mesh using an external cubemap (e.g. procedural or scene capture).
+	void DrawSkyboxFromCubemap(GLuint cubemapId, glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
+
 	GLuint GetTextureID() const { return textureId; }
 
 	~Skybox();
