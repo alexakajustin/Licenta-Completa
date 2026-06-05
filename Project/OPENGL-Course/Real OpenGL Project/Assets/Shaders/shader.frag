@@ -780,8 +780,11 @@ void main()
 		vec3 reflectDir = reflect(viewDir, normalize(GetEffectiveNormal()));
 		vec3 reflectionColor = texture(skybox, reflectDir).rgb;
 		
+		// Ensure black/dark materials still show neutral reflections (min 30% intensity)
+		vec3 reflectionTint = max(baseColor, vec3(0.3));
+		
 		// Add the reflection on top of the lighting (tinted and modulated)
-		finalColor += reflectionColor * baseColor * material.reflectivity;
+		finalColor += reflectionColor * reflectionTint * material.reflectivity;
 	}
 
 	// Selection highlight: additive yellow tint
