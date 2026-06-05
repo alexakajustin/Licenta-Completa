@@ -1030,6 +1030,17 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					glUniform1i(reflectionMapLoc, 15);
 				}
 
+				GLint skyboxLoc = glGetUniformLocation(sid, "skybox");
+				if (skyboxLoc != -1 && renderer) {
+					glActiveTexture(GL_TEXTURE2);
+					if (gs && gs->volumetricSkyEnabled) {
+						glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetProceduralSkyTextureID());
+					} else {
+						glBindTexture(GL_TEXTURE_CUBE_MAP, renderer->GetSkybox().GetTextureID());
+					}
+					glUniform1i(skyboxLoc, 2);
+				}
+
 				GLint screenSizeLoc = glGetUniformLocation(sid, "screenSize");
 				if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1] / projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
