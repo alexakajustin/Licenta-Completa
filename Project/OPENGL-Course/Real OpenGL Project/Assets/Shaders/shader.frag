@@ -779,7 +779,9 @@ void main()
 		vec3 viewDir = normalize(FragPos - eyePosition);
 		vec3 reflectDir = reflect(viewDir, normalize(GetEffectiveNormal()));
 		vec3 reflectionColor = texture(skybox, reflectDir).rgb;
-		finalColor += reflectionColor * material.reflectivity;
+		
+		// Add the reflection on top of the lighting (tinted and modulated)
+		finalColor += reflectionColor * baseColor * material.reflectivity;
 	}
 
 	// Selection highlight: additive yellow tint
