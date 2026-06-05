@@ -9,7 +9,7 @@
     "debugShowCulling": false,
     "debugShowHiZ": false,
     "enableOcclusionCulling": false,
-    "godraysDecay": 0.949999988079071,
+    "godraysDecay": 1.0,
     "godraysDensity": 1.0,
     "godraysEnabled": true,
     "lod0Distance": 250.0,

@@ -743,10 +743,10 @@ void Application::Run()
 
 			// God ray parameters - Linked to sun intensity (Ambient + Diffuse)
 			float sunIntensity = *mainLight.GetAmbientIntensityPtr() + *mainLight.GetDiffuseIntensityPtr();
-			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "exposure"), sunIntensity * 0.18f);
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "exposure"), sunIntensity * 0.036f);
 			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "decay"), graphicsSettings.godraysDecay);
 			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "density"), graphicsSettings.godraysDensity);
-			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "weight"), sunIntensity * 0.07f);
+			glUniform1f(glGetUniformLocation(godrayShader.GetShaderID(), "weight"), sunIntensity * 0.014f);
 
 			// Depth map
 			glActiveTexture(GL_TEXTURE0);

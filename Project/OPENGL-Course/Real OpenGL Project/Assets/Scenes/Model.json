@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.7626440525054932,
-            -0.03925981745123863,
-            -0.6456258296966553
+            0.7429679036140442,
+            -0.12619897723197937,
+            -0.6573222875595093
         ],
-        "pitch": -2.25,
+        "pitch": -7.25,
         "position": [
-            13.057125091552734,
-            3.558302164077759,
-            -38.98170471191406
+            35.89144515991211,
+            5.593310832977295,
+            -17.780324935913086
         ],
-        "yaw": -40.25
+        "yaw": -401.5
     },
     "instancedGroups": [
         {
@@ -22,13 +22,13 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.4000000059604645,
+            "ambientIntensity": 0.0,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.6000000238418579,
+            "diffuseIntensity": 0.0,
             "direction": [
                 -0.914707601070404,
                 -0.24660831689834595,
@@ -40,7 +40,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 12,
+        "nextId": 21,
         "tabs": [
             {
                 "graph": {
@@ -56,7 +56,7 @@
                             "start": 4
                         }
                     ],
-                    "nextId": 12,
+                    "nextId": 21,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -221,6 +221,11 @@
     },
     "objects": [
         {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                }
+            ],
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -234,7 +239,7 @@
                     0.0,
                     0.0
                 ],
-                "material.reflectivity": 1.0,
+                "material.reflectivity": 4.0,
                 "material.shininess": 128.0,
                 "material.specularIntensity": 0.05000000074505806,
                 "material.tiling": [
@@ -305,18 +310,20 @@
                     0.0,
                     0.0
                 ],
-                "material.reflectivity": 1.0,
-                "material.shininess": 512.0,
+                "material.reflectivity": 3.0,
+                "material.shininess": 16.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\statue.obj",
             "name": "statue 1",
@@ -374,6 +381,44 @@
                     0.0,
                     0.0,
                     0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "eyeHeight": 1.7000000476837158,
+                    "gravity": 15.0,
+                    "jumpForce": 6.0,
+                    "moveSpeed": 5.0,
+                    "turnSpeed": 0.15000000596046448,
+                    "type": "Player"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Player 3",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Player",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    41.05870056152344,
+                    2.3603596687316895,
+                    -22.75665283203125
                 ],
                 "rotation": [
                     0.0,
