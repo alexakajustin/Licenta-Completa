@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<b:Sources SelectedStyle="\APASixthEditionOfficeOnline.xsl" StyleName="APA" Version="6" xmlns:b="http://schemas.openxmlformats.org/officeDocument/2006/bibliography" xmlns="http://schemas.openxmlformats.org/officeDocument/2006/bibliography">
+  <b:Source>
+    <b:Tag>Pic20</b:Tag>
+    <b:SourceType>ConferenceProceedings</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7A4}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Pichlmair</b:Last>
+            <b:First>Martin</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Putney</b:Last>
+            <b:First>Charlene</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Procedural Generation for Divination and Inspiration</b:Title>
+    <b:ConferenceName>Proceedings of the 15th International Conference on the Foundations of Digital Games</b:ConferenceName>
+    <b:Year>2020</b:Year>
+    <b:Pages>1-7</b:Pages>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Sha16</b:Tag>
+    <b:SourceType>Book</b:SourceType>
+    <b:Guid>{D023AE58-FA9D-4FDF-A5E5-7B03D515B21E}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Shaker</b:Last>
+            <b:First>N.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Togelius</b:Last>
+            <b:First>J.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Nelson</b:Last>
+            <b:First>M. J.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Procedural Content Generation in Games</b:Title>
+    <b:Year>2016</b:Year>
+    <b:Publisher>Springer</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Wit20</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{E02F5A67-33D7-4CC9-B86C-46DA6D2C87A5}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Witkowski</b:Last>
+            <b:First>W.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Videogames are a bigger industry than movies and North American sports combined</b:Title>
+    <b:PeriodicalTitle>MarketWatch</b:PeriodicalTitle>
+    <b:Year>2020</b:Year>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Dri23</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{C0D2F4B3-D6AC-4F48-A537-8EA4D481C7E9}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Dring</b:Last>
+            <b:First>C.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>AAA game budgets can reach $300m, says CMA report</b:Title>
+    <b:PeriodicalTitle>GamesIndustry.biz</b:PeriodicalTitle>
+    <b:Year>2023</b:Year>
+  </b:Source>
+</b:Sources>
