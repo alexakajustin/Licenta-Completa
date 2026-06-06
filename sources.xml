@@ -85,4 +85,123 @@
     <b:PeriodicalTitle>GamesIndustry.biz</b:PeriodicalTitle>
     <b:Year>2023</b:Year>
   </b:Source>
+  <b:Source>
+    <b:Tag>Sel14</b:Tag>
+    <b:SourceType>Book</b:SourceType>
+    <b:Guid>{F034C7A1-BA5F-4D23-9EC6-86A5E815D8A4}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Sellers</b:Last>
+            <b:First>G.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Wright</b:Last>
+            <b:First>R. S.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Haemel</b:Last>
+            <b:First>N.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>OpenGL SuperBible: Comprehensive Tutorial and Reference</b:Title>
+    <b:Year>2014</b:Year>
+    <b:Publisher>Addison-Wesley</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ric20</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B0F3A229-C53E-4B0D-8FE9-B94EC926B6EE}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Richter</b:Last>
+            <b:First>Felix</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Global revenue of selected entertainment industry sectors</b:Title>
+    <b:InternetSiteTitle>Statista</b:InternetSiteTitle>
+    <b:Year>2020</b:Year>
+    <b:Month>9</b:Month>
+    <b:Day>22</b:Day>
+    <b:URL>https://www.statista.com/chart/22392/global-revenue-of-selected-entertainment-industry-sectors/</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Gra19</b:Tag>
+    <b:SourceType>JournalArticle</b:SourceType>
+    <b:Guid>{A054C7B1-BA5F-4D23-9EC6-86A5E815D8A5}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Gravina</b:Last>
+            <b:First>D.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Khalifa</b:Last>
+            <b:First>A.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Liapis</b:Last>
+            <b:First>A.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Togelius</b:Last>
+            <b:First>J.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Yannakakis</b:Last>
+            <b:First>G. N.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Procedural content generation through quality diversity</b:Title>
+    <b:JournalName>IEEE Transactions on Games</b:JournalName>
+    <b:Year>2019</b:Year>
+    <b:Volume>11</b:Volume>
+    <b:Issue>4</b:Issue>
+    <b:Pages>344-356</b:Pages>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ebe03</b:Tag>
+    <b:SourceType>Book</b:SourceType>
+    <b:Guid>{A054C7B1-BA5F-4D23-9EC6-86A5E815D8A6}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Ebert</b:Last>
+            <b:First>D. S.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Musgrave</b:Last>
+            <b:First>F. K.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Peachey</b:Last>
+            <b:First>D.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Perlin</b:Last>
+            <b:First>K.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Worley</b:Last>
+            <b:First>S.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Texturing and Modeling: A Procedural Approach</b:Title>
+    <b:Year>2003</b:Year>
+    <b:Edition>3rd</b:Edition>
+    <b:Publisher>Morgan Kaufmann</b:Publisher>
+  </b:Source>
 </b:Sources>
