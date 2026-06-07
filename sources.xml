@@ -204,4 +204,64 @@
     <b:Edition>3rd</b:Edition>
     <b:Publisher>Morgan Kaufmann</b:Publisher>
   </b:Source>
+  <b:Source>
+    <b:Tag>Gre18</b:Tag>
+    <b:SourceType>Book</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7B8}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Gregory</b:Last>
+            <b:First>J.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Game Engine Architecture</b:Title>
+    <b:Year>2018</b:Year>
+    <b:Edition>3rd</b:Edition>
+    <b:Publisher>CRC Press</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Bey15</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7C9}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Beyer</b:Last>
+            <b:First>H. T.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Implementation of a method for hydraulic erosion</b:Title>
+    <b:Year>2015</b:Year>
+    <b:Institution>Technische Universität München</b:Institution>
+    <b:Comments>Bachelor's thesis</b:Comments>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Gen14</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D1}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Gennari</b:Last>
+            <b:First>Frank</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>3DWorld Blog</b:Title>
+    <b:InternetSiteTitle>3DWorld Generation Development Log</b:InternetSiteTitle>
+    <b:Year>2014</b:Year>
+    <b:URL>https://3dworldgen.blogspot.com/</b:URL>
+  </b:Source>
 </b:Sources>
+
+
+
