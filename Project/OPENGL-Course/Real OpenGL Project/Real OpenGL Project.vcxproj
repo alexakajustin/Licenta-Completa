@@ -265,6 +265,7 @@
     <ClCompile Include="Tests\NoiseTests.cpp" />
     <ClCompile Include="Tests\RenderTests.cpp" />
     <ClCompile Include="Tests\LightingTests.cpp" />
+    <ClCompile Include="Tests\PerformanceProfilerTests.cpp" />
     <ClCompile Include="Simulation\PhysicsSystem.cpp" />
     <ClCompile Include="Scene\RigidBody.cpp" />
   </ItemGroup>

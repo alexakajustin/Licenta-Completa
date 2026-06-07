@@ -255,6 +255,9 @@
     <ClCompile Include="Tests\LightingTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\PerformanceProfilerTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\Player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
