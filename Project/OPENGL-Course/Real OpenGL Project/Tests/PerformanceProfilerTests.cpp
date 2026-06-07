@@ -1,5 +1,10 @@
 #ifdef RUN_UNIT_TESTS
 
+// Toggle this macro to run performance tests (disabled by default to avoid slow test runs)
+// #define RUN_PERFORMANCE_TESTS
+
+#ifdef RUN_PERFORMANCE_TESTS
+
 #include "External Libs/doctest.h"
 #include "Core/PerformanceProfiler.h"
 #include "Core/ServiceLocator.h"
@@ -213,5 +218,7 @@ TEST_CASE("RAMY Engine Performance Profiler Suite")
     profiler.WriteCSV("../../../../" + baseFilename);
     profiler.WriteCSV("c:/Users/Justin/Desktop/Licenta-Completa/" + baseFilename);
 }
+
+#endif // RUN_PERFORMANCE_TESTS
 
 #endif // RUN_UNIT_TESTS
