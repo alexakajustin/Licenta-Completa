@@ -261,7 +261,147 @@
     <b:Year>2014</b:Year>
     <b:URL>https://3dworldgen.blogspot.com/</b:URL>
   </b:Source>
+  <b:Source>
+    <b:Tag>God24</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D2}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Godot Foundation</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Annual Report 2023</b:Title>
+    <b:InternetSiteTitle>Godot Foundation</b:InternetSiteTitle>
+    <b:Year>2024</b:Year>
+    <b:URL>https://godot.foundation/downloads/Godot-Foundation-Annual-Report-2023.pdf</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Mar24</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D3}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>MarketGrowthReports</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Game Development Tools Market</b:Title>
+    <b:Year>2024</b:Year>
+    <b:URL>https://www.marketgrowthreports.com/market-reports/game-development-tools-market-102115</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Git26</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D4}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>GitNux</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>90+ Indie Game Industry Statistics</b:Title>
+    <b:Year>2026</b:Year>
+    <b:URL>https://gitnux.org/indie-game-industry-statistics/</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ker23</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D5}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Kerr</b:Last>
+            <b:First>Chris</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Terraria developer Re-Logic condemns Unity, donates $100K to Godot and FNA</b:Title>
+    <b:InternetSiteTitle>Game Developer</b:InternetSiteTitle>
+    <b:Year>2023</b:Year>
+    <b:Month>9</b:Month>
+    <b:Day>20</b:Day>
+    <b:URL>https://www.gamedeveloper.com/business/terraria-developer-re-logic-condemns-unity-donates-100k-to-godot-and-fna</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Sid26</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D6}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>SideFX</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Houdini Indie</b:Title>
+    <b:Year>2026</b:Year>
+    <b:Month>6</b:Month>
+    <b:URL>https://www.sidefx.com/products/houdini-indie/</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Uni24</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D7}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Unity Technologies</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>SpeedTree Pricing</b:Title>
+    <b:InternetSiteTitle>Unity Support</b:InternetSiteTitle>
+    <b:Year>2024</b:Year>
+    <b:URL>https://support.unity.com/</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Qua24</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D8}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>QuadSpinner</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Gaea 2.0 — Compare Editions</b:Title>
+    <b:Year>2024</b:Year>
+    <b:URL>https://quadspinner.com/compare</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Win25</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7D9}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Windstar Games</b:Last>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Unity Game Development Cost</b:Title>
+    <b:Year>2025</b:Year>
+    <b:URL>https://windstargames.com</b:URL>
+  </b:Source>
 </b:Sources>
-
-
-
