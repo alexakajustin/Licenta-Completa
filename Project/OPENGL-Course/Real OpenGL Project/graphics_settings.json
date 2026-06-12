@@ -19,7 +19,7 @@
     "shadowCascades": 2,
     "shadowDistance": 200.0,
     "showWireframe": false,
-    "skyboxType": 0,
+    "skyboxType": 1,
     "universeNebulaColor1": [
         0.5,
         0.20000000298023224,
