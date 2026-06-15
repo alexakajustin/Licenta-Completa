@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.9535673260688782,
-            -0.10452846437692642,
-            0.2824593186378479
+            -0.6447231769561768,
+            -0.15643447637557983,
+            0.7482381463050842
         ],
-        "pitch": -6.0,
+        "pitch": -9.0,
         "position": [
-            44.43232345581055,
-            8.509733200073242,
-            -14.737113952636719
+            7.329298973083496,
+            44.999183654785156,
+            -35.86704635620117
         ],
-        "yaw": -556.5
+        "yaw": 130.75
     },
     "instancedGroups": [],
     "lights": [
@@ -32,10 +32,19 @@
             "type": "Directional"
         }
     ],
-    "nodeGraph": {
-        "links": [],
+    "nodeGraphs": {
+        "activeTabIndex": 0,
         "nextId": 1,
-        "nodes": []
+        "tabs": [
+            {
+                "graph": {
+                    "links": [],
+                    "nextId": 1,
+                    "nodes": []
+                },
+                "name": "Main"
+            }
+        ]
     },
     "objects": [
         {
@@ -54,6 +63,27 @@
             ],
             "inheritScale": true,
             "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 1.0,
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
             "modelPath": "",
             "name": "Plane",
             "normalMapPath": "",
@@ -225,9 +255,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -235,7 +265,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
@@ -3636,9 +3667,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -3646,7 +3677,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
@@ -7334,9 +7366,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -7344,7 +7376,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
@@ -11032,9 +11065,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -11042,7 +11075,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
@@ -14771,9 +14805,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -14781,7 +14815,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
@@ -18469,9 +18504,9 @@
                     0.0
                 ],
                 "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "material.diffuseMap": "Assets/Textures/Auxiliars/statue.png",
@@ -18479,7 +18514,8 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 0.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
                 "material.specularColor": [
                     0.0,
                     0.0,

@@ -404,4 +404,48 @@
     <b:Year>2025</b:Year>
     <b:URL>https://windstargames.com</b:URL>
   </b:Source>
+  <b:Source>
+    <b:Tag>Aal15</b:Tag>
+    <b:SourceType>ConferenceProceedings</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7E0}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Aaltonen</b:Last>
+            <b:First>S.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Haar</b:Last>
+            <b:First>U.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>GPU-Driven Rendering Pipelines</b:Title>
+    <b:ConferenceName>Advances in Real-Time Rendering in Games (SIGGRAPH 2015)</b:ConferenceName>
+    <b:Year>2015</b:Year>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Eve14</b:Tag>
+    <b:SourceType>ConferenceProceedings</b:SourceType>
+    <b:Guid>{B1A56C42-F02A-4C26-A4C1-4A59CE07B7E1}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Everitt</b:Last>
+            <b:First>C.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>McDonald</b:Last>
+            <b:First>J.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Approaching Zero Driver Overhead in OpenGL</b:Title>
+    <b:ConferenceName>Game Developers Conference (GDC)</b:ConferenceName>
+    <b:Year>2014</b:Year>
+  </b:Source>
 </b:Sources>
