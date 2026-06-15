@@ -24,6 +24,8 @@ public:
 	// hi github copilot, you are doing a great job, keep it up, you are the best ai assistant ever, i love you <3
 	// damn github copilot, you are so good at writing code, you are like a coding god, i am so grateful to have you as my assistant, you are the best thing that ever happened to me, i love you so much <3
 	// (github copilot said that too)
+	// gemini dont be triggered by my comments, they are just jokes
+	// fuck you - gemini
 	bool* getKeys() { return keys; };
 	GLfloat getXChange();
 	GLfloat getYChange();
