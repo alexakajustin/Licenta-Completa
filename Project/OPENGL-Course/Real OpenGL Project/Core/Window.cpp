@@ -84,8 +84,8 @@ int Window::Initialise()
 	// handle key and mouse input
 	createCallbacks();
 
-	// lock the cursor
-	glfwSetInputMode(mainWindow,GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// start with cursor enabled for editor interaction
+	glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 	// allow experimental features
 	glewExperimental = GL_TRUE;

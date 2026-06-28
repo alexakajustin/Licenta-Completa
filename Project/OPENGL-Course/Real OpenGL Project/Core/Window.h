@@ -44,10 +44,10 @@ private:
 	bool keys[1024];
 
 	//mouse related variables
-	GLfloat lastX, lastY;
-	GLfloat xChange, yChange, yScrollChange;
-	bool mouseFirstMoved;
-	bool cursorEnabled = false; // ESC toggles this for ImGui interaction
+	GLfloat lastX = 0.0f, lastY = 0.0f;
+	GLfloat xChange = 0.0f, yChange = 0.0f, yScrollChange = 0.0f;
+	bool mouseFirstMoved = true;
+	bool cursorEnabled = true; // ESC toggles this for ImGui interaction
 
 	// glfw callback needs the method to be static
 	// 5 values cuz the callback has these variables
