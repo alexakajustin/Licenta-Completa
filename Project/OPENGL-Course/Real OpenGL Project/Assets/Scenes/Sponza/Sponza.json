@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.8973485231399536,
-            -0.056692786514759064,
-            -0.4376660883426666
+            -0.825718879699707,
+            -0.48480960726737976,
+            0.2883540093898773
         ],
-        "pitch": -3.25,
+        "pitch": -29.0,
         "position": [
-            -64.31645965576172,
-            45.255794525146484,
-            61.84219741821289
+            -57.104270935058594,
+            46.939422607421875,
+            60.58901596069336
         ],
-        "yaw": -386.0
+        "yaw": -199.25
     },
     "instancedGroups": [],
     "lights": [
@@ -4256,8 +4256,83 @@
         {
             "inheritScale": true,
             "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 25.0,
+                "material.specularColor": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                ],
+                "material.specularIntensity": 0.25,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "Assets\\Models\\TTT\\source\\tung tung tung sahur.fbx",
+            "name": "tung tung tung sahur 69",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "(embedded)",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -58.821922302246094,
+                    43.085243225097656,
+                    59.231204986572266
+                ],
+                "rotation": [
+                    -90.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.5,
+                    0.4999999403953552,
+                    0.4999999403953552
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\vsauce\\scene.gltf",
-            "name": "vsauce",
+            "name": "scene (Root)",
             "normalMapPath": "",
             "parent": "",
             "parentIndex": -1,
@@ -4265,24 +4340,24 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -59.78474426269531,
-                    43.11597442626953,
-                    63.510276794433594
+                    -59.667091369628906,
+                    43.15185546875,
+                    63.25295639038086
                 ],
                 "rotation": [
                     -0.0,
-                    -179.37059020996094,
+                    -177.98159790039063,
                     0.0
                 ],
                 "scale": [
-                    1.4000002145767212,
-                    1.3999940156936646,
-                    1.4000002145767212
+                    1.499998927116394,
+                    1.5,
+                    1.499998927116394
                 ]
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_0_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4304,15 +4379,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_0 (1 meshes)",
+            "name": "scene_Batch_0 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4350,7 +4423,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_1_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4372,15 +4445,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_1 (1 meshes)",
+            "name": "scene_Batch_1 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4418,7 +4489,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_2_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_2_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4440,15 +4511,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_2 (1 meshes)",
+            "name": "scene_Batch_2 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4486,7 +4555,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_3_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_3_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4508,15 +4577,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_3 (1 meshes)",
+            "name": "scene_Batch_3 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4554,7 +4621,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_4_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_4_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4576,15 +4643,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_4 (1 meshes)",
+            "name": "scene_Batch_4 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4622,7 +4687,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_5_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_5_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4644,15 +4709,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_5 (1 meshes)",
+            "name": "scene_Batch_5 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4690,7 +4753,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_6_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_6_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4712,15 +4775,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_6 (1 meshes)",
+            "name": "scene_Batch_6 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4758,7 +4819,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_7_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_7_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4780,15 +4841,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_7 (1 meshes)",
+            "name": "scene_Batch_7 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4826,7 +4885,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_8_(1_meshes).mesh",
+            "customMeshPath": "Sponza_scene_Batch_8_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4848,15 +4907,13 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
+                ]
             },
             "modelPath": "",
-            "name": "Batch_8 (1 meshes)",
+            "name": "scene_Batch_8 (1 meshes)",
             "normalMapPath": "",
-            "parent": "vsauce",
-            "parentIndex": 56,
+            "parent": "scene (Root)",
+            "parentIndex": 57,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4905,24 +4962,24 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -60.456993103027344,
-                    43.21575164794922,
-                    59.269718170166016
+                    -60.50857925415039,
+                    43.08415222167969,
+                    59.99578094482422
                 ],
                 "rotation": [
-                    0.0,
+                    -0.0,
                     0.0,
                     0.0
                 ],
                 "scale": [
-                    2.0,
-                    2.0,
-                    2.0
+                    1.5000001192092896,
+                    1.5000001192092896,
+                    1.5
                 ]
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
+            "customMeshPath": "Sponza_Tree_Batch_0_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -4956,10 +5013,10 @@
                 ]
             },
             "modelPath": "",
-            "name": "Batch_0 (1 meshes)",
+            "name": "Tree_Batch_0 (1 meshes)",
             "normalMapPath": "",
             "parent": "Tree (Root)",
-            "parentIndex": 66,
+            "parentIndex": 67,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4997,7 +5054,7 @@
             }
         },
         {
-            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
+            "customMeshPath": "Sponza_Tree_Batch_1_(1_meshes).mesh",
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -5031,10 +5088,10 @@
                 ]
             },
             "modelPath": "",
-            "name": "Batch_1 (1 meshes)",
+            "name": "Tree_Batch_1 (1 meshes)",
             "normalMapPath": "",
             "parent": "Tree (Root)",
-            "parentIndex": 66,
+            "parentIndex": 67,
             "primitiveType": "",
             "textureLayers": [
                 {

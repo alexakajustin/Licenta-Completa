@@ -2090,7 +2090,7 @@ void SceneManager::InstantiateModel(const std::filesystem::path& path, glm::vec3
 			mergedMesh->AddRef();
 
 			// Create a single GameObject for this batch
-			std::string batchName = "Batch_" + std::to_string(batchIdx) + " (" + std::to_string(group.sourceNames.size()) + " meshes)";
+			std::string batchName = baseName + "_Batch_" + std::to_string(batchIdx) + " (" + std::to_string(group.sourceNames.size()) + " meshes)";
 			GameObject* batchObj = new GameObject(batchName);
 			batchObj->SetMesh(mergedMesh);
 
