@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.970147967338562,
-            -0.24192190170288086,
-            -0.016933875158429146
+            -0.18094882369041443,
+            -0.3173046410083771,
+            0.9309002757072449
         ],
-        "pitch": -14.0,
+        "pitch": -18.5,
         "position": [
-            -56.79279708862305,
-            44.49207305908203,
-            60.76349639892578
+            -72.74761199951172,
+            46.75467300415039,
+            55.851097106933594
         ],
-        "yaw": -539.0
+        "yaw": -619.0
     },
     "instancedGroups": [],
     "lights": [
@@ -2737,6 +2737,19 @@
             }
         },
         {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
             "inheritScale": true,
             "isVisible": true,
             "material": {
@@ -3928,6 +3941,92 @@
                     5.0,
                     5.0,
                     5.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 1024.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\jastin.obj",
+            "name": "jastin 52",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -71.53899383544922,
+                    43.78112030029297,
+                    61.026790618896484
+                ],
+                "rotation": [
+                    5.3332109451293945,
+                    19.07121467590332,
+                    -11.409899711608887
+                ],
+                "scale": [
+                    0.5000001788139343,
+                    0.4999997615814209,
+                    0.49999988079071045
                 ]
             }
         }
