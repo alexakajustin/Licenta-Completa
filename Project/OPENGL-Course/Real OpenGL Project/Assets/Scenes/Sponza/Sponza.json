@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.963401198387146,
-            -0.26723840832710266,
-            0.02102145366370678
+            0.9893123507499695,
+            -0.14349263906478882,
+            0.025906208902597427
         ],
-        "pitch": -15.5,
+        "pitch": -8.25,
         "position": [
-            -66.97970581054688,
-            45.29106521606445,
-            60.91604232788086
+            -66.68467712402344,
+            46.20523452758789,
+            60.76245880126953
         ],
-        "yaw": -181.25
+        "yaw": -358.5
     },
     "instancedGroups": [],
     "lights": [
@@ -3197,7 +3197,7 @@
                     61.155128479003906
                 ],
                 "rotation": [
-                    0.0,
+                    -0.0,
                     0.0,
                     0.0
                 ],
@@ -4022,184 +4022,6 @@
         {
             "inheritScale": true,
             "isVisible": true,
-            "modelPath": "Assets\\Models\\Tree.obj",
-            "name": "Tree (Root)",
-            "normalMapPath": "",
-            "parent": "",
-            "parentIndex": -1,
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    -60.169063568115234,
-                    42.91841125488281,
-                    61.64134979248047
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    2.0,
-                    2.0,
-                    2.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/Tree.obj",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 0.0,
-                "material.specularColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.specularIntensity": 0.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ]
-            },
-            "modelPath": "",
-            "name": "Batch_0 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "Tree (Root)",
-            "parentIndex": 53,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\bark_0021.jpg",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    -0.8732051849365234
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.ambientColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.baseColor": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/Tree.obj",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 0.0,
-                "material.specularColor": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "material.specularIntensity": 0.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ]
-            },
-            "modelPath": "",
-            "name": "Batch_1 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "Tree (Root)",
-            "parentIndex": 53,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -4402,13 +4224,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_0 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4468,13 +4292,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_1 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4534,13 +4360,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_2 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4600,13 +4428,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_3 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4666,13 +4496,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_4 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4732,13 +4564,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_5 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4798,13 +4632,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_6 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4864,13 +4700,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_7 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -4930,13 +4768,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Batch_8 (1 meshes)",
             "normalMapPath": "",
             "parent": "scene (Root)",
-            "parentIndex": 58,
+            "parentIndex": 55,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -5050,6 +4890,184 @@
                     5.119999885559082,
                     2.0999999046325684,
                     4.739999294281006
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "Assets\\Models\\Tree.obj",
+            "name": "Tree (Root)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -60.362606048583984,
+                    42.98634719848633,
+                    59.78862380981445
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Tree.obj",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Batch_0 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "Tree (Root)",
+            "parentIndex": 66,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\bark_0021.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.253387451171875
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/Tree.obj",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "",
+            "name": "Batch_1 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "Tree (Root)",
+            "parentIndex": 66,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Tree\\DB2X2_L01.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
                 ]
             }
         }
