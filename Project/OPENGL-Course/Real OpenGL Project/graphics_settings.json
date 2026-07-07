@@ -8,7 +8,7 @@
     "debugShowBounds": false,
     "debugShowCulling": false,
     "debugShowHiZ": false,
-    "enableOcclusionCulling": true,
+    "enableOcclusionCulling": false,
     "godraysDecay": 1.0,
     "godraysDensity": 1.0,
     "godraysEnabled": true,

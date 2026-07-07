@@ -213,7 +213,7 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 			// Sanitize object name for filesystem
 			for (char& c : objName) if (c == ' ' || c == '\\' || c == '/' || c == ':' || c == '<' || c == '>' || c == '|' || c == '*' || c == '?') c = '_';
 			
-			std::string meshFileName = sceneStem + "_" + objName + ".mesh";
+			std::string meshFileName = sceneStem + "_" + std::to_string(ptrToSavedIndex[obj]) + "_" + objName + ".mesh";
 			std::string meshFilePath = (scenePath.parent_path() / meshFileName).string();
 			
 			if (obj->GetCPUMeshData().SaveToBinary(meshFilePath)) {

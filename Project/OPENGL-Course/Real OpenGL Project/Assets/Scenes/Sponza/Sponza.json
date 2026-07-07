@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.9893123507499695,
-            -0.14349263906478882,
-            0.025906208902597427
+            0.8973485231399536,
+            -0.056692786514759064,
+            -0.4376660883426666
         ],
-        "pitch": -8.25,
+        "pitch": -3.25,
         "position": [
-            -66.68467712402344,
-            46.20523452758789,
-            60.76245880126953
+            -64.31645965576172,
+            45.255794525146484,
+            61.84219741821289
         ],
-        "yaw": -358.5
+        "yaw": -386.0
     },
     "instancedGroups": [],
     "lights": [
@@ -3197,7 +3197,7 @@
                     61.155128479003906
                 ],
                 "rotation": [
-                    -0.0,
+                    0.0,
                     0.0,
                     0.0
                 ],
@@ -4176,646 +4176,6 @@
         {
             "inheritScale": true,
             "isVisible": true,
-            "modelPath": "Assets\\Models\\vsauce\\scene.gltf",
-            "name": "scene (Root)",
-            "normalMapPath": "",
-            "parent": "",
-            "parentIndex": -1,
-            "primitiveType": "",
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    -60.13238525390625,
-                    43.12515640258789,
-                    63.16926956176758
-                ],
-                "rotation": [
-                    -0.0,
-                    179.74960327148438,
-                    0.0
-                ],
-                "scale": [
-                    1.5,
-                    1.5,
-                    1.5
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_0 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_1 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_2_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyelashes_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_2 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyelashes_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_3_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelTops_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelTops_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_3 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelTops_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelTops_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_4_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelShoes_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelShoes_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_4 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelShoes_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelShoes_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_5_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBeards_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBeards_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_5 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBeards_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBeards_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_6_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelMoustaches_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelMoustaches_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_6 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelMoustaches_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelMoustaches_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_7_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBottoms_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBottoms_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_7 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBottoms_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBottoms_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    0.9999994039535522,
-                    1.0,
-                    0.9999994039535522
-                ]
-            }
-        },
-        {
-            "customMeshPath": "Sponza_Batch_8_(1_meshes).mesh",
-            "inheritScale": true,
-            "isVisible": true,
-            "material": {
-                "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyewear_baseColor.png",
-                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelEyewear_normal.png",
-                "material.offset": [
-                    0.0,
-                    0.0
-                ],
-                "material.reflectivity": 0.0,
-                "material.shininess": 814.224365234375,
-                "material.specularIntensity": 1.0,
-                "material.tiling": [
-                    1.0,
-                    1.0
-                ],
-                "shader_frag": "Assets/Shaders/shader.frag",
-                "shader_vert": "Assets/Shaders/shader.vert"
-            },
-            "modelPath": "",
-            "name": "Batch_8 (1 meshes)",
-            "normalMapPath": "",
-            "parent": "scene (Root)",
-            "parentIndex": 55,
-            "primitiveType": "",
-            "textureLayers": [
-                {
-                    "blendMode": 0,
-                    "displacementMapPath": "",
-                    "displacementScale": 0.05000000074505806,
-                    "heightMax": 100.0,
-                    "heightMin": 0.0,
-                    "invert": false,
-                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelEyewear_normal.png",
-                    "opacity": 1.0,
-                    "slopeMax": 0.5,
-                    "slopeMin": 0.0,
-                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyewear_baseColor.png",
-                    "tiling": 1.0
-                }
-            ],
-            "texturePath": "",
-            "transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "inheritScale": true,
-            "isVisible": true,
             "material": {
                 "material.baseColor": [
                     1.0,
@@ -4896,6 +4256,646 @@
         {
             "inheritScale": true,
             "isVisible": true,
+            "modelPath": "Assets\\Models\\vsauce\\scene.gltf",
+            "name": "vsauce",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -59.78474426269531,
+                    43.11597442626953,
+                    63.510276794433594
+                ],
+                "rotation": [
+                    -0.0,
+                    -179.37059020996094,
+                    0.0
+                ],
+                "scale": [
+                    1.4000002145767212,
+                    1.3999940156936646,
+                    1.4000002145767212
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_0_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_0 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_1_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_1 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBody_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_2_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyelashes_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_2 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBody_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyelashes_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_3_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelTops_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelTops_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_3 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelTops_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelTops_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_4_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelShoes_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelShoes_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_4 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelShoes_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelShoes_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_5_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBeards_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBeards_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_5 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBeards_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBeards_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_6_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelMoustaches_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelMoustaches_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_6 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelMoustaches_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelMoustaches_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_7_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBottoms_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBottoms_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_7 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelBottoms_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelBottoms_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "Sponza_Batch_8_(1_meshes).mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyewear_baseColor.png",
+                "material.normalMap": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelEyewear_normal.png",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 814.224365234375,
+                "material.specularIntensity": 1.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Batch_8 (1 meshes)",
+            "normalMapPath": "",
+            "parent": "vsauce",
+            "parentIndex": 56,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\vsauce\\textures/modelscharactersvsauce_michaelEyewear_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Models/vsauce/textures/modelscharactersvsauce_michaelEyewear_baseColor.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Models\\Tree.obj",
             "name": "Tree (Root)",
             "normalMapPath": "",
@@ -4905,9 +4905,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -60.362606048583984,
-                    42.98634719848633,
-                    59.78862380981445
+                    -60.456993103027344,
+                    43.21575164794922,
+                    59.269718170166016
                 ],
                 "rotation": [
                     0.0,
@@ -4982,7 +4982,7 @@
                 "position": [
                     0.0,
                     0.0,
-                    0.253387451171875
+                    0.0
                 ],
                 "rotation": [
                     0.0,
