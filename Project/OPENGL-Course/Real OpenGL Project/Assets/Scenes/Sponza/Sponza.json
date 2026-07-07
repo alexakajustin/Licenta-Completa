@@ -1,49 +1,117 @@
 {
     "camera": {
         "front": [
-            0.9961007237434387,
-            -0.08280820399522781,
-            -0.03043363057076931
+            -0.970147967338562,
+            -0.24192190170288086,
+            -0.016933875158429146
         ],
-        "pitch": -4.75,
+        "pitch": -14.0,
         "position": [
-            -66.210693359375,
-            46.97456359863281,
-            61.2818717956543
+            -56.79279708862305,
+            44.49207305908203,
+            60.76349639892578
         ],
-        "yaw": -1.75
+        "yaw": -539.0
     },
     "instancedGroups": [],
     "lights": [
         {
-            "ambientIntensity": 0.4000000059604645,
+            "ambientIntensity": 0.0,
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "diffuseIntensity": 0.6000000238418579,
+            "diffuseIntensity": 0.0,
             "direction": [
-                0.045778173953294754,
-                -0.9988232254981995,
-                -0.016022350639104843
+                0.11418141424655914,
+                0.990936279296875,
+                -0.07076793164014816
             ],
             "name": "Sun",
             "type": "Directional"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                1.0,
+                0.0,
+                0.0
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Point Light 1",
+            "position": [
+                -46.25788879394531,
+                46.79175567626953,
+                61.079132080078125
+            ],
+            "type": "Point"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                0.019801616668701172,
+                0.0,
+                1.0
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Point Light 2",
+            "position": [
+                -73.41942596435547,
+                45.48196029663086,
+                61.22840881347656
+            ],
+            "type": "Point"
+        },
+        {
+            "ambientIntensity": 0.10000000149011612,
+            "color": [
+                0.0,
+                1.0,
+                0.0792076587677002
+            ],
+            "constant": 1.0,
+            "diffuseIntensity": 0.800000011920929,
+            "exponent": 0.009999999776482582,
+            "linear": 0.019999999552965164,
+            "name": "Point Light 3",
+            "position": [
+                -59.105873107910156,
+                44.406532287597656,
+                61.9571647644043
+            ],
+            "type": "Point"
         }
     ],
-    "nodeGraph": {
-        "links": [],
+    "nodeGraphs": {
+        "activeTabIndex": 0,
         "nextId": 24,
-        "nodes": []
+        "tabs": [
+            {
+                "graph": {
+                    "links": [],
+                    "nextId": 24,
+                    "nodes": []
+                },
+                "name": "Main"
+            }
+        ]
     },
     "objects": [
         {
             "inheritScale": true,
+            "isVisible": true,
             "modelPath": "Assets\\Scenes\\Sponza\\sponza.obj",
             "name": "sponza (Root)",
             "normalMapPath": "",
             "parent": "",
+            "parentIndex": -1,
             "primitiveType": "",
             "texturePath": "",
             "transform": {
@@ -66,6 +134,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -84,24 +153,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_0",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -140,6 +213,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -158,24 +232,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_1",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -214,6 +292,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -232,24 +311,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_2",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -288,6 +371,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -305,6 +389,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 19.999998092651367,
                 "material.specularColor": [
                     0.0,
@@ -317,12 +402,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_3",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -361,6 +449,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -379,24 +468,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 128.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.10000000149011612,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_4",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -435,6 +528,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -453,24 +547,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 128.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.10000000149011612,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_5",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -509,6 +607,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -527,24 +626,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_6",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -583,6 +686,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -601,6 +705,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -613,12 +718,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_7",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -657,6 +765,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -675,24 +784,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 128.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.10000000149011612,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_8",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -731,6 +844,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -748,6 +862,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -760,12 +875,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_9",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -804,6 +922,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -822,24 +941,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_10",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -878,6 +1001,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -896,24 +1020,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_11",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -952,6 +1080,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.1450980007648468,
@@ -970,6 +1099,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 1.0,
                 "material.specularColor": [
                     0.03403899818658829,
@@ -982,12 +1112,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_12",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1026,6 +1159,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1044,24 +1178,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 128.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.10000000149011612,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_13",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1100,6 +1238,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1118,6 +1257,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -1130,12 +1270,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_14",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1174,6 +1317,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1192,6 +1336,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -1204,12 +1349,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_15",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1248,6 +1396,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1266,24 +1415,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_16",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1322,6 +1475,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1339,6 +1493,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -1351,12 +1506,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_17",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1395,6 +1553,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1413,24 +1572,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_18",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1469,6 +1632,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1487,24 +1651,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_19",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1543,6 +1711,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1561,24 +1730,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_20",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1617,6 +1790,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1635,24 +1809,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_21",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1691,6 +1869,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.1450980007648468,
@@ -1709,6 +1888,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 1.0,
                 "material.specularColor": [
                     0.03403899818658829,
@@ -1721,12 +1901,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_22",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1765,6 +1948,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1783,24 +1967,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_23",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1839,6 +2027,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1857,24 +2046,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_24",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1913,6 +2106,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -1931,24 +2125,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_25",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -1987,6 +2185,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2005,6 +2204,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -2017,12 +2217,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_26",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2061,6 +2264,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2079,24 +2283,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_27",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2135,6 +2343,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2153,24 +2362,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_28",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2209,6 +2422,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2227,24 +2441,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_29",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2283,6 +2501,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2301,24 +2520,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_30",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2357,6 +2580,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2375,6 +2599,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -2387,12 +2612,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_31",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2431,6 +2659,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2449,24 +2678,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 19.999998092651367,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_32",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2505,6 +2738,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2523,24 +2757,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_33",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2578,7 +2816,21 @@
             }
         },
         {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
             "inheritScale": true,
+            "isVisible": false,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2597,24 +2849,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 50.0,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_34",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2653,6 +2909,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2671,6 +2928,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 50.0,
                 "material.specularColor": [
                     0.0,
@@ -2683,12 +2941,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_35",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2727,6 +2988,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2745,6 +3007,7 @@
                     0.0,
                     0.0
                 ],
+                "material.reflectivity": 0.0,
                 "material.shininess": 19.999998092651367,
                 "material.specularColor": [
                     0.0,
@@ -2757,12 +3020,15 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_36",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2801,6 +3067,7 @@
         },
         {
             "inheritScale": true,
+            "isVisible": true,
             "material": {
                 "material.ambientColor": [
                     0.0,
@@ -2819,24 +3086,28 @@
                     0.0,
                     0.0
                 ],
-                "material.shininess": 19.999998092651367,
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
                 "material.specularColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "material.specularIntensity": 0.5,
+                "material.specularIntensity": 0.0,
                 "material.sssDistortion": 0.20000000298023224,
                 "material.sssScale": 1.0,
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "",
             "name": "Mesh_37",
             "normalMapPath": "",
             "parent": "sponza (Root)",
+            "parentIndex": 0,
             "primitiveType": "",
             "textureLayers": [
                 {
@@ -2870,6 +3141,793 @@
                     1.0,
                     1.0,
                     1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "eyeHeight": 0.44999998807907104,
+                    "gravity": 15.0,
+                    "jumpForce": 6.0,
+                    "moveSpeed": 5.0,
+                    "turnSpeed": 0.15000000596046448,
+                    "type": "Player"
+                },
+                {
+                    "height": 2.5500001907348633,
+                    "radius": 0.30000001192092896,
+                    "type": "CapsuleCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": true,
+                    "mass": 80.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Player 39",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Player",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -48.28129959106445,
+                    44.880977630615234,
+                    61.155128479003906
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    0.5412541627883911,
+                    0.5412541627883911,
+                    0.5412541627883911,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 1.0,
+                "material.shininess": 2048.0,
+                "material.specularIntensity": 0.05000000074505806,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Plane 40",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Scenes\\San_Miguel\\detmoldura_01_bump.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Scenes\\San_Miguel\\N_detmoldura_01_bump.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Scenes\\San_Miguel\\detmoldura_01_color.png",
+                    "tiling": 100.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -62.470760345458984,
+                    43.14198303222656,
+                    57.91697311401367
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    50.0,
+                    1.0,
+                    50.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 1024.0,
+                "material.specularIntensity": 0.05000000074505806,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Cube 41",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Cube",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Textures\\Bricks\\medieval_red_brick_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Bricks\\medieval_red_brick_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Bricks\\medieval_red_brick_diff_1k.jpg",
+                    "tiling": 0.699999988079071
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -51.727134704589844,
+                    44.117652893066406,
+                    58.424625396728516
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2.0,
+                    2.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 1.0,
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Sphere 42",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Sphere",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -55.94426727294922,
+                    44.08412551879883,
+                    57.555606842041016
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Plane 43",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -60.11309814453125,
+                    44.1161994934082,
+                    58.15725326538086
+                ],
+                "rotation": [
+                    90.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Materials/rug.mtl",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 1024.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\rug.obj",
+            "name": "rug 44",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_height_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_normal_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_baseColour_1k.png",
+                    "tiling": 0.699999988079071
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -64.54285430908203,
+                    44.466793060302734,
+                    57.974735260009766
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.014999999664723873,
+                    0.014999999664723873,
+                    0.014999999664723873
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Materials/monitor.mtl",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\monitor.obj",
+            "name": "monitor 45",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Auxiliars\\OldMonitor03Texture_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Auxiliars\\OldMonitor03Texture.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -68.95748901367188,
+                    43.948646545410156,
+                    57.69087219238281
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 1024.0,
+                "material.specularIntensity": 0.05000000074505806,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Cube 41 (Copy)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Cube",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Textures\\Bricks\\medieval_red_brick_disp_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Bricks\\medieval_red_brick_nor_gl_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Bricks\\medieval_red_brick_diff_1k.jpg",
+                    "tiling": 0.699999988079071
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -51.727134704589844,
+                    44.117652893066406,
+                    64.15951538085938
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2.0,
+                    2.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.baseColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 1.0,
+                "material.shininess": 32.0,
+                "material.specularIntensity": 0.0,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
+            },
+            "modelPath": "",
+            "name": "Sphere 42 (Copy)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Sphere",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -55.94426727294922,
+                    44.08412551879883,
+                    64.13398742675781
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Plane 43 (Copy)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -60.040679931640625,
+                    44.1161994934082,
+                    63.792301177978516
+                ],
+                "rotation": [
+                    90.0,
+                    180.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Materials/rug.mtl",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 1024.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\rug.obj",
+            "name": "rug 44 (Copy)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_height_1k.png",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_normal_1k.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Models\\Bedroom\\Models\\Textures\\Fabric\\Rug_1k\\Rug_baseColour_1k.png",
+                    "tiling": 0.699999988079071
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -64.51589965820313,
+                    44.466793060302734,
+                    64.03482055664063
+                ],
+                "rotation": [
+                    -0.0,
+                    180.0,
+                    0.0
+                ],
+                "scale": [
+                    0.014999999664723873,
+                    0.014999999664723873,
+                    0.014999999664723873
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Materials/monitor.mtl",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 32.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "modelPath": "Assets\\Models\\monitor.obj",
+            "name": "monitor 45 (Copy)",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "Assets\\Textures\\Auxiliars\\OldMonitor03Texture_normal.png",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets\\Textures\\Auxiliars\\OldMonitor03Texture.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -68.95748901367188,
+                    43.948646545410156,
+                    64.02764129638672
+                ],
+                "rotation": [
+                    -0.0,
+                    180.0,
+                    0.0
+                ],
+                "scale": [
+                    0.4999998211860657,
+                    0.4999998211860657,
+                    0.49999988079071045
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "material": {
+                "material.ambientColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.baseColor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "material.diffuseMap": "Assets/Models/grass.obj",
+                "material.offset": [
+                    0.0,
+                    0.0
+                ],
+                "material.reflectivity": 0.0,
+                "material.shininess": 0.0,
+                "material.specularColor": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "material.specularIntensity": 0.5,
+                "material.tiling": [
+                    1.0,
+                    1.0
+                ],
+                "shader_frag": "Assets/Shaders/grass.frag",
+                "shader_vert": "Assets/Shaders/grass.vert",
+                "windSpeed": 0.5,
+                "windStrength": 0.009999999776482582
+            },
+            "modelPath": "Assets\\Models\\grass.obj",
+            "name": "grass 51",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/plain.png",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -60.1997184753418,
+                    43.073081970214844,
+                    61.07234573364258
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    5.0
                 ]
             }
         }

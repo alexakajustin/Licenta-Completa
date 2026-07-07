@@ -1,8 +1,8 @@
 #version 460 core
 
-in vec4 FragPosOut;
-in vec2 TexCoordOut;
-in float vFadeFactorOut;
+in vec4 FragPosGS;
+in vec2 TexCoordGS;
+in float vFadeFactorGS;
 
 uniform vec3 lightPos;
 uniform float farPlane;
@@ -16,12 +16,12 @@ void main()
 {
 	// Alpha Testing (for foliage/leaves)
 	if (useDiffuseTexture == 1) {
-		float alpha = texture(theTexture, TexCoordOut).a;
+		float alpha = texture(theTexture, TexCoordGS).a;
 		if (alpha < 0.5) discard;
 	}
 
 	// Distance dithered fade (for instanced grass)
-	if (vFadeFactorOut > 0.001) {
+	if (vFadeFactorGS > 0.001) {
 		int x = int(mod(gl_FragCoord.x, 4.0));
 		int y = int(mod(gl_FragCoord.y, 4.0));
 		float bayerMatrix[16] = float[16](
@@ -31,11 +31,11 @@ void main()
 			15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
 		);
 		float threshold = bayerMatrix[y * 4 + x];
-		if (vFadeFactorOut > threshold) discard;
+		if (vFadeFactorGS > threshold) discard;
 	}
 
 	// distance between fragment and light
-	float distance = length(FragPosOut.xyz - lightPos);
+	float distance = length(FragPosGS.xyz - lightPos);
 	distance = distance / farPlane; // 0 - 1
 	gl_FragDepth = distance; // the depth attachment
 	

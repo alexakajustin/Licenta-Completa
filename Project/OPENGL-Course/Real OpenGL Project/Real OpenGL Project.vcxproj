@@ -277,8 +277,6 @@
     <None Include="Assets\CustomNodes\Twisted_Column.json" />
     <None Include="assimp-vc142-mt.dll" />
     <None Include="assimp-vc143-mt.dll" />
-    <None Include="debug_instanced_shadow.vert" />
-    <None Include="debug_patched_shader.vert" />
     <None Include="External Libs\ASSIMP\include\assimp\color4.inl" />
     <None Include="External Libs\ASSIMP\include\assimp\material.inl" />
     <None Include="External Libs\ASSIMP\include\assimp\matrix3x3.inl" />

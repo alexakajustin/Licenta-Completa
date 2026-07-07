@@ -261,6 +261,21 @@
     <ClCompile Include="Scene\Player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\BoxCollider.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\MeshCollider.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\CapsuleCollider.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\PhysicsSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\RigidBody.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="External Libs\GLEW\doc\advanced.html" />
@@ -1034,8 +1049,6 @@
     <None Include="Assets\CustomNodes\Twisted_Column.json" />
     <None Include="assimp-vc142-mt.dll" />
     <None Include="glfw3.dll" />
-    <None Include="debug_instanced_shadow.vert" />
-    <None Include="debug_patched_shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="External Libs\GLEW\include\GL\eglew.h">
@@ -2377,6 +2390,24 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\PhysicsSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\RigidBody.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Component.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BoxCollider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\MeshCollider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\CapsuleCollider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
