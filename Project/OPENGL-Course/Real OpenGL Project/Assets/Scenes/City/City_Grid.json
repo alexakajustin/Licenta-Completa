@@ -1,0 +1,1004 @@
+{
+    "camera": {
+        "front": [
+            0.6123724579811096,
+            -0.5000000596046448,
+            -0.6123724579811096
+        ],
+        "pitch": -30.0,
+        "position": [
+            -22.195213317871094,
+            4.007194995880127,
+            33.33671569824219
+        ],
+        "yaw": -45.0
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -0.9186304211616516,
+                -0.2296576052904129,
+                0.3215206563472748
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraphs": {
+        "activeTabIndex": 0,
+        "nextId": 67,
+        "tabs": [
+            {
+                "graph": {
+                    "links": [
+                        {
+                            "end": 47,
+                            "id": 54,
+                            "start": 45
+                        },
+                        {
+                            "end": 51,
+                            "id": 55,
+                            "start": 48
+                        },
+                        {
+                            "end": 53,
+                            "id": 56,
+                            "start": 49
+                        }
+                    ],
+                    "nextId": 67,
+                    "nodes": [
+                        {
+                            "cachedModelPath": "",
+                            "cachedNormalMapPath": "",
+                            "cachedPosition": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "cachedPrimitiveType": "",
+                            "cachedRotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "cachedScale": [
+                                1.0,
+                                1.0,
+                                1.0
+                            ],
+                            "cachedTextureLayers": [],
+                            "cachedTexturePath": "",
+                            "editorPos": [
+                                50.0,
+                                150.0
+                            ],
+                            "forceOriginalPrimitive": true,
+                            "hasCachedMaterial": false,
+                            "id": 44,
+                            "inputPins": [],
+                            "outputPins": [
+                                45
+                            ],
+                            "selectedName": "(none)",
+                            "title": "Scene Input"
+                        },
+                        {
+                            "buildingSetback": 1.0,
+                            "citySize": 1000.0,
+                            "editorPos": [
+                                300.0,
+                                150.0
+                            ],
+                            "id": 46,
+                            "inputPins": [
+                                47
+                            ],
+                            "outputPins": [
+                                48,
+                                49
+                            ],
+                            "parkRate": 8,
+                            "residentialProbability": 0.5,
+                            "roadHeight": 0.019999999552965164,
+                            "roadSpacingX": 30.0,
+                            "roadSpacingZ": 30.0,
+                            "roadWidth": 6.0,
+                            "seed": 42,
+                            "sidewalkWidth": 1.5,
+                            "title": "City Grid"
+                        },
+                        {
+                            "editorPos": [
+                                550.0,
+                                100.0
+                            ],
+                            "id": 50,
+                            "inputPins": [
+                                51
+                            ],
+                            "outputPins": [],
+                            "sameAsInput": true,
+                            "targetName": "(none)",
+                            "title": "Output",
+                            "updateMesh": true
+                        },
+                        {
+                            "editorPos": [
+                                550.0,
+                                350.0
+                            ],
+                            "floorHeight": 3.0,
+                            "id": 52,
+                            "inputPins": [
+                                53
+                            ],
+                            "maxHeight": 25.0,
+                            "minHeight": 5.0,
+                            "outputPins": [],
+                            "roofOverhang": 0.30000001192092896,
+                            "seed": 42,
+                            "title": "Building Gen",
+                            "upperSectionProb": 0.5,
+                            "upperSectionScale": 0.6499999761581421,
+                            "wallInset": 0.5
+                        }
+                    ]
+                },
+                "name": "Main"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "customMeshPath": "City_Grid_City_Roads_46.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Roads_46",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/roads/asphalt.jpg",
+                    "tiling": 4.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_City_Sidewalks_46.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Sidewalks_46",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/concrete.jpg",
+                    "tiling": 2.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_City_Plots_46.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Plots_46",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/terrain/grass/albedo.jpg",
+                    "tiling": 2.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_City_Lamps_46.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Lamps_46",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/metal_building.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_City_Trees_46.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Trees_46",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/roads/grass_park.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "City_Buildings_52",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex0.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex0",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/office_windows.jpg",
+                    "tiling": 0.10000000149011612
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex1.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex1",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/apartment_windows.jpg",
+                    "tiling": 0.10000000149011612
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex2.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex2",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/skyscraper1.jpg",
+                    "tiling": 0.20000000298023224
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex3.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex3",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/skyscraper2.jpg",
+                    "tiling": 0.20000000298023224
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex4.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex4",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/skyscraper3.jpg",
+                    "tiling": 0.10000000149011612
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex5.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex5",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/window_blocks.jpg",
+                    "tiling": 0.20000000298023224
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Walls_Tex6.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Walls_Tex6",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/metal_building.jpg",
+                    "tiling": 0.20000000298023224
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Roofs_Shingles.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Roofs_Shingles",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/roof_shingles.jpg",
+                    "tiling": 2.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Roofs_Flat.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Roofs_Flat",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/concrete.jpg",
+                    "tiling": 5.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Fences.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Fences",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/fence.jpg",
+                    "tiling": 1.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "customMeshPath": "City_Grid_Building_52_Driveways.mesh",
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Building_52_Driveways",
+            "normalMapPath": "",
+            "parent": "City_Buildings_52",
+            "parentIndex": 5,
+            "primitiveType": "",
+            "textureLayers": [
+                {
+                    "blendMode": 0,
+                    "displacementMapPath": "",
+                    "displacementScale": 0.05000000074505806,
+                    "heightMax": 100.0,
+                    "heightMin": 0.0,
+                    "invert": false,
+                    "normalMapPath": "",
+                    "opacity": 1.0,
+                    "slopeMax": 0.5,
+                    "slopeMin": 0.0,
+                    "texturePath": "Assets/Textures/buildings/concrete.jpg",
+                    "tiling": 5.0
+                }
+            ],
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Plane 17",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    -0.10000000149011612,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1000.0,
+                    1.0,
+                    1000.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "eyeHeight": 0.30000001192092896,
+                    "gravity": 15.0,
+                    "jumpForce": 6.0,
+                    "moveSpeed": 5.0,
+                    "turnSpeed": 0.15000000596046448,
+                    "type": "Player"
+                },
+                {
+                    "height": 2.5500001907348633,
+                    "radius": 0.30000001192092896,
+                    "type": "CapsuleCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": true,
+                    "mass": 80.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Player 18",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Player",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    -19.133350372314453,
+                    1.5071947574615479,
+                    30.274852752685547
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}
