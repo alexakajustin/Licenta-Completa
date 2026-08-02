@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -90,7 +90,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -110,7 +110,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -129,7 +129,7 @@
       <PreprocessorDefinitions>_WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -149,7 +149,7 @@
       <PreprocessorDefinitions>_WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -169,7 +169,7 @@
       <PreprocessorDefinitions>_WIN64;_DEBUG;_CONSOLE;RUN_UNIT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -268,6 +268,40 @@
     <ClCompile Include="Tests\PerformanceProfilerTests.cpp" />
     <ClCompile Include="Simulation\PhysicsSystem.cpp" />
     <ClCompile Include="Scene\RigidBody.cpp" />
+    <ClCompile Include="External Libs\Lua\lapi.c" />
+    <ClCompile Include="External Libs\Lua\lauxlib.c" />
+    <ClCompile Include="External Libs\Lua\lbaselib.c" />
+    <ClCompile Include="External Libs\Lua\lcode.c" />
+    <ClCompile Include="External Libs\Lua\lcorolib.c" />
+    <ClCompile Include="External Libs\Lua\lctype.c" />
+    <ClCompile Include="External Libs\Lua\ldblib.c" />
+    <ClCompile Include="External Libs\Lua\ldebug.c" />
+    <ClCompile Include="External Libs\Lua\ldo.c" />
+    <ClCompile Include="External Libs\Lua\ldump.c" />
+    <ClCompile Include="External Libs\Lua\lfunc.c" />
+    <ClCompile Include="External Libs\Lua\lgc.c" />
+    <ClCompile Include="External Libs\Lua\linit.c" />
+    <ClCompile Include="External Libs\Lua\liolib.c" />
+    <ClCompile Include="External Libs\Lua\llex.c" />
+    <ClCompile Include="External Libs\Lua\lmathlib.c" />
+    <ClCompile Include="External Libs\Lua\lmem.c" />
+    <ClCompile Include="External Libs\Lua\loadlib.c" />
+    <ClCompile Include="External Libs\Lua\lobject.c" />
+    <ClCompile Include="External Libs\Lua\lopcodes.c" />
+    <ClCompile Include="External Libs\Lua\loslib.c" />
+    <ClCompile Include="External Libs\Lua\lparser.c" />
+    <ClCompile Include="External Libs\Lua\lstate.c" />
+    <ClCompile Include="External Libs\Lua\lstring.c" />
+    <ClCompile Include="External Libs\Lua\lstrlib.c" />
+    <ClCompile Include="External Libs\Lua\ltable.c" />
+    <ClCompile Include="External Libs\Lua\ltablib.c" />
+    <ClCompile Include="External Libs\Lua\ltm.c" />
+    <ClCompile Include="External Libs\Lua\lundump.c" />
+    <ClCompile Include="External Libs\Lua\lutf8lib.c" />
+    <ClCompile Include="External Libs\Lua\lvm.c" />
+    <ClCompile Include="External Libs\Lua\lzio.c" />
+    <ClCompile Include="Core\ScriptEngine.cpp" />
+    <ClCompile Include="Scene\LuaScriptComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\CustomNodes\Alien_Sphere.json" />
@@ -1035,6 +1069,35 @@
     <ClInclude Include="Procedural\ScatterNode.h" />
     <ClInclude Include="External Libs\imnodes\imnodes.h" />
     <ClInclude Include="External Libs\imnodes\imnodes_internal.h" />
+    <ClInclude Include="External Libs\Lua\lapi.h" />
+    <ClInclude Include="External Libs\Lua\lauxlib.h" />
+    <ClInclude Include="External Libs\Lua\lcode.h" />
+    <ClInclude Include="External Libs\Lua\lctype.h" />
+    <ClInclude Include="External Libs\Lua\ldebug.h" />
+    <ClInclude Include="External Libs\Lua\ldo.h" />
+    <ClInclude Include="External Libs\Lua\lfunc.h" />
+    <ClInclude Include="External Libs\Lua\lgc.h" />
+    <ClInclude Include="External Libs\Lua\ljumptab.h" />
+    <ClInclude Include="External Libs\Lua\llex.h" />
+    <ClInclude Include="External Libs\Lua\llimits.h" />
+    <ClInclude Include="External Libs\Lua\lmem.h" />
+    <ClInclude Include="External Libs\Lua\lobject.h" />
+    <ClInclude Include="External Libs\Lua\lopcodes.h" />
+    <ClInclude Include="External Libs\Lua\lopnames.h" />
+    <ClInclude Include="External Libs\Lua\lparser.h" />
+    <ClInclude Include="External Libs\Lua\lprefix.h" />
+    <ClInclude Include="External Libs\Lua\lstate.h" />
+    <ClInclude Include="External Libs\Lua\lstring.h" />
+    <ClInclude Include="External Libs\Lua\ltable.h" />
+    <ClInclude Include="External Libs\Lua\ltm.h" />
+    <ClInclude Include="External Libs\Lua\lua.h" />
+    <ClInclude Include="External Libs\Lua\luaconf.h" />
+    <ClInclude Include="External Libs\Lua\lualib.h" />
+    <ClInclude Include="External Libs\Lua\lundump.h" />
+    <ClInclude Include="External Libs\Lua\lvm.h" />
+    <ClInclude Include="External Libs\Lua\lzio.h" />
+    <ClInclude Include="Core\ScriptEngine.h" />
+    <ClInclude Include="Scene\LuaScriptComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icons\Light.png" />

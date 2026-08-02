@@ -23,8 +23,10 @@
 #include "Core/ServiceLocator.h"
 #include "Nodes/AllOperations.h"
 #include "Scene/SceneSerializer.h"
+#include "Scene/LuaScriptComponent.h"
 #include "Procedural/InteriorGenNode.h"
 #include "Scene/Player.h"
+#include "Core/ScriptEngine.h"
 #include <iostream>
 #include <map>
 #include <fstream>
@@ -111,6 +113,10 @@ Application::~Application()
 bool Application::Init()
 {
 	LoadGraphicsSettings();
+
+	// Initialize ScriptEngine
+	ScriptEngine::GetInstance().Init();
+	ScriptEngine::GetInstance().ExecuteFile("Assets/scripts/test_script.lua");
 
 
 	// Window
@@ -228,6 +234,14 @@ void Application::SetupScene()
 	plane->SetMesh(PrimitiveGenerator::CreatePlane(256, 256));
 	plane->SetPrimitiveType("Plane");
 	sceneManager.AddObject(plane);
+
+	// Create a test object for Lua script
+	GameObject* testBox = new GameObject("LuaTestBox");
+	testBox->GetTransform().SetPosition(glm::vec3(0.0f, 5.0f, 0.0f));
+	testBox->SetMesh(PrimitiveGenerator::CreateCube());
+	testBox->SetPrimitiveType("Cube");
+	testBox->AddComponent<LuaScriptComponent>("Assets/scripts/rotate_test.lua");
+	sceneManager.AddObject(testBox);
 
 	// Reset Directional Light
 	if (mainLight.GetDirectionPtr()) {
@@ -1303,12 +1317,16 @@ void Application::StartPlayMode()
 		transformBackups[obj] = backup;
 	}
 
-	// Sync/Recreate Jolt bodies for any pre-existing RigidBodies
+	// Sync/Recreate Jolt bodies for any pre-existing RigidBodies, and Reload Lua scripts
 	for (auto* obj : sceneManager.GetObjects())
 	{
 		if (auto* rb = obj->GetComponent<RigidBody>())
 		{
 			rb->RecreateBody();
+		}
+		if (auto* script = obj->GetComponent<LuaScriptComponent>())
+		{
+			script->ReloadScript();
 		}
 	}
 

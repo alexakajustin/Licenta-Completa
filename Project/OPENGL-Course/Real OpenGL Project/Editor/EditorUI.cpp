@@ -5,6 +5,8 @@
 
 #include "Scene/SceneManager.h"
 #include "Lighting/LightObject.h"
+#include "Scene/WorldStreamerComponent.h"
+#include "Scene/LuaScriptComponent.h"
 #include "Scene/GameObject.h"
 #include "Rendering/PrimitiveGenerator.h"
 #include "Rendering/Material.h"
@@ -1985,6 +1987,9 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 				ImGui::OpenPopup("AddComponentPopup");
 			}
 			if (ImGui::BeginPopup("AddComponentPopup")) {
+				if (ImGui::MenuItem("Lua Script")) {
+					selected->AddComponent<LuaScriptComponent>("");
+				}
 				if (ImGui::MenuItem("BoxCollider")) {
 					selected->AddComponent<BoxCollider>();
 				}
