@@ -1,0 +1,148 @@
+{
+    "camera": {
+        "front": [
+            -4.371138828673793e-08,
+            0.0,
+            -1.0
+        ],
+        "pitch": 0.0,
+        "position": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "yaw": -90.0
+    },
+    "instancedGroups": [],
+    "lights": [
+        {
+            "ambientIntensity": 0.4000000059604645,
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "diffuseIntensity": 0.6000000238418579,
+            "direction": [
+                -20.0,
+                -5.0,
+                7.0
+            ],
+            "name": "Sun",
+            "type": "Directional"
+        }
+    ],
+    "nodeGraphs": {
+        "activeTabIndex": 0,
+        "nextId": 1,
+        "tabs": [
+            {
+                "graph": {
+                    "links": [],
+                    "nextId": 1,
+                    "nodes": []
+                },
+                "name": "Main"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "components": [
+                {
+                    "type": "MeshCollider"
+                },
+                {
+                    "bodyType": 0,
+                    "friction": 0.20000000298023224,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "Plane",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Plane",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    100.0,
+                    1.0,
+                    100.0
+                ]
+            }
+        },
+        {
+            "components": [
+                {
+                    "type": "LuaScriptComponent"
+                },
+                {
+                    "isTrigger": false,
+                    "offset": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "size": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "type": "BoxCollider"
+                },
+                {
+                    "bodyType": 2,
+                    "friction": 0.5,
+                    "lockRotation": false,
+                    "mass": 1.0,
+                    "restitution": 0.0,
+                    "type": "RigidBody"
+                }
+            ],
+            "inheritScale": true,
+            "isVisible": true,
+            "modelPath": "",
+            "name": "LuaTestBox",
+            "normalMapPath": "",
+            "parent": "",
+            "parentIndex": -1,
+            "primitiveType": "Cube",
+            "texturePath": "",
+            "transform": {
+                "position": [
+                    0.0,
+                    5.0,
+                    0.0
+                ],
+                "rotation": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "version": 1
+}

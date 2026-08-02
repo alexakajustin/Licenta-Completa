@@ -57,11 +57,17 @@ void LuaScriptComponent::ReloadScript()
         updateFunc = sol::nil;
 
         // Cache functions
-        sol::optional<sol::function> startOpt = env["Start"];
-        if (startOpt) startFunc = startOpt.value();
+        sol::optional<sol::protected_function> startOpt = env["Start"];
+        if (startOpt) {
+            startFunc = startOpt.value();
+            env.set_on(startFunc);
+        }
         
-        sol::optional<sol::function> updateOpt = env["Update"];
-        if (updateOpt) updateFunc = updateOpt.value();
+        sol::optional<sol::protected_function> updateOpt = env["Update"];
+        if (updateOpt) {
+            updateFunc = updateOpt.value();
+            env.set_on(updateFunc);
+        }
         
         // Call Start if it exists
         if (startFunc.valid())

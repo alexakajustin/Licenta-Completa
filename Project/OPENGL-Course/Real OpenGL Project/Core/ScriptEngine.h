@@ -48,6 +48,7 @@ private:
     void RegisterMath();
     void RegisterCoreTypes();
     void RegisterGameObject();
+    void RegisterPhysics();
 
     // Delete copy and move semantics
     ScriptEngine(const ScriptEngine&) = delete;

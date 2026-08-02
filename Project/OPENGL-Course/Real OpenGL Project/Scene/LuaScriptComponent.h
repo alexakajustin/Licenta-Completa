@@ -25,6 +25,6 @@ private:
     std::string filepath;
     sol::environment env;
     
-    sol::function startFunc;
-    sol::function updateFunc;
+    sol::protected_function startFunc;
+    sol::protected_function updateFunc;
 };

@@ -3,7 +3,10 @@
 #include <glm/glm.hpp>
 #include "Scene/GameObject.h"
 #include "Scene/Component.h"
+#include "Scene/RigidBody.h"
+#include "Scene/BoxCollider.h"
 #include "Core/Transform.h"
+#include <GLFW/glfw3.h>
 
 void ScriptEngine::RegisterMath()
 {
@@ -49,8 +52,66 @@ void ScriptEngine::RegisterGameObject()
         "GetName", &GameObject::GetName,
         "SetName", &GameObject::SetName,
         // Expose Transform as a property
-        "transform", sol::property([](GameObject& go) -> Transform& { return go.GetTransform(); })
+        "transform", sol::property([](GameObject& go) -> Transform& { return go.GetTransform(); }),
+        
+        // Component adding/getting methods
+        "AddRigidBody", [](GameObject& go) -> RigidBody* { return go.AddComponent<RigidBody>(); },
+        "GetRigidBody", [](GameObject& go) -> RigidBody* { return go.GetComponent<RigidBody>(); },
+        "AddBoxCollider", [](GameObject& go) -> BoxCollider* { return go.AddComponent<BoxCollider>(); },
+        "GetBoxCollider", [](GameObject& go) -> BoxCollider* { return go.GetComponent<BoxCollider>(); }
     );
+}
+
+void ScriptEngine::RegisterPhysics()
+{
+    // Bind RigidBody::BodyType
+    lua.new_enum("BodyType",
+        "Static", RigidBody::BodyType::Static,
+        "Kinematic", RigidBody::BodyType::Kinematic,
+        "Dynamic", RigidBody::BodyType::Dynamic
+    );
+
+    // Bind RigidBody
+    lua.new_usertype<RigidBody>("RigidBody",
+        sol::base_classes, sol::bases<Component>(),
+        "SetType", &RigidBody::SetType,
+        "GetType", &RigidBody::GetType,
+        "SetMass", &RigidBody::SetMass,
+        "GetMass", &RigidBody::GetMass,
+        "SetFriction", &RigidBody::SetFriction,
+        "SetRestitution", &RigidBody::SetRestitution,
+        "SetLinearVelocity", &RigidBody::SetLinearVelocity,
+        "SetLockRotation", &RigidBody::SetLockRotation,
+        "AddForce", &RigidBody::AddForce,
+        "AddImpulse", &RigidBody::AddImpulse
+    );
+
+    // Bind BoxCollider
+    lua.new_usertype<BoxCollider>("BoxCollider",
+        sol::base_classes, sol::bases<Component>(),
+        "size", &BoxCollider::size,
+        "offset", &BoxCollider::offset,
+        "isTrigger", &BoxCollider::isTrigger
+    );
+    
+    // Simple global Input table for checking keys
+    sol::table input = lua.create_named_table("Input");
+    input.set_function("IsKeyDown", [](int key) -> bool {
+        GLFWwindow* window = glfwGetCurrentContext();
+        if (!window) return false;
+        return glfwGetKey(window, key) == GLFW_PRESS;
+    });
+    
+    // Bind a few common keys
+    input["KEY_SPACE"] = GLFW_KEY_SPACE;
+    input["KEY_W"] = GLFW_KEY_W;
+    input["KEY_A"] = GLFW_KEY_A;
+    input["KEY_S"] = GLFW_KEY_S;
+    input["KEY_D"] = GLFW_KEY_D;
+    input["KEY_UP"] = GLFW_KEY_UP;
+    input["KEY_DOWN"] = GLFW_KEY_DOWN;
+    input["KEY_LEFT"] = GLFW_KEY_LEFT;
+    input["KEY_RIGHT"] = GLFW_KEY_RIGHT;
 }
 
 void ScriptEngine::Init()
@@ -66,6 +127,7 @@ void ScriptEngine::Init()
     RegisterMath();
     RegisterCoreTypes();
     RegisterGameObject();
+    RegisterPhysics();
 
     std::cout << "ScriptEngine Initialized with Lua 5.4 and sol2." << std::endl;
 }
