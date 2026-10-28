@@ -660,9 +660,11 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 		bool doubleSided = diffuse && diffuse->HasCutoutAlpha();
 		GLboolean cullWasEnabled = doubleSided ? glIsEnabled(GL_CULL_FACE) : GL_FALSE;
 		if (doubleSided) glDisable(GL_CULL_FACE);
+		if (doubleSided) SetFoliageUniform(true);
 
 		meshList[i]->RenderMesh();
 
+		if (doubleSided) SetFoliageUniform(false);
 		if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);
 	}
 }

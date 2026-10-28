@@ -104,6 +104,11 @@ public:
 	uint32_t GetVisibleCount() const { return lastVisibleCount; }
 	float GetMeshBoundRadius() const { return meshBoundRadius; }
 
+	// Camera draw distance multiplier: bigger objects stay visible further away, like a
+	// screen-size cull. Grass/ferns/rocks (radius <= 2 m) keep the global render distance,
+	// a 20 m tree is drawn 5x further, capped at 10x. LOD distances stay absolute.
+	float DrawDistanceScale() const { return glm::clamp(meshBoundRadius / 2.0f, 1.0f, 10.0f); }
+
 	// Material/texture access for rendering pipeline
 	Material* GetMaterial() const { return material; }
 	Texture* GetTexture() const { return texture; }

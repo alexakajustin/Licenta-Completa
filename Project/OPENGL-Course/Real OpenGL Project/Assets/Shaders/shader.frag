@@ -120,6 +120,8 @@ uniform Material material;
 uniform samplerCube skybox; ///< Reflection cubemap. Bind the skybox OR a scene cubemap per-object from C++.
 // camera position
 uniform vec3 eyePosition; ///< Camera position coordinate.
+uniform int isFoliage; ///< 1 while drawing alpha-tested foliage cards (leaves, ferns): wrapped + translucent lighting.
+uniform float foliageRadius; ///< Bounding radius of the foliage mesh (instanced draws), 0 = unknown: no crown occlusion.
 
 // Selection highlight (0.0 = not selected, > 0 = selected)
 uniform float selectionTint; ///< Selection outline tint multiplier.
@@ -541,6 +543,40 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 
 	// Specular light is purely ADDED on top (dielectric), diffuse/ambient is MULTIPLIED by baseColor
 	vec3 diffuseAmbient = baseColor * (ambientColour + (1.0 - shadowFactor) * diffuseColor);
 	vec3 finalSpecular = (1.0 - shadowFactor) * specularColour;
+
+	if (isFoliage == 1)
+	{
+		// Leaves are thin and their card normals are noisy, so Lambert alone turns every crown
+		// seen against the light into a black silhouette. Wrapped diffuse keeps the shaded side
+		// lit, and light transmitted through the leaves gives the back-lit glow, but only close
+		// to the sun's direction (a uniform glow turned whole forests into flat lime blobs).
+		vec3 L = normalize(-direction);
+		vec3 V = normalize(eyePosition - FragPos);
+
+		// Crown self-occlusion. Beyond the shadow distance nothing darkens the inner leaves,
+		// so approximate it from the mesh-space position: leaves near the trunk axis and low in
+		// the crown sit inside the canopy; the outer shell and the top are exposed.
+		float occlusion = 1.0;
+		if (foliageRadius > 0.0) {
+			float radial = length(LocalPos.xz) / (foliageRadius * 0.45);
+			float height = LocalPos.y / (foliageRadius * 1.6);
+			float exposure = max(smoothstep(0.1, 0.75, radial), smoothstep(0.7, 0.95, height));
+			occlusion = mix(0.35, 1.0, exposure) * mix(0.7, 1.0, smoothstep(0.0, 0.6, height));
+		}
+		// Slow brightness variation across the canopy so a crown is not one flat colour
+		vec3 q = FragPos * 0.35;
+		occlusion *= 0.85 + 0.15 * sin(q.x + 1.7 * sin(q.z)) * sin(q.z * 1.3 + q.y * 0.7);
+
+		float wrapped = max((dot(effectiveNormal, L) + 0.5) / 1.5, 0.0);
+		float backLit = pow(max(dot(V, -L), 0.0), 10.0);
+		float transmission = (0.06 * max(-dot(effectiveNormal, L), 0.0) + 0.5 * backLit) * occlusion;
+		vec3 transmitColor = baseColor * vec3(0.8, 1.6, 0.6); // Chlorophyll passes mostly green
+		vec3 lightIn = light.colour * light.diffuseIntensity * (1.0 - shadowFactor * 0.8);
+		vec3 skyAmbient = ambientColour * vec3(0.85, 1.0, 1.15); // Fill from the sky dome is cooler than the sun
+		diffuseAmbient = baseColor * (skyAmbient * mix(0.6, 1.0, occlusion) + lightIn * wrapped * occlusion)
+		               + transmitColor * lightIn * transmission;
+		finalSpecular *= 0.3; // Matte leaves: no plastic highlights
+	}
 
 	return diffuseAmbient + finalSpecular;
 }

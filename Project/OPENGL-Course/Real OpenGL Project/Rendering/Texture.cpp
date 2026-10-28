@@ -1,5 +1,8 @@
 #include "Rendering/Texture.h"
 
+#include <algorithm>
+#include <vector>
+
 // Anisotropic filtering keeps tiled ground/wall textures (and their normal maps)
 // sharp at grazing angles instead of smearing into blur. Applies to the bound texture.
 static void ApplyAnisotropicFiltering()
@@ -8,6 +11,66 @@ static void ApplyAnisotropicFiltering()
 	GLfloat maxAniso = 1.0f;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso < 16.0f ? maxAniso : 16.0f);
+}
+
+// Alpha-tested textures (foliage, grass and fern cards) lose coverage in the smaller mips:
+// averaging thin leaves with the transparent background drops alpha under the 0.5 cutoff, so
+// trees go bald and grass thins out with distance. The mip chain of such textures is built on
+// the CPU instead, and each level's alpha is rescaled so the fraction of texels passing the
+// alpha test matches level 0 (Castano, "Computing Alpha Mipmaps", 2010).
+static float AlphaCoverage(const std::vector<float>& rgba, float scale)
+{
+	size_t passed = 0, count = rgba.size() / 4;
+	for (size_t i = 0; i < count; i++)
+		if (rgba[i * 4 + 3] * scale >= 0.5f) passed++;
+	return count ? (float)passed / (float)count : 0.0f;
+}
+
+static void UploadCoveragePreservingMips(const unsigned char* data, int width, int height)
+{
+	std::vector<float> level((size_t)width * height * 4);
+	for (size_t i = 0; i < level.size(); i++) level[i] = data[i] / 255.0f;
+	const float targetCoverage = AlphaCoverage(level, 1.0f);
+
+	std::vector<unsigned char> upload;
+	int w = width, h = height;
+	for (int mip = 1; w > 1 || h > 1; mip++)
+	{
+		int nw = std::max(1, w / 2), nh = std::max(1, h / 2);
+		std::vector<float> next((size_t)nw * nh * 4);
+		for (int y = 0; y < nh; y++)
+		for (int x = 0; x < nw; x++)
+		{
+			float rgb[3] = { 0, 0, 0 }, rgbPlain[3] = { 0, 0, 0 }, alphaSum = 0.0f;
+			for (int k = 0; k < 4; k++)
+			{
+				int sx = std::min(x * 2 + (k & 1), w - 1), sy = std::min(y * 2 + (k >> 1), h - 1);
+				const float* t = &level[((size_t)sy * w + sx) * 4];
+				for (int c = 0; c < 3; c++) { rgb[c] += t[c] * t[3]; rgbPlain[c] += t[c]; }
+				alphaSum += t[3];
+			}
+			float* o = &next[((size_t)y * nw + x) * 4];
+			// Alpha-weighted colour: the (invisible) background colour does not bleed into the leaves
+			for (int c = 0; c < 3; c++) o[c] = alphaSum > 1e-4f ? rgb[c] / alphaSum : rgbPlain[c] * 0.25f;
+			o[3] = alphaSum * 0.25f;
+		}
+
+		// Smallest alpha scale that restores the level-0 coverage (coverage grows with scale)
+		float lo = 0.0f, hi = 8.0f;
+		for (int it = 0; it < 14; it++) {
+			float mid = 0.5f * (lo + hi);
+			if (AlphaCoverage(next, mid) < targetCoverage) lo = mid; else hi = mid;
+		}
+		upload.resize(next.size());
+		for (size_t i = 0; i < next.size(); i++) {
+			float v = (i % 4 == 3) ? std::min(next[i] * hi, 1.0f) : next[i];
+			upload[i] = (unsigned char)(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
+		}
+		glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, nw, nh, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data());
+
+		level.swap(next); // Next level is filtered from the unscaled one, so scaling never compounds
+		w = nw; h = nh;
+	}
 }
 
 Texture::Texture()
@@ -151,7 +214,8 @@ bool Texture::LoadTextureFromData(unsigned char* texData, int w, int h, int bitD
 		return false;
 	}
 
-	glGenerateMipmap(GL_TEXTURE_2D);
+	if (hasCutoutAlpha && bitDepth == 4) UploadCoveragePreservingMips(texData, width, height);
+	else glGenerateMipmap(GL_TEXTURE_2D);
 
 	// Restore alignment to default (4) for other engine operations
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);

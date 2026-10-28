@@ -305,7 +305,7 @@ void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader,
 	glUniform3fv(uMeshCenter, 1, glm::value_ptr(meshBoundsCenter));
 
 	// Use global graphics settings for distances
-	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalMaxDist = (gs ? gs->renderDistance : 2000.0f) * DrawDistanceScale();
 	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
 	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
 	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
@@ -607,6 +607,10 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 	bool doubleSided = cutoutTex && cutoutTex->HasCutoutAlpha();
 	GLboolean cullWasEnabled = doubleSided ? glIsEnabled(GL_CULL_FACE) : GL_FALSE;
 	if (doubleSided) glDisable(GL_CULL_FACE);
+	GLint foliageLoc = glGetUniformLocation(shaderID, "isFoliage");
+	if (foliageLoc != -1) glUniform1i(foliageLoc, doubleSided ? 1 : 0); // Thin translucent leaves (shader.frag)
+	GLint foliageRadiusLoc = glGetUniformLocation(shaderID, "foliageRadius");
+	if (foliageRadiusLoc != -1) glUniform1f(foliageRadiusLoc, doubleSided ? meshBoundRadius : 0.0f); // Crown occlusion scale
 
 	// Draw each LOD level
 	for (int lod = 0; lod < lodCount; lod++) {
@@ -635,6 +639,7 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		lodMesh->RenderIndirect(lodLevels[lod].indirectBuffer, renderShader.HasTessellation());
 	}
 
+	if (foliageLoc != -1 && doubleSided) glUniform1i(foliageLoc, 0);
 	if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);
 }
 
@@ -1049,7 +1054,7 @@ void InstancedGroup::CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader
 	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
 
 	// LOD distances
-	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalMaxDist = (gs ? gs->renderDistance : 2000.0f) * DrawDistanceScale();
 	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
 	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
 	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
@@ -1168,7 +1173,7 @@ void InstancedGroup::CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader
 	glUniform3fv(glGetUniformLocation(cullShaderID, "meshBoundsCenter"), 1, glm::value_ptr(meshBoundsCenter));
 
 	// LOD distances
-	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
+	float finalMaxDist = (gs ? gs->renderDistance : 2000.0f) * DrawDistanceScale();
 	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
 	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
 	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;

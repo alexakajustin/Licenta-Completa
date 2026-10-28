@@ -241,14 +241,9 @@ void main()
     // drawn first while still writing depth -> grass behind grass flickered frame to frame.
     vec4 texColor = texture(theTexture, TexCoord);
 
-    // Smaller mips average alpha toward the background, so thin blades fall under the cutoff
-    // and vanish with distance: scale alpha back up by mip level (Golus, "Anti-aliased Alpha Test").
-    vec2 texelPos = TexCoord * vec2(textureSize(theTexture, 0));
-    vec2 dTx = dFdx(texelPos);
-    vec2 dTy = dFdy(texelPos);
-    float mipLevel = max(0.0, 0.5 * log2(max(dot(dTx, dTx), dot(dTy, dTy))));
-    float alpha = texColor.a * (1.0 + mipLevel * 0.25);
-    if (alpha < 0.5) discard; // Same cutoff as the shadow passes
+    // Thin blades stay visible with distance: cutout textures get coverage-preserving mips
+    // (Texture.cpp), so no per-pixel alpha boost is needed here.
+    if (texColor.a < 0.5) discard; // Same cutoff as the shadow passes
 
     vec3 norm = normalize(Normal);
     // Blades are drawn double-sided (culling off): light the back face with the flipped
@@ -257,8 +252,14 @@ void main()
     vec3 viewDir = normalize(eyePosition - FragPos);
     
     // 2. Accumulate Lighting from all sources
+    // Ambient is sky light: a blade in the shadow of a tree still receives it. Only the sun's
+    // direct light is attenuated by the shadow map (not fully: blades scatter light into each other).
     float shadowFactor = CalcDirectionalShadowFactor(norm);
-    vec3 totalLight = CalcGrassLightByDirection(directionalLight.base, directionalLight.direction, norm, viewDir) * (1.0 - shadowFactor);
+    vec3 sunDir = normalize(-directionalLight.direction);
+    vec3 sunIn = directionalLight.base.colour * directionalLight.base.diffuseIntensity * (1.0 - shadowFactor * 0.8);
+    // Sky fill is cooler than the sun (same as foliage in shader.frag)
+    vec3 totalLight = directionalLight.base.colour * directionalLight.base.ambientIntensity * vec3(1.0, 1.2, 1.35)
+                    + sunIn * max(0.0, (dot(norm, sunDir) + 0.5) / 1.5);
     
     for(int i = 0; i < pointLightCount; i++) {
         totalLight += CalcPointLight(pointLights[i], norm, viewDir);
@@ -269,8 +270,10 @@ void main()
     }
     
     // 3. Compute Surface properties (Root-to-Tip Gradient + Patch variation)
-    float heightWgt = clamp(TexCoord.y, 0.0, 1.0); 
-    vec3 rootColor = material.baseColor.rgb * 0.25; 
+    // Card textures have the blade tips at the top of the image, which is v = 0 after Assimp's
+    // FlipUVs, so the tip weight is 1 - v (using v directly made the tips the darkest part).
+    float heightWgt = clamp(1.0 - TexCoord.y, 0.0, 1.0);
+    vec3 rootColor = material.baseColor.rgb * 0.45; // Self-occlusion at the base
     vec3 tipColor = material.baseColor.rgb;
     vec3 gradientColor = mix(rootColor, tipColor, heightWgt);
     
@@ -288,7 +291,13 @@ void main()
     gradientColor *= mix(0.85, 1.15, noise);
 
     // 4. Final Output
-	vec3 finalColor = texColor.rgb * totalLight * gradientColor;
+    // Light transmitted through the blades: strongest looking toward the sun, so back-lit
+    // tips glow at sunset. Roots get none (same model as foliage in shader.frag).
+    vec3 albedo = texColor.rgb * gradientColor;
+    // Blades are much thinner than needle sprays, so they also transmit sideways light.
+    float backLit = pow(max(dot(viewDir, -sunDir), 0.0), 6.0);
+    float transmission = (0.3 * max(-dot(norm, sunDir), 0.0) + 0.6 * backLit) * heightWgt;
+	vec3 finalColor = albedo * totalLight + albedo * vec3(0.8, 1.6, 0.6) * sunIn * transmission;
 
 	// Selection highlight: additive yellow tint
 	float selectedVal = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

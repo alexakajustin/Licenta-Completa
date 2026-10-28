@@ -55,3 +55,7 @@ Project/OPENGL-Course/Real OpenGL Project/Assets/Scenes/San_Miguel/
 Project/OPENGL-Course/Real OpenGL Project/Assets/Models/russiancore
 *.glb
 .helm-diag/
+# Ultimate_Scene assets: downloaded/built locally by Tools/build_ultimate_scene_assets.py
+**/Assets/Textures/Ultimate_Scene/
+**/Assets/Models/Ultimate_Scene/
+__pycache__/

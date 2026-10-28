@@ -1,8 +1,8 @@
 {
-    "cloudsDensity": 0.367000013589859,
+    "cloudsDensity": 0.5659999847412109,
     "cloudsEnabled": true,
     "cloudsSharpness": 0.5,
-    "cloudsSpeed": 0.2529999911785126,
+    "cloudsSpeed": 0.5,
     "debugFreezeCulling": false,
     "debugLODColoring": false,
     "debugShowBounds": false,

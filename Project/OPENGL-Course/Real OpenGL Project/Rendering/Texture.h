@@ -48,3 +48,14 @@ private:
 	bool hasCutoutAlpha = false;
 };
 
+// Tells shader.frag whether the current draw is alpha-tested foliage (thin, translucent leaf
+// cards). Draws set it right before and clear it right after, so the program never keeps a
+// stale value for the next object.
+inline void SetFoliageUniform(bool foliage)
+{
+	GLint program = 0;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+	if (program == 0) return;
+	GLint loc = glGetUniformLocation((GLuint)program, "isFoliage");
+	if (loc != -1) glUniform1i(loc, foliage ? 1 : 0);
+}
