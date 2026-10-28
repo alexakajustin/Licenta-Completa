@@ -57,7 +57,7 @@ private:
 	float riverWaterOffset = -0.005f; ///< Vertical offset constraint for river water meshes.
 	float lakeWaterOffset = -0.005f; ///< Vertical offset constraint for lake water meshes.
 	int smoothPasses = 8; ///< Post-carving height smoothing passes.
-	float lakeVolumeMultiplier = 500.0f; ///< Volume scale factor for flat lake regions.
+	float lakeDepth = 4.0f; ///< Lake depth in meters away from the shore (bed is dug out; extent follows the terrain).
 
 	/**
 	 * @brief Recomputes vertex normal vectors after river beds are carved.

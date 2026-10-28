@@ -63,7 +63,8 @@ void main()
 	// TBN in world space (Purely from mesh data, no waves!)
 	vec3 tangentW = normalize((modelMatrix * vec4(tangent, 0.0)).xyz);
 	vec3 bitangentW = normalize((modelMatrix * vec4(bitangent, 0.0)).xyz);
-	vec3 normalW = normalize((modelMatrix * vec4(norm, 0.0)).xyz);
+	// Normals need the inverse-transpose; the plain model matrix skews them under non-uniform scale
+	vec3 normalW = normalize(mat3(transpose(inverse(modelMatrix))) * norm);
 
     clipSpaceCoords = projection * view * worldPos;
 

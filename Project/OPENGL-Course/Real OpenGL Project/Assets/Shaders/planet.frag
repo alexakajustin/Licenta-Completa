@@ -25,6 +25,16 @@ uniform float lacunarity;
 uniform int seed;
 uniform bool isSun;
 uniform float temperature; // 0.0 = Cold (Blue), 1.0 = Hot (Red)
+uniform float radius;      // Local sphere radius (same uniform as planet_tess.tes)
+uniform mat4 model;
+
+// Scene sun, uploaded to every shader by SceneManager::PrepareShader
+struct Light { vec3 colour; float ambientIntensity; float diffuseIntensity; };
+struct DirectionalLight { Light base; vec3 direction; };
+uniform DirectionalLight directionalLight;
+
+// Relief of the biome height field, as a fraction of the planet radius
+const float BUMP_HEIGHT = 0.03;
 
 // --- SHADERTOY HELPERS (Morgan McGuire) ---
 const float pi = 3.1415926535;
@@ -85,6 +95,22 @@ void main()
     // Generate height from noise (fbm6 for spice)
     vec3 offset = vec3(float(seed) * 0.123, float(seed) * 0.456, float(seed) * 0.789);
     float h = fbm6(lPos * noiseScale + offset) * 0.8 + 0.1;
+    float wave = fbm3(lPos * 25.0 + vec3(time * 0.5)) * 0.02;
+
+    // Shade the same height field that picks the biome colours (screen-space bump mapping,
+    // Mikkelsen 2010). Without it mountains/coasts were coloured but lit like a smooth ball.
+    // Oceans sit flat at sea level plus small waves, so the coastline stays continuous.
+    // Derivatives are taken here, before any branching.
+    float worldRadius = radius * length(model[0].xyz);
+    float bumpH = (max(h, seaLevel) + wave) * worldRadius * BUMP_HEIGHT;
+    vec3 dpdx = dFdx(WorldPos);
+    vec3 dpdy = dFdy(WorldPos);
+    vec3 r1 = cross(dpdy, n);
+    vec3 r2 = cross(n, dpdx);
+    float det = dot(dpdx, r1);
+    vec3 surfGrad = sign(det) * (dFdx(bumpH) * r1 + dFdy(bumpH) * r2);
+    vec3 bumped = abs(det) * n - surfGrad;
+    if (dot(bumped, bumped) > 1e-12) n = normalize(bumped);
 
     // Biome colors interpolated by temperature
     vec3 c_deep = mix(vec3(0.0, 0.05, 0.2), vec3(0.2, 0.0, 0.0), temperature);      
@@ -101,8 +127,6 @@ void main()
     // Biome coloring logic
     if (h < seaLevel) {
         float relDepth = clamp((seaLevel - h) * 15.0, 0.0, 1.0);
-        float wave = fbm3(lPos * 25.0 + vec3(time * 0.5)) * 0.02;
-        n = normalize(n + vec3(wave)); 
         finalColor = mix(c_shallow, c_deep, relDepth);
         smoothness = 0.8; metallic = 0.2;
     } else if (h < sandLevel) {
@@ -136,7 +160,11 @@ void main()
     finalColor = hsv2rgb(hsv);
 
     // --- LIGHTING ---
-    vec3 lDir = normalize(vec3(1.0, 1.0, 1.0));
+    // Light comes from the scene's sun (direction points light->scene); the old hardcoded
+    // (1,1,1) ignored the scene light entirely. Falls back to it if no light is bound.
+    vec3 lDir = dot(directionalLight.direction, directionalLight.direction) > 1e-6
+        ? normalize(-directionalLight.direction)
+        : normalize(vec3(1.0, 1.0, 1.0));
     vec3 hDir = normalize(lDir + v);
     float diff = max(dot(n, lDir), 0.0);
     float spec = pow(max(dot(n, hDir), 0.0), mix(10.0, 100.0, smoothness)) * smoothness;

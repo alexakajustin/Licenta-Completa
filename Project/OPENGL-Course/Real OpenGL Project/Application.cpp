@@ -616,26 +616,7 @@ void Application::Run()
 
 				if (graphicsSettings.skyboxType == SkyboxType::Atmospheric) 
 				{
-					volumetricSkyShader.UseShader();
-					glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-					glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
-
-					glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-					glm::vec3 dirToSun = -glm::normalize(sunDir);
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
-
-					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
-					glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
-					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
-					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
-					glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonDay"), 1, glm::value_ptr(graphicsSettings.horizonDay));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithSunset"), 1, glm::value_ptr(graphicsSettings.zenithSunset));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
-					glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
+					SetAtmosphericSkyUniforms(invProj, invView, 0);
 				}
 				else if (graphicsSettings.skyboxType == SkyboxType::Universe)
 				{
@@ -676,25 +657,7 @@ void Application::Run()
 
 			if (graphicsSettings.skyboxType == SkyboxType::Atmospheric)
 			{
-				volumetricSkyShader.UseShader();
-				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
-				glUniformMatrix4fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
-				glm::vec3 sunDir = *mainLight.GetDirectionPtr();
-				glm::vec3 dirToSun = -glm::normalize(sunDir);
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
-
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "time"), (float)glfwGetTime());
-				glUniform1i(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsDensity"), graphicsSettings.cloudsDensity);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSpeed"), graphicsSettings.cloudsSpeed);
-				glUniform1f(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "cloudsSharpness"), graphicsSettings.cloudsSharpness);
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonDay"), 1, glm::value_ptr(graphicsSettings.horizonDay));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithSunset"), 1, glm::value_ptr(graphicsSettings.zenithSunset));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
-				glUniform3fv(glGetUniformLocation(volumetricSkyShader.GetShaderID(), "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
+				SetAtmosphericSkyUniforms(invProj, invView, (int)skyFrameCounter);
 			}
 			else if (graphicsSettings.skyboxType == SkyboxType::Universe)
 			{
@@ -710,7 +673,71 @@ void Application::Run()
 				glUniform3fv(glGetUniformLocation(universeSkyShader.GetShaderID(), "nebulaColor2"), 1, glm::value_ptr(graphicsSettings.universeNebulaColor2));
 			}
 
-			RenderQuad();
+			if (graphicsSettings.skyboxType == SkyboxType::Atmospheric && currentViewportWidth > 1 && currentViewportHeight > 1)
+			{
+				// The ray-marched clouds cost ~4x less at half resolution. Each frame's march is jittered,
+				// so the frames are accumulated (sky_temporal.frag) and the result is upscaled bicubically.
+				int halfW = currentViewportWidth / 2, halfH = currentViewportHeight / 2;
+				if (skyHalfFBO == 0 || skyHalfW != halfW || skyHalfH != halfH) {
+					auto allocTarget = [&](GLuint& fbo, GLuint& tex) {
+						if (fbo == 0) { glGenFramebuffers(1, &fbo); glGenTextures(1, &tex); }
+						glBindTexture(GL_TEXTURE_2D, tex);
+						glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, halfW, halfH, 0, GL_RGBA, GL_HALF_FLOAT, nullptr);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+						glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+						glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+					};
+					allocTarget(skyHalfFBO, skyHalfTexture);
+					allocTarget(skyHistoryFBO[0], skyHistoryTexture[0]);
+					allocTarget(skyHistoryFBO[1], skyHistoryTexture[1]);
+					skyHalfW = halfW; skyHalfH = halfH;
+					skyHistoryValid = false;
+				}
+				glBindFramebuffer(GL_FRAMEBUFFER, skyHalfFBO);
+				glViewport(0, 0, halfW, halfH);
+				RenderQuad();
+
+				// Temporal resolve: reproject last frame's accumulation by view direction
+				int readIndex = skyHistoryIndex;
+				skyHistoryIndex = 1 - skyHistoryIndex;
+				glm::mat4 viewProjRot = proj * glm::mat4(glm::mat3(vw));
+				glBindFramebuffer(GL_FRAMEBUFFER, skyHistoryFBO[skyHistoryIndex]);
+				skyTemporalShader.UseShader();
+				GLuint tid = skyTemporalShader.GetShaderID();
+				glUniformMatrix4fv(glGetUniformLocation(tid, "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+				glUniformMatrix4fv(glGetUniformLocation(tid, "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+				glUniformMatrix4fv(glGetUniformLocation(tid, "prevViewProjRot"), 1, GL_FALSE, glm::value_ptr(skyPrevViewProjRot));
+				glUniform1f(glGetUniformLocation(tid, "historyWeight"), skyHistoryValid ? 0.9f : 0.0f);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, skyHalfTexture);
+				glUniform1i(glGetUniformLocation(tid, "currentSky"), 0);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, skyHistoryTexture[readIndex]);
+				glUniform1i(glGetUniformLocation(tid, "historySky"), 1);
+				RenderQuad();
+				skyPrevViewProjRot = viewProjRot;
+				skyHistoryValid = true;
+				skyFrameCounter++;
+
+				// Bicubic upscale into the viewport
+				glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+				glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+				skyUpsampleShader.UseShader();
+				glUniformMatrix4fv(glGetUniformLocation(skyUpsampleShader.GetShaderID(), "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+				glUniformMatrix4fv(glGetUniformLocation(skyUpsampleShader.GetShaderID(), "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, skyHistoryTexture[skyHistoryIndex]);
+				glUniform1i(glGetUniformLocation(skyUpsampleShader.GetShaderID(), "skyTexture"), 0);
+				RenderQuad();
+			}
+			else
+			{
+				RenderQuad();
+				skyHistoryValid = false;
+			}
 			glEnable(GL_DEPTH_TEST);
 		};
 
@@ -766,6 +793,15 @@ void Application::Run()
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, viewportDepth);
 			glUniform1i(glGetUniformLocation(godrayShader.GetShaderID(), "depthMap"), 0);
+
+			// Cloud transmittance (alpha of the accumulated sky) turns cloud gaps into light shafts
+			bool cloudMask = graphicsSettings.volumetricSkyEnabled && graphicsSettings.cloudsEnabled
+				&& graphicsSettings.skyboxType == SkyboxType::Atmospheric && skyHistoryValid;
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, cloudMask ? skyHistoryTexture[skyHistoryIndex] : 0);
+			glUniform1i(glGetUniformLocation(godrayShader.GetShaderID(), "cloudMask"), 1);
+			glUniform1i(glGetUniformLocation(godrayShader.GetShaderID(), "useCloudMask"), cloudMask ? 1 : 0);
+			glActiveTexture(GL_TEXTURE0);
 
 			RenderQuad();
 
@@ -1024,6 +1060,71 @@ void Application::InitPostEffects()
 	godrayShader.CreateFromFiles(am->GetShaderPath("godrays.vert").c_str(), am->GetShaderPath("godrays.frag").c_str());
 	volumetricSkyShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("volumetric_sky.frag").c_str());
 	universeSkyShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("universe_sky.frag").c_str());
+	skyTemporalShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("sky_temporal.frag").c_str());
+	skyUpsampleShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("sky_upsample.frag").c_str());
+	cloudNoiseShader.CreateComputeShader(am->GetShaderPath("cloud_noise.glsl").c_str());
+	InitCloudNoise();
+}
+
+void Application::InitCloudNoise()
+{
+	// Shape volume: 128^3 Perlin-Worley + Worley fBm, detail volume: 64^3 Worley fBm. Both tile.
+	auto generate = [&](GLuint& tex, int size, int mode) {
+		glGenTextures(1, &tex);
+		glBindTexture(GL_TEXTURE_3D, tex);
+		glTexStorage3D(GL_TEXTURE_3D, 1 + (int)std::floor(std::log2((float)size)), GL_RGBA8, size, size, size);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		if (cloudNoiseShader.GetShaderID() == 0) return;
+		cloudNoiseShader.UseShader();
+		glUniform1i(glGetUniformLocation(cloudNoiseShader.GetShaderID(), "mode"), mode);
+		glUniform1i(glGetUniformLocation(cloudNoiseShader.GetShaderID(), "size"), size);
+		glBindImageTexture(0, tex, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA8);
+		glDispatchCompute((size + 3) / 4, (size + 3) / 4, (size + 3) / 4);
+		glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		glGenerateMipmap(GL_TEXTURE_3D);
+	};
+	generate(cloudShapeNoiseTex, 128, 0);
+	generate(cloudDetailNoiseTex, 64, 1);
+	glBindTexture(GL_TEXTURE_3D, 0);
+	glUseProgram(0);
+}
+
+void Application::SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm::mat4& invView, int jitterFrame)
+{
+	volumetricSkyShader.UseShader();
+	GLuint id = volumetricSkyShader.GetShaderID();
+	glUniformMatrix4fv(glGetUniformLocation(id, "invProjection"), 1, GL_FALSE, glm::value_ptr(invProj));
+	glUniformMatrix4fv(glGetUniformLocation(id, "invView"), 1, GL_FALSE, glm::value_ptr(invView));
+
+	glm::vec3 dirToSun = -glm::normalize(*mainLight.GetDirectionPtr());
+	glUniform3fv(glGetUniformLocation(id, "sunDir"), 1, glm::value_ptr(dirToSun));
+	glUniform3fv(glGetUniformLocation(id, "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+
+	glUniform1f(glGetUniformLocation(id, "time"), (float)glfwGetTime());
+	glUniform1i(glGetUniformLocation(id, "jitterFrame"), jitterFrame);
+	glUniform1i(glGetUniformLocation(id, "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
+	glUniform1f(glGetUniformLocation(id, "cloudsDensity"), graphicsSettings.cloudsDensity);
+	glUniform1f(glGetUniformLocation(id, "cloudsSpeed"), graphicsSettings.cloudsSpeed);
+	glUniform1f(glGetUniformLocation(id, "cloudsSharpness"), graphicsSettings.cloudsSharpness);
+	glUniform3fv(glGetUniformLocation(id, "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
+	glUniform3fv(glGetUniformLocation(id, "horizonDay"), 1, glm::value_ptr(graphicsSettings.horizonDay));
+	glUniform3fv(glGetUniformLocation(id, "zenithSunset"), 1, glm::value_ptr(graphicsSettings.zenithSunset));
+	glUniform3fv(glGetUniformLocation(id, "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
+	glUniform3fv(glGetUniformLocation(id, "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
+	glUniform3fv(glGetUniformLocation(id, "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
+
+	// High units so the noise volumes never collide with material/shadow bindings
+	glActiveTexture(GL_TEXTURE0 + 40);
+	glBindTexture(GL_TEXTURE_3D, cloudShapeNoiseTex);
+	glUniform1i(glGetUniformLocation(id, "cloudShapeNoise"), 40);
+	glActiveTexture(GL_TEXTURE0 + 41);
+	glBindTexture(GL_TEXTURE_3D, cloudDetailNoiseTex);
+	glUniform1i(glGetUniformLocation(id, "cloudDetailNoise"), 41);
+	glActiveTexture(GL_TEXTURE0);
 }
 
 void Application::RenderQuad()
@@ -1236,6 +1337,12 @@ void Application::Shutdown()
 	if (refractionTexture) glDeleteTextures(1, &refractionTexture);
 
 
+	if (skyHalfFBO) glDeleteFramebuffers(1, &skyHalfFBO);
+	if (skyHalfTexture) glDeleteTextures(1, &skyHalfTexture);
+	glDeleteFramebuffers(2, skyHistoryFBO);
+	glDeleteTextures(2, skyHistoryTexture);
+	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
+	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
 	if (quadVBO) glDeleteBuffers(1, &quadVBO);
 

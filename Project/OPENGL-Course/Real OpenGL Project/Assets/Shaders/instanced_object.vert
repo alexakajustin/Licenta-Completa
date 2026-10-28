@@ -37,6 +37,7 @@ struct Material {
     float reflectivity;
 };
 uniform Material material;
+uniform int textureLayerCount; // Layers do their own tiling in shader.frag
 
 out vec4 vertex_color;
 out vec2 TexCoord;
@@ -47,6 +48,7 @@ out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
 out vec3 LocalPos;
+out mat3 ObjectBasis;
 out float vIsSelected;
 out float vFadeFactor;
 
@@ -106,14 +108,16 @@ void main()
     
     vertex_color = vec4(clamp(pos, 0.0, 1.0), 1.0);
 
-	// Safe UVs
+	// Safe UVs. With texture layers active, shader.frag applies each layer's tiling to the
+	// raw UVs, so applying material tiling here too would double-tile (matches shader.vert).
 	vec2 tiling = (material.tiling.x == 0.0 && material.tiling.y == 0.0) ? vec2(1.0) : material.tiling;
-    TexCoord = tex * tiling + material.offset;
-    
+    TexCoord = (textureLayerCount > 0) ? tex : tex * tiling + material.offset;
+
     mat3 normalMatrix = rotMat;  // Correct for uniform scale
     Normal = normalMatrix * norm;
     FragPos = worldPos;
     LocalPos = pos;
+    ObjectBasis = mat3(modelMatrix);
     
     TangentWorld = normalize(normalMatrix * tangent);
     BitangentWorld = normalize(normalMatrix * bitangent);

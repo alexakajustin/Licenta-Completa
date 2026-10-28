@@ -1681,6 +1681,12 @@
     <ClInclude Include="Procedural\HydraulicErosionNode.h">
       <Filter>Procedural</Filter>
     </ClInclude>
+    <ClInclude Include="Procedural\DropletErosion.h">
+      <Filter>Procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="Procedural\ThermalErosion.h">
+      <Filter>Procedural</Filter>
+    </ClInclude>
     <ClInclude Include="Procedural\SolarSystemNode.h">
       <Filter>Procedural</Filter>
     </ClInclude>

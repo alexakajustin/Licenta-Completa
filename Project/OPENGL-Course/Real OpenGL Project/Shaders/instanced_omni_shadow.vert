@@ -4,7 +4,8 @@
 // Instanced Omni Shadow Vertex Shader
 //
 // Reads per-instance packed transforms from an SSBO and renders
-// into the omni (cube map) shadow map.
+// into the omni (cube map) shadow map. Same wind sway as grass.vert
+// (windStrength is 0 for groups without wind).
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
@@ -31,9 +32,13 @@ struct Material {
 };
 uniform Material material;
 
-out vec4 FragPosGS;
-out vec2 TexCoordGS;
-out float vFadeFactorGS;
+uniform float time;
+uniform float windSpeed;
+uniform float windStrength;
+
+layout(location = 0) out vec4 FragPosGS;
+layout(location = 1) out vec2 TexCoordGS;
+layout(location = 2) out float vFadeFactorGS;
 
 // Build rotation matrix from euler angles (degrees)
 mat3 eulerToMat3(vec3 euler) {
@@ -59,9 +64,16 @@ void main()
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
     
+    // Wind sway, identical to grass.vert (phase from the instance's world position)
+    vec2 phase = instancePos.xz * 0.35 + pos.xz;
+    float bend = pos.y > 0.0 ? 1.0 : 0.0;
+    vec3 localPos = pos;
+    localPos.x += sin(time * windSpeed + phase.x) * windStrength * bend;
+    localPos.z += cos(time * windSpeed * 0.83 + phase.y) * windStrength * bend;
+
     // Build model transform
     mat3 rotMat = eulerToMat3(instanceRot);
-    vec3 scaledPos = pos * instanceScale;
+    vec3 scaledPos = localPos * instanceScale;
     vec3 rotatedPos = rotMat * scaledPos;
     
     vec3 worldPos = rotatedPos + instancePos;

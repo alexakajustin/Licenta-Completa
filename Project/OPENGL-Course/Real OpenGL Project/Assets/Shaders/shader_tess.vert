@@ -18,6 +18,8 @@ out vec3 TangentWorld_VS;
 out vec3 BitangentWorld_VS;
 out vec3 NormalWorld_VS;
 out vec3 LocalPos_VS;
+out mat3 ObjectBasis_VS;
+out float vIsSelected; // Written by the instanced patcher; the TES forwards selection to the frag
 
 uniform mat4 model;
 uniform vec4 clipPlane;
@@ -45,6 +47,8 @@ void main()
 	
 	// Object-space position for height-based layer blending
 	LocalPos_VS = pos;
+	ObjectBasis_VS = mat3(model);
+	vIsSelected = 0.0;
 
 	// Texture coordinates (skip material tiling when layers are active — layers do their own)
 	if (textureLayerCount > 0) {

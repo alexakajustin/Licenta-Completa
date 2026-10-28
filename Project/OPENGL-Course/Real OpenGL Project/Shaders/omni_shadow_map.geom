@@ -10,14 +10,16 @@ layout(triangle_strip, max_vertices=18) out;
 // perspective projection and view from light to all sides of the cube LRUDFB
 uniform mat4 lightMatrices[6];
 
-in vec4 FragPosGS[];
-out vec4 FragPosOut;
+layout(location = 0) in vec4 FragPosGS[];
+layout(location = 0) out vec4 FragPosOut;
 
+// Outputs are renamed (an in/out pair cannot share a name), so they match
+// omni_shadow_map.frag by explicit location instead of by name.
 // Passthrough for instanced omni shadow (texture coords and fade factor)
-in vec2 TexCoordGS[];
-out vec2 TexCoordOut;
-in float vFadeFactorGS[];
-out float vFadeFactorOut;
+layout(location = 1) in vec2 TexCoordGS[];
+layout(location = 1) out vec2 TexCoordOut;
+layout(location = 2) in float vFadeFactorGS[];
+layout(location = 2) out float vFadeFactorOut;
 
 void main()
 {

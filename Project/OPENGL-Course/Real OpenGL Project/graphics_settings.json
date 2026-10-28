@@ -1,14 +1,14 @@
 {
-    "cloudsDensity": 0.8999999761581421,
+    "cloudsDensity": 0.367000013589859,
     "cloudsEnabled": true,
     "cloudsSharpness": 0.5,
-    "cloudsSpeed": 0.5,
+    "cloudsSpeed": 0.2529999911785126,
     "debugFreezeCulling": false,
     "debugLODColoring": false,
     "debugShowBounds": false,
     "debugShowCulling": false,
     "debugShowHiZ": false,
-    "enableOcclusionCulling": true,
+    "enableOcclusionCulling": false,
     "godraysDecay": 1.0,
     "godraysDensity": 1.0,
     "godraysEnabled": true,
@@ -21,18 +21,18 @@
     "showWireframe": false,
     "skyboxType": 0,
     "universeNebulaColor1": [
-        0.5,
-        0.20000000298023224,
-        0.800000011920929
+        0.4999995231628418,
+        0.0,
+        1.0
     ],
     "universeNebulaColor2": [
-        0.10000000149011612,
-        0.5,
-        0.8999999761581421
+        0.0,
+        0.5000004768371582,
+        1.0
     ],
     "universeNebulaIntensity": 0.0,
-    "universeSpeed": 0.0010000000474974513,
-    "universeStarBrightness": 1.6390000581741333,
+    "universeSpeed": 0.007000000216066837,
+    "universeStarBrightness": 0.460999995470047,
     "universeStarDensity": 2.0,
     "volumetricSkyEnabled": true
 }

@@ -28,11 +28,13 @@ void main()
 		modelMatrix = instanceMatrix;
 	}
 
+	// Wind phase comes from the instance's world position: with only the local vertex
+	// position every blade in the field swayed in perfect lockstep.
+	vec2 phase = modelMatrix[3].xz * 0.35 + pos.xz;
+	float bend = pos.y > 0.0 ? 1.0 : 0.0; // Roots stay planted
 	vec3 displacedPos = pos;
-	if (pos.y > 0.0) {
-		displacedPos.x += sin(time * windSpeed + pos.x) * windStrength;
-		displacedPos.z += cos(time * windSpeed + pos.z) * windStrength;
-	}
+	displacedPos.x += sin(time * windSpeed + phase.x) * windStrength * bend;
+	displacedPos.z += cos(time * windSpeed * 0.83 + phase.y) * windStrength * bend;
 	
 	vIsSelected = 0.0;
 	vFadeFactor = 0.0;

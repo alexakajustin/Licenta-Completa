@@ -390,6 +390,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	std::vector<Batch> batchList;
 
 	GLuint lastShaderID = 0;
+	// Depth texture bound to shaders' sceneDepthMap. Switched to a copy for the water pass
+	// (water writes depth, so it must not sample the live depth attachment).
+	GLuint sceneDepthReadTexture = sceneDepthTexture;
 
 	auto PrepareShader = [&](Shader* s) {
 		if (!s) return;
@@ -418,7 +421,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			GLint depthMapLoc = glGetUniformLocation(s->GetShaderID(), "sceneDepthMap");
 			if (depthMapLoc != -1) {
 				glActiveTexture(GL_TEXTURE14);
-				glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+				glBindTexture(GL_TEXTURE_2D, sceneDepthReadTexture);
 				glUniform1i(depthMapLoc, 14); // Binding 14
 			}
 
@@ -671,7 +674,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						// Configure diffuse texture: if present, bind it and enable useDiffuseTexture;
 						// otherwise, explicitly disable useDiffuseTexture to prevent alpha-discarding.
 						GLint useDiffuseLoc = glGetUniformLocation(targetShader->GetShaderID(), "useDiffuseTexture");
+						// Imported models keep their diffuse in texture layer 0 (same fallback as
+						// GameObject::RenderSingle), otherwise cutout cards cast solid rectangles
 						Texture* tex = obj->GetTexture();
+						if (!tex && !obj->GetTextureLayers().empty()) tex = obj->GetTextureLayers()[0].texture;
 						if (tex && useDiffuseLoc != -1) {
 							glUniform1i(useDiffuseLoc, 1);
 							GLint texLoc = glGetUniformLocation(targetShader->GetShaderID(), "theTexture");
@@ -934,7 +940,48 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			return distA > distB;
 		});
 
-		// Render with Z-Write OFF so overlapping transparent objects don't clip each other
+		// Water (lakes + rivers) first, WITH depth writes. The water shaders composite the
+		// refraction of the opaque scene themselves (alpha is only < 1 along the shoreline), so they
+		// behave like opaque surfaces and need real depth: where a river runs into a lake, the
+		// lower surface is hidden instead of both being blended on top of each other in an
+		// arbitrary order. They read the opaque depth from a copy (no feedback loop).
+		std::vector<GameObject*> waterObjects, otherTransparent;
+		for (GameObject* obj : transparentObjects) {
+			Material* m = obj->GetMaterial();
+			std::string vPath = (m && m->GetShader()) ? m->GetShader()->GetVertexPath() : "";
+			bool isWater = vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos;
+			(isWater ? waterObjects : otherTransparent).push_back(obj);
+		}
+
+		if (!waterObjects.empty())
+		{
+			if (sceneDepthTexture > 0) {
+				int w = (int)screenWidth, h = (int)screenHeight;
+				if (waterDepthCopy == 0 || waterDepthCopyW != w || waterDepthCopyH != h) {
+					if (waterDepthCopy == 0) glGenTextures(1, &waterDepthCopy);
+					glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
+					// Same format as the viewport depth attachment (Application::InitViewportFBO)
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					waterDepthCopyW = w; waterDepthCopyH = h;
+				}
+				glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
+				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+				sceneDepthReadTexture = waterDepthCopy;
+				lastShaderID = 0; // Force PrepareShader to bind the copy
+			}
+
+			glDepthMask(GL_TRUE);
+			RenderQueue(waterObjects);
+
+			sceneDepthReadTexture = sceneDepthTexture;
+			lastShaderID = 0;
+		}
+
+		// Other transparent objects: Z-Write OFF so overlapping ones don't clip each other
 		glDepthMask(GL_FALSE);
 
 		if (sceneDepthTexture > 0) {
@@ -942,7 +989,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
 		}
 
-		RenderQueue(transparentObjects);
+		RenderQueue(otherTransparent);
 		glDepthMask(GL_TRUE); // Restore depth mask
 	}
 

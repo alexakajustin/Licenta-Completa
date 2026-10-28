@@ -641,6 +641,8 @@
     <ClInclude Include="Procedural\InteriorStructure.h" />
     <ClInclude Include="Procedural\SolarSystemNode.h" />
     <ClInclude Include="Procedural\HydraulicErosionNode.h" />
+    <ClInclude Include="Procedural\DropletErosion.h" />
+    <ClInclude Include="Procedural\ThermalErosion.h" />
     <ClInclude Include="Procedural\Noise3D.h" />
     <ClInclude Include="Nodes\Math\ObjectIntersectionFilterNode.h" />
     <ClInclude Include="Scene\Planet.h" />

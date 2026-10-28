@@ -12,6 +12,7 @@ in vec3 TangentWorld_VS[];
 in vec3 BitangentWorld_VS[];
 in vec3 NormalWorld_VS[];
 in vec3 LocalPos_VS[];
+in mat3 ObjectBasis_VS[];
 
 out vec2 TexCoord_TCS[];
 out vec3 Normal_TCS[];
@@ -20,6 +21,7 @@ out vec3 TangentWorld_TCS[];
 out vec3 BitangentWorld_TCS[];
 out vec3 NormalWorld_TCS[];
 out vec3 LocalPos_TCS[];
+out mat3 ObjectBasis_TCS[];
 
 uniform vec3 eyePosition;
 uniform float maxLayerTiling; // Auto-set: max tiling across all displacement layers
@@ -73,6 +75,7 @@ void main()
 	BitangentWorld_TCS[gl_InvocationID]= BitangentWorld_VS[gl_InvocationID];
 	NormalWorld_TCS[gl_InvocationID]   = NormalWorld_VS[gl_InvocationID];
 	LocalPos_TCS[gl_InvocationID]      = LocalPos_VS[gl_InvocationID];
+	ObjectBasis_TCS[gl_InvocationID]   = ObjectBasis_VS[gl_InvocationID];
 
 	// Only compute tess levels once per patch (invocation 0)
 	if (gl_InvocationID == 0)

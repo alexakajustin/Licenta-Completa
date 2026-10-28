@@ -4,8 +4,9 @@
 // Instanced Shadow Map Vertex Shader
 //
 // Reads per-instance packed transforms from an SSBO and renders
-// into the directional shadow map. Includes wind animation so
-// shadows match the animated grass blades in the camera pass.
+// into the directional shadow map. Applies the same wind sway as
+// grass.vert so blade shadows move with the blades. InstancedGroup sets
+// windStrength per group (0 for groups without wind, e.g. trees).
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
@@ -30,6 +31,10 @@ struct Material {
     vec2 offset;
 };
 uniform Material material;
+
+uniform float time;
+uniform float windSpeed;
+uniform float windStrength;
 
 out vec2 TexCoord;
 out float vFadeFactor;
@@ -58,9 +63,16 @@ void main()
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
     
+    // Wind sway, identical to grass.vert (phase from the instance's world position)
+    vec2 phase = instancePos.xz * 0.35 + pos.xz;
+    float bend = pos.y > 0.0 ? 1.0 : 0.0;
+    vec3 localPos = pos;
+    localPos.x += sin(time * windSpeed + phase.x) * windStrength * bend;
+    localPos.z += cos(time * windSpeed * 0.83 + phase.y) * windStrength * bend;
+
     // Build model transform
     mat3 rotMat = eulerToMat3(instanceRot);
-    vec3 scaledPos = pos * instanceScale;
+    vec3 scaledPos = localPos * instanceScale;
     vec3 rotatedPos = rotMat * scaledPos;
     
     vec3 worldPos = rotatedPos + instancePos;

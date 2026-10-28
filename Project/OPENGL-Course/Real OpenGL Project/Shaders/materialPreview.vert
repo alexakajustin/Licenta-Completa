@@ -30,6 +30,8 @@ void main()
     vec3 T = normalize(normalMatrix * tangent);
     vec3 N = normalize(Normal);
     T = normalize(T - dot(T, N) * N); // Re-orthogonalize
-    vec3 B = cross(N, T);
+    // Keep the mesh's bitangent handedness (mirrored UVs), same as shader.frag
+    float handedness = dot(cross(N, T), normalMatrix * bitangent) < 0.0 ? -1.0 : 1.0;
+    vec3 B = cross(N, T) * handedness;
     TBN = mat3(T, B, N);
 }

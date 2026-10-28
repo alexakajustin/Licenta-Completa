@@ -40,6 +40,7 @@ void main()
         gl_TessLevelOuter[0] = GetTessLevel(d1, d2);
         gl_TessLevelOuter[1] = GetTessLevel(d2, d0);
         gl_TessLevelOuter[2] = GetTessLevel(d0, d1);
-        gl_TessLevelInner[0] = gl_TessLevelOuter[0];
+        // Inner level from the densest edge, not just edge 0 (uneven interior subdivision)
+        gl_TessLevelInner[0] = max(gl_TessLevelOuter[0], max(gl_TessLevelOuter[1], gl_TessLevelOuter[2]));
     }
 }

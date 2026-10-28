@@ -190,6 +190,8 @@ private:
 
 	// Hi-Z Occlusion Culling
 	GLuint hizTexture = 0;
+	GLuint waterDepthCopy = 0;   // Opaque depth copy sampled by water while it writes depth
+	int waterDepthCopyW = 0, waterDepthCopyH = 0;
 	GLuint hizDebugTexture = 0;
 	int hizWidth = 0;
 	int hizHeight = 0;

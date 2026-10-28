@@ -16,9 +16,17 @@ uniform vec3 eyePosition;
 uniform float tessLevel;
 uniform float tessDistance;
 
+// Level for one edge, from that edge's midpoint. Both patches sharing an edge compute the
+// same value, so the displaced surface has no cracks. (A single per-patch level taken from
+// vertex 0 gave neighbours different levels on their shared edge -> holes in the sun.)
+float EdgeLevel(vec3 a, vec3 b)
+{
+    float dist = distance(eyePosition, 0.5 * (a + b));
+    return mix(tessLevel, 1.0, clamp(dist / max(tessDistance, 1e-4), 0.0, 1.0));
+}
+
 void main()
 {
-    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
     WorldPos_ES_in[gl_InvocationID] = WorldPos[gl_InvocationID];
     TexCoord_ES_in[gl_InvocationID] = TexCoord[gl_InvocationID];
     Normal_ES_in[gl_InvocationID] = Normal[gl_InvocationID];
@@ -26,12 +34,9 @@ void main()
 
     if (gl_InvocationID == 0)
     {
-        float dist = distance(eyePosition, WorldPos[0]);
-        float level = mix(tessLevel, 1.0, clamp(dist / tessDistance, 0.0, 1.0));
-
-        gl_TessLevelOuter[0] = level;
-        gl_TessLevelOuter[1] = level;
-        gl_TessLevelOuter[2] = level;
-        gl_TessLevelInner[0] = level;
+        gl_TessLevelOuter[0] = EdgeLevel(WorldPos[1], WorldPos[2]);
+        gl_TessLevelOuter[1] = EdgeLevel(WorldPos[2], WorldPos[0]);
+        gl_TessLevelOuter[2] = EdgeLevel(WorldPos[0], WorldPos[1]);
+        gl_TessLevelInner[0] = max(gl_TessLevelOuter[0], max(gl_TessLevelOuter[1], gl_TessLevelOuter[2]));
     }
 }

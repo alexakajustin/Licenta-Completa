@@ -17,6 +17,8 @@ in vec3 NormalWorld;
 
 // Object-space position for height-based layer blending
 in vec3 LocalPos;
+// Linear part of the model matrix (rotation * scale), for object-space triplanar mapping
+in mat3 ObjectBasis;
 
 out vec4 colour;	
 in float vIsSelected;
@@ -154,6 +156,13 @@ uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS]; ///< Displacement s
 uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS]; ///< Parameter configurations for each layer.
 
 
+// How strongly displacement maps steer the transition between layers
+// (0 = plain crossfade, ~1 = rocks/stones clearly poke through the layer above).
+const float HEIGHT_BLEND_STRENGTH = 0.8;
+
+// Max parallax relief depth as a fraction of the camera distance (see CalcParallaxUVs)
+const float POM_MAX_DEPTH_RATIO = 0.1;
+
 // Global override normal: set by layer blending, used by lighting functions
 vec3 gBlendedNormal = vec3(0.0, 1.0, 0.0);
 bool gUseBlendedNormal = false;
@@ -162,10 +171,16 @@ bool gUseBlendedNormal = false;
 mat3 GetTBN()
 {
 	vec3 N = normalize(NormalWorld);
-	vec3 T = normalize(TangentWorld);
-	vec3 B = normalize(BitangentWorld);
-	T = normalize(T - dot(T, N) * N);
-	B = normalize(B - dot(B, N) * N - dot(B, T) * T);
+	vec3 T = TangentWorld - dot(TangentWorld, N) * N;
+	// Meshes without UVs/tangents feed zero (or NaN after normalize) tangents: build any
+	// perpendicular frame instead of returning NaN normals (black pixels).
+	if (!(dot(T, T) > 1e-8)) {
+		T = abs(N.y) < 0.999 ? cross(vec3(0.0, 1.0, 0.0), N) : cross(vec3(1.0, 0.0, 0.0), N);
+	}
+	T = normalize(T);
+	// Keep the mesh's bitangent handedness (mirrored UVs) but always derive B orthogonally
+	float handedness = dot(cross(N, T), BitangentWorld) < 0.0 ? -1.0 : 1.0;
+	vec3 B = cross(N, T) * handedness;
 	return mat3(T, B, N);
 }
 
@@ -235,16 +250,39 @@ vec3 SampleTriplanarNormal(sampler2D tex, vec3 pos, vec3 weights, float tiling, 
 // ========== Parallax Occlusion Mapping ==========
 // Returns shifted UVs based on view direction and height map
 // OPTIMIZED: Reduced sample count + distance LOD + early exit for steep angles
-vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, float heightScale)
+// Displacement maps store height (white = high), but the march walks DOWN into the
+// surface, so each sample is converted to depth (1 - h). dx/dy are the derivatives of
+// the un-shifted UVs, so the height map is mip-filtered instead of aliasing at LOD 0.
+float SampleParallaxDepth(sampler2D heightMap, vec2 uv, vec2 dx, vec2 dy)
 {
-    // Early exit for near-perpendicular views (POM invisible at grazing angles)
-    float dotNV = abs(dot(vec3(0.0, 0.0, 1.0), viewDirTangent));
-    if (dotNV < 0.05) return texCoords;
+    return 1.0 - textureGrad(heightMap, uv, dx, dy).r;
+}
+
+// viewDirTangent.z is SIGNED: > 0 when the eye is on the outside of the (projected) surface.
+// uvWorldSize = world meters per UV unit, so the relief depth can be compared to the view distance.
+vec2 CalcParallaxUVs(vec2 texCoords, vec2 dx, vec2 dy, vec3 viewDirTangent, sampler2D heightMap, float heightScale, float uvWorldSize)
+{
+    // POM is fully on for steep views and fades CONTINUOUSLY to zero at grazing angles or
+    // when the eye is behind the projection plane. A hard early-out here (and abs() on z)
+    // made the UVs jump at a fixed view angle: on a hill rising in front of the camera the
+    // triplanar Y projection crosses that angle exactly at eye level, which showed up as a
+    // straight horizontal band across the screen.
+    float dotNV = clamp(viewDirTangent.z, 0.0, 1.0);
+    float facingFade = smoothstep(0.05, 0.3, dotNV);
 
     // Distance-based LOD: fade out POM beyond a threshold to prevent GPU overload
     float fragDist = length(eyePosition - FragPos);
     float pomFade = 1.0 - smoothstep(50.0, 150.0, fragDist);
-    if (pomFade < 0.01) return texCoords;
+
+    // POM only holds while the relief is shallow compared to the eye distance: right next to a
+    // slope, 0.5 m of relief seen from ~1 m smears into stretched streaks. Cap the world-space
+    // depth at POM_MAX_DEPTH_RATIO of the view distance (full depth again a few meters away).
+    float worldDepth = heightScale * uvWorldSize;
+    float nearFade = clamp(fragDist * POM_MAX_DEPTH_RATIO / max(worldDepth, 1e-5), 0.0, 1.0);
+
+    // Scale displacement with distance, near and view-angle fade
+    float effectiveScale = heightScale * pomFade * facingFade * nearFade;
+    if (effectiveScale < heightScale * 0.01) return texCoords; // Shift is ~0 here anyway
 
     // Reduced layer counts: 8-32 instead of 32-128 (4x faster, still looks great)
     const float minLayers = 8.0;
@@ -252,16 +290,12 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     float numLayers = mix(maxLayers, minLayers, dotNV);
     // Further reduce layers with distance
     numLayers = max(numLayers * pomFade, 4.0);
-    
+
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
-    
-    // Scale displacement with distance fade
-    float effectiveScale = heightScale * pomFade;
-    
-    // Shift magnitude along the view vector
-    // Fix: Clamp Z to prevent division by zero and use abs() for triplanar slopes
-    float viewZ = max(abs(viewDirTangent.z), 0.05);
+
+    // Shift magnitude along the view vector (z >= 0.05 wherever facingFade > 0)
+    float viewZ = max(dotNV, 0.05);
     vec2 p = viewDirTangent.xy / viewZ * effectiveScale;
     
     // Cap the maximum shift to prevent "melting" / extreme stretching at grazing angles
@@ -273,24 +307,27 @@ vec2 CalcParallaxUVs(vec2 texCoords, vec3 viewDirTangent, sampler2D heightMap, f
     vec2 deltaTexCoords = p / numLayers;
     
     vec2 currentTexCoords = texCoords;
-    float currentDepthMapValue = textureLod(heightMap, currentTexCoords, 0.0).r;
-    
+    float currentDepthMapValue = SampleParallaxDepth(heightMap, currentTexCoords, dx, dy);
+    float prevDepthMapValue = currentDepthMapValue;
+
     // Hard cap on iterations to prevent GPU hang
     int maxSteps = int(numLayers) + 1;
     int step = 0;
     while(currentLayerDepth < currentDepthMapValue && step < maxSteps)
     {
+        prevDepthMapValue = currentDepthMapValue;
         currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = textureLod(heightMap, currentTexCoords, 0.0).r;
+        currentDepthMapValue = SampleParallaxDepth(heightMap, currentTexCoords, dx, dy);
         currentLayerDepth += layerDepth;
         step++;
     }
-    
+    if (step == 0) return texCoords; // Surface top: no shift needed
+
     // Parallax Occlusion Mapping (Interpolation)
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = textureLod(heightMap, prevTexCoords, 0.0).r - currentLayerDepth + layerDepth;
-    float weight = afterDepth / (afterDepth - beforeDepth);
+    float beforeDepth = prevDepthMapValue - currentLayerDepth + layerDepth;
+    float weight = clamp(afterDepth / (afterDepth - beforeDepth), 0.0, 1.0);
     
     return mix(currentTexCoords, prevTexCoords, weight);
 }
@@ -597,34 +634,55 @@ void CalcLayeredSurface(out vec3 outColor)
 	mat3 TBN = GetTBN();
 	vec3 baseColor = vec3(1.0); // Start neutral, material color applied as tint at the end
 	vec3 blendedNorm = geometryNormal;
-    vec3 triWeights = GetTriplanarWeights(geometryNormal);
+
+	// Triplanar frame. Projections run in object space (the texture sticks to the object
+	// when it moves/rotates), rescaled so one unit has the same world size on every axis:
+	// without that a terrain scaled (1000, 1, 1000) tiled 1000x denser vertically on cliffs
+	// (smeared streaks). Normalized to the horizontal scale so flat-ground tiling is unchanged.
+	// In this space object->world is a pure rotation, so weights, POM view vectors and the
+	// whiteout normal are all computed here and the result is rotated back to world space.
+	// (Using the world normal for the weights mismatched the projections on rotated objects.)
+	vec3 objScale = vec3(length(ObjectBasis[0]), length(ObjectBasis[1]), length(ObjectBasis[2]));
+	mat3 objRot = mat3(ObjectBasis[0] / max(objScale.x, 1e-6),
+	                   ObjectBasis[1] / max(objScale.y, 1e-6),
+	                   ObjectBasis[2] / max(objScale.z, 1e-6));
+	mat3 worldToObj = transpose(objRot);
+	float triUnitSize = max(sqrt(objScale.x * objScale.z), 1e-4); // world meters per triPos unit
+	vec3 triPos = LocalPos * objScale / triUnitSize;
+	vec3 triNormal = normalize(worldToObj * geometryNormal);
+	vec3 triViewDir = normalize(worldToObj * (eyePosition - FragPos));
+    vec3 triWeights = GetTriplanarWeights(triNormal);
 	float totalWeight = 0.0;
+	float blendedHeight = 0.5; // Height of the surface built so far, for height-based blending
 
 	for (int i = 0; i < textureLayerCount && i < MAX_TEXTURE_LAYERS; i++)
 	{
 		vec4 layerSample;
         vec3 layerWorldNorm = geometryNormal;
+        float layerHeight = 0.5;
         float tiling = layerData[i].tiling;
 
 		if (layerData[i].blendMode == 0) {
 			// Normal mode: use mesh UVs (2D)
 			vec2 layerUV = TexCoord * tiling;
-            
+			vec2 duv_dx = dFdx(layerUV); vec2 duv_dy = dFdy(layerUV);
+			// World meters per UV unit, from the screen-space derivatives of position vs UV
+			vec3 dPdx = dFdx(FragPos); vec3 dPdy = dFdy(FragPos);
+			float uvWorldSize = sqrt((dot(dPdx, dPdx) + dot(dPdy, dPdy)) / max(dot(duv_dx, duv_dx) + dot(duv_dy, duv_dy), 1e-12));
+
 			if (layerData[i].hasDisplacementMap == 1) {
 				vec3 viewDirWorld = normalize(eyePosition - FragPos);
 				vec3 viewDirTangent = normalize(transpose(TBN) * viewDirWorld);
-				layerUV = CalcParallaxUVs(layerUV, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale);
+				layerUV = CalcParallaxUVs(layerUV, duv_dx, duv_dy, viewDirTangent, layerDisplacementMaps[i], layerData[i].displacementScale, uvWorldSize);
+				layerHeight = textureGrad(layerDisplacementMaps[i], layerUV, duv_dx, duv_dy).r;
 			}
             
-			layerSample = texture(textureLayers[i], layerUV);
-			
-			// Alpha discard for cutout textures in layered materials
-			if (layerSample.a < 0.5) {
-				discard;
-			}
-            
+			// Grad sampling with the un-shifted derivatives: POM-shifted UVs jump between
+			// neighbouring pixels, which makes implicit mip selection flicker at depth edges.
+			layerSample = textureGrad(textureLayers[i], layerUV, duv_dx, duv_dy);
+
 			if (layerData[i].hasNormalMap == 1) {
-				vec3 layerNorm = texture(layerNormalMaps[i], layerUV).rgb;
+				vec3 layerNorm = textureGrad(layerNormalMaps[i], layerUV, duv_dx, duv_dy).rgb;
 				layerNorm = normalize(layerNorm * 2.0 - 1.0);
 				layerWorldNorm = TangentToWorld(layerNorm, TBN);
 			}
@@ -633,10 +691,10 @@ void CalcLayeredSurface(out vec3 outColor)
 			// Each axis gets independent POM-displaced UVs to prevent seams
 			// at the boundary where the dominant projection axis switches.
 
-			// Per-axis base UVs from the original object-space position
-			vec2 uvX = LocalPos.zy * tiling;
-			vec2 uvY = LocalPos.xz * tiling;
-			vec2 uvZ = LocalPos.xy * tiling;
+			// Per-axis base UVs from the isotropic object-space position (see triPos above)
+			vec2 uvX = triPos.zy * tiling;
+			vec2 uvY = triPos.xz * tiling;
+			vec2 uvZ = triPos.xy * tiling;
 
 			// Freeze derivatives from the ORIGINAL (un-displaced) UVs.
 			// POM shifts UVs non-linearly, which corrupts hardware dFdx/dFdy
@@ -647,23 +705,32 @@ void CalcLayeredSurface(out vec3 outColor)
 
 			// Apply POM independently per projection axis
 			if (layerData[i].hasDisplacementMap == 1) {
-				vec3 viewDirWorld = normalize(eyePosition - FragPos);
+				// The view ray enters the REAL surface along its normal, so the depth term is
+				// dot(view, surfaceNormal) for every projection; xy is the view projected onto
+				// that projection's UV axes. (Measuring depth against the projection axis,
+				// e.g. abs(view.y) for the Y plane, goes to 0 at eye level on a hill facing the
+				// camera: the shift exploded/flipped there -> a horizontal band across the screen.)
+				float vDotN = dot(triViewDir, triNormal);
 
-				// X-plane (cliffs facing X): UV = pos.zy, depth = viewDir.x
+				// X-plane (cliffs facing X): UV = pos.zy
 				if (triWeights.x > 0.01) {
-					vec3 vdt = vec3(viewDirWorld.z, viewDirWorld.y, abs(viewDirWorld.x));
-					uvX = CalcParallaxUVs(uvX, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+					vec3 vdt = vec3(triViewDir.z, triViewDir.y, vDotN);
+					uvX = CalcParallaxUVs(uvX, duvX_dx, duvX_dy, vdt, layerDisplacementMaps[i], layerData[i].displacementScale, triUnitSize / tiling);
 				}
-				// Y-plane (flat ground): UV = pos.xz, depth = viewDir.y
+				// Y-plane (flat ground): UV = pos.xz
 				if (triWeights.y > 0.01) {
-					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.z, abs(viewDirWorld.y));
-					uvY = CalcParallaxUVs(uvY, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+					vec3 vdt = vec3(triViewDir.x, triViewDir.z, vDotN);
+					uvY = CalcParallaxUVs(uvY, duvY_dx, duvY_dy, vdt, layerDisplacementMaps[i], layerData[i].displacementScale, triUnitSize / tiling);
 				}
-				// Z-plane (cliffs facing Z): UV = pos.xy, depth = viewDir.z
+				// Z-plane (cliffs facing Z): UV = pos.xy
 				if (triWeights.z > 0.01) {
-					vec3 vdt = vec3(viewDirWorld.x, viewDirWorld.y, abs(viewDirWorld.z));
-					uvZ = CalcParallaxUVs(uvZ, vdt, layerDisplacementMaps[i], layerData[i].displacementScale);
+					vec3 vdt = vec3(triViewDir.x, triViewDir.y, vDotN);
+					uvZ = CalcParallaxUVs(uvZ, duvZ_dx, duvZ_dy, vdt, layerDisplacementMaps[i], layerData[i].displacementScale, triUnitSize / tiling);
 				}
+
+				layerHeight = textureGrad(layerDisplacementMaps[i], uvX, duvX_dx, duvX_dy).r * triWeights.x
+				            + textureGrad(layerDisplacementMaps[i], uvY, duvY_dx, duvY_dy).r * triWeights.y
+				            + textureGrad(layerDisplacementMaps[i], uvZ, duvZ_dx, duvZ_dy).r * triWeights.z;
 			}
 
 			// Sample diffuse per-axis using textureGrad with frozen derivatives
@@ -679,11 +746,15 @@ void CalcLayeredSurface(out vec3 outColor)
 				vec3 yNorm = textureGrad(layerNormalMaps[i], uvY, duvY_dx, duvY_dy).rgb * 2.0 - 1.0;
 				vec3 zNorm = textureGrad(layerNormalMaps[i], uvZ, duvZ_dx, duvZ_dy).rgb * 2.0 - 1.0;
 
-				vec3 xWorld = vec3(xNorm.z * sign(geometryNormal.x), xNorm.y, xNorm.x);
-				vec3 yWorld = vec3(yNorm.x, yNorm.z * sign(geometryNormal.y), yNorm.y);
-				vec3 zWorld = vec3(zNorm.x, zNorm.y, zNorm.z * sign(geometryNormal.z));
+				// Whiteout blend: perturb the REAL surface normal instead of the projection
+				// axis, otherwise slopes get axis-snapped normals (faceted, blotchy lighting).
+				// Done in the triplanar (object) frame, then rotated back to world space.
+				vec3 N = triNormal;
+				xNorm = vec3(xNorm.xy + N.zy, abs(xNorm.z) * N.x);
+				yNorm = vec3(yNorm.xy + N.xz, abs(yNorm.z) * N.y);
+				zNorm = vec3(zNorm.xy + N.xy, abs(zNorm.z) * N.z);
 
-				layerWorldNorm = normalize(xWorld * triWeights.x + yWorld * triWeights.y + zWorld * triWeights.z);
+				layerWorldNorm = normalize(objRot * (xNorm.zyx * triWeights.x + yNorm.xzy * triWeights.y + zNorm.xyz * triWeights.z));
 			}
 		}
 
@@ -715,6 +786,21 @@ void CalcLayeredSurface(out vec3 outColor)
 
 		weight *= layerData[i].opacity; // Removed layerSample.a dependency for triplanar simplicity
 		weight = clamp(weight, 0.0, 1.0);
+
+		// Alpha discard for cutout textures in layered materials — only for layers that are
+		// actually visible here, so a masked-out cutout layer doesn't punch holes everywhere.
+		if (weight > 0.0 && layerSample.a < 0.5) {
+			discard;
+		}
+
+		// Height-based blending: inside the transition zone, the displacement map decides
+		// which layer wins (stones poke through grass) instead of a flat crossfade.
+		// The bias term vanishes at weight 0 and 1, so fully on/off regions are untouched.
+		if (layerData[i].hasDisplacementMap == 1 && weight > 0.0 && weight < 1.0) {
+			float s = weight + (layerHeight - blendedHeight) * HEIGHT_BLEND_STRENGTH * weight * (1.0 - weight) * 4.0;
+			weight = smoothstep(0.0, 1.0, clamp(s, 0.0, 1.0));
+		}
+		blendedHeight = mix(blendedHeight, layerHeight, weight);
 
 		// Blend diffuse color
 		baseColor = mix(baseColor, layerSample.rgb, weight);
@@ -765,6 +851,14 @@ void main()
 		
 		baseColor = material.baseColor.rgb * texColor.rgb;
 	}
+
+	// Resolve the shading normal once: every light (and the reflection) would otherwise
+	// re-sample the normal map and rebuild the TBN per call.
+	gBlendedNormal = GetEffectiveNormal();
+	// Double-sided cutout cards (grass, leaves): light the back face with the flipped normal.
+	// Closed meshes never rasterize back faces while culling is on, so they are unaffected.
+	if (!gl_FrontFacing) gBlendedNormal = -gBlendedNormal;
+	gUseBlendedNormal = true;
 
 	// 2. Compute lighting (uses gBlendedNormal if layers set it)
 	vec3 finalLight = CalcDirectionalLight(baseColor);

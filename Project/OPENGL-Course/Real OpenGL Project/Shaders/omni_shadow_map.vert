@@ -7,9 +7,9 @@ uniform mat4 model;
 uniform mat4 lightMatrix;
 uniform int useInstancing;
 
-out vec4 FragPosGS;
-out vec2 TexCoordGS;
-out float vFadeFactorGS;
+layout(location = 0) out vec4 FragPosGS;
+layout(location = 1) out vec2 TexCoordGS;
+layout(location = 2) out float vFadeFactorGS;
 
 void main()
 {

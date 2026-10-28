@@ -132,6 +132,19 @@ private:
 	void SetupModernTheme();
 	void SetupModernNodeTheme();
 	GLuint viewportFBO = 0;
+	// Half-resolution target for the ray-marched atmospheric sky (upscaled into the viewport)
+	GLuint skyHalfFBO = 0, skyHalfTexture = 0;
+	int skyHalfW = 0, skyHalfH = 0;
+	// Temporal accumulation of the half-res sky (ping-pong); alpha = cloud transmittance
+	GLuint skyHistoryFBO[2] = { 0, 0 }, skyHistoryTexture[2] = { 0, 0 };
+	int skyHistoryIndex = 0;          // History written this frame
+	bool skyHistoryValid = false;
+	glm::mat4 skyPrevViewProjRot = glm::mat4(1.0f);
+	unsigned int skyFrameCounter = 0;
+	// Tileable 3D noise volumes for the clouds (generated once by cloud_noise.glsl)
+	GLuint cloudShapeNoiseTex = 0, cloudDetailNoiseTex = 0;
+	void InitCloudNoise();
+	void SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm::mat4& invView, int jitterFrame);
 	GLuint viewportTexture = 0;
 	GLuint viewportDepth = 0;
 	int currentViewportWidth = 0;
@@ -171,6 +184,9 @@ private:
 	Shader godrayShader;
 	Shader volumetricSkyShader;
 	Shader universeSkyShader;
+	Shader skyTemporalShader;
+	Shader skyUpsampleShader;
+	Shader cloudNoiseShader;
 
 	GLuint quadVAO = 0;
 	GLuint quadVBO = 0;

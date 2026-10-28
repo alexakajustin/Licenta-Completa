@@ -6,7 +6,8 @@
 // Simulates fluid dynamics (hydraulic erosion) over the Y channels of the incoming MeshData stream.
 /**
  * @class HydraulicErosionNode
- * @brief Simulates fluid dynamics (hydraulic erosion) over the height coordinates of an incoming MeshData grid.
+ * @brief Droplet-based hydraulic erosion (Beyer 2015, see Procedural/DropletErosion.h) over the
+ *        height coordinates of an incoming MeshData grid.
  */
 class HydraulicErosionNode : public GraphNode
 {
@@ -42,24 +43,30 @@ public:
 	 */
 	void Deserialize(const json& j) override;
 
-	void SetSteps(int s) { simulationSteps = s; }
-	void SetRainRate(float r) { rainRate = r; }
-	void SetKs(float k) { dissolvingConstant = k; }
-	void SetKd(float k) { depositionConstant = k; }
-	void SetMaxDelta(float m) { maxDelta = m; }
+	void SetDropletsPerCell(float d) { dropletsPerCell = d; }
+	void SetErodeSpeed(float e) { erodeSpeed = e; }
+	void SetDepositSpeed(float d) { depositSpeed = d; }
 	void SetSedimentCapacity(float c) { sedimentCapacity = c; }
-	void SetEvaporation(float e) { evaporationConstant = e; }
+	void SetEvaporation(float e) { evaporation = e; }
+	void SetBrushRadius(int r) { brushRadius = r; }
+	void SetInertia(float i) { inertia = i; }
 	void SetSmoothPasses(int p) { smoothPasses = p; }
+	void SetTalusAngle(float a) { talusAngle = a; }
+	void SetThermalIterations(int i) { thermalIterations = i; }
+	void SetEdgeFade(float cells) { edgeFadeCells = cells; }
 
 private:
-	int simulationSteps = 60; ///< Total simulation timesteps or iteration iterations.
-	float rainRate = 0.03f; ///< Liquid rain deposition volume per iteration.
-	float sedimentCapacity = 30.0f; ///< Maximum carrying capacity of soil per unit volume of water.
-	float dissolvingConstant = 0.03f; ///< Dissolving constant (Ks) representing how easily soil dissolves.
-	float depositionConstant = 0.02f; ///< Deposition constant (Kd) representing how easily sediment deposits.
-	float evaporationConstant = 0.0002f; ///< Water evaporation rate per step.
-	float maxDelta = 1.0f; ///< Limit constraint on maximum soil height modifications per step.
-	int smoothPasses = 0; ///< Post-erosion smoothing passes.
+	float dropletsPerCell = 8.0f;  ///< Droplets simulated per heightmap cell (scales with resolution).
+	float erodeSpeed = 0.4f;       ///< Fraction of the free sediment capacity eroded per step.
+	float depositSpeed = 0.3f;     ///< Fraction of the excess sediment deposited per step.
+	float sedimentCapacity = 6.0f; ///< Sediment carried per unit of slope * speed * water.
+	float evaporation = 0.01f;     ///< Water lost per step.
+	int brushRadius = 3;           ///< Erosion brush radius in cells (wider = smoother gullies).
+	float inertia = 0.05f;         ///< How much droplets keep their direction instead of following the slope.
+	int smoothPasses = 0;          ///< Post-erosion smoothing passes.
+	float talusAngle = 35.0f;      ///< Thermal erosion: steepest stable slope (deg); steeper material slides down.
+	int thermalIterations = 20;    ///< Thermal relaxation per erosion round (x3 before, x1 after). 0 = off.
+	float edgeFadeCells = 40.0f;   ///< Erosion fades out over this many cells at the map border.
 
 	/**
 	 * @brief Helper to rebuild normal vectors across the processed grid resolution.

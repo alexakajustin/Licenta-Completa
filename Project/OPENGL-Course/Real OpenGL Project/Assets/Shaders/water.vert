@@ -140,6 +140,9 @@ void main()
     worldPos.z += waveOffset.z * edgeFade * 0.5;
     
 	vec3 normalW = normalize(cross(binormalW, tangentW));
+	// The geometry is flattened by edgeFade near the edges, so flatten the normal with it
+	// (otherwise flat edge water is lit as if it still had full-height waves).
+	normalW = normalize(mix(vec3(0.0, 1.0, 0.0), normalW, edgeFade));
 
 	gl_ClipDistance[0] = dot(worldPos, clipPlane);
 	gl_Position = projection * view * worldPos;

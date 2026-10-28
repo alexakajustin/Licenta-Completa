@@ -1,15 +1,15 @@
 #version 460 core
 
-// GPU-Driven Object Occlusion Culling
-// Uses per-corner depth testing against the Hi-Z pyramid.
+// GPU-Driven Object Occlusion Culling against the Hi-Z (max-depth) pyramid.
 //
-// Instead of the classic screen-space AABB + high-mip approach (which fails
-// when the AABB spans regions with mixed depths like wall + sky), we test
-// each AABB corner independently at its own screen position at a low mip.
-// An object is occluded only if ALL of its corners are behind the depth buffer.
+// Conservative screen-rect test: the AABB's projected rectangle is covered
+// completely by reading every Hi-Z texel it touches, at a mip where that is at
+// most 5x5 texels. The object is occluded only if its NEAREST point is behind
+// the FARTHEST occluder depth anywhere in that rectangle.
 //
-// This avoids the mip-level catastrophe where a tall/wide AABB picks up
-// sky depth (1.0) at high mip levels, making occlusion impossible.
+// (The previous per-corner test sampled only 8 corners + the center, so an
+// object visible through a gap between those sample points - a window, a gap
+// between two walls - was wrongly culled and popped in/out.)
 
 layout(local_size_x = 64) in;
 
@@ -109,71 +109,43 @@ void main() {
     }
 
     // ---------------------------------------------------------------
-    // Step 2: Per-corner Hi-Z occlusion test
-    //
-    // For each corner, project to screen UV and sample the Hi-Z at
-    // a LOW mip level at that specific position. Compare the corner's
-    // own depth against the Hi-Z depth. If ALL corners (+ center) are
-    // behind the depth buffer, the object is fully occluded.
-    //
-    // Using mip 3 (~8x8 pixel footprint per sample) provides enough
-    // spatial margin to avoid sub-pixel flickering while remaining
-    // precise enough to not pick up sky/background depth from far away.
+    // Step 2: Conservative Hi-Z occlusion test over the whole screen rect
     // ---------------------------------------------------------------
-    const float sampleMip = 3.0;
-    bool allOccluded = true;
 
-    // Test 8 corners
-    for (int n = 0; n < 8; n++) {
-        // Corner behind camera → can't be occluded
-        if (hPositions[n].w <= 0.01) {
-            allOccluded = false;
-            break;
-        }
+    // Box crosses the camera plane: its screen rect is unbounded -> visible
+    if (anyBehindCamera) {
+        visibility[id] = 1u;
+        return;
+    }
 
-        vec3 ndc = hPositions[n].xyz / hPositions[n].w;
-        vec2 uv = ndc.xy * 0.5 + 0.5;
-        float cornerDepth01 = ndc.z * 0.5 + 0.5;
+    // Screen rect in mip-0 pixels, clipped to the viewport (off-screen parts can't be seen)
+    vec2 uvMin = clamp(clipmin.xy * 0.5 + 0.5, 0.0, 1.0);
+    vec2 uvMax = clamp(clipmax.xy * 0.5 + 0.5, 0.0, 1.0);
+    vec2 pixMin = uvMin * viewSize;
+    vec2 pixMax = uvMax * viewSize;
 
-        // Corner off-screen → conservatively visible
-        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-            allOccluded = false;
-            break;
-        }
+    // Nearest point of the box: depth is monotonic in view z, so it is the min over the corners
+    float nearestDepth01 = clamp(clipmin.z * 0.5 + 0.5, 0.0, 1.0);
 
-        // Sample Hi-Z at this corner's screen position
-        float hiZDepth = textureLod(depthTex, uv, sampleMip).r;
+    // Mip where the rect spans <= 4 texels per axis (<= 5 after alignment)
+    int levels = textureQueryLevels(depthTex);
+    float extent = max(pixMax.x - pixMin.x, pixMax.y - pixMin.y);
+    int mip = clamp(int(ceil(log2(max(extent / 4.0, 1.0)))), 0, levels - 1);
 
-        // Linearized comparison: 1.0m bias prevents z-fighting and accounts for dynamic surfaces
-        float linCorner = linearizeDepth(cornerDepth01);
-        float linHiZ    = linearizeDepth(hiZDepth);
+    // Mip-m texel t covers mip-0 pixels [t*2^m, (t+1)*2^m) — the NPOT downsample
+    // folds odd edges into the last texel, so clamping to the last texel stays conservative.
+    ivec2 mipSize = textureSize(depthTex, mip);
+    ivec2 t0 = min(ivec2(floor(pixMin)) >> mip, mipSize - 1);
+    ivec2 t1 = min(ivec2(floor(pixMax)) >> mip, mipSize - 1);
 
-        // If this corner is in front of (or near) the occluder -> visible
-        if (linCorner <= linHiZ + 1.0) {
-            allOccluded = false;
-            break;
+    float maxOccluderDepth = 0.0;
+    for (int y = t0.y; y <= t1.y && y <= t0.y + 5; y++) {
+        for (int x = t0.x; x <= t1.x && x <= t0.x + 5; x++) {
+            maxOccluderDepth = max(maxOccluderDepth, texelFetch(depthTex, ivec2(x, y), mip).r);
         }
     }
 
-    // Also test the AABB center to catch objects whose corners are all
-    // behind a wall but whose center is visible through a gap
-    if (allOccluded) {
-        vec4 center = vec4((bboxMin.xyz + bboxMax.xyz) * 0.5, 1.0);
-        vec4 hCenter = viewProjTM * center;
-        if (hCenter.w > 0.01) {
-            vec3 ndcC = hCenter.xyz / hCenter.w;
-            vec2 uvC = ndcC.xy * 0.5 + 0.5;
-            float depthC = ndcC.z * 0.5 + 0.5;
-            if (uvC.x >= 0.0 && uvC.x <= 1.0 && uvC.y >= 0.0 && uvC.y <= 1.0) {
-                float hiZC = textureLod(depthTex, uvC, sampleMip).r;
-                float linC = linearizeDepth(depthC);
-                float linH = linearizeDepth(hiZC);
-                if (linC <= linH + 1.0) {
-                    allOccluded = false;
-                }
-            }
-        }
-    }
-
-    visibility[id] = allOccluded ? 0u : 1u;
+    // Linearized comparison with a small bias against z-fighting / dynamic surfaces
+    bool occluded = linearizeDepth(nearestDepth01) > linearizeDepth(maxOccluderDepth) + 0.5;
+    visibility[id] = occluded ? 0u : 1u;
 }

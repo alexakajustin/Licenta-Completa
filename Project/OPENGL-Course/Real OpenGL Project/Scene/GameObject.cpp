@@ -444,10 +444,10 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			}
 			glUniform1i(uLayerCount, count);
 
-			// Texture unit scheme: diffuse, normal, displacement per layer
-			static const int diffuseUnits[MAX_TEXTURE_LAYERS]      = { 10, 12, 24, 29, 31 };
-			static const int normalUnits[MAX_TEXTURE_LAYERS]       = { 11, 13, 28, 30, 32 };
-			static const int displacementUnits[MAX_TEXTURE_LAYERS] = { 16, 17, 18, 19, 33 };
+			// Texture unit scheme: diffuse, normal, displacement per layer (shared with InstancedGroup)
+			const int* diffuseUnits = LAYER_DIFFUSE_UNITS;
+			const int* normalUnits = LAYER_NORMAL_UNITS;
+			const int* displacementUnits = LAYER_DISPLACEMENT_UNITS;
 
 			for (int i = 0; i < count; i++)
 			{
@@ -583,12 +583,20 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 			glUniform1i(uniformUseNormalMap, 0);
 		}
 
+		// Alpha-tested cards (grass, leaves, fences) are single quads: draw both sides.
+		// Restore the previous state rather than forcing culling on (shadow passes disable it).
+		bool doubleSided = activeTexture && activeTexture->HasCutoutAlpha();
+		GLboolean cullWasEnabled = doubleSided ? glIsEnabled(GL_CULL_FACE) : GL_FALSE;
+		if (doubleSided) glDisable(GL_CULL_FACE);
+
 		// Render
 		if (useTessellation) {
 			meshToRender->RenderMeshTessellated(shaderSupportsTessellation);
 		} else {
 			meshToRender->RenderMesh();
 		}
+
+		if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);
 	}
 	else if (model) {
 		// Fallback for models without detected LODs

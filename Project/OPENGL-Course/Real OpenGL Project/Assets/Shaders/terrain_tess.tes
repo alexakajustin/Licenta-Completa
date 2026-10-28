@@ -1,10 +1,10 @@
 #version 400 core
 
 // Tessellation Evaluation Shader
-// Performance-optimized: skips expensive normal recomputation at distance
 //
-// KEY DESIGN DECISION: Displacement is INDEPENDENT of layer blend mode.
-// Sampler arrays are unrolled with constant indices for AMD GPU compatibility.
+// Physical vertex displacement is disabled: surface detail comes from Parallax Occlusion
+// Mapping in shader.frag, which gives per-pixel detail without high poly density.
+// (directional_shadow_map_tess.tes must stay undisplaced too, or the terrain self-shadows.)
 
 layout(triangles, equal_spacing, ccw) in;
 
@@ -15,6 +15,7 @@ in vec3 TangentWorld_TCS[];
 in vec3 BitangentWorld_TCS[];
 in vec3 NormalWorld_TCS[];
 in vec3 LocalPos_TCS[];
+in mat3 ObjectBasis_TCS[];
 
 out vec4 vertex_color;
 out vec2 TexCoord;
@@ -24,34 +25,13 @@ out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
 out vec3 LocalPos;
+out mat3 ObjectBasis;
 out float vIsSelected;
 out float vFadeFactor;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 model;
-uniform vec3 eyePosition;
-
-// ========== Same texture layer uniforms as shader.frag ==========
-const int MAX_TEXTURE_LAYERS = 5;
-
-struct TextureLayerData {
-	int blendMode;
-	float opacity;
-	float tiling;
-	float heightMin;
-	float heightMax;
-	float slopeMin;
-	float slopeMax;
-	int invert;
-	int hasNormalMap;
-	int hasDisplacementMap;
-	float displacementScale;
-};
-
-uniform int textureLayerCount;
-uniform sampler2D layerDisplacementMaps[MAX_TEXTURE_LAYERS];
-uniform TextureLayerData layerData[MAX_TEXTURE_LAYERS];
+uniform vec4 clipPlane;
 
 // Interpolation
 vec2 interp2(vec2 a, vec2 b, vec2 c) {
@@ -59,46 +39,6 @@ vec2 interp2(vec2 a, vec2 b, vec2 c) {
 }
 vec3 interp3(vec3 a, vec3 b, vec3 c) {
 	return gl_TessCoord.x * a + gl_TessCoord.y * b + gl_TessCoord.z * c;
-}
-
-// Sample displacement from ALL layers — NO blend mode filtering.
-// Unrolled for AMD sampler compatibility.
-float getDisplacement(vec2 uv) {
-	float totalDisp = 0.0;
-
-	// Layer 0
-	if (textureLayerCount > 0 && layerData[0].hasDisplacementMap == 1) {
-		float h = texture(layerDisplacementMaps[0], uv * layerData[0].tiling).r;
-		totalDisp += h * layerData[0].displacementScale;
-	}
-
-	// Layer 1
-	if (textureLayerCount > 1 && layerData[1].hasDisplacementMap == 1) {
-		float h = texture(layerDisplacementMaps[1], uv * layerData[1].tiling).r;
-		totalDisp += h * layerData[1].displacementScale;
-	}
-
-	// Layer 2
-	if (textureLayerCount > 2 && layerData[2].hasDisplacementMap == 1) {
-		float h = texture(layerDisplacementMaps[2], uv * layerData[2].tiling).r;
-		totalDisp += h * layerData[2].displacementScale;
-	}
-
-	// Layer 3
-	if (textureLayerCount > 3 && layerData[3].hasDisplacementMap == 1) {
-		float h = texture(layerDisplacementMaps[3], uv * layerData[3].tiling).r;
-		totalDisp += h * layerData[3].displacementScale;
-	}
-
-	// Layer 4
-	if (textureLayerCount > 4 && layerData[4].hasDisplacementMap == 1) {
-		float h = texture(layerDisplacementMaps[4], uv * layerData[4].tiling).r;
-		totalDisp += h * layerData[4].displacementScale;
-	}
-
-
-
-	return totalDisp;
 }
 
 void main()
@@ -111,18 +51,21 @@ void main()
 	BitangentWorld = interp3(BitangentWorld_TCS[0],  BitangentWorld_TCS[1], BitangentWorld_TCS[2]);
 	NormalWorld    = interp3(NormalWorld_TCS[0],      NormalWorld_TCS[1],    NormalWorld_TCS[2]);
 	LocalPos       = interp3(LocalPos_TCS[0],        LocalPos_TCS[1],       LocalPos_TCS[2]);
+	ObjectBasis    = ObjectBasis_TCS[0];
 
+#ifdef IS_TES
+	// GPU-instanced variant (Renderer::GetInstancedShader): selection comes from the instance
+	vIsSelected = _instanceIsSelected;
+#else
 	vIsSelected = 0.0;
 	vFadeFactor = 0.0;
+#endif
 	vertex_color = vec4(clamp(LocalPos, 0.0, 1.0), 1.0);
 
-	// ========== DISPLACEMENT ==========
-	// Physical vertex displacement has been disabled to allow Parallax Occlusion Mapping
-	// in the fragment shader, which provides per-pixel detail without requiring high poly density.
-
-	// ========== NORMAL RECOMPUTATION ==========
-	// Since physical displacement is disabled, we no longer need to recalculate normals.
-	// We simply rely on the interpolated Normal_TCS which is perfectly smooth.
+	// With tessellation active the TES is the last pre-raster stage, so it must write the
+	// clip distance itself (the VS value is discarded). Without this the water reflection
+	// pass doesn't clip terrain below the water plane.
+	gl_ClipDistance[0] = dot(vec4(FragPos, 1.0), clipPlane);
 
 	gl_Position = projection * view * vec4(FragPos, 1.0);
 }

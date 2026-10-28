@@ -263,18 +263,21 @@ struct MeshData
 		}
 
 		// Radius search (find max height within radius)
-		int searchRange = (int)std::ceil(radius / heightCacheCellSize);
+		int searchRange = (int)std::ceil(radius / heightCacheCellSize) + 1;
 		float radiusSq = radius * radius;
 		float maxH = -1e10f;
-		int ixCenter = (int)gx, izCenter = (int)gz;
+		int ixCenter = (int)std::floor(gx), izCenter = (int)std::floor(gz);
 
 		for (int dz = -searchRange; dz <= searchRange; dz++) {
 			for (int dx = -searchRange; dx <= searchRange; dx++) {
 				int ix = ixCenter + dx, iz = izCenter + dz;
 				if (ix < 0 || ix >= heightCacheRes || iz < 0 || iz >= heightCacheResZ) continue;
 
-				float dxDist = (ix - gx) * heightCacheCellSize;
-				float dzDist = (iz - gz) * heightCacheCellSize;
+				// Distance from the point to the NEAREST point of the cell (0 for the cell that
+				// contains it). Measuring to the cell's corner skipped the containing cell whenever
+				// the radius was smaller than the cell, so objects inside the mesh slipped through.
+				float dxDist = std::max(0.0f, std::abs(gx - (ix + 0.5f)) - 0.5f) * heightCacheCellSize;
+				float dzDist = std::max(0.0f, std::abs(gz - (iz + 0.5f)) - 0.5f) * heightCacheCellSize;
 				if (dxDist * dxDist + dzDist * dzDist <= radiusSq) {
 					float h = (*heightCache)[iz * heightCacheRes + ix];
 					if (h > maxH) maxH = h;

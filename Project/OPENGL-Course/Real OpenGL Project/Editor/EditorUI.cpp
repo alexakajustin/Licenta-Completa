@@ -780,13 +780,13 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				noise->SetOctaves(8);
 				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
 				
-				// Set erosion to deep carving defaults
-				erosion->SetSteps(60); 
-				erosion->SetRainRate(1.0f);
-				erosion->SetKs(0.9f);
-				erosion->SetKd(0.02f);
-				erosion->SetMaxDelta(1.0f); 
-				erosion->SetSmoothPasses(0); 
+				// Droplet erosion defaults (tuned on this exact template's terrain)
+				erosion->SetDropletsPerCell(8.0f);
+				erosion->SetErodeSpeed(0.4f);
+				erosion->SetDepositSpeed(0.3f);
+				erosion->SetSedimentCapacity(6.0f);
+				erosion->SetBrushRadius(3);
+				erosion->SetSmoothPasses(0);
 
 				// Original River parameters
 				river->SetBaseDepth(1.0f);

@@ -1,5 +1,15 @@
 #include "Rendering/Texture.h"
 
+// Anisotropic filtering keeps tiled ground/wall textures (and their normal maps)
+// sharp at grazing angles instead of smearing into blur. Applies to the bound texture.
+static void ApplyAnisotropicFiltering()
+{
+	if (!GLEW_EXT_texture_filter_anisotropic) return;
+	GLfloat maxAniso = 1.0f;
+	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso < 16.0f ? maxAniso : 16.0f);
+}
+
 Texture::Texture()
 	: textureID(0), width(0), height(0), bitDepth(0), fileLocation(nullptr)
 {
@@ -15,7 +25,8 @@ Texture::Texture(const char* fileLoc)
 
 // Move constructor
 Texture::Texture(Texture&& other) noexcept
-	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation), rawData(other.rawData)
+	: textureID(other.textureID), width(other.width), height(other.height), bitDepth(other.bitDepth), fileLocation(other.fileLocation), rawData(other.rawData),
+	  hasCutoutAlpha(other.hasCutoutAlpha)
 {
 	other.textureID = 0; // Prevent deletion in other's destructor
 	other.fileLocation = nullptr;
@@ -34,7 +45,8 @@ Texture& Texture::operator=(Texture&& other) noexcept
 		bitDepth = other.bitDepth;
 		fileLocation = other.fileLocation;
 		rawData = other.rawData;
-		
+		hasCutoutAlpha = other.hasCutoutAlpha;
+
 		other.textureID = 0;
 		other.fileLocation = nullptr;
 		other.rawData = nullptr;
@@ -50,8 +62,21 @@ bool Texture::LoadTextureCPU()
 		printf("FAILED TO FIND %s!\n", fileLocation);
 		return false;
 	}
+	// Only sources with an alpha channel can cut out (stbi pads RGB to alpha 255)
+	if (bitDepth == 2 || bitDepth == 4) DetectCutoutAlpha();
 	bitDepth = 4;
 	return true;
+}
+
+void Texture::DetectCutoutAlpha()
+{
+	// Same threshold as the alpha test in the shaders (discard below 0.5)
+	hasCutoutAlpha = false;
+	if (!rawData) return;
+	size_t pixelCount = (size_t)width * (size_t)height;
+	for (size_t p = 0; p < pixelCount; p++) {
+		if (rawData[p * 4 + 3] < 128) { hasCutoutAlpha = true; return; }
+	}
 }
 
 bool Texture::LoadFromMemory(const unsigned char* compressedData, int dataSize)
@@ -62,6 +87,7 @@ bool Texture::LoadFromMemory(const unsigned char* compressedData, int dataSize)
 		printf("[Texture] Failed to decode embedded texture (%d bytes)\n", dataSize);
 		return false;
 	}
+	if (bitDepth == 2 || bitDepth == 4) DetectCutoutAlpha();
 	bitDepth = 4;
 	printf("[Texture] Loaded embedded texture: %dx%d from %d bytes\n", width, height, dataSize);
 	return true;
@@ -113,7 +139,8 @@ bool Texture::LoadTextureFromData(unsigned char* texData, int w, int h, int bitD
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	ApplyAnisotropicFiltering();
 
 	// Use sized internal format GL_RGBA8 for better driver compatibility
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
@@ -198,6 +225,7 @@ bool Texture::LoadTextureGrayscale()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	ApplyAnisotropicFiltering();
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, texData);
 	

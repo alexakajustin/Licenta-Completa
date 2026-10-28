@@ -1,20 +1,12 @@
 #include "Procedural/HydraulicErosionNode.h"
+#include "Procedural/DropletErosion.h"
+#include "Procedural/ThermalErosion.h"
+#include <algorithm>
+#include <cstdio>
 #include "imgui.h"
 #include <cmath>
-#include <thread>
 #include <vector>
-#include <random>
-#include <iostream>
-
-// --- INSPIRATION PROJECT CONSTANTS ---
-const float Kq = 10.0f;        // Sediment capacity factor
-const float Kw = 0.001f;       // Water evaporation speed
-const float Kr = 0.9f;         // Erosion speed
-const float Kd = 0.02f;        // Deposition speed
-const float Ki = 0.1f;         // Direction inertia
-const float minSlope = 0.05f;
-const float g = 20.0f;
-const float Kg = g * 2.0f;
+#include <string>
 
 HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
 {
@@ -31,10 +23,16 @@ HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
 void HydraulicErosionNode::RenderContent(SceneManager* scene)
 {
 	ImGui::PushItemWidth(100.0f);
-	ImGui::DragInt("Steps (x1k)", &simulationSteps, 1, 0, 10000);
-	ImGui::DragFloat("Erosion (Kr)", &dissolvingConstant, 0.01f, 0.0f, 2.0f);
-	ImGui::DragFloat("Deposit (Kd)", &depositionConstant, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Rain Intensity", &rainRate, 0.01f, 0.0f, 5.0f);
+	ImGui::DragFloat("Droplets / Cell", &dropletsPerCell, 0.1f, 0.0f, 100.0f, "%.1f");
+	ImGui::DragFloat("Erosion", &erodeSpeed, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Deposition", &depositSpeed, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Capacity", &sedimentCapacity, 0.1f, 0.1f, 32.0f);
+	ImGui::DragInt("Brush Radius", &brushRadius, 1, 1, 8);
+	ImGui::DragFloat("Inertia", &inertia, 0.01f, 0.0f, 0.95f);
+	ImGui::DragFloat("Evaporation", &evaporation, 0.001f, 0.0f, 0.2f, "%.3f");
+	ImGui::DragFloat("Talus Angle", &talusAngle, 0.5f, 15.0f, 70.0f, "%.1f deg");
+	ImGui::DragInt("Thermal Iter", &thermalIterations, 1, 0, 200);
+	ImGui::DragFloat("Edge Fade", &edgeFadeCells, 1.0f, 0.0f, 200.0f, "%.0f cells");
 	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 20);
 	ImGui::PopItemWidth();
 }
@@ -42,22 +40,36 @@ void HydraulicErosionNode::RenderContent(SceneManager* scene)
 json HydraulicErosionNode::Serialize() const
 {
 	json j = GraphNode::Serialize();
-	j["simulationSteps"] = simulationSteps;
-	j["rainRate"] = rainRate;
-	j["dissolvingConstant"] = dissolvingConstant;
-	j["depositionConstant"] = depositionConstant;
+	j["dropletsPerCell"] = dropletsPerCell;
+	j["erodeSpeed"] = erodeSpeed;
+	j["depositSpeed"] = depositSpeed;
+	j["sedimentCapacity"] = sedimentCapacity;
+	j["evaporation"] = evaporation;
+	j["brushRadius"] = brushRadius;
+	j["inertia"] = inertia;
 	j["smoothPasses"] = smoothPasses;
+	j["talusAngle"] = talusAngle;
+	j["thermalIterations"] = thermalIterations;
+	j["edgeFadeCells"] = edgeFadeCells;
 	return j;
 }
 
 void HydraulicErosionNode::Deserialize(const json& j)
 {
 	GraphNode::Deserialize(j);
-	simulationSteps = j.value("simulationSteps", 250);
-	rainRate = j.value("rainRate", 1.0f);
-	dissolvingConstant = j.value("dissolvingConstant", 0.9f);
-	depositionConstant = j.value("depositionConstant", 0.02f);
+	// Keys of the previous (grid-locked) solver are ignored on purpose: its constants don't
+	// translate, so old graphs pick up the new solver's tuned defaults instead.
+	dropletsPerCell = j.value("dropletsPerCell", 8.0f);
+	erodeSpeed = j.value("erodeSpeed", 0.4f);
+	depositSpeed = j.value("depositSpeed", 0.3f);
+	sedimentCapacity = j.value("sedimentCapacity", 6.0f);
+	evaporation = j.value("evaporation", 0.01f);
+	brushRadius = j.value("brushRadius", 3);
+	inertia = j.value("inertia", 0.05f);
 	smoothPasses = j.value("smoothPasses", 0);
+	talusAngle = j.value("talusAngle", 35.0f);
+	thermalIterations = j.value("thermalIterations", 20);
+	edgeFadeCells = j.value("edgeFadeCells", 40.0f);
 }
 
 void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -79,155 +91,66 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 			return;
 		}
 
-		// === INSPIRATION DROPLET EROSION ===
-		int numDrops = simulationSteps * 1000;
-		float currentErodeAmount = rainRate; 
-		float currentKr = dissolvingConstant;
-		float currentKd = depositionConstant;
-
 		std::vector<float> hmap(gridRes * gridRes);
 		for (int i = 0; i < gridRes * gridRes; i++)
 			hmap[i] = data.vertices[i * 14 + 1];
 
-		std::mt19937 rng(42);
-		std::uniform_real_distribution<float> randCoord(1.0f, (float)(gridRes - 3));
+		DropletErosionParams params;
+		const int totalDroplets = (int)(dropletsPerCell * (float)(gridRes * gridRes));
+		params.erodeSpeed = erodeSpeed;
+		params.depositSpeed = depositSpeed;
+		params.sedimentCapacityFactor = sedimentCapacity;
+		params.evaporateSpeed = evaporation;
+		params.brushRadius = brushRadius;
+		params.inertia = inertia;
+		params.edgeFadeCells = edgeFadeCells;
 
-		for (int d = 0; d < numDrops; d++) {
-			if (progress && (d % 10000 == 0 || d == numDrops - 1)) {
-				float pct = ((float)(d + 1) / numDrops) * 100.0f;
-				progress(pct, "Inspiration Erosion... " + std::to_string(d + 1) + "/" + std::to_string(numDrops));
-			}
-
-			float xp = randCoord(rng);
-			float zp = randCoord(rng);
-			float dx = 0, dz = 0, s = 0, v = 0, w = 1;
-			int xi = (int)xp;
-			int zi = (int)zp;
-			float h = hmap[zi * gridRes + xi];
-
-			for (int step = 0; step < 100; step++) {
-				// Calculate gradient using neighbor bilinear interpolation
-				int ix = (int)xp;
-				int iz = (int)zp;
-				float xf = xp - ix;
-				float zf = zp - iz;
-
-				float h00 = hmap[iz * gridRes + ix];
-				float h10 = hmap[iz * gridRes + (ix + 1)];
-				float h01 = hmap[(iz + 1) * gridRes + ix];
-				float h11 = hmap[(iz + 1) * gridRes + (ix + 1)];
-
-				float gx = h00 + h01 - h10 - h11;
-				float gz = h00 + h10 - h01 - h11;
-
-				// Next position with inertia
-				dx = (dx - gx) * Ki + gx;
-				dz = (dz - gz) * Ki + gz;
-
-				float dl = std::sqrt(dx * dx + dz * dz);
-				if (dl <= 1e-6f) {
-					// Random direction if gradient is zero
-					std::uniform_real_distribution<float> randAngle(0, 2.0f * 3.14159f);
-					float a = randAngle(rng);
-					dx = std::cos(a); dz = std::sin(a);
-				} else {
-					dx /= dl; dz /= dl;
-				}
-
-				float nxp = xp + dx;
-				float nzp = zp + dz;
-				int nxi = (int)nxp;
-				int nzi = (int)nzp;
-
-				if (nxi < 0 || nxi >= gridRes - 1 || nzi < 0 || nzi >= gridRes - 1) break;
-
-				float nxf = nxp - nxi;
-				float nzf = nzp - nzi;
-				float nh00 = hmap[nzi * gridRes + nxi];
-				float nh10 = hmap[nzi * gridRes + (nxi + 1)];
-				float nh01 = hmap[(nzi + 1) * gridRes + nxi];
-				float nh11 = hmap[(nzi + 1) * gridRes + (nxi + 1)];
-				float nh = (nh00 * (1 - nxf) + nh10 * nxf) * (1 - nzf) + (nh01 * (1 - nxf) + nh11 * nxf) * nzf;
-				
-				// --- BOUNDARY SOFT-FADING ---
-				// Gradually reduce erosion/deposition as the drop approaches the map edge
-				// This prevents both holes (voids) and spikes at the boundaries.
-				float edgeDist = std::min({xp, (float)gridRes - 1 - xp, zp, (float)gridRes - 1 - zp});
-				float edgeFactor = std::min(1.0f, edgeDist / 8.0f); // 8-pixel safe margin
-
-				// Deposit/Erode logic from Inspiration project
-				if (nh >= h) {
-					float ds = (nh - h) + 0.001f;
-					if (ds >= s) {
-						// Deposit all
-						float dep = s;
-						hmap[iz * gridRes + ix] += dep * (1 - xf) * (1 - zf);
-						hmap[iz * gridRes + ix + 1] += dep * xf * (1 - zf);
-						hmap[(iz + 1) * gridRes + ix] += dep * (1 - xf) * zf;
-						hmap[(iz + 1) * gridRes + ix + 1] += dep * xf * zf;
-						s = 0;
-						break;
-					}
-					float dep = ds;
-					hmap[iz * gridRes + ix] += dep * (1 - xf) * (1 - zf);
-					hmap[iz * gridRes + ix + 1] += dep * xf * (1 - zf);
-					hmap[(iz + 1) * gridRes + ix] += dep * (1 - xf) * zf;
-					hmap[(iz + 1) * gridRes + ix + 1] += dep * xf * zf;
-					s -= ds;
-					v = 0;
-				} else {
-					float dh = h - nh;
-					float slope = dh;
-					float q = std::max(slope, minSlope) * v * w * Kq;
-					float ds = s - q;
-
-					if (ds >= 0) { // Deposit
-						ds *= (currentKd * edgeFactor);
-						float dep = ds;
-						hmap[iz * gridRes + ix] += dep * (1 - xf) * (1 - zf);
-						hmap[iz * gridRes + ix + 1] += dep * xf * (1 - zf);
-						hmap[(iz + 1) * gridRes + ix] += dep * (1 - xf) * zf;
-						hmap[(iz + 1) * gridRes + ix + 1] += dep * xf * zf;
-						s -= ds;
-					} else { // Erode with 4x4 Radius Kernel
-						ds *= (-currentKr * edgeFactor);
-						ds = std::min(ds, dh * 0.99f);
-						
-						float totalWeight = 0;
-						for (int rz = zi - 1; rz <= zi + 2; rz++) {
-							for (int rx = xi - 1; rx <= xi + 2; rx++) {
-								if (rx < 0 || rx >= gridRes || rz < 0 || rz >= gridRes) continue;
-								float xo = (float)rx - xp; float zo = (float)rz - zp;
-								float w = std::max(0.0f, 1.0f - std::sqrt(xo * xo + zo * zo) / 2.0f);
-								totalWeight += w;
-							}
-						}
-
-						if (totalWeight > 0) {
-							for (int rz = zi - 1; rz <= zi + 2; rz++) {
-								for (int rx = xi - 1; rx <= xi + 2; rx++) {
-									if (rx < 0 || rx >= gridRes || rz < 0 || rz >= gridRes) continue;
-									float xo = (float)rx - xp; float zo = (float)rz - zp;
-									float w = std::max(0.0f, 1.0f - std::sqrt(xo * xo + zo * zo) / 2.0f);
-									hmap[rz * gridRes + rx] -= ds * (w / totalWeight) * currentErodeAmount;
-								}
-							}
-						}
-						s += ds;
-					}
-					v = std::sqrt(v * v + Kg * dh);
-					w *= (1.0f - Kw);
-				}
-
-				xp = nxp; zp = nzp; xi = nxi; zi = nzi; xf = nxf; zf = nzf;
-				h = nh;
-			}
+		// Thermal erosion needs the real horizontal spacing (talus is an actual slope angle).
+		// SceneInput bakes the object's scale into the vertices, so x is in world units here.
+		float minX = data.vertices[0], maxX = data.vertices[0];
+		for (int i = 0; i < gridRes * gridRes; i++) {
+			minX = std::min(minX, data.vertices[i * 14]);
+			maxX = std::max(maxX, data.vertices[i * 14]);
 		}
+		const float cellSize = (maxX - minX) / (float)(gridRes - 1);
+		auto mm = std::minmax_element(hmap.begin(), hmap.end());
+		const float heightRange = *mm.second - *mm.first;
+		// A terrain taller than half its width means the grid is in unscaled local units:
+		// a talus threshold in those units would flatten everything, so skip thermal.
+		const bool thermal = thermalIterations > 0 && cellSize > 0.0f && (maxX - minX) > heightRange * 0.5f;
+		if (thermalIterations > 0 && !thermal)
+			printf("[HydraulicErosion] Grid looks unscaled (width %.3f, height range %.1f): thermal erosion skipped\n", maxX - minX, heightRange);
+
+		// Pipeline: thermal (settle the base noise) -> rounds of [droplets -> thermal]
+		// -> final thermal. Hydraulic carving alone leaves vertical gully walls and knife-edge
+		// fins (fine from above, walls from the side); thermal relaxes them to the talus angle
+		// after every round, so the gullies deepen as V-shaped valleys with scree slopes.
+		const int rounds = 4;
+		auto report = [&](float t, const std::string& what) { if (progress) progress(t * 100.0f, what); };
+
+		if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations * 3,
+			[&](float t) { report(t * 0.05f, "Thermal Erosion (settling)..."); });
+
+		for (int r = 0; r < rounds; r++)
+		{
+			params.numDroplets = totalDroplets / rounds;
+			params.seed = 42u + (unsigned int)r;
+			float base = 0.05f + 0.9f * (float)r / (float)rounds;
+			float span = 0.9f / (float)rounds;
+			RunDropletErosion(hmap, gridRes, params, [&](float t) {
+				report(base + span * 0.85f * t, "Hydraulic Erosion... round " + std::to_string(r + 1) + "/" + std::to_string(rounds) + " (" + std::to_string(totalDroplets) + " droplets)");
+			});
+			if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations,
+				[&](float t) { report(base + span * (0.85f + 0.15f * t), "Thermal Erosion..."); });
+		}
+
+		if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations,
+			[&](float t) { report(0.95f + 0.05f * t, "Thermal Erosion (final)..."); });
 
 		for (int i = 0; i < gridRes * gridRes; i++)
 			data.vertices[i * 14 + 1] = hmap[i];
 
-		// Smoothing and normal recomputation remains the same
+		// Optional post-erosion smoothing (3x3 binomial)
 		if (smoothPasses > 0)
 		{
 			std::vector<float> heightBuffer(gridRes * gridRes);
@@ -293,9 +216,12 @@ void HydraulicErosionNode::RecomputeNormals(MeshData& data, int resX, int resZ)
 		float len = glm::length(n);
 		n = (len > 0.0001f) ? n / len : glm::vec3(0.0f, 1.0f, 0.0f);
 		data.vertices[base + 5] = n.x; data.vertices[base + 6] = n.y; data.vertices[base + 7] = n.z;
-		glm::vec3 ref = (std::abs(n.y) < 0.999f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+		// Tangent follows the plane's U direction (+X), bitangent its V direction (+Z), like
+		// PrimitiveGenerator's plane. (Building it from +Y made it point up-slope, so UV normal
+		// maps were rotated differently on every slope.)
+		glm::vec3 ref = (std::abs(n.x) < 0.999f) ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(0.0f, 0.0f, 1.0f);
 		glm::vec3 tangent = glm::normalize(ref - n * glm::dot(ref, n));
-		glm::vec3 bitangent = glm::cross(n, tangent);
+		glm::vec3 bitangent = glm::cross(tangent, n);
 		data.vertices[base + 8] = tangent.x; data.vertices[base + 9] = tangent.y; data.vertices[base + 10] = tangent.z;
 		data.vertices[base + 11] = bitangent.x; data.vertices[base + 12] = bitangent.y; data.vertices[base + 13] = bitangent.z;
 	}

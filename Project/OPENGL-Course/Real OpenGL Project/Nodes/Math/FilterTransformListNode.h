@@ -4,6 +4,9 @@
 #include "imgui.h"
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
 
 // =====================================================================
 //  FilterTransformListNode — Filter scatter transforms by spatial rules
@@ -23,6 +26,10 @@
 //
 //  Supports chaining multiple filters in sequence:
 //    Scatter → Filter(Y < 40%) → Filter(slope > 0.8) → Output
+//
+//  Falloff: instead of a hard cut (every tree stopping on the same contour line), instances
+//  within +-falloff/2 of a threshold pass with a probability that ramps from 0 to 1.
+//  The random value is hashed from the instance position, so regeneration is deterministic.
 //
 class FilterTransformListNode : public GraphNode
 {
@@ -56,6 +63,8 @@ public:
 		j["normalAxis"] = normalAxis;
 		j["normalThreshold"] = normalThreshold;
 		j["normalComparison"] = normalComparison;
+		j["positionFalloff"] = positionFalloff;
+		j["normalFalloff"] = normalFalloff;
 		return j;
 	}
 
@@ -70,6 +79,8 @@ public:
 		normalAxis = j.value("normalAxis", 1);
 		normalThreshold = j.value("normalThreshold", 0.7f);
 		normalComparison = j.value("normalComparison", 1);
+		positionFalloff = j.value("positionFalloff", 0.0f);
+		normalFalloff = j.value("normalFalloff", 0.0f);
 	}
 
 	void RenderContent(SceneManager* scene) override
@@ -99,6 +110,7 @@ public:
 		{
 			ImGui::DragFloat("Threshold", &threshold, 0.5f, -10000.0f, 10000.0f);
 		}
+		ImGui::DragFloat("Falloff", &positionFalloff, 0.5f, 0.0f, usePercentage ? 100.0f : 10000.0f);
 
 		ImGui::Separator();
 
@@ -109,6 +121,10 @@ public:
 			ImGui::Combo("Normal Axis", &normalAxis, axes, 3);
 			ImGui::Combo("Normal Cmp", &normalComparison, ops, 4);
 			ImGui::DragFloat("Slope Thresh", &normalThreshold, 0.01f, -1.0f, 1.0f);
+			ImGui::DragFloat("Slope Falloff", &normalFalloff, 0.005f, 0.0f, 1.0f);
+			// Normal Y = cos(slope angle): show the angle the threshold corresponds to
+			if (normalAxis == 1)
+				ImGui::TextDisabled("= %.1f deg", glm::degrees(std::acos(std::clamp(normalThreshold, -1.0f, 1.0f))));
 		}
 	}
 
@@ -149,6 +165,7 @@ public:
 
 		// === Compute actual threshold ===
 		float actualThresh = rawThresh;
+		float actualFalloff = positionFalloff;
 
 		if (usePercentage)
 		{
@@ -172,6 +189,7 @@ public:
 
 			// Convert percentage (0-100) to actual value in the range
 			actualThresh = minVal + (rawThresh / 100.0f) * range;
+			actualFalloff = (positionFalloff / 100.0f) * range;
 
 			printf("[FilterTransforms] Axis %d range: [%.1f, %.1f], %.1f%% => threshold=%.1f\n",
 				axis, minVal, maxVal, rawThresh, actualThresh);
@@ -185,7 +203,7 @@ public:
 
 		for (const auto& t : inputTransforms)
 		{
-			bool positionPass = EvaluatePosition(t, actualThresh);
+			bool positionPass = EvaluatePosition(t, actualThresh, actualFalloff);
 			bool normalPass = useNormalFilter ? EvaluateNormal(t) : true;
 
 			if (positionPass && normalPass)
@@ -217,6 +235,10 @@ private:
 	float normalThreshold = 0.7f;
 	int normalComparison = 1;
 
+	// Soft transition widths (0 = hard cut). positionFalloff is in % when usePercentage.
+	float positionFalloff = 0.0f;
+	float normalFalloff = 0.0f;
+
 	// Cached range for UI display
 	mutable float lastMinVal = FLT_MAX;
 	mutable float lastMaxVal = -FLT_MAX;
@@ -232,18 +254,39 @@ private:
 		return 0.0f;
 	}
 
-	bool EvaluatePosition(const TransformData& t, float thresh) const
+	// Deterministic [0,1) value per instance position (independent hashes for each filter kind)
+	static float PositionHash(const TransformData& t, uint32_t salt)
 	{
-		float val = GetAxisValue(t, axis);
+		auto bits = [](float f) { uint32_t u; std::memcpy(&u, &f, sizeof(u)); return u; };
+		uint32_t h = bits(t.position.x) * 0x9E3779B1u ^ bits(t.position.y) * 0x85EBCA77u ^ bits(t.position.z) * 0xC2B2AE3Du ^ salt;
+		h ^= h >> 16; h *= 0x7FEB352Du; h ^= h >> 15; h *= 0x846CA68Bu; h ^= h >> 16;
+		return (float)(h >> 8) / 16777216.0f;
+	}
 
-		switch (comparison)
+	// Hard comparison, or with falloff > 0 a probabilistic pass across [thresh - f/2, thresh + f/2]
+	static bool Compare(float val, int op, float thresh, float falloff, float randomValue)
+	{
+		if (falloff <= 0.0f)
 		{
-		case 0: return val < thresh;
-		case 1: return val > thresh;
-		case 2: return val <= thresh;
-		case 3: return val >= thresh;
+			switch (op)
+			{
+			case 0: return val < thresh;
+			case 1: return val > thresh;
+			case 2: return val <= thresh;
+			case 3: return val >= thresh;
+			}
+			return true;
 		}
-		return true;
+		// Signed distance on the passing side of the threshold
+		float margin = (op == 1 || op == 3) ? (val - thresh) : (thresh - val);
+		float passChance = std::clamp(margin / falloff + 0.5f, 0.0f, 1.0f);
+		passChance = passChance * passChance * (3.0f - 2.0f * passChance);
+		return randomValue < passChance;
+	}
+
+	bool EvaluatePosition(const TransformData& t, float thresh, float falloff) const
+	{
+		return Compare(GetAxisValue(t, axis), comparison, thresh, falloff, PositionHash(t, 0x68E31DA4u));
 	}
 
 	bool EvaluateNormal(const TransformData& t) const
@@ -255,14 +298,6 @@ private:
 		case 1: val = t.normal.y; break;
 		case 2: val = t.normal.z; break;
 		}
-
-		switch (normalComparison)
-		{
-		case 0: return val < normalThreshold;
-		case 1: return val > normalThreshold;
-		case 2: return val <= normalThreshold;
-		case 3: return val >= normalThreshold;
-		}
-		return true;
+		return Compare(val, normalComparison, normalThreshold, normalFalloff, PositionHash(t, 0xB5297A4Du));
 	}
 };

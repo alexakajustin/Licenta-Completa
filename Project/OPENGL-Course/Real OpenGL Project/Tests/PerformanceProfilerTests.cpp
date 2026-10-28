@@ -123,10 +123,9 @@ TEST_CASE("RAMY Engine Performance Profiler Suite")
         for (int res : gridResolutions)
         {
             HydraulicErosionNode erosionNode(graph);
-            erosionNode.SetSteps(steps);
-            erosionNode.SetRainRate(1.0f);
-            erosionNode.SetKs(0.9f);
-            erosionNode.SetKd(0.02f);
+            erosionNode.SetDropletsPerCell((float)steps);
+            erosionNode.SetErodeSpeed(0.4f);
+            erosionNode.SetDepositSpeed(0.3f);
             erosionNode.SetSmoothPasses(1);
 
             MeshData terrainMesh = PrimitiveGenerator::GetPlaneData(res - 1, res - 1); 

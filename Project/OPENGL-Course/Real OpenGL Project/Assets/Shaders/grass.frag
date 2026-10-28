@@ -194,7 +194,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	return shadow / 4.0;
 }
 
-float CalcDirectionalShadowFactor()
+float CalcDirectionalShadowFactor(vec3 normal)
 {
 	vec4 fragPosViewSpace = viewMatrix * vec4(FragPos, 1.0);
 	float depth = abs(fragPosViewSpace.z);
@@ -215,7 +215,7 @@ float CalcDirectionalShadowFactor()
 	layer = min(layer, maxLayer);
 
 	vec3 lightDir = normalize(directionalLight.direction);
-	return GetShadowFactorAtLayer(layer, normalize(Normal), lightDir);
+	return GetShadowFactorAtLayer(layer, normal, lightDir);
 }
 
 void main()
@@ -234,15 +234,30 @@ void main()
         if (vFadeFactor > threshold) discard;
     }
 
-    // 1. Sample Base Texture
+    // 1. Sample Base Texture — alpha-tested cutout, never blended.
+    // The main pass runs with GL_BLEND on and the GPU culler emits instances in a different
+    // order every frame. Outputting the texture alpha made every soft edge (and most of the
+    // field at distance, where mips average alpha down) blend with whatever happened to be
+    // drawn first while still writing depth -> grass behind grass flickered frame to frame.
     vec4 texColor = texture(theTexture, TexCoord);
-    if(texColor.a < 0.1) discard;
+
+    // Smaller mips average alpha toward the background, so thin blades fall under the cutoff
+    // and vanish with distance: scale alpha back up by mip level (Golus, "Anti-aliased Alpha Test").
+    vec2 texelPos = TexCoord * vec2(textureSize(theTexture, 0));
+    vec2 dTx = dFdx(texelPos);
+    vec2 dTy = dFdy(texelPos);
+    float mipLevel = max(0.0, 0.5 * log2(max(dot(dTx, dTx), dot(dTy, dTy))));
+    float alpha = texColor.a * (1.0 + mipLevel * 0.25);
+    if (alpha < 0.5) discard; // Same cutoff as the shadow passes
 
     vec3 norm = normalize(Normal);
+    // Blades are drawn double-sided (culling off): light the back face with the flipped
+    // normal, otherwise every blade seen from behind is dark.
+    if (!gl_FrontFacing) norm = -norm;
     vec3 viewDir = normalize(eyePosition - FragPos);
     
     // 2. Accumulate Lighting from all sources
-    float shadowFactor = CalcDirectionalShadowFactor();
+    float shadowFactor = CalcDirectionalShadowFactor(norm);
     vec3 totalLight = CalcGrassLightByDirection(directionalLight.base, directionalLight.direction, norm, viewDir) * (1.0 - shadowFactor);
     
     for(int i = 0; i < pointLightCount; i++) {
@@ -259,7 +274,17 @@ void main()
     vec3 tipColor = material.baseColor.rgb;
     vec3 gradientColor = mix(rootColor, tipColor, heightWgt);
     
-    float noise = fract(sin(dot(floor(FragPos.xz * 0.2), vec2(12.9898, 78.233))) * 43758.5453);
+    // Smooth value noise for patch variation. Hashing floor(pos) directly gave hard-edged
+    // 5m squares of different grass colour across the field.
+    vec2 cell = FragPos.xz * 0.2;
+    vec2 ci = floor(cell);
+    vec2 cf = fract(cell);
+    cf = cf * cf * (3.0 - 2.0 * cf);
+    float n00 = fract(sin(dot(ci,                   vec2(12.9898, 78.233))) * 43758.5453);
+    float n10 = fract(sin(dot(ci + vec2(1.0, 0.0),  vec2(12.9898, 78.233))) * 43758.5453);
+    float n01 = fract(sin(dot(ci + vec2(0.0, 1.0),  vec2(12.9898, 78.233))) * 43758.5453);
+    float n11 = fract(sin(dot(ci + vec2(1.0, 1.0),  vec2(12.9898, 78.233))) * 43758.5453);
+    float noise = mix(mix(n00, n10, cf.x), mix(n01, n11, cf.x), cf.y);
     gradientColor *= mix(0.85, 1.15, noise);
 
     // 4. Final Output
@@ -281,5 +306,5 @@ void main()
 		finalColor = mix(finalColor, distColor, 0.4);
 	}
 
-	colour = vec4(finalColor, texColor.a);
+	colour = vec4(finalColor, 1.0); // Opaque cutout: result must not depend on draw order
 }

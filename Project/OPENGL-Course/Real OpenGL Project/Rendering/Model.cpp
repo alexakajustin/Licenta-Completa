@@ -529,6 +529,14 @@ void Model::LoadMaterials(const aiScene* scene)
 		
 		float opacity = 1.0f;
 		if (material->Get(AI_MATKEY_OPACITY, opacity) == aiReturn_SUCCESS) {
+			// Blender's OBJ exporter writes "d 0" when the transparency comes from the texture
+			// alpha (map_d / alpha channel, e.g. grass and leaf cards). Taken literally the whole
+			// object is invisible; the texture alpha already cuts it out in the shader's alpha
+			// test, so render it as an opaque cutout instead. A textureless d 0 stays invisible.
+			bool alphaFromTexture = textureList[i] != nullptr || material->GetTextureCount(aiTextureType_OPACITY) > 0;
+			if (opacity <= 0.001f && alphaFromTexture) {
+				opacity = 1.0f;
+			}
 			mat->SetAlpha(opacity);
 		}
 
@@ -625,11 +633,12 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 	{
 		unsigned int materialIndex = meshToTex[i];
 
-		if (materialIndex < textureList.size() && textureList[materialIndex])
+		Texture* diffuse = (materialIndex < textureList.size()) ? textureList[materialIndex] : nullptr;
+		if (diffuse)
 		{
 			glUniform1i(uniformUseDiffuseTexture, 1);
 			glUniform1i(uniformDiffuseTextureSampler, 0); // Diffuse to Unit 0
-			textureList[materialIndex]->UseTexture();
+			diffuse->UseTexture();
 		}
 		else
 		{
@@ -647,7 +656,14 @@ void Model::RenderModel(GLuint uniformUseNormalMap, GLuint uniformUseDiffuseText
 			glUniform1i(uniformUseNormalMap, 0);
 		}
 
+		// Alpha-tested cards (grass, leaves) are single quads: draw both sides
+		bool doubleSided = diffuse && diffuse->HasCutoutAlpha();
+		GLboolean cullWasEnabled = doubleSided ? glIsEnabled(GL_CULL_FACE) : GL_FALSE;
+		if (doubleSided) glDisable(GL_CULL_FACE);
+
 		meshList[i]->RenderMesh();
+
+		if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);
 	}
 }
 

@@ -110,38 +110,26 @@ layout(std430, binding = 7) buffer VisibilityBuffer {
 };
 
 /**
- * @brief Utility function to apply Euler rotation in Z->X->Y order.
- * @param p Local position coordinate to rotate.
- * @param eulerDeg Euler angles vector in degrees.
- * @return Rotated coordinate.
+ * @brief Instance rotation matrix — identical to eulerToMat3 in the instanced vertex shaders
+ *        (instanced_header.glsl, instanced_object.vert, instanced_shadow.vert).
+ *        The bounds center must be rotated exactly like the rendered mesh, otherwise
+ *        tilted instances are culled against a sphere in the wrong place (popping).
+ * @param euler Euler angles vector in degrees.
+ * @return Rotation matrix.
  */
-vec3 rotateEulerZYX(vec3 p, vec3 eulerDeg) {
-    vec3 rad = radians(eulerDeg);
-    vec3 c = cos(rad);
-    vec3 s = sin(rad);
+mat3 eulerToMat3(vec3 euler) {
+    float cx = cos(radians(euler.x));
+    float sx = sin(radians(euler.x));
+    float cy = cos(radians(euler.y));
+    float sy = sin(radians(euler.y));
+    float cz = cos(radians(euler.z));
+    float sz = sin(radians(euler.z));
 
-    // 1. Rotate Z
-    vec3 p1 = vec3(
-        p.x * c.z - p.y * s.z,
-        p.x * s.z + p.y * c.z,
-        p.z
-    );
+    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cx, -sx, 0.0, sx, cx);
+    mat3 ry = mat3(cy, 0.0, sy, 0.0, 1.0, 0.0, -sy, 0.0, cy);
+    mat3 rz = mat3(cz, -sz, 0.0, sz, cz, 0.0, 0.0, 0.0, 1.0);
 
-    // 2. Rotate X
-    vec3 p2 = vec3(
-        p1.x,
-        p1.y * c.x - p1.z * s.x,
-        p1.y * s.x + p1.z * c.x
-    );
-
-    // 3. Rotate Y
-    vec3 p3 = vec3(
-        p2.x * c.y + p2.z * s.y,
-        p2.y,
-       -p2.x * s.y + p2.z * c.y
-    );
-
-    return p3;
+    return rz * ry * rx;
 }
 
 /**
@@ -160,7 +148,7 @@ void main()
 
     // Offset test position to the mesh's bounding sphere center.
     // We must rotate the meshBoundsCenter by the instance's rotation before scaling and adding to pos.
-    vec3 rotatedCenter = rotateEulerZYX(meshBoundsCenter, inst.rotAndFlags.xyz);
+    vec3 rotatedCenter = eulerToMat3(inst.rotAndFlags.xyz) * meshBoundsCenter;
     vec3 testPos = pos + rotatedCenter * scale;
 
     // ------- Two-Phase Visibility Check -------

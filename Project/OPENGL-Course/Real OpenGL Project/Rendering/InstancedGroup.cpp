@@ -547,19 +547,20 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		if (useNormalLoc != -1) glUniform1i(useNormalLoc, 0);
 	}
 
-	// Texture layers (inherit parent's appearance)
-	int layerCount = (int)textureLayers.size();
+	// Texture layers (inherit parent's appearance). All MAX_TEXTURE_LAYERS are bound (this used
+	// to stop at 4 while telling the shader there were more), on the same conflict-free units
+	// as GameObject — the old 18+i displacement units collided with the shadow colour maps.
+	int layerCount = std::min((int)textureLayers.size(), MAX_TEXTURE_LAYERS);
 	GLint layerCountLoc = glGetUniformLocation(shaderID, "textureLayerCount");
 	if (layerCountLoc != -1) glUniform1i(layerCountLoc, layerCount);
 
 	if (!isShadowPass && layerCount > 0)
 	{
-		for (int i = 0; i < layerCount && i < 4; i++)
+		for (int i = 0; i < layerCount; i++)
 		{
-			// Units 10+ for layers to avoid conflicts
-			int diffUnit = 10 + i;
-			int normUnit = 14 + i;
-			int dispUnit = 18 + i;
+			int diffUnit = LAYER_DIFFUSE_UNITS[i];
+			int normUnit = LAYER_NORMAL_UNITS[i];
+			int dispUnit = LAYER_DISPLACEMENT_UNITS[i];
 
 			// Bind textures
 			char buf[64];
@@ -601,6 +602,12 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		}
 	}
 
+	// Alpha-tested cards (grass, leaves) are single quads: draw both sides
+	Texture* cutoutTex = texture ? texture : (!textureLayers.empty() ? textureLayers[0].texture : nullptr);
+	bool doubleSided = cutoutTex && cutoutTex->HasCutoutAlpha();
+	GLboolean cullWasEnabled = doubleSided ? glIsEnabled(GL_CULL_FACE) : GL_FALSE;
+	if (doubleSided) glDisable(GL_CULL_FACE);
+
 	// Draw each LOD level
 	for (int lod = 0; lod < lodCount; lod++) {
 		Mesh* lodMesh = lodLevels[lod].mesh ? lodLevels[lod].mesh : sharedMesh;
@@ -627,6 +634,45 @@ void InstancedGroup::RenderLODs(Shader& renderShader, const glm::mat4& projectio
 		// Issue indirect draw
 		lodMesh->RenderIndirect(lodLevels[lod].indirectBuffer, renderShader.HasTessellation());
 	}
+
+	if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);
+}
+
+// =====================================================================
+// ApplyShadowWind — the instanced shadow shaders apply the same sway as
+// grass.vert. Groups whose material shader has no wind (trees, rocks) get
+// strength 0; the value must be set for every group because the shadow
+// program is shared and keeps the previous group's uniforms otherwise.
+// =====================================================================
+void InstancedGroup::ApplyShadowWind(GLuint shadowShaderID, float time) const
+{
+	float strength = 0.0f;
+	float speed = 1.0f;
+
+	Shader* matShader = material ? material->GetShader() : nullptr;
+	if (matShader && matShader->GetShaderID() != 0) {
+		GLuint msid = matShader->GetShaderID();
+		GLint strengthLoc = glGetUniformLocation(msid, "windStrength");
+		if (strengthLoc != -1) {
+			// Start from the shader's own defaults (grass.vert initializers), then the material overrides
+			glGetUniformfv(msid, strengthLoc, &strength);
+			GLint speedLoc = glGetUniformLocation(msid, "windSpeed");
+			if (speedLoc != -1) glGetUniformfv(msid, speedLoc, &speed);
+
+			const auto& floats = material->GetFloats();
+			auto it = floats.find("windStrength");
+			if (it != floats.end()) strength = it->second;
+			it = floats.find("windSpeed");
+			if (it != floats.end()) speed = it->second;
+		}
+	}
+
+	GLint loc = glGetUniformLocation(shadowShaderID, "windStrength");
+	if (loc != -1) glUniform1f(loc, strength);
+	loc = glGetUniformLocation(shadowShaderID, "windSpeed");
+	if (loc != -1) glUniform1f(loc, speed);
+	loc = glGetUniformLocation(shadowShaderID, "time");
+	if (loc != -1) glUniform1f(loc, time);
 }
 
 // =====================================================================
@@ -748,6 +794,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 
 		// Set light transform
 		shadowShader.SetDirectionalLightTransform(lightViewProj);
+		ApplyShadowWind(sid, time);
 
 		// Material tiling/offset (default identity so TexCoord isn't zeroed out)
 		glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
@@ -893,6 +940,7 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 			glUniform3fv(omniLightPosLoc, 1, glm::value_ptr(lightPos));
 		}
 		glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
+		ApplyShadowWind(sid, time);
 
 		// Material tiling/offset (default to identity for shadows)
 		glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);

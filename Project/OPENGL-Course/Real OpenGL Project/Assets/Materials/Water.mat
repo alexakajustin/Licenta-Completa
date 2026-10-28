@@ -21,3 +21,4 @@ material_shininessOverride=256.0
 texture_dudvMap=Assets/Textures/Water/dudv.png
 texture_waterNormalMap=Assets/Textures/Water/normal.png
 texture_causticsMap=Assets/Textures/Water/caustics.png
+material_normalStrength=0.35

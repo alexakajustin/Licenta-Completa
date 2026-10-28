@@ -33,12 +33,18 @@ public:
 	const char* GetFileLocation() const { return fileLocation; }
 	int GetWidth() const { return width; }
 	int GetHeight() const { return height; }
+	// True if the alpha channel actually cuts pixels out (alpha-tested foliage, fences...):
+	// such surfaces are thin cards that must be drawn double-sided.
+	bool HasCutoutAlpha() const { return hasCutoutAlpha; }
 
 	~Texture();
 private:
+	void DetectCutoutAlpha(); // Scans rawData (RGBA8) and sets hasCutoutAlpha
+
 	GLuint textureID;
 	int width, height, bitDepth;
 	char* fileLocation;
 	unsigned char* rawData = nullptr;
+	bool hasCutoutAlpha = false;
 };
 

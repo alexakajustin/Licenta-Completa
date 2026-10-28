@@ -135,6 +135,9 @@ public:
 private:
 	std::string name;
 
+	// Upload the wind uniforms of this group's material to an instanced shadow shader
+	void ApplyShadowWind(GLuint shadowShaderID, float time) const;
+
 	// GPU Buffers (main instance data)
 	GLuint instanceSSBO = 0;       // All instance transforms (input to compute shader)
 

@@ -1,8 +1,8 @@
 #version 460 core
 
-in vec4 FragPosGS;
-in vec2 TexCoordGS;
-in float vFadeFactorGS;
+layout(location = 0) in vec4 FragPosGS;
+layout(location = 1) in vec2 TexCoordGS;
+layout(location = 2) in float vFadeFactorGS;
 
 uniform vec3 lightPos;
 uniform float farPlane;

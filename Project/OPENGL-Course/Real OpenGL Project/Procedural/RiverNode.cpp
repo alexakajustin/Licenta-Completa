@@ -29,7 +29,7 @@ RiverNode::RiverNode(NodeGraph& graph)
 	riverWaterOffset = 0.005f;
 	lakeWaterOffset = 0.005f;
 	smoothPasses = 8;
-	lakeVolumeMultiplier = 500.0f;
+	lakeDepth = 4.0f;
 }
 
 json RiverNode::Serialize() const
@@ -42,7 +42,7 @@ json RiverNode::Serialize() const
 	j["riverWaterOffset"] = riverWaterOffset;
 	j["lakeWaterOffset"] = lakeWaterOffset;
 	j["smoothPasses"] = smoothPasses;
-	j["lakeVolumeMultiplier"] = lakeVolumeMultiplier;
+	j["lakeDepth"] = lakeDepth;
 	return j;
 }
 
@@ -56,7 +56,9 @@ void RiverNode::Deserialize(const json& j)
 	riverWaterOffset = j.value("riverWaterOffset", j.value("waterOffset", -0.005f));
 	lakeWaterOffset = j.value("lakeWaterOffset", j.value("waterOffset", -0.005f));
 	smoothPasses = j.value("smoothPasses", 8);
-	lakeVolumeMultiplier = j.value("lakeVolumeMultiplier", 500.0f);
+	// The old "lakeVolumeMultiplier" was in arbitrary units and flooded past spill points;
+	// lakeDepth is in meters, so old values are not converted.
+	lakeDepth = j.value("lakeDepth", 4.0f);
 }
 
 void RiverNode::RenderContent(SceneManager* scene)
@@ -69,8 +71,9 @@ void RiverNode::RenderContent(SceneManager* scene)
 	ImGui::DragFloat("Lake Offset", &lakeWaterOffset, 0.1f, -10.0f, 10.0f);
 	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 30);
 	ImGui::Separator();
-	ImGui::Text("Appearance");
-	ImGui::SliderFloat("Lake Volume", &lakeVolumeMultiplier, 10.0f, 5000.0f);
+	ImGui::Text("Lakes");
+	ImGui::DragFloat("Lake Depth", &lakeDepth, 0.1f, 0.0f, 50.0f, "%.1f m");
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Depth of each lake away from its shore (the bed is dug out). The lake's extent follows the terrain up to its outlet.");
 }
 
 void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
@@ -258,74 +261,116 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	for (const auto& sink : sinks)
 	{
 		int sinkIdx = sink.z * gridRes + sink.x;
-		if (sinkHandled[sinkIdx]) continue;
-
-		// Use the user-defined multiplier for lake capacity
-		float targetVolume = sink.volume * baseWidth * lakeVolumeMultiplier; 
-		float currentVolume = 0.0f;
-		float sinkHeight = data.vertices[sinkIdx * 14 + 1];
-		float currentWaterLevel = sinkHeight;
-
-		std::vector<int> lakePixels;
-		std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<std::pair<float, int>>> pq;
-		
-		pq.push({currentWaterLevel, sinkIdx});
-		std::vector<bool> visited(totalVerts, false);
-		visited[sinkIdx] = true;
+		if (sinkHandled[sinkIdx] || lakeMask[sinkIdx]) continue;
 		sinkHandled[sinkIdx] = true;
 
-		while (!pq.empty())
+		const float sinkHeight = originalHeights[sinkIdx];
+		const float targetLevel = sinkHeight + lakeDepth;
+
+		// --- 1. Highest level this sink can hold: the lowest pass toward the map border ---
+		// Priority-flood (cells leave the queue lowest first; 'level' is the highest cell crossed
+		// so far). Water may pour over small rims into neighbouring closed hollows, like a real lake
+		// overflowing into the next basin, but the first map-border cell reached marks the level
+		// at which everything would drain off the map: the lake can never rise above it.
+		float level = sinkHeight;
+		float maxLevel = targetLevel;
 		{
-			auto [h, idx] = pq.top();
-			
-			// UNLIMITED fill depth: Fill until the target volume or spill point is reached
-			if (currentVolume >= targetVolume) break;
-			
-			pq.pop();
-
-			if (isSink[idx] && !sinkHandled[idx]) {
-				targetVolume += flowVolume[idx] * baseWidth * lakeVolumeMultiplier;
-				sinkHandled[idx] = true;
-			}
-
-			if (h > currentWaterLevel) {
-				float diff = h - currentWaterLevel;
-				currentVolume += diff * (float)lakePixels.size();
-				currentWaterLevel = h;
-			}
-
-			lakePixels.push_back(idx);
-			lakeMask[idx] = true;
-
-			for (int dz = -1; dz <= 1; dz++) {
-				for (int dx = -1; dx <= 1; dx++) {
-					if (dx == 0 && dz == 0) continue;
-					int nx = (idx % gridRes) + dx;
-					int nz = (idx / gridRes) + dz;
-					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
+			std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<std::pair<float, int>>> pq;
+			std::vector<bool> visited(totalVerts, false);
+			pq.push({ sinkHeight, sinkIdx });
+			visited[sinkIdx] = true;
+			while (!pq.empty())
+			{
+				auto [h, idx] = pq.top();
+				pq.pop();
+				level = std::max(level, h);
+				if (level >= targetLevel) break;          // Requested depth reached first
+				int cx = idx % gridRes, cz = idx / gridRes;
+				if (cx == 0 || cz == 0 || cx == gridRes - 1 || cz == gridRes - 1) { maxLevel = level; break; }
+				for (int dz = -1; dz <= 1; dz++) {
+					for (int dx = -1; dx <= 1; dx++) {
+						if (dx == 0 && dz == 0) continue;
+						int nx = cx + dx, nz = cz + dz;
+						if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
 						int nidx = nz * gridRes + nx;
-						if (!visited[nidx]) {
-							visited[nidx] = true;
-							pq.push({data.vertices[nidx * 14 + 1], nidx});
-						}
+						if (!visited[nidx]) { visited[nidx] = true; pq.push({ originalHeights[nidx], nidx }); }
+					}
+				}
+			}
+		}
+		const float waterLevel = std::min(targetLevel, maxLevel) - 0.01f;
+		if (waterLevel <= sinkHeight) continue;
+
+		// --- 2. The lake: everything connected to the sink below the water level ---
+		std::vector<int> lakePixels;
+		{
+			std::vector<bool> inLake(totalVerts, false);
+			std::vector<int> stack = { sinkIdx };
+			inLake[sinkIdx] = true;
+			while (!stack.empty())
+			{
+				int idx = stack.back(); stack.pop_back();
+				lakePixels.push_back(idx);
+				if (isSink[idx]) sinkHandled[idx] = true; // Other river ends in the same lake
+				int cx = idx % gridRes, cz = idx / gridRes;
+				for (int dz = -1; dz <= 1; dz++) {
+					for (int dx = -1; dx <= 1; dx++) {
+						if (dx == 0 && dz == 0) continue;
+						int nx = cx + dx, nz = cz + dz;
+						if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+						int nidx = nz * gridRes + nx;
+						if (inLake[nidx] || lakeMask[nidx] || originalHeights[nidx] >= waterLevel) continue;
+						inLake[nidx] = true;
+						stack.push_back(nidx);
 					}
 				}
 			}
 		}
 
-		// Minimum size for a realistic lake (Increased for realism)
-		if (lakePixels.size() < 50) {
-			for (int idx : lakePixels) lakeMask[idx] = false;
-			continue;
-		}
+		// Minimum size for a realistic lake
+		if (lakePixels.size() < 50) continue;
 
 		for (int idx : lakePixels) {
-			lakeWaterLevel[idx] = currentWaterLevel;
-			float terrainH = data.vertices[idx * 14 + 1];
-			float bedDepth = currentWaterLevel - baseDepth;
-			if (terrainH > bedDepth) {
-				data.vertices[idx * 14 + 1] = bedDepth;
+			lakeWaterLevel[idx] = waterLevel;
+			lakeMask[idx] = true;
+		}
+
+		// --- 3. Lake bed: shelve down to lakeDepth ---
+		// The water level can't rise above the basin's outlet, so on eroded (well drained) terrain
+		// the natural lake is often only centimetres deep: a wet film, all shoreline foam. The
+		// terrain defines the lake's SHAPE; lakeDepth defines how deep it is: the bed is dug from
+		// 0 at the shore down to lakeDepth, over a shelf proportional to the lake's size.
+		// (Never raised; a flat fixed-depth carve would leave a vertical step at the shore.)
+		std::vector<int> shoreDist(totalVerts, -1);
+		std::vector<int> frontier;
+		for (int idx : lakePixels) {
+			int cx = idx % gridRes, cz = idx / gridRes;
+			bool shore = false;
+			for (int k = 0; k < 4 && !shore; k++) {
+				int nx = cx + (k == 0) - (k == 1), nz = cz + (k == 2) - (k == 3);
+				if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes || lakeWaterLevel[nz * gridRes + nx] != waterLevel) shore = true;
 			}
+			if (shore) { shoreDist[idx] = 1; frontier.push_back(idx); }
+		}
+		for (size_t f = 0; f < frontier.size(); f++) {
+			int idx = frontier[f];
+			int cx = idx % gridRes, cz = idx / gridRes;
+			for (int k = 0; k < 4; k++) {
+				int nx = cx + (k == 0) - (k == 1), nz = cz + (k == 2) - (k == 3);
+				if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+				int nidx = nz * gridRes + nx;
+				if (shoreDist[nidx] != -1 || lakeWaterLevel[nidx] != waterLevel) continue;
+				shoreDist[nidx] = shoreDist[idx] + 1;
+				frontier.push_back(nidx);
+			}
+		}
+		const float shelfCells = std::clamp(std::sqrt((float)lakePixels.size()) * 0.25f, 2.0f, 12.0f);
+		for (int idx : lakePixels) {
+			float t = std::clamp((float)shoreDist[idx] / shelfCells, 0.0f, 1.0f);
+			float shelf = t * t * (3.0f - 2.0f * t);
+			float bed = waterLevel - std::clamp(lakeDepth, 0.0f, 50.0f) * shelf;
+			float& terrainH = data.vertices[idx * 14 + 1];
+			if (terrainH > bed) terrainH = bed;
 		}
 	}
 
@@ -528,6 +573,8 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	glm::vec3 up(0, 1, 0);
 	float waterMeshWidthMultiplier = 1.15f;
 	float rOffset = riverWaterOffset;
+	// World size of one grid cell (river path positions are in grid units)
+	const float cellWorldSize = std::abs(data.vertices[14] - data.vertices[0]);
 
 	// Helper: bilinear sample carved terrain height at a world XZ position
 	auto sampleCarvedTerrainAtWorld = [&](float wx, float wz) -> float {
@@ -579,13 +626,16 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			posX = glm::mix(data.vertices[(z0 * gridRes + x0) * 14], data.vertices[(z0 * gridRes + x1) * 14], tx);
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
-			float currentDepth = baseDepth * std::pow(riverData.path[i].volume, 0.35f);
-			float naturalHeight = riverData.path[i].height - (currentDepth * 0.5f);
-			
-			// Simply let the river follow its natural sloped height everywhere.
-			// When it enters a basin with a lake, it will naturally slope downwards
-			// and beautifully plunge beneath the flat horizontal lake surface.
-			posY = naturalHeight;
+			auto surfaceHeight = [&](size_t k) {
+				float depth = baseDepth * std::pow(riverData.path[k].volume, 0.35f);
+				float h = riverData.path[k].height - depth * 0.5f;
+				// Once the river has entered the lake it dives under the lake surface, so the
+				// (depth-writing) lake hides it instead of the river ribbon lying on top of it.
+				if (lakeEntryIdx >= 0 && (int)k >= lakeEntryIdx)
+					h = std::min(h, lakeEntryLevel + lakeWaterOffset - rOffset - 0.4f);
+				return h;
+			};
+			posY = surfaceHeight(i);
 
 			glm::vec3 dir;
 			if (i == 0) {
@@ -603,6 +653,21 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			
 			glm::vec3 right = glm::normalize(glm::cross(dir, up));
 			glm::vec3 center(posX, posY + rOffset, posZ);
+
+			// Real surface normal from the downstream slope (river.frag uses it for flow speed
+			// and rapids foam; a constant 'up' made every river look like flat still water)
+			glm::vec3 surfaceNormal = up;
+			if (riverData.path.size() >= 2) {
+				size_t i0 = (i == 0) ? 0 : i - 1;
+				size_t i1 = std::min(i + 1, riverData.path.size() - 1);
+				float run = glm::length(riverData.path[i1].pos - riverData.path[i0].pos) * cellWorldSize;
+				if (run > 1e-4f) {
+					float slope = (surfaceHeight(i1) - surfaceHeight(i0)) / run; // < 0 downstream
+					glm::vec3 forward = glm::normalize(dir + up * slope);
+					surfaceNormal = glm::normalize(glm::cross(right, forward));
+					if (surfaceNormal.y < 0.0f) surfaceNormal = -surfaceNormal;
+				}
+			}
 			
 			// --- TERRAIN-AWARE MESH BURIAL ---
 			// Push segments backward horizontally.
@@ -637,8 +702,9 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			if (pR.y > terrainR - 0.1f) pR.y = terrainR - 0.1f;
 
 			float vCoord = (float)i * 0.025f; // V texture coordinate for river flow direction
-			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-			riverMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, up.x, up.y, up.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			const glm::vec3& n = surfaceNormal;
+			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			riverMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
 
 			if (emittedVerts > 0)
 			{
@@ -680,13 +746,29 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 	}
+	// Shore skirt: two more rings regardless of terrain height, so the flat lake surface runs a
+	// little INTO the banks. The depth test then cuts it exactly along the terrain contour and the
+	// shader fades it over the first centimetres of depth. (Skipping every vertex above the water
+	// level instead ended the lake on whole grid cells short of the shore -> visible staircase.)
+	for (int ring = 0; ring < 2; ring++) {
+		std::vector<int> currentPass = expandedPixels;
+		for (int idx : currentPass) {
+			for (int dz = -1; dz <= 1; dz++) {
+				for (int dx = -1; dx <= 1; dx++) {
+					int nx = (idx % gridRes) + dx; int nz = (idx / gridRes) + dz;
+					if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+					int nidx = nz * gridRes + nx;
+					if (isExpanded[nidx]) continue;
+					expandedPixels.push_back(nidx); isExpanded[nidx] = true;
+					if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = lakeWaterLevel[idx];
+				}
+			}
+		}
+	}
+
 	std::map<int, int> terrainToWaterIdx;
 	for (int idx : expandedPixels) {
-		// Skip lake vertices where original terrain is above the water level
-		// This prevents the flat lake mesh from extending through terrain ridges
-		float origH = originalHeights[idx];
 		float wLevel = lakeWaterLevel[idx];
-		if (origH > wLevel + 0.3f) continue;
 
 		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
 		float y_pos = wLevel + lakeWaterOffset;

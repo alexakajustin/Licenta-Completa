@@ -22,6 +22,8 @@ out vec3 NormalWorld;
 
 // Object-space position for height-based layer blending
 out vec3 LocalPos;
+// Linear part of the model matrix (rotation * scale) for object-space triplanar mapping
+out mat3 ObjectBasis;
 
 out vec3 WorldXBasis;
 out vec3 WorldZBasis;
@@ -77,6 +79,7 @@ void main()
 	
 	FragPos = worldPosition.xyz; 
 	LocalPos = pos; // Object-space position (before model transform)
+	ObjectBasis = mat3(modelMatrix);
 
 	// Transform TBN vectors to world space for normal mapping
 	mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));

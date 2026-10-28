@@ -39,3 +39,12 @@ struct TextureLayer {
 };
 
 static const int MAX_TEXTURE_LAYERS = 5;
+
+// Texture units for the layer samplers (shader.frag). Chosen to avoid every unit the
+// renderer binds for lighting: 0/1 diffuse+normal, 2 skybox, 3 directional shadow,
+// 4-9 omni shadows, 14-15 scene depth/reflection, 20 directional shadow colour,
+// 21-23 point and 25-27 spot shadow colour. Binding a sampler2D to the same unit as one
+// of those (sampler2DArray / samplerCube) makes the draw call invalid.
+static const int LAYER_DIFFUSE_UNITS[MAX_TEXTURE_LAYERS]      = { 10, 12, 24, 29, 31 };
+static const int LAYER_NORMAL_UNITS[MAX_TEXTURE_LAYERS]       = { 11, 13, 28, 30, 32 };
+static const int LAYER_DISPLACEMENT_UNITS[MAX_TEXTURE_LAYERS] = { 16, 17, 18, 19, 33 };
