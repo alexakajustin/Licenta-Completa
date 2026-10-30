@@ -444,6 +444,27 @@ void Shader::CompileProgram()
 	DiscoverUniforms();
 }
 
+bool Shader::IsEngineManagedUniform(const std::string& n)
+{
+	std::string n_lower = n;
+	for (auto& c : n_lower) c = (char)tolower(c);
+
+	return n.find("[") != std::string::npos || // Array members
+		n_lower.find("layer") != std::string::npos ||
+		n_lower.find("light") != std::string::npos ||
+		n_lower.find("shadow") != std::string::npos ||
+		n_lower.find("transform") != std::string::npos ||
+		n_lower.find("waterfoam") != std::string::npos || // Per-frame foam map (WaterFoamMap)
+		n_lower.find("foliage") != std::string::npos ||   // Set per draw (isFoliage, foliageRadius)
+		n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
+		n == "theTexture" || n == "normalMap" || n == "farPlane" ||
+		n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
+		n == "textureLayerCount" ||
+		n == "clipPlane" || n == "screenSize" || n == "selectionTint" ||
+		n == "refractionMap" || n == "reflectionMap" || n == "sceneDepthMap" ||
+		n == "viewMatrix" || n == "materialAlpha";
+}
+
 void Shader::DiscoverUniforms()
 {
 	uniformProperties.clear();
@@ -475,22 +496,7 @@ void Shader::DiscoverUniforms()
 		}
 
 		// Filter out internal engine uniforms
-		std::string n = prop.name;
-		std::string n_lower = n;
-		for (auto& c : n_lower) c = (char)tolower(c);
-
-		if (n.find("[") != std::string::npos || // Skip array members
-			n_lower.find("layer") != std::string::npos || 
-			n_lower.find("light") != std::string::npos ||
-			n_lower.find("shadow") != std::string::npos || 
-			n_lower.find("transform") != std::string::npos ||
-			n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
-			n == "theTexture" || n == "normalMap" || n == "farPlane" ||
-			n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
-			n == "textureLayerCount" ||
-			n == "clipPlane" || n == "screenSize" || n == "selectionTint" ||
-			n == "refractionMap" || n == "reflectionMap" || n == "sceneDepthMap" ||
-			n == "viewMatrix" || n == "materialAlpha")
+		if (IsEngineManagedUniform(prop.name))
 			continue;
 
 		if (prop.type == UniformType::Unknown || prop.type == UniformType::Mat4 || prop.type == UniformType::Sampler2D) 

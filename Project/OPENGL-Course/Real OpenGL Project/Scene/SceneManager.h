@@ -16,6 +16,7 @@
 #include "Core/Frustum.h"
 #include "Nodes/NodeGraph.h"
 #include "Rendering/InstancedGroup.h"
+#include "Rendering/WaterFoamMap.h"
 #include "Scene/UndoManager.h"
 
 class Player;
@@ -74,6 +75,7 @@ public:
 	void RemoveInstancedGroup(const std::string& name);
 	void ClearInstancedGroups();
 	std::vector<InstancedGroup*>& GetInstancedGroups() { return instancedGroups; }
+	const WaterFoamMap& GetWaterFoamMap() const { return waterFoam; }
 	void SetCullShader(Shader* s) { cullShader = s; }
 	void SetInstancedRenderShader(Shader* s) { instancedRenderShader = s; }
 	void SetRenderDistanceMultiplier(float m) { renderDistanceMultiplier = m; }
@@ -192,6 +194,7 @@ private:
 	GLuint hizTexture = 0;
 	GLuint waterDepthCopy = 0;   // Opaque depth copy sampled by water while it writes depth
 	int waterDepthCopyW = 0, waterDepthCopyH = 0;
+	WaterFoamMap waterFoam;       // Foam around objects standing in the water + river wakes
 	GLuint hizDebugTexture = 0;
 	int hizWidth = 0;
 	int hizHeight = 0;

@@ -460,6 +460,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			GLint screenSizeLoc = glGetUniformLocation(s->GetShaderID(), "screenSize");
 			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenWidth > 0.0f ? screenWidth : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
+			waterFoam.Bind(s->GetShaderID()); // Water shaders: obstacle foam map + foam pattern
+
 			if (dLight) s->SetDirectionalLight(dLight);
 			if (pLights) s->SetPointLights(pLights, pCount, 4, 0);
 			if (sLights) s->SetSpotLights(sLights, sCount, 4 + pCount, pCount);
@@ -915,12 +917,6 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// 1. Render all opaque objects normally (writes depth)
 	RenderQueue(opaqueObjects);
 
-	// 1.5 Capture Refraction Texture (Copy opaque results to refraction texture)
-	if (refractionTexture > 0 && !overrideShader) {
-		glBindTexture(GL_TEXTURE_2D, refractionTexture);
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)screenWidth, (GLsizei)screenHeight);
-	}
-
 	// ================================================================
 	// Generate Hi-Z map for Occlusion Culling
 	// MUST happen after opaque pass but BEFORE instanced group culling
@@ -931,73 +927,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		lastShaderID = 0; // Force PrepareShader to re-bind after compute shader usage
 	}
 
-	// 2. Sort and Render transparent objects
-	if (!transparentObjects.empty() && !overrideShader) {
-		// Painter's algorithm: Back-to-front sorting relative to camera location
-		std::sort(transparentObjects.begin(), transparentObjects.end(), [&](GameObject* a, GameObject* b) {
-			float distA = glm::length(glm::vec3(a->GetWorldMatrix()[3]) - cameraPos);
-			float distB = glm::length(glm::vec3(b->GetWorldMatrix()[3]) - cameraPos);
-			return distA > distB;
-		});
-
-		// Water (lakes + rivers) first, WITH depth writes. The water shaders composite the
-		// refraction of the opaque scene themselves (alpha is only < 1 along the shoreline), so they
-		// behave like opaque surfaces and need real depth: where a river runs into a lake, the
-		// lower surface is hidden instead of both being blended on top of each other in an
-		// arbitrary order. They read the opaque depth from a copy (no feedback loop).
-		std::vector<GameObject*> waterObjects, otherTransparent;
-		for (GameObject* obj : transparentObjects) {
-			Material* m = obj->GetMaterial();
-			std::string vPath = (m && m->GetShader()) ? m->GetShader()->GetVertexPath() : "";
-			bool isWater = vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos;
-			(isWater ? waterObjects : otherTransparent).push_back(obj);
-		}
-
-		if (!waterObjects.empty())
-		{
-			if (sceneDepthTexture > 0) {
-				int w = (int)screenWidth, h = (int)screenHeight;
-				if (waterDepthCopy == 0 || waterDepthCopyW != w || waterDepthCopyH != h) {
-					if (waterDepthCopy == 0) glGenTextures(1, &waterDepthCopy);
-					glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
-					// Same format as the viewport depth attachment (Application::InitViewportFBO)
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-					waterDepthCopyW = w; waterDepthCopyH = h;
-				}
-				glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
-				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
-				sceneDepthReadTexture = waterDepthCopy;
-				lastShaderID = 0; // Force PrepareShader to bind the copy
-			}
-
-			glDepthMask(GL_TRUE);
-			RenderQueue(waterObjects);
-
-			sceneDepthReadTexture = sceneDepthTexture;
-			lastShaderID = 0;
-		}
-
-		// Other transparent objects: Z-Write OFF so overlapping ones don't clip each other
-		glDepthMask(GL_FALSE);
-
-		if (sceneDepthTexture > 0) {
-			glActiveTexture(GL_TEXTURE14);
-			glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
-		}
-
-		RenderQueue(otherTransparent);
-		glDepthMask(GL_TRUE); // Restore depth mask
-	}
-
-	// Hi-Z generation was moved above (before transparent render) to ensure
-	// the depth pyramid is ready for instanced group GPU culling below.
-
 	// ================================================================
 	// GPU-Driven Instanced Groups (grass, foliage, rocks, etc.)
+	// They are opaque too and are drawn BEFORE the refraction capture and the water: rocks,
+	// logs and plants standing in a lake or river must be in the refraction (their submerged
+	// part is seen through the water, tinted) and in the depth the water reads
+	// (intersection foam and absorption around them).
 	// These bypass the entire GameObject pipeline for maximum performance.
 	// NOTE: Shadow pass for instanced groups is handled separately by
 	// Renderer::DirectionalShadowMapPass() via CullAndDrawShadow(),
@@ -1006,7 +941,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// ================================================================
 	if (!overrideShader && !instancedGroups.empty() && cullShader && instancedRenderShader) {
 		// Sanitize GL state before GPU-driven instanced rendering.
-		// Previous passes (transparent objects, texture layers, SSAO quad) may leave
+		// Previous passes (opaque objects, texture layers, Hi-Z compute) may leave
 		// stale state that causes intermittent rendering glitches (hollow/dark meshes)
 		// especially on AMD drivers.
 		glDepthMask(GL_TRUE);
@@ -1200,6 +1135,93 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		glEnable(GL_CULL_FACE);
 	}
+
+	lastShaderID = 0; // The instanced pass bound its own programs
+
+	// 1.5 Capture Refraction Texture (Copy opaque results to refraction texture)
+	if (refractionTexture > 0 && !overrideShader) {
+		glBindTexture(GL_TEXTURE_2D, refractionTexture);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)screenWidth, (GLsizei)screenHeight);
+	}
+
+	auto IsWaterObject = [](GameObject* obj) {
+		Material* m = obj->GetMaterial();
+		std::string vPath = (m && m->GetShader()) ? m->GetShader()->GetVertexPath() : "";
+		return vPath.find("water.vert") != std::string::npos || vPath.find("river.vert") != std::string::npos;
+	};
+
+	// 1.6 Water foam map: foam where objects cross the water surface + their wakes downstream.
+	// Main view only (the reflection pass clips the scene and does not draw the water).
+	if (!overrideShader && renderer && !renderer->IsRenderingCubemap() && clipPlane == glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)) {
+		std::vector<GameObject*> waterObjs, obstacleObjs;
+		for (GameObject* obj : transparentObjects) if (IsWaterObject(obj)) waterObjs.push_back(obj);
+		if (!waterObjs.empty()) {
+			// Terrains (texture layers) are not obstacles: the shoreline foam comes from the water depth
+			for (GameObject* obj : opaqueObjects) if (obj->GetTextureLayers().empty()) obstacleObjs.push_back(obj);
+			waterFoam.Update(waterObjs, obstacleObjs, instancedGroups, cullShader ? cullShader->GetShaderID() : 0,
+				cameraPos, gs ? gs : graphicsSettings, time);
+			lastShaderID = 0;
+		}
+	}
+
+	// 2. Sort and Render transparent objects
+	if (!transparentObjects.empty() && !overrideShader) {
+		// Painter's algorithm: Back-to-front sorting relative to camera location
+		std::sort(transparentObjects.begin(), transparentObjects.end(), [&](GameObject* a, GameObject* b) {
+			float distA = glm::length(glm::vec3(a->GetWorldMatrix()[3]) - cameraPos);
+			float distB = glm::length(glm::vec3(b->GetWorldMatrix()[3]) - cameraPos);
+			return distA > distB;
+		});
+
+		// Water (lakes + rivers) first, WITH depth writes. The water shaders composite the
+		// refraction of the opaque scene themselves (alpha is only < 1 along the shoreline), so they
+		// behave like opaque surfaces and need real depth: where a river runs into a lake, the
+		// lower surface is hidden instead of both being blended on top of each other in an
+		// arbitrary order. They read the opaque depth from a copy (no feedback loop).
+		std::vector<GameObject*> waterObjects, otherTransparent;
+		for (GameObject* obj : transparentObjects)
+			(IsWaterObject(obj) ? waterObjects : otherTransparent).push_back(obj);
+
+		if (!waterObjects.empty())
+		{
+			if (sceneDepthTexture > 0) {
+				int w = (int)screenWidth, h = (int)screenHeight;
+				if (waterDepthCopy == 0 || waterDepthCopyW != w || waterDepthCopyH != h) {
+					if (waterDepthCopy == 0) glGenTextures(1, &waterDepthCopy);
+					glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
+					// Same format as the viewport depth attachment (Application::InitViewportFBO)
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					waterDepthCopyW = w; waterDepthCopyH = h;
+				}
+				glBindTexture(GL_TEXTURE_2D, waterDepthCopy);
+				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+				sceneDepthReadTexture = waterDepthCopy;
+				lastShaderID = 0; // Force PrepareShader to bind the copy
+			}
+
+			glDepthMask(GL_TRUE);
+			RenderQueue(waterObjects);
+
+			sceneDepthReadTexture = sceneDepthTexture;
+			lastShaderID = 0;
+		}
+
+		// Other transparent objects: Z-Write OFF so overlapping ones don't clip each other
+		glDepthMask(GL_FALSE);
+
+		if (sceneDepthTexture > 0) {
+			glActiveTexture(GL_TEXTURE14);
+			glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+		}
+
+		RenderQueue(otherTransparent);
+		glDepthMask(GL_TRUE); // Restore depth mask
+	}
+
 
 	// ================================================================
 	// Selection Wireframe Overlay (multi-select only)

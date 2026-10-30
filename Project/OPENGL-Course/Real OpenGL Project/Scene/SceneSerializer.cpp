@@ -1054,22 +1054,39 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 				group->Setup(mesh, instances, mat, tex, norm, layers);
 				scene.AddInstancedGroup(group);
 			}
-			else if (sourceObj && sourceObj->GetModel())
+			else if (sourceObj && (sourceObj->GetModel() || !sourceObj->GetModelSourcePath().empty()))
 			{
-				Model* model = sourceObj->GetModel();
-				
-				// Extract sub-mesh index from group name (e.g., "_0", "_1")
-				int mIdx = 0;
-				size_t lastUnderscore = name.find_last_of('_');
-				if (lastUnderscore != std::string::npos && lastUnderscore < name.length() - 1) {
-					try {
-						mIdx = std::stoi(name.substr(lastUnderscore + 1));
-					} catch (...) {
-						mIdx = 0;
+				// Multi-mesh models are not attached to their object (only single-mesh ones are),
+				// so take the model from its source path, like the Scatter node does
+				Model* model = sourceObj->GetModel() ? sourceObj->GetModel()
+					: ServiceLocator::GetAssetManager()->GetModel(sourceObj->GetModelSourcePath());
+				std::vector<std::string> meshNames;
+				if (model) meshNames = model->GetMeshNames();
+				auto findMesh = [&](const std::string& meshName) -> int {
+					for (size_t i = 0; i < meshNames.size(); i++) if (meshNames[i] == meshName) return (int)i;
+					return -1;
+				};
+
+				// Scatter names sub-mesh groups "<scatter group>_<source>_<mesh name>"
+				int mIdx = -1;
+				std::string baseName;
+				size_t srcPos = name.find("_" + sourceObjName + "_");
+				if (srcPos != std::string::npos) {
+					baseName = name.substr(srcPos + sourceObjName.length() + 2);
+					if (!baseName.empty()) mIdx = findMesh(baseName);
+				}
+				// Older scenes: sub-mesh index as a "_N" suffix
+				if (mIdx < 0) {
+					mIdx = 0;
+					size_t lastUnderscore = name.find_last_of('_');
+					if (lastUnderscore != std::string::npos && lastUnderscore < name.length() - 1) {
+						try { mIdx = std::stoi(name.substr(lastUnderscore + 1)); }
+						catch (...) { mIdx = 0; }
 					}
+					baseName.clear();
 				}
 
-				if (mIdx >= 0 && mIdx < model->GetMeshCount()) {
+				if (model && mIdx >= 0 && mIdx < (int)model->GetMeshCount()) {
 					Mesh* mesh = model->GetMesh(mIdx);
 					unsigned int matIdx = model->GetMaterialIndex(mIdx);
 					Material* mat = sourceObj->GetMaterial() ? sourceObj->GetMaterial() : defaultMaterial;
@@ -1081,7 +1098,17 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					InstancedGroup* group = new InstancedGroup(name);
 					group->SetSourceObjectName(sourceObjName);
 					group->Setup(mesh, instances, mat, tex, norm, layers);
+					// LOD meshes of this part ("<mesh name>_LOD1", "_LOD2")
+					if (!baseName.empty()) {
+						for (int lod = 1; lod <= 2; lod++) {
+							int lodIdx = findMesh(baseName + "_LOD" + std::to_string(lod));
+							if (lodIdx >= 0) group->SetLODMesh(lod, model->GetMesh(lodIdx), 0.0f);
+						}
+					}
 					scene.AddInstancedGroup(group);
+				}
+				else {
+					printf("[SceneSerializer] Warning: Could not reconstruct InstancedGroup '%s', no mesh %d in '%s'\n", name.c_str(), mIdx, sourceObjName.c_str());
 				}
 			}
 			else

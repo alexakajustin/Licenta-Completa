@@ -232,6 +232,7 @@
     <ClCompile Include="Scene\SceneManager.cpp" />
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
+    <ClCompile Include="Rendering\WaterFoamMap.cpp" />
     <ClCompile Include="Rendering\ShadowMap.cpp" />
     <ClCompile Include="Rendering\Skybox.cpp" />
     <ClCompile Include="Lighting\SpotLight.cpp" />
@@ -1056,6 +1057,7 @@
     <ClInclude Include="Scene\SceneManager.h" />
     <ClInclude Include="Scene\SceneSerializer.h" />
     <ClInclude Include="Rendering\Shader.h" />
+    <ClInclude Include="Rendering\WaterFoamMap.h" />
     <ClInclude Include="Rendering\ShadowMap.h" />
     <ClInclude Include="Rendering\Skybox.h" />
     <ClInclude Include="Lighting\SpotLight.h" />

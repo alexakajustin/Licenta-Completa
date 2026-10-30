@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.9539954662322998,
-            -0.10018806159496307,
-            -0.28258633613586426
+            0.94932621717453,
+            0.09584575146436691,
+            -0.29932141304016113
         ],
-        "pitch": -5.75,
+        "pitch": 5.5,
         "position": [
-            235.7721405029297,
-            303.43896484375,
-            -588.5250854492188
+            549.0687866210938,
+            303.3734436035156,
+            -278.5440979003906
         ],
-        "yaw": -16.5
+        "yaw": -17.5
     },
     "instancedGroups": [
         {
@@ -255,6 +255,86 @@
             "sourceObjectName": "Mossy Rock C"
         },
         {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A_Bark.inst",
+            "name": "Scatter_Instanced_5005_Cedar A_Bark",
+            "sourceObjectName": "Cedar A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A_Leaves.inst",
+            "name": "Scatter_Instanced_5005_Cedar A_Leaves",
+            "sourceObjectName": "Cedar A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B_Bark.inst",
+            "name": "Scatter_Instanced_5038_Cedar B_Bark",
+            "sourceObjectName": "Cedar B"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B_Leaves.inst",
+            "name": "Scatter_Instanced_5038_Cedar B_Leaves",
+            "sourceObjectName": "Cedar B"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C_Bark.inst",
+            "name": "Scatter_Instanced_5071_Cedar C_Bark",
+            "sourceObjectName": "Cedar C"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C_Leaves.inst",
+            "name": "Scatter_Instanced_5071_Cedar C_Leaves",
+            "sourceObjectName": "Cedar C"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5104_Fern_A_Mesh.inst",
+            "name": "Scatter_Instanced_5104_Fern A_Mesh",
+            "sourceObjectName": "Fern A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5137_Fern_B_Mesh.inst",
+            "name": "Scatter_Instanced_5137_Fern B_Mesh",
+            "sourceObjectName": "Fern B"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5170_Dry_Branches_Mesh.inst",
+            "name": "Scatter_Instanced_5170_Dry Branches_Mesh",
+            "sourceObjectName": "Dry Branches"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5203_Stump_A_Mesh.inst",
+            "name": "Scatter_Instanced_5203_Stump A_Mesh",
+            "sourceObjectName": "Stump A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5236_Stump_B_Mesh.inst",
+            "name": "Scatter_Instanced_5236_Stump B_Mesh",
+            "sourceObjectName": "Stump B"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5269_Fallen_Log_Mesh.inst",
+            "name": "Scatter_Instanced_5269_Fallen Log_Mesh",
+            "sourceObjectName": "Fallen Log"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5302_Boulder_Mesh.inst",
+            "name": "Scatter_Instanced_5302_Boulder_Mesh",
+            "sourceObjectName": "Boulder"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5325_Mossy_Rock_A_Mesh.inst",
+            "name": "Scatter_Instanced_5325_Mossy Rock A_Mesh",
+            "sourceObjectName": "Mossy Rock A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5348_Mossy_Rock_B_Mesh.inst",
+            "name": "Scatter_Instanced_5348_Mossy Rock B_Mesh",
+            "sourceObjectName": "Mossy Rock B"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5371_Mossy_Rock_C_Mesh.inst",
+            "name": "Scatter_Instanced_5371_Mossy Rock C_Mesh",
+            "sourceObjectName": "Mossy Rock C"
+        },
+        {
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_523_free_grass_by_adam127_8.inst",
             "name": "Scatter_Instanced_523_free grass by adam127 8",
             "sourceObjectName": "free grass by adam127 8"
@@ -262,17 +342,17 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.3140000104904175,
+            "ambientIntensity": 0.6600000262260437,
             "color": [
                 1.0,
                 0.6245875358581543,
                 0.3069307208061218
             ],
-            "diffuseIntensity": 1.2940000295639038,
+            "diffuseIntensity": 2.0,
             "direction": [
-                -0.8781107068061829,
-                -0.10452846437692642,
-                0.4668997526168823
+                -0.913323163986206,
+                -0.1908089965581894,
+                0.35976749658584595
             ],
             "name": "Sun",
             "type": "Directional"
@@ -280,7 +360,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 5848,
+        "nextId": 6566,
         "tabs": [
             {
                 "graph": {
@@ -306,7 +386,7 @@
                             "start": 469
                         }
                     ],
-                    "nextId": 5848,
+                    "nextId": 6566,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -602,7 +682,7 @@
                             "start": 5092
                         }
                     ],
-                    "nextId": 5848,
+                    "nextId": 6566,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -717,9 +797,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -771,13 +851,52 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5005_Cedar A",
                                 "Scatter_Instanced_5005_Cedar A_",
+                                "Scatter_Instanced_5005_Cedar A_Bark",
+                                "Scatter_Instanced_5005_Cedar A_Leaves",
                                 "Scatter_Instanced_5005_Cedar A__1",
                                 "Scatter_Instanced_5005_Cedar A__2",
                                 "Scatter_Instanced_5005_Cedar A__3",
                                 "Scatter_Instanced_5005_Cedar A__4",
                                 "Scatter_Instanced_5005_Cedar A__5"
                             ],
-                            "deletionVolumes": [],
+                            "deletionVolumes": [
+                                {
+                                    "radius": 12.896989822387695,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                },
+                                {
+                                    "radius": 12.508234024047852,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                },
+                                {
+                                    "radius": 12.48971176147461,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                },
+                                {
+                                    "radius": 12.321779251098633,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                },
+                                {
+                                    "radius": 12.226262092590332,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                },
+                                {
+                                    "radius": 11.60771369934082,
+                                    "x": 560.3889770507813,
+                                    "y": 300.2456970214844,
+                                    "z": -277.3992919921875
+                                }
+                            ],
                             "editorPos": [
                                 300.0,
                                 150.0
@@ -1005,9 +1124,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -1059,6 +1178,8 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5038_Cedar B",
                                 "Scatter_Instanced_5038_Cedar B_",
+                                "Scatter_Instanced_5038_Cedar B_Bark",
+                                "Scatter_Instanced_5038_Cedar B_Leaves",
                                 "Scatter_Instanced_5038_Cedar B__1",
                                 "Scatter_Instanced_5038_Cedar B__2",
                                 "Scatter_Instanced_5038_Cedar B__3",
@@ -1293,9 +1414,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -1347,6 +1468,8 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5071_Cedar C",
                                 "Scatter_Instanced_5071_Cedar C_",
+                                "Scatter_Instanced_5071_Cedar C_Bark",
+                                "Scatter_Instanced_5071_Cedar C_Leaves",
                                 "Scatter_Instanced_5071_Cedar C__1",
                                 "Scatter_Instanced_5071_Cedar C__2",
                                 "Scatter_Instanced_5071_Cedar C__3",
@@ -1656,7 +1779,7 @@
                             "start": 5290
                         }
                     ],
-                    "nextId": 5848,
+                    "nextId": 6566,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1771,9 +1894,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -1825,6 +1948,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5104_Fern A",
                                 "Scatter_Instanced_5104_Fern A_",
+                                "Scatter_Instanced_5104_Fern A_Mesh",
                                 "Scatter_Instanced_5104_Fern A__1",
                                 "Scatter_Instanced_5104_Fern A__2"
                             ],
@@ -2056,9 +2180,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -2110,6 +2234,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5137_Fern B",
                                 "Scatter_Instanced_5137_Fern B_",
+                                "Scatter_Instanced_5137_Fern B_Mesh",
                                 "Scatter_Instanced_5137_Fern B__1",
                                 "Scatter_Instanced_5137_Fern B__2"
                             ],
@@ -2341,9 +2466,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -2395,6 +2520,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5170_Dry Branches",
                                 "Scatter_Instanced_5170_Dry Branches_",
+                                "Scatter_Instanced_5170_Dry Branches_Mesh",
                                 "Scatter_Instanced_5170_Dry Branches__1",
                                 "Scatter_Instanced_5170_Dry Branches__2"
                             ],
@@ -2626,9 +2752,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -2680,6 +2806,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5203_Stump A",
                                 "Scatter_Instanced_5203_Stump A_",
+                                "Scatter_Instanced_5203_Stump A_Mesh",
                                 "Scatter_Instanced_5203_Stump A__1",
                                 "Scatter_Instanced_5203_Stump A__2"
                             ],
@@ -2911,9 +3038,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -2965,6 +3092,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5236_Stump B",
                                 "Scatter_Instanced_5236_Stump B_",
+                                "Scatter_Instanced_5236_Stump B_Mesh",
                                 "Scatter_Instanced_5236_Stump B__1",
                                 "Scatter_Instanced_5236_Stump B__2"
                             ],
@@ -3196,9 +3324,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -3250,6 +3378,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5269_Fallen Log",
                                 "Scatter_Instanced_5269_Fallen Log_",
+                                "Scatter_Instanced_5269_Fallen Log_Mesh",
                                 "Scatter_Instanced_5269_Fallen Log__1",
                                 "Scatter_Instanced_5269_Fallen Log__2"
                             ],
@@ -3456,7 +3585,7 @@
                             "start": 5381
                         }
                     ],
-                    "nextId": 5848,
+                    "nextId": 6566,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3571,9 +3700,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -3625,6 +3754,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5302_Boulder",
                                 "Scatter_Instanced_5302_Boulder_",
+                                "Scatter_Instanced_5302_Boulder_Mesh",
                                 "Scatter_Instanced_5302_Boulder__1",
                                 "Scatter_Instanced_5302_Boulder__2"
                             ],
@@ -3816,9 +3946,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -3870,6 +4000,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5325_Mossy Rock A",
                                 "Scatter_Instanced_5325_Mossy Rock A_",
+                                "Scatter_Instanced_5325_Mossy Rock A_Mesh",
                                 "Scatter_Instanced_5325_Mossy Rock A__1",
                                 "Scatter_Instanced_5325_Mossy Rock A__2"
                             ],
@@ -4061,9 +4192,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -4115,6 +4246,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5348_Mossy Rock B",
                                 "Scatter_Instanced_5348_Mossy Rock B_",
+                                "Scatter_Instanced_5348_Mossy Rock B_Mesh",
                                 "Scatter_Instanced_5348_Mossy Rock B__1",
                                 "Scatter_Instanced_5348_Mossy Rock B__2"
                             ],
@@ -4306,9 +4438,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                1.0,
-                                1.0,
-                                1.0
+                                0.8910890817642212,
+                                0.5617096424102783,
+                                0.5617096424102783
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -4360,6 +4492,7 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_5371_Mossy Rock C",
                                 "Scatter_Instanced_5371_Mossy Rock C_",
+                                "Scatter_Instanced_5371_Mossy Rock C_Mesh",
                                 "Scatter_Instanced_5371_Mossy Rock C__1",
                                 "Scatter_Instanced_5371_Mossy Rock C__2"
                             ],
@@ -4476,7 +4609,7 @@
                             "start": 820
                         }
                     ],
-                    "nextId": 5848,
+                    "nextId": 6566,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -4591,9 +4724,9 @@
                         },
                         {
                             "cachedMatColor": [
-                                0.8999999761581421,
-                                0.8999999761581421,
-                                0.8999999761581421
+                                0.7755775451660156,
+                                0.3557930290699005,
+                                0.3557930290699005
                             ],
                             "cachedMatOffset": [
                                 0.0,
@@ -4658,7 +4791,14 @@
                             "createdGroupNames": [
                                 "Scatter_Instanced_523_free grass by adam127 8"
                             ],
-                            "deletionVolumes": [],
+                            "deletionVolumes": [
+                                {
+                                    "radius": 2.4741950035095215,
+                                    "x": 564.1448974609375,
+                                    "y": 301.3960266113281,
+                                    "z": -261.04425048828125
+                                }
+                            ],
                             "editorPos": [
                                 250.0,
                                 150.0
@@ -4799,7 +4939,7 @@
             "isVisible": true,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.baseColor": [
                     1.0,
                     1.0,
@@ -4952,12 +5092,12 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    552.1306762695313,
-                    300.8734436035156,
-                    -281.60595703125
+                    840.6273803710938,
+                    275.7154235839844,
+                    -124.04734802246094
                 ],
                 "rotation": [
-                    -0.0,
+                    0.0,
                     0.0,
                     0.0
                 ],
@@ -5142,9 +5282,9 @@
                     1.0
                 ],
                 "material.baseColor": [
-                    0.8999999761581421,
-                    0.8999999761581421,
-                    0.8999999761581421,
+                    0.7755775451660156,
+                    0.3557930290699005,
+                    0.3557930290699005,
                     1.0
                 ],
                 "material.diffuseMap": "Assets\\Models\\High Quality Grass\\free grass.png",
@@ -5215,16 +5355,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5276,16 +5416,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5337,16 +5477,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5398,16 +5538,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5459,16 +5599,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5520,16 +5660,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5581,16 +5721,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5642,16 +5782,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5703,16 +5843,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5764,16 +5904,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5825,16 +5965,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5886,16 +6026,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [
@@ -5947,16 +6087,16 @@
             "isVisible": false,
             "material": {
                 "foliageRadius": 0.0,
-                "isFoliage": 0,
+                "isFoliage": 0.0,
                 "material.ambientColor": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "material.baseColor": [
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.8910890817642212,
+                    0.5617096424102783,
+                    0.5617096424102783,
                     1.0
                 ],
                 "material.offset": [

@@ -56,7 +56,7 @@ public:
 private:
 	// scene contains all data, node is just one part of that list of data
 	void LoadNode(aiNode* node, const aiScene* scene);
-	void LoadMesh(aiMesh* mesh, const aiScene* scene);
+	void LoadMesh(aiMesh* mesh, const aiScene* scene, const std::string& fallbackName);
 	void LoadMaterials(const aiScene* scene);
 
 	std::vector <Mesh*> meshList;

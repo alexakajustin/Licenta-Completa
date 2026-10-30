@@ -107,26 +107,31 @@ void Material::Bind(GLuint overrideProgram)
 	};
 
 	for (auto const& [name, val] : floats) {
+		if (Shader::IsEngineManagedUniform(name)) continue; // Scenes saved before the filter may hold them
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform1f(loc, val);
 	}
 
 	for (auto const& [name, val] : ints) {
+		if (Shader::IsEngineManagedUniform(name)) continue; // Scenes saved before the filter may hold them
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform1i(loc, val);
 	}
 
 	for (auto const& [name, val] : vec2s) {
+		if (Shader::IsEngineManagedUniform(name)) continue; // Scenes saved before the filter may hold them
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform2fv(loc, 1, glm::value_ptr(val));
 	}
 
 	for (auto const& [name, val] : vec3s) {
+		if (Shader::IsEngineManagedUniform(name)) continue; // Scenes saved before the filter may hold them
 		GLint loc = GetLoc(name);
 		if (loc != -1) glUniform3fv(loc, 1, glm::value_ptr(val));
 	}
 
 	for (auto const& [name, val] : vec4s) {
+		if (Shader::IsEngineManagedUniform(name)) continue;
 		GLint loc = GetLoc(name);
 		if (loc != -1) {
 			while(glGetError() != GL_NO_ERROR); // clear previous errors

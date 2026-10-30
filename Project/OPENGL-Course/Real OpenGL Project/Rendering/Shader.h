@@ -86,6 +86,11 @@ public:
 
 	const std::map<std::string, UniformProperty>& GetUniformProperties() const { return uniformProperties; }
 
+	// Uniforms the engine sets itself every frame/draw (matrices, lights, layers, foam map,
+	// foliage flags...): never material properties, so a material must not snapshot or
+	// re-upload them
+	static bool IsEngineManagedUniform(const std::string& name);
+
 	const std::string& GetVertexPath() const { return vertexPath; }
 	const std::string& GetFragmentPath() const { return fragmentPath; }
 	const std::string& GetTCSPath() const { return tcsPath; }

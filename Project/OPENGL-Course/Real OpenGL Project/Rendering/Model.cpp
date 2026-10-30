@@ -136,7 +136,11 @@ void Model::LoadNode(aiNode* node, const aiScene* scene)
 {
 	for (size_t i = 0; i < node->mNumMeshes; i++)
 	{
-		LoadMesh(scene->mMeshes[node->mMeshes[i]], scene);
+		// The .assbin cache does not keep mesh names (node names survive): fall back to the
+		// node's name, or LOD meshes ("Bark_LOD1") are no longer recognised after the first load
+		std::string fallback = node->mName.C_Str();
+		if (node->mNumMeshes > 1) fallback += "_" + std::to_string(i);
+		LoadMesh(scene->mMeshes[node->mMeshes[i]], scene, fallback);
 	}
 
 	for (size_t i = 0; i < node->mNumChildren; i++)
@@ -145,7 +149,7 @@ void Model::LoadNode(aiNode* node, const aiScene* scene)
 	}
 }
 
-void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
+void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const std::string& fallbackName)
 {
 	std::vector<GLfloat> vertices;
 	std::vector<unsigned int> indices;
@@ -195,7 +199,8 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
 			indices.push_back(face.mIndices[j]);
 	}
 
-	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex, std::string(mesh->mName.C_Str()) });
+	std::string name = mesh->mName.length > 0 ? std::string(mesh->mName.C_Str()) : fallbackName;
+	intermediateMeshes.push_back({ vertices, indices, mesh->mMaterialIndex, name });
 }
 
 static std::map<std::string, std::string> s_globalTexturePathCache;
