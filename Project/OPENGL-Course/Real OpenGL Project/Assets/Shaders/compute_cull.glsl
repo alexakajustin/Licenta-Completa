@@ -18,6 +18,10 @@ layout(local_size_x = 256) in;
  * 4. Detail foliage (grass: thousands of cheap instances without LOD meshes) thins out with
  *    distance instead: each instance keeps a stable random rank, blades about to drop out shrink
  *    away first and the survivors grow so the field stays covered.
+ * 5. Impostors (Impostor.h): trees replace their last LOD with one camera-facing card baked from
+ *    the full LOD0. A tree is several groups (bark, leaves) sharing the same instances and the same
+ *    bounds here, so they agree on every decision: one of them draws the impostor, the others draw
+ *    nothing at that range.
  */
 
 struct PackedInstance {
@@ -39,6 +43,11 @@ layout(std430, binding = 5) buffer DrawIndirectLOD1 {
 };
 layout(std430, binding = 6) buffer DrawIndirectLOD2 {
     uint indexCountLOD2; uint instanceCountLOD2; uint firstIndexLOD2; uint baseVertexLOD2; uint baseInstanceLOD2;
+};
+
+layout(std430, binding = 8) writeonly buffer VisibleInstancesImpostor { PackedInstance visibleImpostor[]; };
+layout(std430, binding = 9) buffer DrawIndirectImpostor {
+    uint indexCountImp; uint instanceCountImp; uint firstIndexImp; uint baseVertexImp; uint baseInstanceImp;
 };
 
 /// Camera pass, two-phase occlusion culling: 1 = the instance passed last frame's tests
@@ -66,6 +75,8 @@ uniform int   lodCount;            ///< Distinct LOD meshes of the group (1-3)
 uniform int   lodMin;              ///< Most detailed LOD this pass may use (far shadow cascades: > 0)
 uniform float maxDrawDistance;     ///< Hard limit, faded out over its last 15%
 uniform float minCasterSize;       ///< Shadow cascades: casters thinner than a shadow texel are skipped
+uniform int   impostorMode;        ///< 0: none, 1: this group draws the tree's impostor, 2: a sibling group does
+uniform int   impostorLevel;       ///< First LOD level drawn as the impostor (1 or 2)
 
 // --- Detail foliage ---
 uniform int   detailFoliage;
@@ -138,9 +149,22 @@ bool OccludedByHiZ(vec3 center, float radius) {
     return LinearDepth(nearestDepth) > LinearDepth(occluderDepth) + 0.5;
 }
 
+const int IMPOSTOR = 3; ///< Representation slot of the impostor card
+
+/// What a LOD level is drawn with: its mesh (the last one repeats when the group has fewer),
+/// or the impostor from impostorLevel on
+int Representation(int level) {
+    if (impostorMode != 0 && level >= impostorLevel) return IMPOSTOR;
+    return min(level, lodCount - 1);
+}
+
 void Emit(int lod, PackedInstance inst, float fade, float selectedFlag) {
     inst.rotAndFlags.w = fade + selectedFlag;
-    if (lod == 0) {
+    if (lod == IMPOSTOR) {
+        if (impostorMode != 1) return; // Drawn by a sibling group of the same tree
+        uint i = atomicAdd(instanceCountImp, 1u);
+        visibleImpostor[i] = inst;
+    } else if (lod == 0) {
         uint i = atomicAdd(instanceCountLOD0, 1u);
         visibleLOD0[i] = inst;
     } else if (lod == 1) {
@@ -210,24 +234,26 @@ void main()
         return;
     }
 
-    int lod = size >= lodScreenSize[0] ? 0 : (size >= lodScreenSize[1] ? 1 : 2);
-    lod = min(max(lod, lodMin), lodCount - 1);
+    int level = size >= lodScreenSize[0] ? 0 : (size >= lodScreenSize[1] ? 1 : 2);
+    level = max(level, lodMin);
+    int rep = Representation(level);
+    int nextRep = level < 2 ? Representation(level + 1) : rep;
 
-    // Progress of the transition to the next LOD inside the band above its threshold,
+    // Progress of the transition to the next representation inside the band above its threshold,
     // quantised to the 16 dither levels so the two halves cover every pixel exactly once
     float t = 0.0;
-    if (crossfadeWidth > 0.0 && lod + 1 < lodCount) {
-        float threshold = lodScreenSize[lod];
+    if (crossfadeWidth > 0.0 && nextRep != rep) {
+        float threshold = lodScreenSize[level];
         t = clamp((threshold * (1.0 + crossfadeWidth) - size) / (threshold * crossfadeWidth), 0.0, 1.0);
     }
     float q = floor(t * 16.0 + 0.5) / 16.0;
 
     if (fadeOut > 0.0 || q <= 0.0) {
-        Emit(lod, inst, fadeOut, selectedFlag);
+        Emit(rep, inst, fadeOut, selectedFlag);
     } else if (q >= 1.0) {
-        Emit(lod + 1, inst, 0.0, selectedFlag);
+        Emit(nextRep, inst, 0.0, selectedFlag);
     } else {
-        Emit(lod, inst, q, selectedFlag);
-        Emit(lod + 1, inst, -q, selectedFlag);
+        Emit(rep, inst, q, selectedFlag);
+        Emit(nextRep, inst, -q, selectedFlag);
     }
 }

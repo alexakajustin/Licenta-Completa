@@ -503,6 +503,9 @@ void Application::Run()
 			activeFrustum = nullptr; // Uses per-pass live frustum if null
 		}
 
+		// Tree impostors: bakes the missing ones (one per frame) before any pass draws them
+		sceneManager.UpdateImpostors(&graphicsSettings);
+
 		// Shadow passes
 		float shadowFar = graphicsSettings.shadowDistance;
 		debugOverlay.BeginPass("Shadow Maps");
@@ -639,6 +642,10 @@ void Application::Run()
 			debugOverlay.BeginPass("Reflection");
 			renderer.ReflectionPass(projection, view, activeCameraPos, sceneManager,
 				mainLight, pointLights, pointLightCount, spotLights, spotLightCount, reflectionWidth, reflectionHeight, waterHeight, &graphicsSettings);
+			// Blurred levels for the lake's rough reflections
+			glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, 0);
 			debugOverlay.EndPass("Reflection");
 		}
 		
@@ -745,6 +752,7 @@ void Application::Run()
 		renderSky(projection, view);
 
 		debugOverlay.BeginPass("Main Render");
+		sceneManager.SetReflectionDepthTexture(hasWater ? reflectionDepth : 0);
 		renderer.RenderPass(projection, view, activeCameraPos, sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
@@ -981,7 +989,8 @@ void Application::InitReflectionFBO()
 	glGenTextures(1, &reflectionTexture);
 	glBindTexture(GL_TEXTURE_2D, reflectionTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, reflectionWidth, reflectionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	// Mip-mapped every frame after the reflection pass: the lake blurs it by its ripple roughness
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionTexture, 0);
 
@@ -1076,6 +1085,8 @@ void Application::InitPostEffects()
 	skyUpsampleShader.CreateFromFiles(am->GetShaderPath("volumetric_sky.vert").c_str(), am->GetShaderPath("sky_upsample.frag").c_str());
 	cloudNoiseShader.CreateComputeShader(am->GetShaderPath("cloud_noise.glsl").c_str());
 	InitCloudNoise();
+	// The renderer's sky cubemap (water and material reflections) draws the same clouds
+	renderer.SetCloudNoise(cloudShapeNoiseTex, cloudDetailNoiseTex);
 }
 
 void Application::InitCloudNoise()
@@ -1181,6 +1192,9 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
 		if (j.contains("detailDistance")) graphicsSettings.detailDistance = j["detailDistance"];
 		if (j.contains("detailDensity")) graphicsSettings.detailDensity = j["detailDensity"];
+		if (j.contains("impostors")) graphicsSettings.impostors = j["impostors"];
+		if (j.contains("impostorResolution")) graphicsSettings.impostorResolution = j["impostorResolution"];
+		if (j.contains("impostorStartLod")) graphicsSettings.impostorStartLod = j["impostorStartLod"];
 		if (j.contains("shadowDistance")) graphicsSettings.shadowDistance = j["shadowDistance"];
 		if (j.contains("shadowCascades")) graphicsSettings.shadowCascades = j["shadowCascades"];
 		if (j.contains("shadowResolution")) graphicsSettings.shadowResolution = j["shadowResolution"];
@@ -1252,6 +1266,9 @@ void Application::SaveGraphicsSettings()
 	j["renderDistance"] = graphicsSettings.renderDistance;
 	j["detailDistance"] = graphicsSettings.detailDistance;
 	j["detailDensity"] = graphicsSettings.detailDensity;
+	j["impostors"] = graphicsSettings.impostors;
+	j["impostorResolution"] = graphicsSettings.impostorResolution;
+	j["impostorStartLod"] = graphicsSettings.impostorStartLod;
 	j["shadowDistance"] = graphicsSettings.shadowDistance;
 	j["shadowCascades"] = graphicsSettings.shadowCascades;
 	j["shadowResolution"] = graphicsSettings.shadowResolution;

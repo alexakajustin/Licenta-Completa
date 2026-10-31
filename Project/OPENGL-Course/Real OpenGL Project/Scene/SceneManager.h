@@ -17,6 +17,7 @@
 #include "Nodes/NodeGraph.h"
 #include "Rendering/InstancedGroup.h"
 #include "Rendering/WaterFoamMap.h"
+#include "Rendering/Impostor.h"
 #include "Scene/UndoManager.h"
 
 class Player;
@@ -75,6 +76,8 @@ public:
 	void RemoveInstancedGroup(const std::string& name);
 	void ClearInstancedGroups();
 	std::vector<InstancedGroup*>& GetInstancedGroups() { return instancedGroups; }
+	// Once per frame before the shadow passes: tree impostors (bakes the missing ones, Impostor.h)
+	void UpdateImpostors(const GraphicsSettings* gs) { impostors.Update(instancedGroups, gs); }
 	const WaterFoamMap& GetWaterFoamMap() const { return waterFoam; }
 	void SetCullShader(Shader* s) { cullShader = s; }
 	void SetInstancedRenderShader(Shader* s) { instancedRenderShader = s; }
@@ -164,6 +167,9 @@ public:
 
 	// Occlusion Culling Access
 	GLuint GetHiZTexture() const { return hizTexture; }
+	// Depth of this frame's planar water reflection (0 = none): the lake adds the fog between
+	// the water and what it mirrors
+	void SetReflectionDepthTexture(GLuint texture) { reflectionDepthTexture = texture; }
 	GLuint GetHiZDebugTexture() const { return hizDebugTexture; }
 	int GetHiZWidth() const { return hizWidth; }
 	int GetHiZHeight() const { return hizHeight; }
@@ -193,8 +199,10 @@ private:
 	// Hi-Z Occlusion Culling
 	GLuint hizTexture = 0;
 	GLuint waterDepthCopy = 0;   // Opaque depth copy sampled by water while it writes depth
+	GLuint reflectionDepthTexture = 0;
 	int waterDepthCopyW = 0, waterDepthCopyH = 0;
 	WaterFoamMap waterFoam;       // Foam around objects standing in the water + river wakes
+	ImpostorSystem impostors;     // Distant trees as cards baked from their full LOD0
 	GLuint hizDebugTexture = 0;
 	int hizWidth = 0;
 	int hizHeight = 0;

@@ -13,6 +13,7 @@ class Material;
 class Texture;
 class Shader;
 struct Frustum;
+struct ImpostorAtlas;
 struct GraphicsSettings;
 
 // =====================================================================
@@ -25,6 +26,8 @@ struct GraphicsSettings;
 //      (compute_cull.glsl): frustum planes, Hi-Z occlusion, screen-size LOD
 //      (LODPolicy.h) with dithered cross-fades, detail-foliage thinning.
 //   3. One glDrawElementsIndirect per LOD level, zero CPU work per instance.
+//   4. Trees (Impostor.h): from the LOD2 distance on, one camera-facing card per tree baked from
+//      the full LOD0 instead of the last LOD mesh.
 //
 // Usage:
 //   group->Setup(mesh, transforms, material, texture, normalMap);
@@ -68,6 +71,10 @@ public:
 		GLuint hizTexture = 0;                  // Camera pass occlusion (0 = off)
 		glm::vec2 screenSize = glm::vec2(0.0f);
 		float nearPlane = 0.1f, farPlane = 20000.0f;
+		bool impostors = false;                 // Trees may draw their impostor card (camera passes, cascades)
+		int impostorLevel = 1;                  // First LOD level drawn as the impostor (1 or 2)
+		bool orthographic = false;              // Shadow cascades: the cards face lightDir
+		glm::vec3 lightDir = glm::vec3(0.0f, 1.0f, 0.0f); // Toward the light
 	};
 
 	// Pass of a camera (main view, reflection) from the graphics settings. lodBias < 1 switches
@@ -108,7 +115,17 @@ public:
 	// Grass and other cheap, numerous things without LOD meshes thin out with distance instead
 	bool IsDetailFoliage() const;
 
-	// Instances drawn at a LOD by the last pass (GPU readback: stalls, debugging/statistics only)
+	// Impostor of the tree this group belongs to, assigned every frame by ImpostorSystem. Every
+	// group of the tree (bark, leaves) culls with the tree's bounds so they all pick the same
+	// representation; the one with drawsImpostor draws the card, the others nothing at that range.
+	void SetImpostor(const ImpostorAtlas* atlas, bool drawsImpostor, const glm::vec3& boundsCenter, float boundsRadius);
+	void ClearImpostor();
+	const ImpostorAtlas* GetImpostor() const { return impostor; }
+	bool DrawsImpostor() const { return impostor && drawsImpostor; }
+
+	// Instances drawn at a LOD by the last pass (GPU readback: stalls, debugging/statistics only);
+	// IMPOSTOR_SLOT = the impostor cards
+	static const int IMPOSTOR_SLOT = 3;
 	uint32_t ReadDrawnCount(int lod) const;
 
 	// Accessors
@@ -116,11 +133,12 @@ public:
 	uint32_t GetTotalCount() const { return totalCount; }
 	uint32_t GetVisibleCount() const { return lastVisibleCount; }
 	float GetMeshBoundRadius() const { return meshBoundRadius; }
+	float GetCullRadius() const { return cullRadius; } // The LOD decisions use this (a tree's whole bounds)
 
 	// Camera draw distance multiplier: bigger objects stay visible further away, like a
 	// screen-size cull. Grass/ferns/rocks (radius <= 2 m) keep the global render distance,
 	// a 20 m tree is drawn 5x further, capped at 10x.
-	float DrawDistanceScale() const { return glm::clamp(meshBoundRadius / 2.0f, 1.0f, 10.0f); }
+	float DrawDistanceScale() const { return glm::clamp(cullRadius / 2.0f, 1.0f, 10.0f); }
 
 	// Material/texture access for rendering pipeline
 	Material* GetMaterial() const { return material; }
@@ -168,6 +186,13 @@ private:
 	LODLevel lodLevels[MAX_LOD_LEVELS];
 	int lodCount = 1;  // LOD meshes in use (LOD0 = shared mesh)
 
+	// Impostor (see SetImpostor): the cards' list, and the bounds every pass culls with
+	const ImpostorAtlas* impostor = nullptr;
+	bool drawsImpostor = false;
+	LODLevel impostorLevel;
+	glm::vec3 cullCenter = glm::vec3(0.0f); // = mesh bounds unless the group is part of a tree
+	float cullRadius = 1.0f;
+
 	// Two-phase occlusion culling: per-instance visibility from the previous frame
 	GLuint visibilitySSBO = 0;
 
@@ -210,6 +235,9 @@ private:
 	void SetupFlat(const std::vector<PackedInstance>& instances);
 	void AllocateLODBuffers();
 	void ReleaseLODBuffers();
+	void AllocateImpostorBuffers();
+	void ReleaseImpostorBuffers();
+	void UpdateGroupBounds(); // CPU early-out box from cpuInstances and the cull sphere
 	void ReleaseChunks();
 
 	// Runs the compute culler for one pass into the per-LOD lists. False when the whole
@@ -222,4 +250,7 @@ private:
 
 	// Draw every LOD list with a depth-only shader whose uniforms are already set
 	void DrawDepthLODs();
+
+	// Draw the impostor cards of the last cull (camera passes or shadow cascades)
+	void DrawImpostors(const CullPass& pass, const glm::mat4& viewProj, bool shadow, const GraphicsSettings* gs);
 };

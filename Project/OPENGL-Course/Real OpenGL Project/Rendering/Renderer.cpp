@@ -5,7 +5,9 @@
 #include "Core/Frustum.h"
 #include "Rendering/InstancedGroup.h"
 #include "Rendering/LODPolicy.h"
+#include "Editor/DebugOverlay.h"
 #include <GLFW/glfw3.h>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include "Rendering/CascadedShadowMap.h"
@@ -66,13 +68,18 @@ void Renderer::Init()
 		"Shaders/directional_shadow_map.frag"
 	);
 
-	// Initialize procedural sky cubemap texture (256x256 per face)
+	// Filter across cube faces: rough reflections read the blurred mip levels of the sky cubemap
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+	// Initialize procedural sky cubemap texture (256x256 per face, mip-mapped: water and glossy
+	// materials blur their reflections by sampling coarser levels)
 	glGenTextures(1, &proceduralSkyTextureId);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, proceduralSkyTextureId);
 	for (unsigned int i = 0; i < 6; ++i) {
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -164,6 +171,11 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 			pass.detailRange = glm::vec2(detailEnd * 0.3f, detailEnd);
 			pass.detailDensity = gs ? gs->detailDensity : 1.0f;
 			pass.detailMaxDistance = gs ? gs->detailShadowDistance : 25.0f;
+			// Tree impostors cast too, as cards facing the light (the camera's representation)
+			pass.impostors = !gs || gs->impostors;
+			pass.impostorLevel = gs ? gs->impostorStartLod : 1;
+			pass.orthographic = true;
+			pass.lightDir = -glm::normalize(*light->GetDirectionPtr());
 			for (auto* group : groups)
 				if (group) group->CullAndDrawShadow(instancedCullShader.GetShaderID(), instancedShadowShader, pass, lightProjView, time);
 		}
@@ -249,15 +261,20 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 						  int fbw, int fbh, GLuint sceneDepthTexture, GLuint reflectionTexture, GLuint refractionTexture,
 						  const Frustum* debugFrustum, const GraphicsSettings* gs)
 {
+	DebugOverlay* profiler = DebugOverlay::GetInstance();
+	if (profiler) profiler->BeginObject("[Sky cubemap]", 0);
 	UpdateProceduralSkybox(mainLight, gs, (float)glfwGetTime());
+	if (profiler) profiler->EndObject();
 
 	// Render dynamic cubemaps for each visible, reflective object from its own position.
 	// This ensures perspective and parallax are mathematically correct.
 	for (auto* obj : scene.GetObjects()) {
 		if (obj && obj->GetVisible() && obj->GetMaterial() && obj->GetMaterial()->GetReflectivity() > 0.0f) {
+			if (profiler) profiler->BeginObject("[Reflective object cubemaps]", 0);
 			RenderSceneCubemapPass(obj, cameraPos, scene, mainLight,
 			                       pointLights, pointLightCount,
 			                       spotLights, spotLightCount, gs);
+			if (profiler) profiler->EndObject();
 		}
 	}
 
@@ -854,6 +871,14 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonSunset"), 1, glm::value_ptr(gs->horizonSunset));
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithNight"), 1, glm::value_ptr(gs->zenithNight));
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonNight"), 1, glm::value_ptr(gs->horizonNight));
+		// The clouds' noise volumes, on the same units as the main sky (Application)
+		glActiveTexture(GL_TEXTURE0 + 40);
+		glBindTexture(GL_TEXTURE_3D, cloudShapeNoise);
+		glUniform1i(glGetUniformLocation(skyShader->GetShaderID(), "cloudShapeNoise"), 40);
+		glActiveTexture(GL_TEXTURE0 + 41);
+		glBindTexture(GL_TEXTURE_3D, cloudDetailNoise);
+		glUniform1i(glGetUniformLocation(skyShader->GetShaderID(), "cloudDetailNoise"), 41);
+		glActiveTexture(GL_TEXTURE0);
 	} else {
 		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "starDensity"), gs->universeStarDensity);
 		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "starBrightness"), gs->universeStarBrightness);
@@ -865,7 +890,36 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 
 	glBindVertexArray(skyboxQuadVAO);
 
-	for (int i = 0; i < 6; i++) {
+	// Time slicing (Unity's "Individual faces" for realtime reflection probes): one face per
+	// call — it is called by the reflection and the main pass, so the cube is complete every
+	// 3 frames — but all six at once when the sun or the sky settings changed
+	SkyCubemapState state;
+	std::memset(&state, 0, sizeof(state));
+	state.skyboxType = (int)gs->skyboxType;
+	state.cloudsEnabled = gs->cloudsEnabled ? 1 : 0;
+	state.cloudsDensity = gs->cloudsDensity;
+	state.cloudsSpeed = gs->cloudsSpeed;
+	state.cloudsSharpness = gs->cloudsSharpness;
+	state.sunDir = *mainLight.GetDirectionPtr();
+	state.sunColour = *mainLight.GetColourPtr();
+	state.colours[0] = gs->zenithDay;     state.colours[1] = gs->horizonDay;
+	state.colours[2] = gs->zenithSunset;  state.colours[3] = gs->horizonSunset;
+	state.colours[4] = gs->zenithNight;   state.colours[5] = gs->horizonNight;
+	state.universe[0] = gs->universeStarDensity;     state.universe[1] = gs->universeStarBrightness;
+	state.universe[2] = gs->universeNebulaIntensity; state.universe[3] = gs->universeSpeed;
+	state.nebula[0] = gs->universeNebulaColor1;
+	state.nebula[1] = gs->universeNebulaColor2;
+	state.cloudNoise[0] = cloudShapeNoise;
+	state.cloudNoise[1] = cloudDetailNoise;
+	bool allFaces = !skyCubemapValid || std::memcmp(&state, &lastSkyState, sizeof(state)) != 0;
+	lastSkyState = state;
+	skyCubemapValid = true;
+	int firstFace = allFaces ? 0 : skyCubemapFace;
+	int faceCount = allFaces ? 6 : 1;
+	skyCubemapFace = (skyCubemapFace + 1) % 6;
+
+	for (int f = 0; f < faceCount; f++) {
+		int i = (firstFace + f) % 6;
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, proceduralSkyTextureId, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -875,6 +929,11 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
+
+	// Blurred levels for rough reflections (they also average out the clouds' per-texel jitter)
+	glBindTexture(GL_TEXTURE_CUBE_MAP, proceduralSkyTextureId);
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 	glBindVertexArray(0);
 	glEnable(GL_DEPTH_TEST);

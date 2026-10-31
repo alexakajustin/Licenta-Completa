@@ -4,6 +4,7 @@
 #include "Rendering/Texture.h"
 #include "Rendering/Shader.h"
 #include "Rendering/LODPolicy.h"
+#include "Rendering/Impostor.h"
 #include "GraphicsSettings.h"
 #include "Application.h"
 #include "Editor/DebugOverlay.h"
@@ -26,7 +27,7 @@ namespace {
 		GLint frustumPlanes, useSphereCull, lightPos, totalInstances, instanceOffset, phase;
 		GLint instanceBoundRadius, meshBoundsCenter;
 		GLint cameraPos, lodProjScale, lodScreenSize, minScreenSize, crossfadeWidth, lodCount, lodMin;
-		GLint maxDrawDistance, minCasterSize;
+		GLint maxDrawDistance, minCasterSize, impostorMode, impostorLevel;
 		GLint detailFoliage, detailRange, detailDensity;
 		GLint useHiZ, screenSize, nearPlane, farPlane, hizViewProj, hizMap;
 	};
@@ -54,6 +55,8 @@ namespace {
 		u.lodMin = L("lodMin");
 		u.maxDrawDistance = L("maxDrawDistance");
 		u.minCasterSize = L("minCasterSize");
+		u.impostorMode = L("impostorMode");
+		u.impostorLevel = L("impostorLevel");
 		u.detailFoliage = L("detailFoliage");
 		u.detailRange = L("detailRange");
 		u.detailDensity = L("detailDensity");
@@ -90,6 +93,8 @@ InstancedGroup::CullPass InstancedGroup::CameraPass(const glm::mat4& projection,
 	float detailEnd = std::max((gs ? gs->detailDistance : 150.0f) * detailScale, 1.0f);
 	pass.detailRange = glm::vec2(detailEnd * 0.3f, detailEnd);
 	pass.detailDensity = gs ? gs->detailDensity : 1.0f;
+	pass.impostors = !gs || gs->impostors;
+	pass.impostorLevel = gs ? gs->impostorStartLod : 1;
 	// Depth range for the Hi-Z comparison: P[2][2] = -(f+n)/(f-n), P[3][2] = -2fn/(f-n)
 	float A = projection[2][2], B = projection[3][2];
 	pass.nearPlane = B / (A - 1.0f);
@@ -132,15 +137,12 @@ void InstancedGroup::Setup(Mesh* mesh,
 	meshBoundRadius = glm::length(extents);
 	meshBoundsCenter = (minB + maxB) * 0.5f; // Center of AABB relative to mesh origin
 
-	// Compute overall group AABB (for quick CPU-side early out culling)
-	groupBoundsMin = glm::vec3(FLT_MAX);
-	groupBoundsMax = glm::vec3(-FLT_MAX);
-	for (const auto& inst : instances) {
-		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
-		float r = meshBoundRadius * inst.positionAndScale.w;
-		groupBoundsMin = glm::min(groupBoundsMin, pos - glm::vec3(r));
-		groupBoundsMax = glm::max(groupBoundsMax, pos + glm::vec3(r));
+	// Culling bounds: the mesh's own, or those of the whole tree (kept across re-uploads)
+	if (!impostor) {
+		cullCenter = meshBoundsCenter;
+		cullRadius = meshBoundRadius;
 	}
+	UpdateGroupBounds();
 
 	// LOD0 is the shared mesh; LOD1/LOD2 from SetLODMesh survive re-uploads (selection, extraction)
 	lodLevels[0].mesh = sharedMesh;
@@ -171,6 +173,21 @@ void InstancedGroup::Setup(Mesh* mesh,
 	printf("[InstancedGroup] '%s': Uploaded %u instances (%.1f KB VRAM, %s)\n",
 		name.c_str(), totalCount, totalVRAM_KB,
 		useChunking ? "CHUNKED" : "FLAT");
+}
+
+// Overall group AABB for the CPU early-out: the cull sphere sits off the instance origin
+// (a tree's centre is half its height up), so each instance reaches |centre| + radius
+void InstancedGroup::UpdateGroupBounds()
+{
+	groupBoundsMin = glm::vec3(FLT_MAX);
+	groupBoundsMax = glm::vec3(-FLT_MAX);
+	float reach = glm::length(cullCenter) + cullRadius;
+	for (const auto& inst : cpuInstances) {
+		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
+		float r = reach * inst.positionAndScale.w;
+		groupBoundsMin = glm::min(groupBoundsMin, pos - glm::vec3(r));
+		groupBoundsMax = glm::max(groupBoundsMax, pos + glm::vec3(r));
+	}
 }
 
 // =====================================================================
@@ -275,6 +292,54 @@ void InstancedGroup::AllocateLODBuffers()
 			&cmd, GL_DYNAMIC_DRAW);
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 	}
+	if (drawsImpostor) AllocateImpostorBuffers();
+}
+
+// The cards' visible list and indirect command (only the group that draws a tree's impostor)
+void InstancedGroup::AllocateImpostorBuffers()
+{
+	if (impostorLevel.visibleSSBO || totalCount == 0) return;
+	glGenBuffers(1, &impostorLevel.visibleSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, impostorLevel.visibleSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(PackedInstance) * totalCount, nullptr, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	DrawElementsIndirectCommand cmd = {};
+	glGenBuffers(1, &impostorLevel.indirectBuffer);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, impostorLevel.indirectBuffer);
+	glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawElementsIndirectCommand), &cmd, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+}
+
+void InstancedGroup::ReleaseImpostorBuffers()
+{
+	if (impostorLevel.visibleSSBO) { glDeleteBuffers(1, &impostorLevel.visibleSSBO); impostorLevel.visibleSSBO = 0; }
+	if (impostorLevel.indirectBuffer) { glDeleteBuffers(1, &impostorLevel.indirectBuffer); impostorLevel.indirectBuffer = 0; }
+}
+
+void InstancedGroup::SetImpostor(const ImpostorAtlas* atlas, bool draws, const glm::vec3& boundsCenter, float boundsRadius)
+{
+	if (!atlas) { ClearImpostor(); return; }
+	if (impostor == atlas && drawsImpostor == draws && cullCenter == boundsCenter && cullRadius == boundsRadius) return;
+	bool boundsChanged = cullCenter != boundsCenter || cullRadius != boundsRadius;
+	impostor = atlas;
+	drawsImpostor = draws;
+	cullCenter = boundsCenter;
+	cullRadius = boundsRadius;
+	if (draws) AllocateImpostorBuffers();
+	else ReleaseImpostorBuffers();
+	if (boundsChanged) UpdateGroupBounds();
+}
+
+void InstancedGroup::ClearImpostor()
+{
+	if (!impostor) return;
+	impostor = nullptr;
+	drawsImpostor = false;
+	ReleaseImpostorBuffers();
+	cullCenter = meshBoundsCenter;
+	cullRadius = meshBoundRadius;
+	UpdateGroupBounds();
 }
 
 // =====================================================================
@@ -298,10 +363,12 @@ bool InstancedGroup::IsDetailFoliage() const
 
 uint32_t InstancedGroup::ReadDrawnCount(int lod) const
 {
-	if (lod < 0 || lod >= lodCount || !lodLevels[lod].indirectBuffer) return 0;
+	GLuint buffer = lod == IMPOSTOR_SLOT ? impostorLevel.indirectBuffer
+		: ((lod >= 0 && lod < lodCount) ? lodLevels[lod].indirectBuffer : 0);
+	if (!buffer) return 0;
 	DrawElementsIndirectCommand cmd = {};
 	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, lodLevels[lod].indirectBuffer);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, buffer);
 	glGetBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 	return cmd.instanceCount;
@@ -337,6 +404,16 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, lodLevels[lod].indirectBuffer);
 		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &cmd);
 	}
+	// 0: no impostor, 1: this group draws the tree's cards, 2: a sibling group draws them
+	int impostorMode = 0;
+	if (pass.impostors && impostor && !detail)
+		impostorMode = (DrawsImpostor() && impostorLevel.indirectBuffer) ? 1 : 2;
+	if (impostorMode == 1) {
+		DrawElementsIndirectCommand cmd = {};
+		cmd.count = impostor->quad ? impostor->quad->GetIndexCount() : 6;
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, impostorLevel.indirectBuffer);
+		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(DrawElementsIndirectCommand), &cmd);
+	}
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
 	const CullUniforms& u = GetCullUniforms(cullShaderID);
@@ -346,17 +423,19 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 	glUniform1i(u.useSphereCull, pass.sphereCull ? 1 : 0);
 	glUniform3fv(u.lightPos, 1, glm::value_ptr(pass.lightPos));
 	glUniform1i(u.phase, pass.phase);
-	glUniform1f(u.instanceBoundRadius, meshBoundRadius);
-	glUniform3fv(u.meshBoundsCenter, 1, glm::value_ptr(meshBoundsCenter));
+	glUniform1f(u.instanceBoundRadius, cullRadius);
+	glUniform3fv(u.meshBoundsCenter, 1, glm::value_ptr(cullCenter));
 	glUniform3fv(u.cameraPos, 1, glm::value_ptr(pass.cameraPos));
 	glUniform1f(u.lodProjScale, pass.lodProjScale);
 	glUniform1fv(u.lodScreenSize, 2, LODPolicy::LOD_SCREEN_SIZE);
 	glUniform1f(u.minScreenSize, pass.minScreenSize);
 	glUniform1f(u.crossfadeWidth, pass.crossfade);
 	glUniform1i(u.lodCount, lodCount);
-	glUniform1i(u.lodMin, std::min(pass.lodMin, lodCount - 1));
+	glUniform1i(u.lodMin, std::min(pass.lodMin, MAX_LOD_LEVELS - 1)); // The shader maps levels to meshes / the impostor
 	glUniform1f(u.maxDrawDistance, maxDist);
 	glUniform1f(u.minCasterSize, pass.minCasterSize);
+	glUniform1i(u.impostorMode, impostorMode);
+	glUniform1i(u.impostorLevel, glm::clamp(pass.impostorLevel, 1, 2));
 	glUniform1i(u.detailFoliage, detail ? 1 : 0);
 	glUniform2f(u.detailRange, std::min(pass.detailRange.x, pass.detailRange.y - 0.01f), pass.detailRange.y);
 	glUniform1f(u.detailDensity, pass.detailDensity);
@@ -379,6 +458,9 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, indirectBindings[lod], lodLevels[lod].indirectBuffer);
 	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, visibilitySSBO);
+	// Impostor slot (only written in mode 1; otherwise bound to LOD0's buffers and never touched)
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, impostorMode == 1 ? impostorLevel.visibleSSBO : lodLevels[0].visibleSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, impostorMode == 1 ? impostorLevel.indirectBuffer : lodLevels[0].indirectBuffer);
 
 	bool dispatched = false;
 	if (useChunking) {
@@ -411,8 +493,37 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 void InstancedGroup::CullAndDraw(GLuint cullShaderID, Shader& renderShader, const CullPass& pass,
 	const glm::mat4& projection, const glm::mat4& view, const GraphicsSettings* gs)
 {
-	if (Cull(cullShaderID, pass))
-		DrawLODs(renderShader, projection, view, pass.cameraPos, gs);
+	if (!Cull(cullShaderID, pass)) return;
+	DrawLODs(renderShader, projection, view, pass.cameraPos, gs);
+	if (pass.impostors && DrawsImpostor()) DrawImpostors(pass, projection * view, false, gs);
+}
+
+// =====================================================================
+// DrawImpostors — the cards of the last cull (Impostor.h)
+// =====================================================================
+void InstancedGroup::DrawImpostors(const CullPass& pass, const glm::mat4& viewProj, bool shadow, const GraphicsSettings* gs)
+{
+	Shader* shader = shadow ? impostor->shadowShader : impostor->shader;
+	if (!shader || !shader->GetShaderID() || !impostor->quad || !impostorLevel.indirectBuffer) return;
+
+	shader->UseShader();
+	GLuint sid = shader->GetShaderID();
+	// Small cards draw one view instead of blending three (pixels of one unit of radius at distance 1)
+	float pixelScale = pass.orthographic ? 0.0f : pass.lodProjScale * pass.screenSize.y * 0.5f;
+	impostor->Bind(sid, viewProj, pass.cameraPos, pass.lightDir, pass.orthographic, pixelScale);
+	if (!shadow) {
+		GLint debugLoc = glGetUniformLocation(sid, "debugLODColoring");
+		if (debugLoc != -1) glUniform1i(debugLoc, (gs && gs->debugLODColoring) ? 1 : 0);
+		GLint colorLoc = glGetUniformLocation(sid, "lodDebugColor");
+		if (colorLoc != -1) glUniform3f(colorLoc, 1.0f, 0.85f, 0.1f); // YELLOW = impostor
+	}
+
+	// The card always faces the viewer, but its winding depends on the view basis
+	GLboolean cullWasEnabled = glIsEnabled(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, impostorLevel.visibleSSBO);
+	impostor->quad->RenderIndirect(impostorLevel.indirectBuffer);
+	if (cullWasEnabled) glEnable(GL_CULL_FACE);
 }
 
 // =====================================================================
@@ -639,6 +750,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	}
 
 	DrawDepthLODs();
+	if (pass.impostors && DrawsImpostor()) DrawImpostors(pass, lightViewProj, true, nullptr);
 	glEnable(GL_CULL_FACE);
 }
 
@@ -722,6 +834,7 @@ void InstancedGroup::ReleaseLODBuffers()
 		if (lodLevels[lod].visibleSSBO) { glDeleteBuffers(1, &lodLevels[lod].visibleSSBO); lodLevels[lod].visibleSSBO = 0; }
 		if (lodLevels[lod].indirectBuffer) { glDeleteBuffers(1, &lodLevels[lod].indirectBuffer); lodLevels[lod].indirectBuffer = 0; }
 	}
+	ReleaseImpostorBuffers();
 }
 
 void InstancedGroup::ReleaseChunks()

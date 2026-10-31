@@ -379,6 +379,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	int currentHiZW = 0;
 	int currentHiZH = 0;
 
+	// Object cost breakdown (DebugOverlay) measures the main view only: reflections and
+	// cubemap captures have no depth texture, shadow and picking passes an override shader
+	DebugOverlay* profiler = (!overrideShader && sceneDepthTexture != 0) ? DebugOverlay::GetInstance() : nullptr;
+
 	struct Batch {
 		Mesh* mesh;
 		Material* material;
@@ -461,6 +465,19 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenWidth > 0.0f ? screenWidth : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
 			waterFoam.Bind(s->GetShaderID()); // Water shaders: obstacle foam map + foam pattern
+
+			// Water shaders add the fog along their reflections themselves (the volumetric fog
+			// only covers the way from the camera to the surface)
+			const GraphicsSettings* fogSettings = gs ? gs : graphicsSettings;
+			if (fogSettings && dLight) s->SetAnalyticFog(*fogSettings, *dLight);
+			GLint reflDepthLoc = glGetUniformLocation(s->GetShaderID(), "fogReflectionDepth");
+			if (reflDepthLoc != -1) {
+				glActiveTexture(GL_TEXTURE21);
+				glBindTexture(GL_TEXTURE_2D, reflectionDepthTexture);
+				glUniform1i(reflDepthLoc, 21);
+				GLint validLoc = glGetUniformLocation(s->GetShaderID(), "fogReflectionDepthValid");
+				if (validLoc != -1) glUniform1i(validLoc, (reflectionDepthTexture != 0 && sceneDepthTexture != 0) ? 1 : 0);
+			}
 
 			if (dLight) s->SetDirectionalLight(dLight);
 			if (pLights) s->SetPointLights(pLights, pCount, 4, 0);
@@ -714,11 +731,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						}
 					}
 
-					// Per-object cost tracking (only for main render pass, not shadow passes)
-					if (!overrideShader && DebugOverlay::GetInstance()) {
-						int mc = mdl ? (int)mdl->GetMeshCount() : 1;
-						DebugOverlay::GetInstance()->BeginObject(obj->GetName(), mc);
-					}
+					// Per-object cost tracking (main view only)
+					if (profiler) profiler->BeginObject(obj->GetName(), mdl ? (int)mdl->GetMeshCount() : 1);
 
 					// Cache uniform locations per shader to avoid 8x glGetUniformLocation per object
 					static struct CachedLocs {
@@ -772,9 +786,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						}
 					}
 
-					if (!overrideShader && DebugOverlay::GetInstance()) {
-						DebugOverlay::GetInstance()->EndObject();
-					}
+					if (profiler) profiler->EndObject();
 					} // end full render path
 				}
 			}
@@ -831,7 +843,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			if (uLayerCountLoc != -1) glUniform1i(uLayerCountLoc, 0);
 			GLint instLoc = glGetUniformLocation(targetShader->GetShaderID(), "useInstancing");
 			if (instLoc != -1) glUniform1i(instLoc, 1);
+			if (profiler) profiler->BeginObject("[Static batches]", 1);
 			b.mesh->RenderInstancedMesh((unsigned int)b.matrices.size(), b.matrices.data());
+			if (profiler) profiler->EndObject();
 			if (instLoc != -1) glUniform1i(instLoc, 0);
 		}
 	};
@@ -888,7 +902,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 
 		// Dispatch compute + read back previous frame's results
 		glm::mat4 vp = projection * view;
+		if (profiler) profiler->BeginObject("[Occlusion: object cull]", 0);
 		DispatchObjectCull(vp, projection, cameraPos, (int)screenWidth, (int)screenHeight, allCullObjects);
+		if (profiler) profiler->EndObject();
 	}
 
 	// 1. Render all opaque objects normally (writes depth). The Hi-Z pyramid is built from
@@ -934,13 +950,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		// Helper lambda: bind all lighting/material uniforms for a group's shader
 		// ================================================================
 		Shader* lastShader = nullptr;
-		auto BindShaderState = [&](InstancedGroup* group) -> Shader* {
-			Shader* targetRenderShader = instancedRenderShader;
-			if (renderer && group->GetMaterial() && group->GetMaterial()->GetShader()) {
-				targetRenderShader = renderer->GetInstancedShader(group->GetMaterial()->GetShader());
-			}
-
-			if (targetRenderShader != lastShader) {
+		auto BindSceneState = [&](Shader* targetRenderShader) {
+			{
 				targetRenderShader->UseShader();
 				GLuint sid = targetRenderShader->GetShaderID();
 
@@ -1008,11 +1019,26 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					GLint scmLoc = glGetUniformLocation(sid, "directionalShadowColorMap");
 					if (scmLoc != -1) glUniform1i(scmLoc, 20);
 				}
-				
+			}
+		};
+		auto BindShaderState = [&](InstancedGroup* group) -> Shader* {
+			Shader* targetRenderShader = instancedRenderShader;
+			if (renderer && group->GetMaterial() && group->GetMaterial()->GetShader()) {
+				targetRenderShader = renderer->GetInstancedShader(group->GetMaterial()->GetShader());
+			}
+			if (targetRenderShader != lastShader) {
+				BindSceneState(targetRenderShader);
 				lastShader = targetRenderShader;
 			}
 			return targetRenderShader;
 		};
+
+		// Tree impostors are lit like the meshes: same lights, cascades and clip plane, bound once
+		// per call (their own uniforms are set per group, InstancedGroup::DrawImpostors)
+		if (Shader* impostorShader = impostors.GetShader()) {
+			BindSceneState(impostorShader);
+			lastShader = nullptr;
+		}
 
 		// Secondary views (water reflection, cubemap captures) have no depth texture: cheaper
 		// LODs and far less grass — nobody looks at a reflection that closely
@@ -1033,7 +1059,18 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			for (auto* group : instancedGroups) {
 				if (!group) continue;
 				Shader* targetRenderShader = BindShaderState(group);
+				if (profiler) {
+					// "Scatter_Instanced_5005_Cedar A_Leaves" -> "Cedar A_Leaves [GPU]"
+					std::string label = group->GetName();
+					const std::string prefix = "Scatter_Instanced_";
+					if (label.rfind(prefix, 0) == 0) {
+						size_t idEnd = label.find('_', prefix.size());
+						if (idEnd != std::string::npos) label = label.substr(idEnd + 1);
+					}
+					profiler->BeginObject(label + " [GPU]", group->GetLODCount() + (group->DrawsImpostor() ? 1 : 0));
+				}
 				group->CullAndDraw(cullShader->GetShaderID(), *targetRenderShader, pass, projection, view, passSettings);
+				if (profiler) profiler->EndObject();
 			}
 		};
 
@@ -1048,7 +1085,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			DrawAllGroups();
 
 			glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+			if (profiler) profiler->BeginObject("[Occlusion: Hi-Z build]", 0);
 			GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
+			if (profiler) profiler->EndObject();
 
 			lastShader = nullptr; // Force shader re-bind after compute shader usage
 			pass.phase = 1;
@@ -1066,7 +1105,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// 1.5 Capture Refraction Texture (Copy opaque results to refraction texture)
 	if (refractionTexture > 0 && !overrideShader) {
 		glBindTexture(GL_TEXTURE_2D, refractionTexture);
+		if (profiler) profiler->BeginObject("[Refraction copy]", 0);
 		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)screenWidth, (GLsizei)screenHeight);
+		if (profiler) profiler->EndObject();
 	}
 
 	auto IsWaterObject = [](GameObject* obj) {
@@ -1083,8 +1124,10 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		if (!waterObjs.empty()) {
 			// Terrains (texture layers) are not obstacles: the shoreline foam comes from the water depth
 			for (GameObject* obj : opaqueObjects) if (obj->GetTextureLayers().empty()) obstacleObjs.push_back(obj);
+			if (profiler) profiler->BeginObject("[Water foam map]", 0);
 			waterFoam.Update(waterObjs, obstacleObjs, instancedGroups, cullShader ? cullShader->GetShaderID() : 0,
 				cameraPos, gs ? gs : graphicsSettings, time);
+			if (profiler) profiler->EndObject();
 			lastShaderID = 0;
 		}
 	}
@@ -1107,9 +1150,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		for (GameObject* obj : transparentObjects)
 			(IsWaterObject(obj) ? waterObjects : otherTransparent).push_back(obj);
 
-		if (!waterObjects.empty())
+		// Not in the planar water reflection: the surface lies on its clip plane, and the water
+		// shaders would sample reflection/refraction maps that do not exist in that pass
+		bool waterReflectionPass = clipPlane != glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		if (!waterObjects.empty() && !waterReflectionPass)
 		{
 			if (sceneDepthTexture > 0) {
+				if (profiler) profiler->BeginObject("[Water depth copy]", 0);
 				int w = (int)screenWidth, h = (int)screenHeight;
 				if (waterDepthCopy == 0 || waterDepthCopyW != w || waterDepthCopyH != h) {
 					if (waterDepthCopy == 0) glGenTextures(1, &waterDepthCopy);
@@ -1126,6 +1173,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
 				sceneDepthReadTexture = waterDepthCopy;
 				lastShaderID = 0; // Force PrepareShader to bind the copy
+				if (profiler) profiler->EndObject();
 			}
 
 			glDepthMask(GL_TRUE);

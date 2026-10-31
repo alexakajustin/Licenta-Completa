@@ -33,6 +33,12 @@ public:
 	/** @brief Drops the temporal history (camera cut, scene load). */
 	void InvalidateHistory() { historyValid = false; }
 
+	/**
+	 * @brief Sun and sky light the fog scatters (also used by the analytic fog over water
+	 *        reflections, so both match).
+	 */
+	static void LightRadiance(const GraphicsSettings& gs, DirectionalLight& sun, glm::vec3& sunRadiance, glm::vec3& ambientRadiance);
+
 private:
 	bool Init();
 	void AllocateGrid(int width, int height, int quality);

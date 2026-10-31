@@ -18,6 +18,8 @@
 #include "Lighting/PointLight.h"
 #include "Lighting/SpotLight.h"
 
+struct GraphicsSettings;
+
 class Shader
 {
 public:
@@ -80,6 +82,9 @@ public:
 	// Cascaded directional shadows: light matrices, split distances, cascade count, texel
 	// sizes and depth ranges, as computed by DirectionalLight::CalculateCascadedLightMatrices
 	void SetCascadedShadows(DirectionalLight& light);
+	// Height fog parameters and the light it scatters (same as the volumetric fog), for
+	// shaders that add fog themselves, e.g. along water reflections
+	void SetAnalyticFog(const GraphicsSettings& gs, DirectionalLight& light);
 	void SetLightMatrices(std::vector<glm::mat4> lightMatrices);
 
 
@@ -120,6 +125,11 @@ private:
 		GLuint program = 0;
 		GLint matrix[4], split[4], texel[4], depthRange[4], count, distance;
 	} cascadeLocs;
+	// Locations of the analytic fog uniforms (SetAnalyticFog)
+	struct FogLocations {
+		GLuint program = 0;
+		GLint enabled, density, baseHeight, falloff, range, anisotropy, albedo, sunRadiance, ambientRadiance;
+	} fogLocs;
 	GLint uniformProjection, uniformModel, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess,
 		uniformTexture, uniformNormalMap, uniformUseNormalMap,

@@ -17,6 +17,9 @@ struct GraphicsSettings {
 	float renderDistance = 2000.0f; // Object cut-off (big objects are drawn up to 10x further)
 	float detailDistance = 150.0f;  // Grass / detail foliage thins out to a quarter by this distance
 	float detailDensity = 1.0f;     // Fraction of the detail foliage drawn at all
+	bool impostors = true;          // Trees: from the LOD2 distance on, one card baked from the full tree (Impostor.h)
+	int impostorResolution = 2048;  // Atlas size per tree type (8 x 8 views)
+	int impostorStartLod = 1;       // 1: the impostor replaces LOD1 and LOD2, 2: only LOD2
 
 	// Shadows (cascaded shadow maps)
 	float shadowDistance = 150.0f;

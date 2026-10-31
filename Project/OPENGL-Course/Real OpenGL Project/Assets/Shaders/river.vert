@@ -22,6 +22,7 @@ out float vIsSelected;
 out float vFadeFactor;
 out vec4 clipSpaceCoords;
 out float vObjectScale;
+out vec2 RiverCoord;   // Raw mesh UV (RiverNode): x = across the river, y = along it
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -73,6 +74,7 @@ void main()
 
 	vertex_color = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	
+	RiverCoord = tex;
 	if (textureLayerCount > 0) {
 		TexCoord = tex;
 	} else {

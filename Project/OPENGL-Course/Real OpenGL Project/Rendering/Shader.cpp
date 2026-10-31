@@ -4,6 +4,8 @@
 #include <string>
 #include "Core/AssetManager.h"
 #include "Core/ServiceLocator.h"
+#include "GraphicsSettings.h"
+#include "Rendering/VolumetricFog.h"
 
 Shader::Shader()
 {
@@ -458,6 +460,7 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 		n_lower.find("waterfoam") != std::string::npos || // Per-frame foam map (WaterFoamMap)
 		n_lower.find("foliage") != std::string::npos ||   // Set per draw (isFoliage, foliageRadius)
 		n_lower.find("lod") != std::string::npos ||       // LOD debug colouring, set per draw
+		n_lower.find("fog") != std::string::npos ||       // Analytic fog (SetAnalyticFog), reflection depth
 		n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
 		n == "theTexture" || n == "normalMap" || n == "farPlane" ||
 		n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
@@ -774,6 +777,35 @@ void Shader::SetCascadedShadows(DirectionalLight& light)
 	}
 	if (cascadeLocs.count != -1) glUniform1i(cascadeLocs.count, count);
 	if (cascadeLocs.distance != -1) glUniform1f(cascadeLocs.distance, splits.empty() ? light.GetShadowFrustumSize() : splits.back());
+}
+
+void Shader::SetAnalyticFog(const GraphicsSettings& gs, DirectionalLight& light)
+{
+	if (fogLocs.program != shaderID) {
+		fogLocs.program = shaderID;
+		fogLocs.enabled = glGetUniformLocation(shaderID, "fogEnabled");
+		fogLocs.density = glGetUniformLocation(shaderID, "fogDensity");
+		fogLocs.baseHeight = glGetUniformLocation(shaderID, "fogBaseHeight");
+		fogLocs.falloff = glGetUniformLocation(shaderID, "fogHeightFalloff");
+		fogLocs.range = glGetUniformLocation(shaderID, "fogRange");
+		fogLocs.anisotropy = glGetUniformLocation(shaderID, "fogAnisotropy");
+		fogLocs.albedo = glGetUniformLocation(shaderID, "fogAlbedo");
+		fogLocs.sunRadiance = glGetUniformLocation(shaderID, "fogSunRadiance");
+		fogLocs.ambientRadiance = glGetUniformLocation(shaderID, "fogAmbientRadiance");
+	}
+	if (fogLocs.enabled == -1) return; // The shader does no fog of its own
+
+	glm::vec3 sunRadiance, ambientRadiance;
+	VolumetricFog::LightRadiance(gs, light, sunRadiance, ambientRadiance);
+	glUniform1i(fogLocs.enabled, gs.volumetricFogEnabled ? 1 : 0);
+	if (fogLocs.density != -1) glUniform1f(fogLocs.density, std::max(gs.fogDensity, 0.0f));
+	if (fogLocs.baseHeight != -1) glUniform1f(fogLocs.baseHeight, gs.fogBaseHeight);
+	if (fogLocs.falloff != -1) glUniform1f(fogLocs.falloff, std::max(gs.fogHeightFalloff, 0.0f));
+	if (fogLocs.range != -1) glUniform1f(fogLocs.range, std::max(gs.fogRange, 10.0f));
+	if (fogLocs.anisotropy != -1) glUniform1f(fogLocs.anisotropy, std::clamp(gs.fogAnisotropy, -0.95f, 0.95f));
+	if (fogLocs.albedo != -1) glUniform3fv(fogLocs.albedo, 1, glm::value_ptr(gs.fogAlbedo));
+	if (fogLocs.sunRadiance != -1) glUniform3fv(fogLocs.sunRadiance, 1, glm::value_ptr(sunRadiance));
+	if (fogLocs.ambientRadiance != -1) glUniform3fv(fogLocs.ambientRadiance, 1, glm::value_ptr(ambientRadiance));
 }
 
 void Shader::SetLightMatrices(std::vector<glm::mat4> lightMatrices)

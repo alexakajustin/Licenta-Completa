@@ -208,6 +208,7 @@
     <ClCompile Include="Editor\GenerationPipelineUI.cpp" />
     <ClCompile Include="Nodes\GenerationStack.cpp" />
     <ClCompile Include="Rendering\InstancedGroup.cpp" />
+    <ClCompile Include="Rendering\Impostor.cpp" />
     <ClCompile Include="Procedural\InteriorDecorators.cpp" />
     <ClCompile Include="Procedural\RoomOccupancy.cpp" />
     <ClCompile Include="Procedural\InteriorGenNode.cpp" />
@@ -1037,6 +1038,7 @@
     <ClInclude Include="Nodes\IGenerator.h" />
     <ClInclude Include="Core\InputHandler.h" />
     <ClInclude Include="Rendering\InstancedGroup.h" />
+    <ClInclude Include="Rendering\Impostor.h" />
     <ClInclude Include="Rendering\LODPolicy.h" />
     <ClInclude Include="Lighting\Light.h" />
     <ClInclude Include="Lighting\LightObject.h" />

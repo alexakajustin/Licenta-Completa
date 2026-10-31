@@ -30,6 +30,7 @@ public:
 	// Accessors for GPU-driven rendering (InstancedGroup needs these)
 	GLuint GetVAO() const { return VAO; }
 	GLuint GetIBO() const { return IBO; }
+	GLuint GetVBO() const { return VBO; } // 14 floats per vertex, position first (impostor baking reads it back)
 	GLsizei GetIndexCount() const { return indexCount; }
 
 private:

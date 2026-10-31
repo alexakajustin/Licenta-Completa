@@ -4,6 +4,8 @@
 #include "External Libs/ImGUI/imgui_internal.h"
 
 #include "Scene/SceneManager.h"
+#include "Rendering/InstancedGroup.h"
+#include "Rendering/LODPolicy.h"
 #include "Lighting/LightObject.h"
 #include "Scene/WorldStreamerComponent.h"
 #include "Scene/LuaScriptComponent.h"
@@ -2180,12 +2182,66 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 		if (ImGui::CollapsingHeader("Level of Detail", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;
-			ImGui::SliderFloat("LOD Bias", &g.lodBias, 0.25f, 4.0f, "%.2f");
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("LODs switch by their size on screen: a big tree keeps its detail\nfurther away than a rock. > 1 keeps the detailed LODs longer, < 1 switches sooner.");
+			ImGui::SliderFloat("LOD Bias", &g.lodBias, 0.25f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("LODs switch by their size on screen, not at fixed distances: a big tree keeps\nits detail further away than a rock. The bias multiplies every switch distance\n(2 = twice as far). The table below shows where each object switches.");
+
+			// Where every object with LODs switches, in metres (the 60 degree camera of the editor
+			// and the game view; average instance scale): the bias is a multiplier, this is what it means
+			if (sceneManager && ImGui::TreeNodeEx("Switch distances", ImGuiTreeNodeFlags_DefaultOpen)) {
+				const float projScale = 1.0f / std::tan(glm::radians(30.0f)) * g.lodBias;
+				std::set<std::string> listed;
+				bool any = false;
+				if (ImGui::BeginTable("##lodDistances", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+					ImGui::TableSetupColumn("Object");
+					ImGui::TableSetupColumn("Representation by distance");
+					ImGui::TableHeadersRow();
+					for (InstancedGroup* group : sceneManager->GetInstancedGroups()) {
+						if (!group || group->GetTotalCount() == 0 || group->cpuInstances.empty()) continue;
+						bool impostor = group->DrawsImpostor();
+						if (group->GetLODCount() < 2 && !impostor) continue;
+						if (!listed.insert(group->GetSourceObjectName()).second) continue; // Bark + leaves: one row
+						double scaleSum = 0.0;
+						for (const auto& inst : group->cpuInstances) scaleSum += inst.positionAndScale.w;
+						float radius = group->GetCullRadius() * (float)(scaleSum / group->cpuInstances.size());
+						float d0 = radius * projScale / LODPolicy::LOD_SCREEN_SIZE[0];
+						float d1 = radius * projScale / LODPolicy::LOD_SCREEN_SIZE[1];
+						// e.g. "LOD0 < 69 m, LOD1 < 217 m, then impostor"
+						char text[128];
+						if (impostor && g.impostorStartLod <= 1)
+							snprintf(text, sizeof(text), "LOD0 < %.0f m, then impostor", d0);
+						else if (impostor || group->GetLODCount() >= 3)
+							snprintf(text, sizeof(text), "LOD0 < %.0f m, LOD1 < %.0f m, then %s", d0, d1, impostor ? "impostor" : "LOD2");
+						else
+							snprintf(text, sizeof(text), "LOD0 < %.0f m, then LOD1", d0);
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn(); ImGui::TextUnformatted(group->GetSourceObjectName().c_str());
+						ImGui::TableNextColumn(); ImGui::TextUnformatted(text);
+						any = true;
+					}
+					ImGui::EndTable();
+				}
+				if (!any) ImGui::TextDisabled("No object with LODs in the scene");
+				ImGui::TreePop();
+			}
 			ImGui::Checkbox("LOD Cross-fade", &g.lodCrossfade);
 			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Dithered transition between two LODs instead of a pop");
 			ImGui::DragFloat("Render Distance", &g.renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
 			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Hard cut-off; big objects (trees) are drawn up to 10x further");
+
+			ImGui::SeparatorText("Tree Impostors");
+			ImGui::Checkbox("Impostors", &g.impostors);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("From the LOD2 distance on, every tree is one card baked from its full LOD0\n(8 x 8 views, lit live) instead of the sparse last LOD: all the leaves for two triangles.\nShadow cascades use the same cards.");
+			if (g.impostors) {
+				int start = g.impostorStartLod <= 1 ? 0 : 1;
+				const char* starts[] = { "LOD1 (fuller crowns, faster)", "LOD2" };
+				if (ImGui::Combo("Impostors From", &start, starts, 2)) g.impostorStartLod = start == 0 ? 1 : 2;
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("First LOD the impostor replaces. At a distance even detailed meshes lose\ntheir leaves (cards smaller than a pixel vanish): the baked card keeps the whole crown.");
+				const int sizes[] = { 1024, 2048, 4096 };
+				const char* labels[] = { "1024 (128 px views)", "2048 (256 px views)", "4096 (512 px views)" };
+				int current = g.impostorResolution <= 1024 ? 0 : (g.impostorResolution >= 4096 ? 2 : 1);
+				if (ImGui::Combo("Impostor Resolution", &current, labels, 3)) g.impostorResolution = sizes[current];
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Atlas size per tree type (video memory: about 12 / 48 / 190 MB each).\nRaise it when the LOD bias is low and impostors start close to the camera.");
+			}
 
 			ImGui::SeparatorText("Detail Foliage (grass)");
 			ImGui::DragFloat("Detail Distance", &g.detailDistance, 1.0f, 10.0f, 2000.0f, "%.0f m");
@@ -2197,6 +2253,9 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				g.lodBias = defaults.lodBias;
 				g.lodCrossfade = defaults.lodCrossfade;
 				g.renderDistance = defaults.renderDistance;
+				g.impostors = defaults.impostors;
+				g.impostorResolution = defaults.impostorResolution;
+				g.impostorStartLod = defaults.impostorStartLod;
 				g.detailDistance = defaults.detailDistance;
 				g.detailDensity = defaults.detailDensity;
 			}

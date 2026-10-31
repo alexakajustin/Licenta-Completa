@@ -143,6 +143,8 @@ public:
 	Shader* GetInstancedShader(Shader* original);
 
 	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
+	// Cloud noise volumes of the main sky (Application), so the sky cubemap has the same clouds
+	void SetCloudNoise(GLuint shape, GLuint detail) { cloudShapeNoise = shape; cloudDetailNoise = detail; }
 
 	/**
 	 * @brief Renders the scene into a cubemap from the given world position.
@@ -196,7 +198,22 @@ private:
 	Shader volumetricSkyShader;
 	Shader universeSkyShader;
 
+	// Time-sliced like a realtime reflection probe: one cube face per call, all six when the sun
+	// or the sky settings change (the clouds drift too slowly for the lag to show)
 	void UpdateProceduralSkybox(DirectionalLight& mainLight, const GraphicsSettings* gs, float time);
+	struct SkyCubemapState {
+		int skyboxType, cloudsEnabled;
+		float cloudsDensity, cloudsSpeed, cloudsSharpness;
+		glm::vec3 sunDir, sunColour;
+		glm::vec3 colours[6];
+		float universe[4];
+		glm::vec3 nebula[2];
+		GLuint cloudNoise[2];
+	};
+	SkyCubemapState lastSkyState = {};
+	bool skyCubemapValid = false;
+	int skyCubemapFace = 0;
+	GLuint cloudShapeNoise = 0, cloudDetailNoise = 0;
 
 	// Cached uniform locations (fetched once at init)
 	GLint uniformModel, uniformProjection, uniformView, uniformEyePosition,

@@ -16,6 +16,7 @@
 static const int UNIT_SURFACE = 36;
 static const int UNIT_FOAM_MAP = 37;
 static const int UNIT_PATTERN = 38;
+static const int UNIT_PROXIMITY = 39;
 static const int PATTERN_SIZE = 512;
 
 // Top-down orthographic window: world x -> clip x, world z -> clip y, and the higher a point
@@ -213,12 +214,16 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 
 	if (cullShaderID != 0 && !groups.empty()) {
 		bindWaterUniforms(obstacleInstancedShader);
-		// Top-down depth pass over the window (corners included), with the LODs the camera sees
+		// Top-down pass over the window (corners included). The mask has 25 cm texels and only
+		// needs the outline where an obstacle crosses the water surface: the cheapest LOD does,
+		// and anything thinner than a texel is skipped
 		InstancedGroup::CullPass pass;
 		pass.viewProj = viewProj;
 		pass.cameraPos = cameraPos;
 		pass.lodProjScale = 1.732f * (gs ? gs->lodBias : 1.0f); // 60 degree camera
 		pass.maxDrawDistance = WINDOW * 0.75f;
+		pass.lodMin = MAX_LOD_LEVELS - 1;
+		pass.minCasterSize = texel;
 		for (InstancedGroup* group : groups) {
 			if (!group) continue;
 			// Grass is filtered out of the water by the scatter filters and is by far the
@@ -280,6 +285,13 @@ void WaterFoamMap::Bind(GLuint shaderID) const
 	glActiveTexture(GL_TEXTURE0 + UNIT_FOAM_MAP);
 	glBindTexture(GL_TEXTURE_2D, foamTex);
 	glUniform1i(glGetUniformLocation(shaderID, "waterFoamMap"), UNIT_FOAM_MAP);
+	// Rivers steer their current around obstacles along the gradient of the proximity field
+	GLint proximityLoc = glGetUniformLocation(shaderID, "waterFoamProximity");
+	if (proximityLoc != -1) {
+		glActiveTexture(GL_TEXTURE0 + UNIT_PROXIMITY);
+		glBindTexture(GL_TEXTURE_2D, proximityTex);
+		glUniform1i(proximityLoc, UNIT_PROXIMITY);
+	}
 	glUniform2fv(glGetUniformLocation(shaderID, "waterFoamOrigin"), 1, glm::value_ptr(origin));
 	glUniform1f(glGetUniformLocation(shaderID, "waterFoamSize"), valid ? WINDOW : 0.0f);
 	glActiveTexture(GL_TEXTURE0);

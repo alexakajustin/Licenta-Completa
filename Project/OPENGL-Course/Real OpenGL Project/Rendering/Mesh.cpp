@@ -185,9 +185,11 @@ void Mesh::RenderIndirect(GLuint indirectBufferID, bool useTessellation)
 		glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
 	}
 
-	// Track stats
+	// Track stats (the triangle count is only known on the GPU: the object breakdown
+	// measures it with a primitives query)
 	if (DebugOverlay::GetInstance()) {
 		DebugOverlay::GetInstance()->CountDrawCall();
+		DebugOverlay::GetInstance()->CountObjectDrawCall();
 	}
 
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);

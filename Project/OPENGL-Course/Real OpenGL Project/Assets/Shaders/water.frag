@@ -9,8 +9,10 @@
  *  - water thickness along the view ray from the scene depth, Beer-Lambert absorption per channel
  *    (red is absorbed first, so shallow water is clear, deep water turns teal/blue),
  *  - refraction of the opaque scene with depth-aware distortion,
- *  - sky reflection (scene cubemap) + planar reflection, Schlick Fresnel,
- *  - sun glint with specular anti-aliasing (no per-pixel sparkle at distance),
+ *  - wind ripples from flow noise (FlowRipples) over the Gerstner swell of water.vert,
+ *  - planar reflection (sky cubemap where it has nothing), blurred by the ripple roughness and
+ *    hazed by the fog between the water and what it mirrors, Schlick Fresnel,
+ *  - GGX sun glint; sub-pixel ripple detail turns into roughness (no sparkle at distance),
  *  - foam: shoreline wave fronts and contact line (from the water depth), froth around objects
  *    standing in the water (WaterFoamMap), all eroding one lacy bubble pattern,
  *  - a soft shoreline (alpha from water depth).
@@ -77,8 +79,20 @@ uniform vec2  waterFoamOrigin;      // World xz of the foam map window's corner
 uniform float waterFoamSize;        // World size of the window (0 = no foam map)
 uniform vec3 eyePosition;
 uniform float selectionTint;
+uniform sampler2D fogReflectionDepth;   // Depth of the planar reflection (mirrored camera)
+uniform int fogReflectionDepthValid;
 
 // ===================== SHARED WATER MODEL (keep identical in river.frag) =====================
+// Ripples, glint and reflections after "Where the River Goes" by Paul Malin
+// (shadertoy.com/view/Xl2XRW, CC BY-NC-SA 3.0), rewritten for world units and the engine's light:
+//  - ripple normals from a value-noise fBm with analytic derivatives; each octave is advected by
+//    the flow in alternating directions and warped by the slope of the octaves below, so the
+//    surface churns and boils instead of sliding (FlowNoise),
+//  - two copies advected over staggered cycles and cross-faded, each restarting at a random
+//    offset while invisible: the advection never stretches nor visibly repeats (FlowRipples),
+//  - octaves finer than the pixel fade out and the slope they carried becomes specular roughness:
+//    filtered at any distance instead of pixelated sparkle,
+//  - GGX sun glint, reflections blurred by the same roughness (mip-mapped reflection textures).
 
 float LinearDepth(float depth)
 {
@@ -86,11 +100,13 @@ float LinearDepth(float depth)
     return projection[3][2] / (ndcZ + projection[2][2]);
 }
 
+// Integer lattice hash: stable at any world coordinate (fract-of-product hashes lose precision
+// hundreds of metres from the origin and start to show patterns)
 float Hash21(vec2 p)
 {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
+    uvec2 q = uvec2(ivec2(floor(p))) * uvec2(1597334673u, 3812015801u);
+    uint n = (q.x ^ q.y) * 1597334673u;
+    return float(n) * (1.0 / 4294967295.0);
 }
 
 float ValueNoise(vec2 p)
@@ -100,11 +116,110 @@ float ValueNoise(vec2 p)
     return mix(mix(Hash21(i), Hash21(i + vec2(1, 0)), f.x), mix(Hash21(i + vec2(0, 1)), Hash21(i + vec2(1, 1)), f.x), f.y);
 }
 
-// Lacy foam pattern at world xz (the caller offsets p to advect it): two layers of the pattern
-// texture at different scales and channels, so their repeats never line up.
-float FoamPattern(vec2 p)
+// Value noise with its analytic derivatives: (d/dx, d/dy, value)
+vec3 NoiseD(vec2 p)
 {
-    return texture(waterFoamPattern, p * 0.25).r * 0.6 + texture(waterFoamPattern, p * 0.61 + 0.37).g * 0.4;
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    vec2 du = 6.0 * f * (1.0 - f);
+    float a = Hash21(i), b = Hash21(i + vec2(1.0, 0.0)), c = Hash21(i + vec2(0.0, 1.0)), d = Hash21(i + vec2(1.0, 1.0));
+    float k = a - b - c + d;
+    return vec3(du.x * (b - a + k * u.y), du.y * (c - a + k * u.x), a + (b - a) * u.x + (c - a) * u.y + k * u.x * u.y);
+}
+
+// fBm of NoiseD with its octaves advected by 'flow' in alternating directions (each one a bit
+// slower) and warped by the slope of the octaves below ('warp' > 0 sharpens the crests). Octaves
+// finer than ~2 pixels ('footprint' = noise units per pixel) fade out; 'lost' is the share of
+// slope they would have added. Returns (slope x, slope z, height).
+vec3 FlowNoise(vec2 p, vec2 flow, float warp, float footprint, out float lost)
+{
+    vec3 sum = vec3(0.0);
+    float amp = 1.0, total = 0.0, scale = 1.0;
+    lost = 0.0;
+    for (int i = 0; i < 4; i++) {
+        p += flow;
+        flow *= -0.75;
+        vec3 n = NoiseD(p);
+        float keep = 1.0 - smoothstep(0.3, 0.6, footprint * scale);
+        sum += vec3(n.xy * keep, mix(0.5, n.z, keep)) * amp;
+        lost += amp * (1.0 - keep);
+        p += n.xy * warp;
+        p *= 2.0;
+        scale *= 2.0;
+        total += amp;
+        amp *= 0.75;
+    }
+    lost /= total;
+    return sum / total;
+}
+
+vec2 CycleOffset(float cycle, float salt)
+{
+    return vec2(Hash21(vec2(cycle, salt)), Hash21(vec2(cycle, salt + 57.0))) * 97.0;
+}
+
+struct Ripples { vec3 normal; float height; float roughness; };
+
+// Surface of water flowing at 'flow' (noise units per cycle) at 'p' (noise units), 't' in
+// cycles: two FlowNoise copies over staggered cycles, cross-faded (Valve's flow maps), each
+// restarting at a random offset while invisible. 'flatness' sets how gentle the slopes are.
+// Must be called in uniform control flow (screen-space derivatives).
+Ripples FlowRipples(vec2 p, vec2 flow, float warp, float flatness, float t)
+{
+    // Pixel footprint as an area (geometric mean): at grazing angles the depth axis is stretched
+    // and its max would wipe out every octave, while the detail across the view still resolves
+    vec2 fp = fwidth(p);
+    float footprint = sqrt(max(fp.x * fp.y, 1e-12));
+    float t0 = fract(t), t1 = fract(t + 0.5);
+    float lost0, lost1;
+    vec3 n0 = FlowNoise(p + CycleOffset(floor(t), 1.0), flow * (t0 - 0.5), warp, footprint, lost0);
+    vec3 n1 = FlowNoise(p + CycleOffset(floor(t + 0.5), 31.0), flow * (t1 - 0.5), warp, footprint, lost1);
+    float w = abs(t0 - 0.5) * 2.0; // Copy 0 is fully faded out when it restarts
+    vec3 n = mix(n0, n1, w);
+    Ripples r;
+    r.normal = normalize(vec3(n.x, flatness, n.y));
+    r.height = n.z;
+    // Slope detail below the pixel (and far, grazing views) becomes roughness, above a calm minimum
+    r.roughness = clamp(0.06 + mix(lost0, lost1, w) * 0.35 / flatness + footprint * 0.03, 0.06, 0.5);
+    return r;
+}
+
+// GGX sun glint: Trowbridge-Reitz distribution, Smith-Schlick visibility, Schlick Fresnel with
+// water's F0 = 0.02. Reflected radiance per unit of light radiance.
+float Glint(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    vec3 H = normalize(V + L);
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 1e-3);
+    float NdotH = max(dot(N, H), 0.0);
+    float a = max(roughness * roughness, 0.003);
+    float a2 = a * a;
+    float d = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    float D = a2 / (3.14159265 * d * d);
+    float k = a * 0.5;
+    float vis = 0.25 / ((NdotL * (1.0 - k) + k) * (NdotV * (1.0 - k) + k));
+    float F = 0.02 + 0.98 * pow(1.0 - max(dot(V, H), 0.0), 5.0);
+    return D * vis * F * NdotL;
+}
+
+// Vertical water depth under this pixel (metres), from the opaque scene depth
+float WaterDepthBelow()
+{
+    vec2 screenUV = gl_FragCoord.xy / max(screenSize, vec2(1.0));
+    float surfaceZ = LinearDepth(gl_FragCoord.z);
+    float sceneZ = LinearDepth(texture(sceneDepthMap, screenUV).r);
+    float dist = length(eyePosition - FragPos);
+    float thickness = max(sceneZ - surfaceZ, 0.0) * dist / max(surfaceZ, 1e-3);
+    return thickness * max(normalize(eyePosition - FragPos).y, 0.05);
+}
+
+// Lacy foam pattern at world xz (the caller offsets p to advect it): two layers of the pattern
+// texture at different scales and channels, so their repeats never line up. Bubbles smaller
+// than the pixel ('footprint', metres per pixel) average out to the pattern's mean.
+float FoamPattern(vec2 p, float footprint)
+{
+    float pattern = texture(waterFoamPattern, p * 0.25).r * 0.6 + texture(waterFoamPattern, p * 0.61 + 0.37).g * 0.4;
+    return mix(pattern, 0.58, smoothstep(0.03, 0.12, footprint) * 0.7);
 }
 
 // Foam generated by obstacles and carried downstream as wakes (top-down foam map around the
@@ -121,38 +236,23 @@ float SampleFoamMap(vec3 p)
 // Foam cover for a foam mask in [0, 1] (Waterways-style erosion): the mask lowers the threshold
 // the pattern must pass. Where foam is generated it is dense froth with bubble holes; as the
 // mask fades it thins into a network of bubble walls, then isolated specks - never a flat blob.
-float FoamCoverage(float mask, float pattern)
+// 'blur' (0..1, bubbles shrinking below the pixel) widens the threshold so the cover tends to
+// the share of the surface the froth covers instead of speckling or vanishing.
+float FoamCoverage(float mask, float pattern, float blur)
 {
     float t = mix(1.0, 0.25, mask);
-    return smoothstep(t - 0.06, t + 0.06, pattern) * smoothstep(0.0, 0.15, mask);
+    float w = mix(0.08, 0.45, blur);
+    return smoothstep(t - w, t + w, pattern) * smoothstep(0.0, 0.15, mask);
 }
 
-// Tangent-space normal map sample -> world-space perturbation on a horizontal surface.
-// Falls back to a procedural ripple when no normal map is bound (black texture).
-vec3 SampleRipple(vec2 uv)
+float FoamBlur(float footprint)
 {
-    vec3 n = texture(material_waterNormalMap, uv).rgb;
-    if (dot(n, n) < 0.001) {
-        float e = 0.05;
-        float h  = ValueNoise(uv * 8.0);
-        float hx = ValueNoise(uv * 8.0 + vec2(e, 0.0));
-        float hz = ValueNoise(uv * 8.0 + vec2(0.0, e));
-        return normalize(vec3(-(hx - h) / e * 0.15, -(hz - h) / e * 0.15, 1.0));
-    }
-    return n * 2.0 - 1.0;
-}
-
-// Combine tangent-space ripples into a world normal around 'up' and flatten them with distance:
-// far ripples are sub-pixel and only produce aliasing (sparkle), not visible detail.
-vec3 RippleToWorld(vec3 tn, float strength, float dist)
-{
-    strength *= mix(1.0, 0.3, smoothstep(40.0, 400.0, dist));
-    return normalize(vec3(tn.x * strength, 1.0, tn.y * strength));
+    return smoothstep(0.03, 0.12, footprint);
 }
 
 struct WaterSample { vec3 color; float alpha; };
 
-WaterSample ShadeWater(vec3 N, vec3 reflectionColor, float extraFoam, float pattern, float shoreWaves)
+WaterSample ShadeWater(vec3 N, float roughness, vec3 reflectionColor, float extraFoam, float pattern, float shoreWaves)
 {
     WaterSample ws;
     vec3 viewDir = normalize(eyePosition - FragPos);
@@ -163,11 +263,10 @@ WaterSample ShadeWater(vec3 N, vec3 reflectionColor, float extraFoam, float patt
     float surfaceZ = LinearDepth(gl_FragCoord.z);
     float sceneZ = LinearDepth(texture(sceneDepthMap, screenUV).r);
     float rayScale = dist / max(surfaceZ, 1e-3);                   // view-z -> ray length
-    float thickness = max(sceneZ - surfaceZ, 0.0) * rayScale;
-    float depthBelow = thickness * max(viewDir.y, 0.05);           // ~ vertical water depth
+    float depthBelow = max(sceneZ - surfaceZ, 0.0) * rayScale * max(viewDir.y, 0.05); // ~ vertical water depth
 
     // --- Refraction (distortion fades out in very shallow water, no foreground bleeding) ---
-    vec2 offset = N.xz * 0.035 * clamp(depthBelow * 0.5, 0.0, 1.0) / max(1.0, dist * 0.02);
+    vec2 offset = N.xz * 0.05 * clamp(depthBelow * 0.5, 0.0, 1.0) / max(1.0, dist * 0.02);
     vec2 refrUV = clamp(screenUV + offset, vec2(0.001), vec2(0.999));
     float refrSceneZ = LinearDepth(texture(sceneDepthMap, refrUV).r);
     if (refrSceneZ < surfaceZ) { refrUV = screenUV; refrSceneZ = sceneZ; }
@@ -188,29 +287,19 @@ WaterSample ShadeWater(vec3 N, vec3 reflectionColor, float extraFoam, float patt
     float skyLight = directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity * max(sunDir.y, 0.0);
     vec3 underwater = refracted * transmittance + scatter * directionalLight.base.colour * skyLight * (1.0 - transmittance);
 
-    // --- Fresnel (Schlick, F0 = 0.02 for water) ---
+    // --- Fresnel (Schlick, F0 = 0.02); rough water reflects a little less at grazing angles ---
     float fPow = material_fresnelPower > 0.0 ? material_fresnelPower : 5.0;
-    float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(dot(N, viewDir), 0.0, 1.0), fPow);
+    float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(dot(N, viewDir), 0.0, 1.0), fPow) * mix(1.0, 0.6, smoothstep(0.1, 0.5, roughness));
     vec3 color = mix(underwater, reflectionColor, fresnel);
 
-    // --- Sun glint with specular anti-aliasing ---
-    // Normal variance across the pixel lowers the exponent (Toksvig-style): a rough-looking
-    // highlight instead of a field of single-pixel sparkles.
-    float shininess = material_shininessOverride > 0.0 ? material_shininessOverride : 256.0;
-    vec3 dN = fwidth(N);
-    float variance = clamp(dot(dN, dN), 0.0, 1.0);
-    float effShine = shininess / (1.0 + shininess * variance * 4.0);
-    vec3 H = normalize(sunDir + viewDir);
-    float specI = material_specularIntensityOverride > 0.0 ? material_specularIntensityOverride : 1.0;
-    float spec = pow(max(dot(N, H), 0.0), effShine) * (effShine + 8.0) / 25.13 * specI * 0.25;
-    color += directionalLight.base.colour * directionalLight.base.diffuseIntensity * spec * fresnel * 4.0;
-
+    // --- GGX glint (3.0, the materials' value, is physically based) ---
+    float glint = material_specularIntensityOverride > 0.0 ? material_specularIntensityOverride / 3.0 : 1.0;
+    color += directionalLight.base.colour * directionalLight.base.diffuseIntensity * Glint(N, viewDir, sunDir, roughness) * glint;
     for (int i = 0; i < pointLightCount; i++) {
         vec3 toLight = pointLights[i].position - FragPos;
         float d = length(toLight);
-        vec3 Hp = normalize(toLight / d + viewDir);
         float att = pointLights[i].constant + pointLights[i].linear * d + pointLights[i].exponent * d * d;
-        color += pointLights[i].base.colour * pointLights[i].base.diffuseIntensity * pow(max(dot(N, Hp), 0.0), effShine) * specI * 0.25 / max(att, 1e-3);
+        color += pointLights[i].base.colour * pointLights[i].base.diffuseIntensity * Glint(N, viewDir, toLight / d, roughness) * glint / max(att, 1e-3);
     }
 
     // --- Foam ---
@@ -223,13 +312,15 @@ WaterSample ShadeWater(vec3 N, vec3 reflectionColor, float extraFoam, float patt
     float waveFront = sin(depthBelow / max(foamWidth, 0.01) * 9.0 + time * 1.6 + ValueNoise(FragPos.xz * 0.7) * 5.0) * 0.5 + 0.5;
     float shoreMask = smoothstep(0.45, 0.9, waveFront) * shoreZone * shoreWaves * 0.8;
     // Contact band: a few cm of depth wide, so it frays into lace instead of drawing a line
-    float contactMask = (1.0 - smoothstep(0.0, foamWidth * 0.5, depthBelow)) * 0.6;
+    float contactMask = (1.0 - smoothstep(0.0, foamWidth * 0.6, depthBelow)) * 0.55;
     float mask = max(max(shoreMask, contactMask), max(SampleFoamMap(FragPos), extraFoam));
-    float foam = FoamCoverage(mask, pattern);
+    vec2 fpw = fwidth(FragPos.xz);
+    float foam = FoamCoverage(mask, pattern, FoamBlur(sqrt(max(fpw.x * fpw.y, 1e-12))));
     vec3 foamCol = material_foamColor.rgb == vec3(0.0) ? vec3(1.0) : material_foamColor.rgb;
-    float foamLight = directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity * max(sunDir.y, 0.0);
-    // Thick froth is brighter than its thin fringes (more bubbles scattering light)
-    color = mix(color, foamCol * foamLight * (0.82 + 0.18 * pattern), foam * 0.85);
+    // Froth is a rough diffuse layer: lit by the sun on its bumps and by the sky
+    vec3 foamN = normalize(vec3(N.x * 3.0, 1.0, N.z * 3.0));
+    float foamLight = directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity * (0.35 + 0.65 * max(dot(foamN, sunDir), 0.0)) * max(sunDir.y + 0.1, 0.0);
+    color = mix(color, foamCol * foamLight * (0.8 + 0.2 * pattern), foam * 0.9);
 
     // --- Soft shoreline: the surface fades into the terrain over the first few cm of depth ---
     // (foam floats on top, so it keeps the surface visible right up to the contact line)
@@ -237,6 +328,50 @@ WaterSample ShadeWater(vec3 N, vec3 reflectionColor, float extraFoam, float patt
     ws.color = color;
     return ws;
 }
+
+// --- Fog along reflections ---
+// The volumetric fog (VolumetricFog) covers the way from the camera to the water surface, but the
+// light a reflection shows also crossed the fog from the surface to what is mirrored. This is the
+// same medium in closed form: height fog (full density below the base height, exponential falloff
+// above) lit by the sun with the Henyey-Greenstein phase and by the sky, without shadows or wisps.
+uniform int   fogEnabled;
+uniform float fogDensity;
+uniform float fogBaseHeight;
+uniform float fogHeightFalloff;
+uniform float fogRange;
+uniform float fogAnisotropy;
+uniform vec3  fogAlbedo;
+uniform vec3  fogSunRadiance;     // Same values as the volumetric fog (VolumetricFog::LightRadiance)
+uniform vec3  fogAmbientRadiance;
+
+// Optical depth of the fog along start + dir * t, t in [0, len]
+float FogOpticalDepth(vec3 start, vec3 dir, float len)
+{
+    float h0 = start.y - fogBaseHeight;
+    float k = max(fogHeightFalloff, 1e-5);
+    if (abs(dir.y) < 1e-4) return fogDensity * len * (h0 <= 0.0 ? 1.0 : exp(-k * h0));
+    float crossing = -h0 / dir.y;                               // Where the ray passes the base height
+    float ta = dir.y > 0.0 ? clamp(crossing, 0.0, len) : 0.0;   // Part of the ray above it
+    float tb = dir.y > 0.0 ? len : clamp(crossing, 0.0, len);
+    float above = tb > ta ? (exp(-k * (h0 + dir.y * ta)) - exp(-k * (h0 + dir.y * tb))) / (k * dir.y) : 0.0;
+    return fogDensity * (above + (len - max(tb - ta, 0.0)));
+}
+
+// A reflection after crossing len metres of fog from the water surface along dir
+vec3 FogReflection(vec3 reflected, vec3 start, vec3 dir, float len)
+{
+    if (fogEnabled == 0 || len <= 0.0) return reflected;
+    float transmittance = exp(-FogOpticalDepth(start, dir, len));
+    float g = fogAnisotropy;
+    float cosTheta = dot(dir, normalize(-directionalLight.direction));
+    float phase = (1.0 - g * g) / pow(max(1.0 + g * g - 2.0 * g * cosTheta, 1e-4), 1.5);
+    vec3 light = fogAlbedo * (fogSunRadiance * phase + fogAmbientRadiance) * (1.0 - transmittance);
+    // Same roll-off as fog_apply.frag: the scene is lit straight into LDR
+    float peak = max(max(light.r, light.g), light.b);
+    if (peak > 0.7) light *= (0.7 + 0.3 * (1.0 - exp(-(peak - 0.7) / 0.3))) / peak;
+    return reflected * transmittance + light;
+}
+
 // =================================== END SHARED WATER MODEL ===================================
 
 void main()
@@ -247,29 +382,49 @@ void main()
     }
 
     float dist = length(eyePosition - FragPos);
-    float t = time * (material_waveSpeed > 0.0 ? material_waveSpeed : 1.0);
+    float speed = material_waveSpeed > 0.0 ? material_waveSpeed : 1.0;
     float scale = material_waveScale > 0.0 ? material_waveScale : 1.0;
-
-    // Two world-space ripple layers drifting in different directions (no visible tiling direction)
-    vec2 uv = FragPos.xz * 0.06 * scale;
-    vec3 r1 = SampleRipple(uv + vec2(0.021, 0.013) * t);
-    vec3 r2 = SampleRipple(uv * 2.3 + vec2(-0.017, 0.029) * t);
-    vec3 tn = normalize(vec3(r1.xy + r2.xy, r1.z * r2.z)); // UDN blend
     float strength = material_normalStrength > 0.0 ? material_normalStrength : 0.35;
-    vec3 N = RippleToWorld(tn, strength, dist);
+
+    // Wind ripples: a steady breeze carries them slowly while the octaves churn against each other
+    const float CYCLE = 3.0;                 // Seconds per advection cycle
+    float freq = 0.55 * scale;               // Noise cells per metre (first octave)
+    vec2 wind = vec2(0.32, 0.19) * speed;    // m/s
+    Ripples r = FlowRipples(FragPos.xz * freq, wind * freq * CYCLE, 0.3, 0.8 / strength, time / CYCLE);
     // Large Gerstner swell from water.vert under the ripples
     vec3 geo = normalize(NormalWorld);
-    N = normalize(N + (geo - vec3(0.0, 1.0, 0.0)));
+    vec3 N = normalize(r.normal + (geo - vec3(0.0, 1.0, 0.0)));
 
-    // Reflection: planar reflection of the lake height when available, sky cubemap otherwise
+    // Reflection: planar reflection of the lake height when available, sky cubemap otherwise, both
+    // blurred by the roughness (mip-mapped), plus the fog between the water and what it mirrors.
+    // The view's fog stops at fogRange too.
     vec3 viewDir = normalize(eyePosition - FragPos);
-    vec3 sky = texture(skybox, reflect(-viewDir, N)).rgb;
     vec2 screenUV = gl_FragCoord.xy / max(screenSize, vec2(1.0));
-    vec3 planar = texture(reflectionMap, clamp(screenUV + N.xz * 0.03, vec2(0.001), vec2(0.999))).rgb;
-    vec3 reflection = dot(planar, planar) > 0.0001 ? planar : sky;
+    vec2 reflUV = clamp(screenUV + N.xz * 0.04, vec2(0.001), vec2(0.999));
+    vec3 planar = textureLod(reflectionMap, reflUV, 0.5 + r.roughness * 5.0).rgb;
+    float skyFog = max(fogRange - dist, 0.0);
+    vec3 reflection;
+    if (dot(planar, planar) > 0.0001) {
+        float fogLength = skyFog;
+        if (fogReflectionDepthValid == 1) {
+            float mirroredDepth = texture(fogReflectionDepth, reflUV).r;
+            if (mirroredDepth < 1.0) {
+                // The mirrored camera sees the object at this view depth; the same pixel turns view
+                // depth into distance the same way, and its first 'dist' metres end at the water
+                float rayScale = dist / max(LinearDepth(gl_FragCoord.z), 1e-3);
+                fogLength = min(max(LinearDepth(mirroredDepth) * rayScale - dist, 0.0), skyFog);
+            }
+        }
+        reflection = FogReflection(planar, FragPos, reflect(-viewDir, vec3(0.0, 1.0, 0.0)), fogLength);
+    } else {
+        vec3 skyDir = reflect(-viewDir, N);
+        reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb, FragPos, skyDir, skyFog);
+    }
 
-    // Uniform slow drift: the same offset everywhere, so the foam noise is never sheared
-    WaterSample ws = ShadeWater(N, reflection, 0.0, FoamPattern(FragPos.xz - vec2(0.12, 0.07) * t), 1.0);
+    // Uniform slow drift: the same offset everywhere, so the foam pattern is never sheared
+    vec2 fp = fwidth(FragPos.xz);
+    float pattern = FoamPattern(FragPos.xz - vec2(0.12, 0.07) * time * speed, max(fp.x, fp.y));
+    WaterSample ws = ShadeWater(N, r.roughness, reflection, 0.0, pattern, 1.0);
 
     vec3 finalColor = ws.color;
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

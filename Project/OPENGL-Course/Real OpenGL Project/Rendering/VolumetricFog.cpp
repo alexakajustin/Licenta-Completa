@@ -43,6 +43,16 @@ static GLuint CreateVolume(const glm::ivec3& size)
 	return tex;
 }
 
+void VolumetricFog::LightRadiance(const GraphicsSettings& gs, DirectionalLight& sun, glm::vec3& sunRadiance, glm::vec3& ambientRadiance)
+{
+	glm::vec3 toSun = -glm::normalize(*sun.GetDirectionPtr());
+	glm::vec3 lightColour = *sun.GetColourPtr();
+	// Sun below the horizon fades out (the light itself keeps shining on the terrain)
+	float sunUp = glm::clamp(toSun.y * 10.0f + 0.5f, 0.0f, 1.0f);
+	sunRadiance = lightColour * (*sun.GetDiffuseIntensityPtr()) * gs.fogSunIntensity * sunUp;
+	ambientRadiance = lightColour * (*sun.GetAmbientIntensityPtr()) * gs.fogAmbientIntensity;
+}
+
 VolumetricFog::~VolumetricFog()
 {
 	ReleaseGrid();
@@ -132,11 +142,8 @@ void VolumetricFog::Render(const glm::mat4& projection, const glm::mat4& view, c
 	int history = 1 - current;
 
 	glm::vec3 toSun = -glm::normalize(*sun.GetDirectionPtr());
-	glm::vec3 lightColour = *sun.GetColourPtr();
-	// Sun below the horizon fades out (the light itself keeps shining on the terrain)
-	float sunUp = glm::clamp(toSun.y * 10.0f + 0.5f, 0.0f, 1.0f);
-	glm::vec3 sunRadiance = lightColour * (*sun.GetDiffuseIntensityPtr()) * gs.fogSunIntensity * sunUp;
-	glm::vec3 ambientRadiance = lightColour * (*sun.GetAmbientIntensityPtr()) * gs.fogAmbientIntensity;
+	glm::vec3 sunRadiance, ambientRadiance;
+	LightRadiance(gs, sun, sunRadiance, ambientRadiance);
 
 	// A changed medium or light makes last frame's volume wrong, not just noisy: drop it so
 	// the change shows up this frame instead of fading in

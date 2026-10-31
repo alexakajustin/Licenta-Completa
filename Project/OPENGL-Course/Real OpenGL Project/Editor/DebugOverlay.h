@@ -47,12 +47,17 @@ struct PassTimer {
 	}
 };
 
-// Per-object render cost tracking
+// Per-object render cost in the main view. GPU time and primitive count come from async
+// queries (timestamps + GL_PRIMITIVES_GENERATED) read a few frames later, so measuring never
+// stalls the pipeline; GPU-driven instanced groups are counted like any other object.
 struct ObjectCost {
 	std::string name;
 	int drawCalls = 0;
-	int triangles = 0;
+	int triangles = 0;                 // Counted on the CPU (regular meshes only)
 	int meshCount = 0;
+	GLuint queries[3] = { 0, 0, 0 };   // Start timestamp, end timestamp, primitives generated
+	float gpuMs = 0.0f;
+	GLuint64 gpuPrimitives = 0;
 };
 
 class DebugOverlay
@@ -69,7 +74,7 @@ public:
 	void BeginPass(const std::string& passName);
 	void EndPass(const std::string& passName);
 
-	// --- Per-object cost tracking ---
+	// --- Per-object cost tracking (main view only; scopes must not nest) ---
 	void BeginObject(const std::string& name, int meshCount);
 	void CountObjectDrawCall();
 	void CountObjectTriangles(int count);
@@ -93,6 +98,16 @@ public:
 	void SetViewportInfo(int w, int h) { viewWidth = w; viewHeight = h; }
 
 	bool IsOpen() const { return isOpen; }
+
+	// Object breakdown without the UI (headless profiling): the editor turns measuring on
+	// itself while the table is visible
+	void SetObjectProfiling(bool enabled) { panelVisible = enabled; }
+	const std::vector<ObjectCost>& GetObjectCosts() const { return lastObjectCosts; }
+	const std::map<std::string, float>& GetSmoothedObjectMs() const { return smoothedObjectMs; }
+	float GetPassMs(const std::string& passName) const {
+		auto it = passTimers.find(passName);
+		return it != passTimers.end() ? it->second.smoothedMs : 0.0f;
+	}
 
 private:
 	static DebugOverlay* instance;
@@ -132,12 +147,24 @@ private:
 	std::map<std::string, PassTimer> passTimers;
 	std::vector<std::string> passOrder; // Insertion order
 
-	// Per-object costs (rebuilt every frame)
+	// Per-object costs: this frame's scopes (queries in flight), frames waiting for their
+	// query results, and the latest frame with results
 	std::vector<ObjectCost> objectCosts;
-	std::vector<ObjectCost> lastObjectCosts; // Snapshot from previous frame
+	std::deque<std::vector<ObjectCost>> pendingObjectFrames;
+	std::vector<ObjectCost> lastObjectCosts;
+	std::map<std::string, float> smoothedObjectMs; // EMA per object name
+	// Query object pools: a query keeps the type of its first use, so timestamp and
+	// primitives queries are never mixed
+	std::vector<GLuint> freeTimestampQueries;
+	std::vector<GLuint> freePrimitiveQueries;
 	ObjectCost* currentObject = nullptr;
 	bool showObjectBreakdown = false;
-	int objectSortMode = 0; // 0=triangles, 1=drawcalls, 2=name
+	bool panelVisible = false;                     // Breakdown on screen last frame: only then measure
+	int objectSortMode = 0; // 0=GPU time, 1=triangles, 2=drawcalls, 3=name
+
+	static GLuint AcquireQuery(std::vector<GLuint>& pool);
+	void ReleaseQueries(const ObjectCost& obj);
+	void CollectObjectResults();
 
 	// GPU info (cached at init)
 	std::string gpuVendor;
