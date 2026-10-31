@@ -471,31 +471,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				// before calling RenderAll, to avoid redundant state changes in the batch loop.
 				// However, if we are not using an override shader (main pass), we ensure split distances are set.
 				if (!overrideShader) {
-					const auto& matrices = dLight->GetCascadedLightMatrices();
-					const auto& splits = dLight->GetCascadeSplitDistances();
-					if (!matrices.empty()) {
-						// Upload each matrix and split distance individually to prevent GL_INVALID_OPERATION
-						// if the shader compiler optimizes out unused array elements.
-						for (size_t i = 0; i < matrices.size(); ++i) {
-							char buf[64];
-							snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
-							GLint mLoc = glGetUniformLocation(s->GetShaderID(), buf);
-							if (mLoc != -1) {
-								while(glGetError() != GL_NO_ERROR);
-								glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(matrices[i]));
-								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
-							}
-						}
-						for (size_t i = 0; i < 4; ++i) {
-							char buf[64];
-							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
-							GLint sLoc = glGetUniformLocation(s->GetShaderID(), buf);
-							if (sLoc != -1) {
-								float val = (i < splits.size()) ? splits[i] : 1000000.0f;
-								glUniform1f(sLoc, val);
-							}
-						}
-					}
+					s->SetCascadedShadows(*dLight);
 					// View matrix for depth calculation
 					GLint vLoc = glGetUniformLocation(s->GetShaderID(), "viewMatrix");
 					if (vLoc != -1) {
@@ -779,7 +755,8 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cachedRenderLocs.useDiffuseTexture,
 						cachedRenderLocs.theTexture,
 						cachedRenderLocs.normalMap,
-						cameraPos, graphicsSettings, sid, targetShader->HasTessellation()
+						cameraPos, graphicsSettings, sid, targetShader->HasTessellation(),
+						projection[1][1] * (graphicsSettings ? graphicsSettings->lodBias : 1.0f)
 					);
 
 					// Restore default/procedural skybox cube map
@@ -914,18 +891,9 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 		DispatchObjectCull(vp, projection, cameraPos, (int)screenWidth, (int)screenHeight, allCullObjects);
 	}
 
-	// 1. Render all opaque objects normally (writes depth)
+	// 1. Render all opaque objects normally (writes depth). The Hi-Z pyramid is built from
+	// this depth plus the first instanced phase, below.
 	RenderQueue(opaqueObjects);
-
-	// ================================================================
-	// Generate Hi-Z map for Occlusion Culling
-	// MUST happen after opaque pass but BEFORE instanced group culling
-	// so the Hi-Z pyramid reflects the current frame's opaque geometry.
-	// ================================================================
-	if (!overrideShader && sceneDepthTexture > 0 && gs && gs->enableOcclusionCulling) {
-		GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
-		lastShaderID = 0; // Force PrepareShader to re-bind after compute shader usage
-	}
 
 	// ================================================================
 	// GPU-Driven Instanced Groups (grass, foliage, rocks, etc.)
@@ -982,29 +950,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				if (dLight) {
 					targetRenderShader->SetDirectionalLight(dLight);
 					
-					const auto& matrices = dLight->GetCascadedLightMatrices();
-					const auto& splits = dLight->GetCascadeSplitDistances();
-					if (!matrices.empty()) {
-						for (size_t i = 0; i < matrices.size(); ++i) {
-							char buf[64];
-							snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
-							GLint mLoc = glGetUniformLocation(sid, buf);
-							if (mLoc != -1) {
-								while(glGetError() != GL_NO_ERROR);
-								glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(matrices[i]));
-								if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
-							}
-						}
-						for (size_t i = 0; i < 4; ++i) {
-							char buf[64];
-							snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
-							GLint sLoc = glGetUniformLocation(sid, buf);
-							if (sLoc != -1) {
-								float val = (i < splits.size()) ? splits[i] : 1000000.0f;
-								glUniform1f(sLoc, val);
-							}
-						}
-					}
+					targetRenderShader->SetCascadedShadows(*dLight);
 					
 					GLint vLoc = glGetUniformLocation(sid, "viewMatrix");
 					if (vLoc != -1) {
@@ -1058,12 +1004,6 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				if (screenSizeLoc != -1) glUniform2f(screenSizeLoc, screenHeight > 0.0f ? (screenHeight * ((projection[0][0]) > 0 ? (projection[1][1] / projection[0][0]) : 1.77f)) : 1920.0f, screenHeight > 0.0f ? screenHeight : 1080.0f);
 
 				if (dLight) {
-					GLint sdLoc = glGetUniformLocation(sid, "shadowDistance");
-					if (sdLoc != -1) {
-						const auto& splits = dLight->GetCascadeSplitDistances();
-						float shadowFar = splits.empty() ? dLight->GetShadowFrustumSize() : splits.back();
-						glUniform1f(sdLoc, shadowFar);
-					}
 					dLight->GetShadowMap()->ReadColor(GL_TEXTURE20);
 					GLint scmLoc = glGetUniformLocation(sid, "directionalShadowColorMap");
 					if (scmLoc != -1) glUniform1i(scmLoc, 20);
@@ -1074,63 +1014,48 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			return targetRenderShader;
 		};
 
-		if (useTwoPhase) {
-			// ================================================================
-			// TWO-PHASE FROSTBITE-STYLE GPU OCCLUSION CULLING
-			// ================================================================
+		// Secondary views (water reflection, cubemap captures) have no depth texture: cheaper
+		// LODs and far less grass — nobody looks at a reflection that closely
+		const GraphicsSettings* passSettings = gs ? gs : graphicsSettings;
+		bool secondaryView = (sceneDepthTexture == 0);
+		InstancedGroup::CullPass pass = InstancedGroup::CameraPass(projection, view, cameraPos, passSettings,
+			secondaryView ? 0.5f : 1.0f, secondaryView ? 0.3f : 1.0f);
+		pass.screenSize = glm::vec2(screenWidth, screenHeight);
+		if (secondaryView) {
+			// Seen from below the water nothing is occluded (no Hi-Z, the terrain is back-facing):
+			// keep it to the surroundings, the fog and the ripples hide the rest
+			pass.maxDrawDistance = std::min(pass.maxDrawDistance, 400.0f);
+			pass.sizeScaledDistance = false;
+			pass.detailMaxDistance = 60.0f;
+		}
 
-			// Step 0: Clear visibility buffers (mark all invisible for this frame)
-			for (auto* group : instancedGroups) {
-				if (group) group->ClearVisibility();
-			}
-
-			// Step 1: Phase 1 — Draw last-frame-visible instances (populates depth buffer)
+		auto DrawAllGroups = [&]() {
 			for (auto* group : instancedGroups) {
 				if (!group) continue;
 				Shader* targetRenderShader = BindShaderState(group);
-				group->CullAndDrawPhase1(
-					cullShader->GetShaderID(),
-					*targetRenderShader,
-					projection, view, cameraPos,
-					graphicsSettings
-				);
+				group->CullAndDraw(cullShader->GetShaderID(), *targetRenderShader, pass, projection, view, passSettings);
 			}
+		};
 
-			// Step 2: Rebuild Hi-Z pyramid from the depth buffer populated by Phase 1
+		if (useTwoPhase) {
+			// ================================================================
+			// TWO-PHASE GPU OCCLUSION CULLING (Haar & Aaltonen, SIGGRAPH 2015)
+			// 1. Draw what was visible last frame: it fills the depth buffer
+			// 2. Build the Hi-Z pyramid from it, test every instance, draw the newly
+			//    visible ones and keep the visible set for the next frame
+			// ================================================================
+			pass.phase = 0;
+			DrawAllGroups();
+
 			glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
 			GenerateHiZMap((int)screenWidth, (int)screenHeight, sceneDepthTexture);
 
-			// Step 3: Phase 2 — Test remaining instances against the fresh Hi-Z
 			lastShader = nullptr; // Force shader re-bind after compute shader usage
-			for (auto* group : instancedGroups) {
-				if (!group) continue;
-				Shader* targetRenderShader = BindShaderState(group);
-				group->CullAndDrawPhase2(
-					cullShader->GetShaderID(),
-					*targetRenderShader,
-					projection, view, cameraPos,
-					graphicsSettings,
-					hizTexture,
-					(int)screenWidth, (int)screenHeight
-				);
-			}
+			pass.phase = 1;
+			pass.hizTexture = hizTexture;
+			DrawAllGroups();
 		} else {
-			// ================================================================
-			// LEGACY SINGLE-PHASE MODE (reflection pass, or OC disabled)
-			// ================================================================
-			for (auto* group : instancedGroups) {
-				if (!group) continue;
-				Shader* targetRenderShader = BindShaderState(group);
-				group->CullAndDraw(
-					cullShader->GetShaderID(),
-					*targetRenderShader,
-					projection, view, cameraPos,
-					gs ? gs : graphicsSettings,
-					false,
-					(sceneDepthTexture == 0 ? 0 : hizTexture),
-					(int)screenWidth, (int)screenHeight
-				);
-			}
+			DrawAllGroups();
 		}
 
 		glEnable(GL_CULL_FACE);

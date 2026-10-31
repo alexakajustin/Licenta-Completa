@@ -213,17 +213,19 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 
 	if (cullShaderID != 0 && !groups.empty()) {
 		bindWaterUniforms(obstacleInstancedShader);
-		// The instanced shadow path culls by distance to the camera with shadowDistance:
-		// widen it to the corners of the window
-		GraphicsSettings windowSettings = gs ? *gs : GraphicsSettings();
-		windowSettings.shadowDistance = WINDOW * 0.75f;
+		// Top-down depth pass over the window (corners included), with the LODs the camera sees
+		InstancedGroup::CullPass pass;
+		pass.viewProj = viewProj;
+		pass.cameraPos = cameraPos;
+		pass.lodProjScale = 1.732f * (gs ? gs->lodBias : 1.0f); // 60 degree camera
+		pass.maxDrawDistance = WINDOW * 0.75f;
 		for (InstancedGroup* group : groups) {
 			if (!group) continue;
 			// Grass is filtered out of the water by the scatter filters and is by far the
 			// largest group: not worth a top-down pass every frame
 			Material* m = group->GetMaterial();
 			if (m && m->GetShader() && m->GetShader()->GetVertexPath().find("grass") != std::string::npos) continue;
-			group->CullAndDrawShadow(cullShaderID, obstacleInstancedShader, viewProj, cameraPos, &windowSettings, time);
+			group->CullAndDrawShadow(cullShaderID, obstacleInstancedShader, pass, viewProj, time);
 		}
 		glDisable(GL_CULL_FACE); // CullAndDrawShadow re-enables it
 	}

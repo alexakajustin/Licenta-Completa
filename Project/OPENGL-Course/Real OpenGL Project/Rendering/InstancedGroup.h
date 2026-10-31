@@ -16,28 +16,26 @@ struct Frustum;
 struct GraphicsSettings;
 
 // =====================================================================
-// InstancedGroup — GPU-Driven Instanced Rendering for Millions of Objects
+// InstancedGroup — GPU-driven instanced rendering for millions of objects
 //
-// Architecture (v2 — 10M+ scale):
-//   1. Stores all instance transforms in a GPU-side SSBO (32 bytes each)
-//   2. Partitions instances into spatial chunks for CPU-side pre-culling
-//   3. Runs a compute shader for frustum + distance + LOD culling on GPU
-//   4. Issues multi-LOD glDrawElementsIndirect calls (zero CPU draw overhead)
-//   5. Dedicated shadow pass with instanced shadow vertex shader
+//   1. All instance transforms live in an SSBO (32 bytes each); groups over 1M
+//      instances are split into spatial chunks the CPU can skip whole.
+//   2. Every pass (camera, reflection, shadow cascade, omni face, water foam)
+//      describes itself with a CullPass and runs the same compute shader
+//      (compute_cull.glsl): frustum planes, Hi-Z occlusion, screen-size LOD
+//      (LODPolicy.h) with dithered cross-fades, detail-foliage thinning.
+//   3. One glDrawElementsIndirect per LOD level, zero CPU work per instance.
 //
 // Usage:
-//   auto* group = new InstancedGroup("grass_field");
 //   group->Setup(mesh, transforms, material, texture, normalMap);
+//   group->SetLODMesh(1, lod1); group->SetLODMesh(2, lod2);
 //   // Each frame:
-//   group->CullAndDraw(cullShader, renderShader, proj, view, camPos, ...);
-//   group->CullAndDrawShadow(cullShader, shadowShader, lightVP, camPos, ...);
+//   group->CullAndDraw(cullShader, renderShader, InstancedGroup::CameraPass(...), proj, view, gs);
+//   group->CullAndDrawShadow(cullShader, shadowShader, cascadePass, lightViewProj, time);
 // =====================================================================
 
 // Maximum LOD levels supported
 static const int MAX_LOD_LEVELS = 3;
-
-struct GraphicsSettings;
-struct Frustum;
 
 class InstancedGroup
 {
@@ -47,6 +45,35 @@ public:
 		glm::vec4 positionAndScale;   // xyz = world position, w = uniform scale
 		glm::vec4 rotationAndFlags;   // xyz = euler degrees, w = flags/padding
 	};
+
+	// One culling pass: the frustum it draws into and how much detail it may use.
+	// LOD and draw distances are always measured from the camera, so every pass agrees on
+	// what an instance looks like (a shadow comes from the LOD the camera sees, or a cheaper one).
+	struct CullPass {
+		glm::mat4 viewProj = glm::mat4(1.0f);   // Frustum of the pass (camera, reflection, cascade...)
+		glm::vec3 cameraPos = glm::vec3(0.0f);
+		float lodProjScale = 1.732f;            // projection[1][1] of the camera x LOD bias
+		float maxDrawDistance = 2000.0f;        // Before DrawDistanceScale()
+		bool sizeScaledDistance = true;         // Big objects are drawn further away (DrawDistanceScale)
+		int lodMin = 0;                         // Most detailed LOD allowed (far shadow cascades: > 0)
+		float crossfade = 0.0f;                 // Relative width of the dithered LOD transitions
+		float minScreenSize = 0.0f;             // Instances smaller on screen are not drawn
+		float minCasterSize = 0.0f;             // Shadow cascades: diameter of one shadow texel
+		glm::vec2 detailRange = glm::vec2(45.0f, 150.0f); // Detail foliage: full density / a quarter
+		float detailDensity = 1.0f;
+		float detailMaxDistance = 1.0e9f;       // Detail foliage ends here (shadows, reflections)
+		int phase = 2;                          // 0/1: two-phase occlusion culling, 2: single pass
+		bool sphereCull = false;                // Omni shadows: distance to lightPos instead of the frustum
+		glm::vec3 lightPos = glm::vec3(0.0f);
+		GLuint hizTexture = 0;                  // Camera pass occlusion (0 = off)
+		glm::vec2 screenSize = glm::vec2(0.0f);
+		float nearPlane = 0.1f, farPlane = 20000.0f;
+	};
+
+	// Pass of a camera (main view, reflection) from the graphics settings. lodBias < 1 switches
+	// to cheaper LODs sooner, detailScale shortens the detail-foliage distances.
+	static CullPass CameraPass(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
+		const GraphicsSettings* gs, float lodBias = 1.0f, float detailScale = 1.0f);
 
 	InstancedGroup(const std::string& name = "InstancedGroup");
 	~InstancedGroup();
@@ -59,44 +86,30 @@ public:
 		Texture* normalMap = nullptr,
 		const std::vector<TextureLayer>& textureLayers = {});
 
-	// Per-frame: cull on GPU and draw visible instances (camera pass)
-	// Legacy single-phase mode (still used for reflection pass, etc.)
-	void CullAndDraw(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, const GraphicsSettings* gs,
-		bool isShadowPass = false, GLuint hizTexture = 0,
-		int screenWidth = 0, int screenHeight = 0);
+	// Camera passes: cull on the GPU, then draw every LOD with the material's shader
+	void CullAndDraw(GLuint cullShaderID, Shader& renderShader, const CullPass& pass,
+		const glm::mat4& projection, const glm::mat4& view, const GraphicsSettings* gs);
 
-	// Two-phase occlusion culling (Frostbite-style)
-	// Phase 1: Draw instances that were visible last frame (no Hi-Z needed)
-	void CullAndDrawPhase1(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, const GraphicsSettings* gs);
-
-	// Phase 2: Test remaining instances against fresh Hi-Z, draw survivors
-	void CullAndDrawPhase2(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, const GraphicsSettings* gs,
-		GLuint hizTexture, int screenWidth, int screenHeight);
-
-	// Clear visibility buffer at start of frame (all instances marked invisible)
-	void ClearVisibility();
-
-	// Per-frame: cull against light frustum and draw into shadow map
-	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader,
-		const glm::mat4& lightViewProj, const glm::vec3& cameraPos,
-		const GraphicsSettings* gs, float time,
-		GLuint hizTexture = 0, int screenWidth = 0, int screenHeight = 0,
-		const glm::mat4& cameraViewProj = glm::mat4(1.0f));
+	// Depth-only passes (directional shadow cascades, water foam obstacles): cull, then draw
+	// every LOD with a shared shader that takes "directionalLightTransform"
+	void CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader, const CullPass& pass,
+		const glm::mat4& lightViewProj, float time);
 
 	// Per-frame: cull against light sphere and draw into omni (point/spot) shadow map
 	void CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowShader,
 		const glm::vec3& lightPos, float farPlane,
 		const glm::vec3& cameraPos, const GraphicsSettings* gs, float time);
 
-	// LOD configuration
-	void SetLODMesh(int level, Mesh* mesh, float maxDistance);
+	// LOD configuration (level 1 or 2; LOD0 is the shared mesh)
+	void SetLODMesh(int level, Mesh* mesh);
 	int GetLODCount() const { return lodCount; }
+	Mesh* GetLODMesh(int level) const { return (level >= 0 && level < lodCount && lodLevels[level].mesh) ? lodLevels[level].mesh : sharedMesh; }
+
+	// Grass and other cheap, numerous things without LOD meshes thin out with distance instead
+	bool IsDetailFoliage() const;
+
+	// Instances drawn at a LOD by the last pass (GPU readback: stalls, debugging/statistics only)
+	uint32_t ReadDrawnCount(int lod) const;
 
 	// Accessors
 	const std::string& GetName() const { return name; }
@@ -106,7 +119,7 @@ public:
 
 	// Camera draw distance multiplier: bigger objects stay visible further away, like a
 	// screen-size cull. Grass/ferns/rocks (radius <= 2 m) keep the global render distance,
-	// a 20 m tree is drawn 5x further, capped at 10x. LOD distances stay absolute.
+	// a 20 m tree is drawn 5x further, capped at 10x.
 	float DrawDistanceScale() const { return glm::clamp(meshBoundRadius / 2.0f, 1.0f, 10.0f); }
 
 	// Material/texture access for rendering pipeline
@@ -146,21 +159,16 @@ private:
 	// GPU Buffers (main instance data)
 	GLuint instanceSSBO = 0;       // All instance transforms (input to compute shader)
 
-	// Per-LOD rendering resources
+	// Per-LOD rendering resources, refilled by every pass (each pass draws before the next culls)
 	struct LODLevel {
 		Mesh* mesh = nullptr;
-		float maxDistance = 0.0f;// Max distance for this LOD (0 = use full draw distance)
 		GLuint visibleSSBO = 0;    // Visible instance transforms for this LOD
 		GLuint indirectBuffer = 0; // GL_DRAW_INDIRECT_BUFFER for this LOD
 	};
 	LODLevel lodLevels[MAX_LOD_LEVELS];
-	int lodCount = 1;  // How many LOD levels are active
+	int lodCount = 1;  // LOD meshes in use (LOD0 = shared mesh)
 
-	// Shadow pass resources (separate from camera LOD)
-	GLuint shadowVisibleSSBO = 0;
-	GLuint shadowIndirectBuffer = 0;
-
-	// Two-phase occlusion culling: per-instance visibility from previous frame
+	// Two-phase occlusion culling: per-instance visibility from the previous frame
 	GLuint visibilitySSBO = 0;
 
 	// Shared resources
@@ -201,25 +209,17 @@ private:
 	void SetupChunking(const std::vector<PackedInstance>& instances);
 	void SetupFlat(const std::vector<PackedInstance>& instances);
 	void AllocateLODBuffers();
-	void AllocateShadowBuffers();
 	void ReleaseLODBuffers();
-	void ReleaseShadowBuffers();
 	void ReleaseChunks();
 
-	void RenderLODs(Shader& renderShader, const glm::mat4& projection,
-		const glm::mat4& view, const glm::vec3& cameraPos,
-		const GraphicsSettings* gs, bool isShadowPass);
-	void CullAndDrawFlat(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, float maxDrawDistance,
-		const GraphicsSettings* gs, bool isShadowPass);
-	void CullAndDrawChunked(GLuint cullShaderID, Shader& renderShader,
-		const glm::mat4& projection, const glm::mat4& view,
-		const glm::vec3& cameraPos, float maxDrawDistance,
-		const GraphicsSettings* gs, bool isShadowPass);
+	// Runs the compute culler for one pass into the per-LOD lists. False when the whole
+	// group (or every chunk) was rejected on the CPU and nothing needs drawing.
+	bool Cull(GLuint cullShaderID, const CullPass& pass);
 
-	// Dispatch compute cull for a given SSBO of instances
-	void DispatchCull(GLuint cullShaderID, GLuint inputSSBO, uint32_t inputCount,
-		const glm::mat4& viewProj, const glm::vec3& cameraPos,
-		float maxDrawDistance);
+	// Draw every LOD list with the material (camera passes)
+	void DrawLODs(Shader& renderShader, const glm::mat4& projection,
+		const glm::mat4& view, const glm::vec3& cameraPos, const GraphicsSettings* gs);
+
+	// Draw every LOD list with a depth-only shader whose uniforms are already set
+	void DrawDepthLODs();
 };

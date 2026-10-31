@@ -113,7 +113,9 @@ uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS]; ///< A
 
 uniform mat4 directionalLightTransform[4]; ///< Transformation matrices mapping cascaded shadow map layers.
 uniform float cascadeSplits[4]; ///< Split distance values for cascaded shadow layers.
-uniform float lodDistances[3];
+uniform int shadowCascadeCount; ///< Cascades rendered this frame (1-4).
+uniform float shadowCascadeTexel[4]; ///< World size of one shadow texel in each cascade.
+uniform float shadowCascadeDepthRange[4]; ///< Depth span of each cascade's projection (bias to depth units).
 uniform mat4 viewMatrix; ///< View matrix to determine view-space camera depth.
 
 uniform Material material;
@@ -362,12 +364,9 @@ float random(vec3 seed, int i){
 
 float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 {
-	// Calculate the split distance of this cascade
-	float splitDist = cascadeSplits[layer];
-
-	// World-space texel size approximation
+	// World size of one shadow texel of this cascade
+	float texelSizeWS = shadowCascadeTexel[layer];
 	vec2 texSize = vec2(textureSize(directionalShadowMap, 0).xy);
-	float texelSizeWS = (splitDist * 2.5) / texSize.x;
 
 	float cosAlpha = clamp(dot(normal, -lightDir), 0.0, 1.0);
 
@@ -388,11 +387,6 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	// Slope-scaled depth bias in NDC space to prevent texel quantization acne
 	float tanTheta = sqrt(1.0 - cosAlpha * cosAlpha) / max(cosAlpha, 0.0001);
 	
-	// Approx radius to find the depth range range of the orthographic projection
-	float approxRadius = splitDist * 1.25;
-	float zMult = max(2000.0, approxRadius * 4.0);
-	float depthRange = 2.0 * zMult;
-	
 	// World-space bias: starts at 0.4 texels and scales up steeply with slope (2.0x slope scale)
 	// to completely cover the depth variation across the PCF footprint at grazing angles.
 	float biasWS = texelSizeWS * (0.4 + tanTheta * 2.0);
@@ -401,7 +395,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	// while ensuring it's large enough to cover texel quantization.
 	biasWS = clamp(biasWS, 0.01, 4.0); // 1cm min, 4m max
 	
-	float bias = biasWS / depthRange;
+	float bias = biasWS / shadowCascadeDepthRange[layer];
 	
 	float shadow = 0.0;
 	vec2 texelSize = 1.0 / texSize;
@@ -427,7 +421,7 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 	shadow /= 16.0;
 
 	// Edge fade for the last cascade only
-	if (layer == 3) {
+	if (layer == shadowCascadeCount - 1) {
 		float fadeMargin = 0.1;
 		float edgeFade = 1.0;
 		edgeFade = min(edgeFade, smoothstep(0.0, fadeMargin, projCoords.x));
@@ -442,34 +436,31 @@ float GetShadowFactorAtLayer(int layer, vec3 normal, vec3 lightDir)
 
 float CalcDirectionalShadowFactor(DirectionalLight light)
 {
+	if (shadowCascadeCount <= 0) return 0.0;
 	vec4 fragPosViewSpace = viewMatrix * vec4(FragPos, 1.0);
 	float depth = abs(fragPosViewSpace.z);
 	vec3 normal = normalize(Normal);
 	vec3 lightDir = normalize(directionalLight.direction);
 
-	int layer = -1;
-	for (int i = 0; i < 4; i++) {
+	int layer = shadowCascadeCount - 1;
+	for (int i = 0; i < shadowCascadeCount; i++) {
 		if (depth < cascadeSplits[i]) {
 			layer = i;
 			break;
 		}
 	}
-	if (layer == -1) layer = 3;
-
-	// Clamp selected cascade layer to the actual number of layers present in the texture array
-	int maxLayer = textureSize(directionalShadowMap, 0).z - 1;
-	layer = min(layer, maxLayer);
 
 	float shadow = GetShadowFactorAtLayer(layer, normal, lightDir);
 
-	// Cascade Blending: Smoothly blend between cascades at the split points
-	float blendThreshold = 5.0; // 5 meters before split
-	if (layer < maxLayer) {
+	// Blend into the next cascade over the last 10% of this one, so the change of resolution
+	// never shows as a seam (and only that thin band pays for two lookups)
+	if (layer < shadowCascadeCount - 1) {
 		float splitDist = cascadeSplits[layer];
-		if (depth > splitDist - blendThreshold) {
-			float blendFactor = (depth - (splitDist - blendThreshold)) / blendThreshold;
-			float nextShadow = GetShadowFactorAtLayer(layer + 1, normal, lightDir);
-			shadow = mix(shadow, nextShadow, blendFactor);
+		float prevSplit = layer > 0 ? cascadeSplits[layer - 1] : 0.0;
+		float blendStart = splitDist - (splitDist - prevSplit) * 0.1;
+		if (depth > blendStart) {
+			float blendFactor = (depth - blendStart) / max(splitDist - blendStart, 1e-4);
+			shadow = mix(shadow, GetShadowFactorAtLayer(layer + 1, normal, lightDir), blendFactor);
 		}
 	}
 
@@ -852,11 +843,12 @@ void CalcLayeredSurface(out vec3 outColor)
 
 void main()								         
 {
-	// Distance dithered fade: discard pixels based on a 4x4 Bayer pattern
-	if (vFadeFactor > 0.001) {
+	// Dithered fades on a 4x4 Bayer pattern (compute_cull.glsl): vFadeFactor > 0 fades out
+	// (distance, minimum size, outgoing LOD), < 0 fades in with the complementary mask
+	// (incoming LOD): together the two LODs of a cross-fade cover every pixel exactly once
+	if (abs(vFadeFactor) > 0.001) {
 		int x = int(mod(gl_FragCoord.x, 4.0));
 		int y = int(mod(gl_FragCoord.y, 4.0));
-		// 4x4 Bayer dither matrix (values 0.0 to ~0.9375)
 		float bayerMatrix[16] = float[16](
 			 0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
 			12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
@@ -864,7 +856,7 @@ void main()
 			15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
 		);
 		float threshold = bayerMatrix[y * 4 + x];
-		if (vFadeFactor > threshold) discard;
+		if (vFadeFactor > 0.0 ? vFadeFactor > threshold : threshold >= -vFadeFactor) discard;
 	}
 
 	// 1. Compute surface color (and blended normal if layers active)
@@ -929,14 +921,9 @@ void main()
 		finalColor += vec3(0.35, 0.25, 0.0) * selectedVal;
 	}
 
-	// LOD debug coloring (tint 30% of original color)
+	// LOD debug coloring: the colour of the LOD being drawn (red LOD0, green LOD1, blue LOD2)
 	if (debugLODColoring) {
-		float distToCam = distance(FragPos, eyePosition);
-		vec3 distColor = vec3(1.0, 0.2, 0.2); // Red (LOD 0)
-		if (distToCam > lodDistances[1]) distColor = vec3(0.2, 0.2, 1.0); // Blue (LOD 2)
-		else if (distToCam > lodDistances[0]) distColor = vec3(0.2, 1.0, 0.2); // Green (LOD 1)
-		
-		finalColor = mix(finalColor, distColor, 0.4);
+		finalColor = mix(finalColor, lodDebugColor, 0.4);
 	}
 
 	colour = vec4(finalColor, material.baseColor.a);

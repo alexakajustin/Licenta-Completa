@@ -4,6 +4,7 @@
 #include "Core/Window.h"
 #include "Core/Frustum.h"
 #include "Rendering/InstancedGroup.h"
+#include "Rendering/LODPolicy.h"
 #include <GLFW/glfw3.h>
 #include <fstream>
 #include <sstream>
@@ -109,25 +110,27 @@ void Renderer::CacheUniforms()
 
 void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& scene, const glm::vec3& cameraPos, const glm::mat4& projection, const glm::mat4& view, float near, float far, const GraphicsSettings* gs)
 {
+	// 1. Cascade array (resolution / count from the settings) and the cascade matrices
+	int numCascades = (gs && gs->shadowCascades >= 1 && gs->shadowCascades <= 4) ? gs->shadowCascades : 4;
+	light->EnsureCascadeMap(gs ? gs->shadowResolution : 2048, numCascades);
 	CascadedShadowMap* csm = (CascadedShadowMap*)light->GetShadowMap();
 	if (!csm) return;
-
-	// 1. Calculate the cascade matrices (use configurable count)
-	int numCascades = (gs && gs->shadowCascades >= 1 && gs->shadowCascades <= 4) ? gs->shadowCascades : 4;
-	light->CalculateCascadedLightMatrices(view, projection, near, far, numCascades);
+	light->CalculateCascadedLightMatrices(view, projection, near, far, numCascades, gs ? gs->shadowCascadeSplit : 0.75f);
 	const auto& matrices = light->GetCascadedLightMatrices();
+	const auto& texels = light->GetCascadeTexelSizes();
 
-	directionalShadowShader.UseShader();
-	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
-
-	// 2. Loop through each cascade and render
-	glDisable(GL_CULL_FACE);   // Disable culling for single-sided objects (chairs, table tops)
+	glViewport(0, 0, csm->GetShadowWidth(), csm->GetShadowHeight());
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);      // Ensure depth writing is ON
 	glDepthFunc(GL_LESS);
 	glDisable(GL_BLEND);       // No blending for shadow map generation
 
-	// Only iterate over computed cascades (may be fewer than csm->GetCascadeCount())
+	float sw = (float)csm->GetShadowWidth();
+	float sh = (float)csm->GetShadowHeight();
+	float time = (float)glfwGetTime();
+	auto& groups = scene.GetInstancedGroups();
+
+	// 2. Each cascade draws only what can land in its own box
 	GLuint actualCascades = std::min((GLuint)matrices.size(), csm->GetCascadeCount());
 	for (GLuint i = 0; i < actualCascades; i++)
 	{
@@ -135,42 +138,34 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to 0.0 (no occlusion)
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		glm::mat4 lightProjView = matrices[i];
-		directionalShadowShader.SetDirectionalLightTransform(lightProjView);
+		const glm::mat4& lightProjView = matrices[i];
+		Frustum cascadeFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
 
-		directionalShadowShader.Validate();
+		// Scene objects inside the cascade's box (it reaches far toward the light, so casters
+		// beyond the shadow distance still count). Culling off: single-sided objects (chairs,
+		// table tops) must cast from both sides.
+		glDisable(GL_CULL_FACE);
+		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f,
+			&cascadeFrustum, &directionalShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), lightProjView, gs, 1.0e9f);
 
-		Frustum dirFrustum = Frustum::CreateFrustumFromMatrix(lightProjView);
-
-		// Render regular objects
-		float sw = (float)light->GetShadowMap()->GetShadowWidth();
-		float sh = (float)light->GetShadowMap()->GetShadowHeight();
-		scene.RenderAll(glm::mat4(1.0f), glm::mat4(1.0f), cameraPos, light, nullptr, 0, nullptr, 0, 0.0f, nullptr, &directionalShadowShader, sw, sh, this, 0, 0, 0, glm::vec4(0.0f), lightProjView, gs);
-
-		// GPU-Driven Instanced Groups
-		float time = (float)glfwGetTime();
-		auto& groups = scene.GetInstancedGroups();
-		GLuint hiz = scene.GetHiZTexture();
-		// Use camera's view-projection for Hi-Z occlusion test in shadow pass
-		glm::mat4 camVP = projection * view;
-		// Hi-Z dimensions match the camera viewport, NOT the shadow map
-		int hizW = scene.GetHiZWidth();
-		int hizH = scene.GetHiZHeight();
+		// Instanced groups: the LOD the camera sees in the first cascade, cheaper ones further
+		// out (shadowLodBias levels per cascade); casters thinner than one texel are skipped
 		if (!groups.empty() && instancedCullShader.GetShaderID()) {
-			for (auto* group : groups) {
-				if (!group) continue;
-				group->CullAndDrawShadow(
-					instancedCullShader.GetShaderID(),
-					instancedShadowShader,
-					lightProjView,
-					cameraPos,
-					gs,
-					time,
-					hiz,
-					hizW, hizH,
-					camVP
-				);
-			}
+			InstancedGroup::CullPass pass;
+			pass.viewProj = lightProjView;
+			pass.cameraPos = cameraPos;
+			pass.lodProjScale = projection[1][1] * (gs ? gs->lodBias : 1.0f);
+			pass.maxDrawDistance = gs ? gs->renderDistance : 2000.0f;
+			pass.lodMin = std::min((int)i * (gs ? gs->shadowLodBias : 1), MAX_LOD_LEVELS - 1);
+			pass.minScreenSize = LODPolicy::CULL_SCREEN_SIZE;
+			pass.minCasterSize = i < texels.size() ? texels[i] : 0.0f;
+			// Grass: the density the camera sees, but only close by (fades out over the last 15%)
+			float detailEnd = std::max(gs ? gs->detailDistance : 150.0f, 1.0f);
+			pass.detailRange = glm::vec2(detailEnd * 0.3f, detailEnd);
+			pass.detailDensity = gs ? gs->detailDensity : 1.0f;
+			pass.detailMaxDistance = gs ? gs->detailShadowDistance : 25.0f;
+			for (auto* group : groups)
+				if (group) group->CullAndDrawShadow(instancedCullShader.GetShaderID(), instancedShadowShader, pass, lightProjView, time);
 		}
 	}
 
@@ -311,30 +306,8 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
 	mainShader.SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
 	
-	// Pass cascade matrices and split distances
-	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
-	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
-	if (!cascadedMatrices.empty()) {
-		for (size_t i = 0; i < cascadedMatrices.size(); ++i) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
-			GLint mLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
-			if (mLoc != -1) {
-				while(glGetError() != GL_NO_ERROR);
-				glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(cascadedMatrices[i]));
-				if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
-			}
-		}
-		for (size_t i = 0; i < 4; ++i) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
-			GLint sLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
-			if (sLoc != -1) {
-				float val = (i < cascadedSplits.size()) ? cascadedSplits[i] : 1000000.0f;
-				glUniform1f(sLoc, val);
-			}
-		}
-	}
+	// Cascade matrices, splits, texel sizes, shadow distance
+	mainShader.SetCascadedShadows(mainLight);
 	
 	GLint vLoc = glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix");
 	if (vLoc != -1) {
@@ -349,15 +322,6 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	mainShader.SetNormalMap(1);
 	mainShader.SetDirectionalShadowMap(3);
 	mainShader.SetDirectionalShadowColorMap(20);
-
-	// Pass shadow distance to shader for percentage-based fade
-	// Use the actual cascade far distance, not the old pre-cascade frustum size
-	GLint sdLoc = glGetUniformLocation(mainShader.GetShaderID(), "shadowDistance");
-	if (sdLoc != -1) {
-		const auto& splits = mainLight.GetCascadeSplitDistances();
-		float shadowFar = splits.empty() ? mainLight.GetShadowFrustumSize() : splits.back();
-		glUniform1f(sdLoc, shadowFar);
-	}
 
 	// mainShader.Validate(); 
 	
@@ -448,29 +412,7 @@ void Renderer::ReflectionPass(const glm::mat4& projection, const glm::mat4& view
 	mainShader.SetPointLights(pointLights, pointLightCount, 4, 0);
 	mainShader.SetSpotLights(spotLights, spotLightCount, 4 + pointLightCount, pointLightCount);
 
-	const auto& cascadedMatrices = mainLight.GetCascadedLightMatrices();
-	const auto& cascadedSplits = mainLight.GetCascadeSplitDistances();
-	if (!cascadedMatrices.empty()) {
-		for (size_t i = 0; i < cascadedMatrices.size(); ++i) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "directionalLightTransform[%zu]", i);
-			GLint mLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
-			if (mLoc != -1) {
-				while(glGetError() != GL_NO_ERROR);
-				glUniformMatrix4fv(mLoc, 1, GL_FALSE, glm::value_ptr(cascadedMatrices[i]));
-				if (glGetError() != GL_NO_ERROR) std::cout << "[ERROR] glUniformMatrix4fv failed for " << buf << " at location: " << mLoc << "\n";
-			}
-		}
-		for (size_t i = 0; i < 4; ++i) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "cascadeSplits[%zu]", i);
-			GLint sLoc = glGetUniformLocation(mainShader.GetShaderID(), buf);
-			if (sLoc != -1) {
-				float val = (i < cascadedSplits.size()) ? cascadedSplits[i] : 1000000.0f;
-				glUniform1f(sLoc, val);
-			}
-		}
-	}
+	mainShader.SetCascadedShadows(mainLight);
 	
 	GLint vLoc = glGetUniformLocation(mainShader.GetShaderID(), "viewMatrix");
 	if (vLoc != -1) {

@@ -1,4 +1,5 @@
 #include "Rendering/Shader.h"
+#include <algorithm>
 #include <unordered_map>
 #include <string>
 #include "Core/AssetManager.h"
@@ -456,6 +457,7 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 		n_lower.find("transform") != std::string::npos ||
 		n_lower.find("waterfoam") != std::string::npos || // Per-frame foam map (WaterFoamMap)
 		n_lower.find("foliage") != std::string::npos ||   // Set per draw (isFoliage, foliageRadius)
+		n_lower.find("lod") != std::string::npos ||       // LOD debug colouring, set per draw
 		n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
 		n == "theTexture" || n == "normalMap" || n == "farPlane" ||
 		n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||
@@ -737,6 +739,41 @@ void Shader::SetDirectionalLightTransform(glm::mat4 lTransform)
 	{
 		glUniformMatrix4fv(uniformDirectionalLightTransform, 1, GL_FALSE, glm::value_ptr(lTransform));
 	}
+}
+
+void Shader::SetCascadedShadows(DirectionalLight& light)
+{
+	if (cascadeLocs.program != shaderID) {
+		cascadeLocs.program = shaderID;
+		char buf[64];
+		for (int i = 0; i < 4; i++) {
+			snprintf(buf, sizeof(buf), "directionalLightTransform[%d]", i);
+			cascadeLocs.matrix[i] = glGetUniformLocation(shaderID, buf);
+			snprintf(buf, sizeof(buf), "cascadeSplits[%d]", i);
+			cascadeLocs.split[i] = glGetUniformLocation(shaderID, buf);
+			snprintf(buf, sizeof(buf), "shadowCascadeTexel[%d]", i);
+			cascadeLocs.texel[i] = glGetUniformLocation(shaderID, buf);
+			snprintf(buf, sizeof(buf), "shadowCascadeDepthRange[%d]", i);
+			cascadeLocs.depthRange[i] = glGetUniformLocation(shaderID, buf);
+		}
+		cascadeLocs.count = glGetUniformLocation(shaderID, "shadowCascadeCount");
+		cascadeLocs.distance = glGetUniformLocation(shaderID, "shadowDistance");
+	}
+
+	const auto& matrices = light.GetCascadedLightMatrices();
+	const auto& splits = light.GetCascadeSplitDistances();
+	const auto& texels = light.GetCascadeTexelSizes();
+	const auto& ranges = light.GetCascadeDepthRanges();
+	int count = (int)std::min(matrices.size(), splits.size());
+	for (int i = 0; i < 4; i++) {
+		bool used = i < count;
+		if (used && cascadeLocs.matrix[i] != -1) glUniformMatrix4fv(cascadeLocs.matrix[i], 1, GL_FALSE, glm::value_ptr(matrices[i]));
+		if (cascadeLocs.split[i] != -1) glUniform1f(cascadeLocs.split[i], used ? splits[i] : 1.0e6f);
+		if (cascadeLocs.texel[i] != -1) glUniform1f(cascadeLocs.texel[i], used && i < (int)texels.size() ? texels[i] : 1.0f);
+		if (cascadeLocs.depthRange[i] != -1) glUniform1f(cascadeLocs.depthRange[i], used && i < (int)ranges.size() ? ranges[i] : 4000.0f);
+	}
+	if (cascadeLocs.count != -1) glUniform1i(cascadeLocs.count, count);
+	if (cascadeLocs.distance != -1) glUniform1f(cascadeLocs.distance, splits.empty() ? light.GetShadowFrustumSize() : splits.back());
 }
 
 void Shader::SetLightMatrices(std::vector<glm::mat4> lightMatrices)

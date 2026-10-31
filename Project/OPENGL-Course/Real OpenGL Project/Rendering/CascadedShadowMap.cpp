@@ -12,6 +12,11 @@ bool CascadedShadowMap::Init(GLuint width, GLuint height)
 
 bool CascadedShadowMap::Init(GLuint width, GLuint height, GLuint cascadeCount)
 {
+	// Re-initialisation (resolution or cascade count changed): drop the previous array
+	if (FBO) { glDeleteFramebuffers(1, &FBO); FBO = 0; }
+	if (shadowMap) { glDeleteTextures(1, &shadowMap); shadowMap = 0; }
+	if (shadowColorMap) { glDeleteTextures(1, &shadowColorMap); shadowColorMap = 0; }
+
 	this->shadowWidth = width;
 	this->shadowHeight = height;
 	this->cascadeCount = cascadeCount;

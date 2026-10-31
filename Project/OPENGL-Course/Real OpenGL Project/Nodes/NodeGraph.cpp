@@ -364,8 +364,14 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 					sMap[objName].clear();
 				}
 
-				// Also remove the specific instanced group for this object type if it exists
+				// Remove every group this node created before, not only the ones about to be
+				// recreated: sub-mesh groups were named differently by older versions (and the
+				// source object may have changed), and a stale group keeps drawing the same
+				// instances on top of the new ones — every LOD of a tree at once.
 				std::string groupName = "Scatter_Instanced_" + std::to_string(node->id) + "_" + objName;
+				for (const auto& oldGroup : scatterNode->GetCreatedGroupNames())
+					scene.RemoveInstancedGroup(oldGroup);
+				scatterNode->SetCreatedGroupNames({});
 				scene.RemoveInstancedGroup(groupName);
 				
 				// Pattern for previous single-object version (for backwards compatibility/cleanup)
@@ -667,13 +673,13 @@ void NodeGraph::Execute(SceneManager& scene, Texture* defaultTex, Material* defa
 								size_t m1 = mg.lod1Idx;
 								size_t key1 = (size_t)meshDataList[m1].vertices.data() ^ meshDataList[m1].vertices.size() ^ m1;
 								if (meshCache.find(key1) == meshCache.end()) meshCache[key1] = meshDataList[m1].ToMesh(0);
-								group->SetLODMesh(1, meshCache[key1], 0.0f);
+								group->SetLODMesh(1, meshCache[key1]);
 							}
 							if (mg.lod2Idx != -1) {
 								size_t m2 = mg.lod2Idx;
 								size_t key2 = (size_t)meshDataList[m2].vertices.data() ^ meshDataList[m2].vertices.size() ^ m2;
 								if (meshCache.find(key2) == meshCache.end()) meshCache[key2] = meshDataList[m2].ToMesh(0);
-								group->SetLODMesh(2, meshCache[key2], 0.0f);
+								group->SetLODMesh(2, meshCache[key2]);
 							}
 							scene.AddInstancedGroup(group);
 							scatterNode->AddCreatedGroupName(subGroupName);

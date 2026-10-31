@@ -10,18 +10,42 @@ enum class SkyboxType {
 };
 
 struct GraphicsSettings {
-	// Culling & LOD Distances (Base values, before multipliers)
-	float lod0Distance = 50.0f;    // Full detail within 50 units
-	float lod1Distance = 150.0f;   // 50% detail at 50-150 units
-	float lod2Distance = 400.0f;   // 25% detail at 150-400 units
-	float renderDistance = 2000.0f; // Object cut-off
-	float shadowDistance = 500.0f;
-	int shadowCascades = 2;        // Number of shadow cascades (1-4, fewer = faster)
+	// Level of detail: chosen by the size on screen (Rendering/LODPolicy.h), like Unity's
+	// LODGroup — big objects keep their detail further away than small ones
+	float lodBias = 1.0f;           // > 1 keeps the detailed LODs longer, < 1 switches sooner
+	bool lodCrossfade = true;       // Dithered transitions between LODs instead of pops
+	float renderDistance = 2000.0f; // Object cut-off (big objects are drawn up to 10x further)
+	float detailDistance = 150.0f;  // Grass / detail foliage thins out to a quarter by this distance
+	float detailDensity = 1.0f;     // Fraction of the detail foliage drawn at all
+
+	// Shadows (cascaded shadow maps)
+	float shadowDistance = 150.0f;
+	int shadowCascades = 4;           // 1-4: more cascades = sharper shadows near the camera
+	int shadowResolution = 2048;      // Per cascade
+	float shadowCascadeSplit = 0.75f; // 0 = even splits, 1 = logarithmic (sharper near the camera)
+	int shadowLodBias = 1;            // Each further cascade may use one cheaper LOD (0 = the camera's LOD)
+	float detailShadowDistance = 25.0f; // Grass casts shadows only this close
 
 	// God Rays
 	bool godraysEnabled = true;
 	float godraysDecay = 0.95f;
 	float godraysDensity = 1.0f;
+
+	// Volumetric Fog (froxel grid, sun-lit with cascaded shadows)
+	bool volumetricFogEnabled = true;
+	int fogQuality = 1;                 // 0 Low (16 px tiles, 64 slices), 1 Medium (8 px, 64), 2 High (8 px, 128)
+	float fogDensity = 0.01f;           // Extinction per metre at/below the base height
+	float fogBaseHeight = 272.0f;       // World height below which the fog is at full density (Ultimate_Scene lake level)
+	float fogHeightFalloff = 0.04f;     // Exponential density falloff per metre above the base height
+	float fogRange = 350.0f;            // View distance covered by the froxel grid
+	float fogAnisotropy = 0.4f;         // Henyey-Greenstein g: forward scattering = glow and shafts toward the sun
+	glm::vec3 fogAlbedo = glm::vec3(0.92f, 0.94f, 1.0f);
+	float fogSunIntensity = 0.25f;      // Scales the sun light scattered by the fog
+	float fogAmbientIntensity = 0.7f;   // Scales the sky light scattered by the fog
+	float fogNoiseStrength = 0.6f;      // 0 = uniform fog, 1 = patchy wisps
+	float fogNoiseScale = 0.025f;       // Noise repeats per metre
+	float fogWindSpeed = 1.2f;          // Metres per second the wisps drift
+	float fogTemporalBlend = 0.1f;      // Weight of the new frame (lower = smoother, more ghosting)
 
 	// Volumetric Sky & Clouds
 	bool volumetricSkyEnabled = true;

@@ -19,9 +19,15 @@ public:
 	glm::mat4 CalculateLightTransform(glm::vec3 target);
 
 	// Cascaded Shadow Map methods
-	void CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCount = 4);
+	// splitLambda blends the split distances: 0 = even, 1 = logarithmic (sharper near the camera)
+	void CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCount = 4, float splitLambda = 0.75f);
 	const std::vector<glm::mat4>& GetCascadedLightMatrices() const { return cascadedLightMatrices; }
 	const std::vector<float>& GetCascadeSplitDistances() const { return cascadeSplitDistances; }
+	const std::vector<float>& GetCascadeTexelSizes() const { return cascadeTexelSizes; }   // World size of one shadow texel
+	const std::vector<float>& GetCascadeDepthRanges() const { return cascadeDepthRanges; } // Depth span of each cascade's projection
+
+	// (Re)allocates the cascade texture array when the resolution or the cascade count changes
+	void EnsureCascadeMap(int resolution, int cascadeCount);
 
 	// Setters/Getters
 	void SetDirection(const glm::vec3& dir);
@@ -45,6 +51,8 @@ private:
 	// CSM Data
 	std::vector<glm::mat4> cascadedLightMatrices;
 	std::vector<float> cascadeSplitDistances;
+	std::vector<float> cascadeTexelSizes;
+	std::vector<float> cascadeDepthRanges;
 };
 
 

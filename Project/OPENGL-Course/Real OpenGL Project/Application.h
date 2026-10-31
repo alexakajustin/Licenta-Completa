@@ -21,6 +21,7 @@
 #include "Lighting/SpotLight.h"
 #include "CommonValues.h"
 #include "Rendering/Shader.h"
+#include "Rendering/VolumetricFog.h"
 #include <vector>
 #include <unordered_map>
 
@@ -184,6 +185,7 @@ private:
 	Shader godrayShader;
 	Shader volumetricSkyShader;
 	Shader universeSkyShader;
+	VolumetricFog volumetricFog;
 	Shader skyTemporalShader;
 	Shader skyUpsampleShader;
 	Shader cloudNoiseShader;

@@ -1,4 +1,5 @@
 #include "Scene/GameObject.h"
+#include "Rendering/LODPolicy.h"
 #include "Scene/BoxCollider.h"
 #include "Scene/CapsuleCollider.h"
 #include "Scene/MeshCollider.h"
@@ -329,20 +330,11 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	const glm::vec3& cameraPos,
 	const GraphicsSettings* gs,
 	GLuint shaderID,
-	bool shaderSupportsTessellation)
+	bool shaderSupportsTessellation,
+	float lodProjScale)
 {
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-
-	// Calculate distance to camera for LOD
-	float dist = glm::distance(glm::vec3(modelMatrix[3]), cameraPos);
-
-	// Use global graphics settings for distances
-	float finalMaxDist = gs ? gs->renderDistance : 2000.0f;
-	float finalLOD0 = gs ? gs->lod0Distance : 50.0f;
-	float finalLOD1 = gs ? gs->lod1Distance : 150.0f;
-	float finalLOD2 = gs ? gs->lod2Distance : 400.0f;
-
 
 	// Reset texture flags to prevent stale state from previous object
 	if (uniformUseDiffuseTexture != -1) glUniform1i(uniformUseDiffuseTexture, 0);
@@ -516,22 +508,16 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		}
 	}
 
-	// Determine which mesh to render based on distance and available LODs
+	// Screen-size LOD (LODPolicy): the fraction of the screen height its bounding sphere covers
 	Mesh* meshToRender = mesh;
-
-	if (lodCount > 0) {
-		if (dist < finalLOD0 || lodCount == 1) {
-			meshToRender = mesh;
-		}
-		else if (dist < finalLOD1 || lodCount == 2) {
-			meshToRender = (lodMeshes[0] ? lodMeshes[0] : mesh);
-		}
-		else if (dist < finalLOD2 || lodCount == 3) {
-			meshToRender = (lodMeshes[1] ? lodMeshes[1] : (lodMeshes[0] ? lodMeshes[0] : mesh));
-		}
-		else {
-			meshToRender = (lodMeshes[2] ? lodMeshes[2] : (lodMeshes[1] ? lodMeshes[1] : (lodMeshes[0] ? lodMeshes[0] : mesh)));
-		}
+	if (lodCount > 1 && mesh) {
+		glm::vec3 sphereCenter;
+		float sphereRadius;
+		GetWorldBoundingSphere(sphereCenter, sphereRadius);
+		float screenSize = LODPolicy::ScreenSize(sphereRadius, glm::distance(sphereCenter, cameraPos), lodProjScale);
+		// lodMeshes[l - 1] holds LOD l; missing levels fall back to the next more detailed one
+		for (int l = LODPolicy::Select(screenSize, lodCount); l >= 1 && meshToRender == mesh; l--)
+			if (lodMeshes[l - 1]) meshToRender = lodMeshes[l - 1];
 	}
 
 	// LOD Debug Coloring

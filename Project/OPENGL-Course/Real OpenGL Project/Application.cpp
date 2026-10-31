@@ -748,6 +748,17 @@ void Application::Run()
 		renderer.RenderPass(projection, view, activeCameraPos, sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
+
+		// Volumetric fog over the finished scene (before the screen-space god rays)
+		if (graphicsSettings.volumetricFogEnabled)
+		{
+			debugOverlay.BeginPass("Volumetric Fog");
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			volumetricFog.Render(projection, view, activeCameraPos, mainLight, viewportDepth,
+				currentViewportWidth, currentViewportHeight, graphicsSettings, (float)glfwGetTime());
+			debugOverlay.EndPass("Volumetric Fog");
+		}
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -888,6 +899,7 @@ void Application::Run()
 				spotLightCount = 0;
 				SetupScene();
 			}
+			volumetricFog.InvalidateHistory();
 			editorUI.ClearPendingSceneAction();
 		}
 
@@ -1164,16 +1176,36 @@ void Application::LoadGraphicsSettings()
 		
 
 
-		if (j.contains("lod0Distance")) graphicsSettings.lod0Distance = j["lod0Distance"];
-		if (j.contains("lod1Distance")) graphicsSettings.lod1Distance = j["lod1Distance"];
-		if (j.contains("lod2Distance")) graphicsSettings.lod2Distance = j["lod2Distance"];
+		if (j.contains("lodBias")) graphicsSettings.lodBias = j["lodBias"];
+		if (j.contains("lodCrossfade")) graphicsSettings.lodCrossfade = j["lodCrossfade"];
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
+		if (j.contains("detailDistance")) graphicsSettings.detailDistance = j["detailDistance"];
+		if (j.contains("detailDensity")) graphicsSettings.detailDensity = j["detailDensity"];
 		if (j.contains("shadowDistance")) graphicsSettings.shadowDistance = j["shadowDistance"];
 		if (j.contains("shadowCascades")) graphicsSettings.shadowCascades = j["shadowCascades"];
+		if (j.contains("shadowResolution")) graphicsSettings.shadowResolution = j["shadowResolution"];
+		if (j.contains("shadowCascadeSplit")) graphicsSettings.shadowCascadeSplit = j["shadowCascadeSplit"];
+		if (j.contains("shadowLodBias")) graphicsSettings.shadowLodBias = j["shadowLodBias"];
+		if (j.contains("detailShadowDistance")) graphicsSettings.detailShadowDistance = j["detailShadowDistance"];
 
 		if (j.contains("godraysEnabled")) graphicsSettings.godraysEnabled = j["godraysEnabled"];
 		if (j.contains("godraysDecay")) graphicsSettings.godraysDecay = j["godraysDecay"];
 		if (j.contains("godraysDensity")) graphicsSettings.godraysDensity = j["godraysDensity"];
+
+		if (j.contains("volumetricFogEnabled")) graphicsSettings.volumetricFogEnabled = j["volumetricFogEnabled"];
+		if (j.contains("fogQuality")) graphicsSettings.fogQuality = j["fogQuality"];
+		if (j.contains("fogDensity")) graphicsSettings.fogDensity = j["fogDensity"];
+		if (j.contains("fogBaseHeight")) graphicsSettings.fogBaseHeight = j["fogBaseHeight"];
+		if (j.contains("fogHeightFalloff")) graphicsSettings.fogHeightFalloff = j["fogHeightFalloff"];
+		if (j.contains("fogRange")) graphicsSettings.fogRange = j["fogRange"];
+		if (j.contains("fogAnisotropy")) graphicsSettings.fogAnisotropy = j["fogAnisotropy"];
+		if (j.contains("fogAlbedo")) graphicsSettings.fogAlbedo = glm::vec3(j["fogAlbedo"][0].get<float>(), j["fogAlbedo"][1].get<float>(), j["fogAlbedo"][2].get<float>());
+		if (j.contains("fogSunIntensity")) graphicsSettings.fogSunIntensity = j["fogSunIntensity"];
+		if (j.contains("fogAmbientIntensity")) graphicsSettings.fogAmbientIntensity = j["fogAmbientIntensity"];
+		if (j.contains("fogNoiseStrength")) graphicsSettings.fogNoiseStrength = j["fogNoiseStrength"];
+		if (j.contains("fogNoiseScale")) graphicsSettings.fogNoiseScale = j["fogNoiseScale"];
+		if (j.contains("fogWindSpeed")) graphicsSettings.fogWindSpeed = j["fogWindSpeed"];
+		if (j.contains("fogTemporalBlend")) graphicsSettings.fogTemporalBlend = std::max(0.05f, j["fogTemporalBlend"].get<float>());
 
 		if (j.contains("volumetricSkyEnabled")) graphicsSettings.volumetricSkyEnabled = j["volumetricSkyEnabled"];
 		if (j.contains("cloudsEnabled")) graphicsSettings.cloudsEnabled = j["cloudsEnabled"];
@@ -1215,16 +1247,36 @@ void Application::SaveGraphicsSettings()
 	
 
 
-	j["lod0Distance"] = graphicsSettings.lod0Distance;
-	j["lod1Distance"] = graphicsSettings.lod1Distance;
-	j["lod2Distance"] = graphicsSettings.lod2Distance;
+	j["lodBias"] = graphicsSettings.lodBias;
+	j["lodCrossfade"] = graphicsSettings.lodCrossfade;
 	j["renderDistance"] = graphicsSettings.renderDistance;
+	j["detailDistance"] = graphicsSettings.detailDistance;
+	j["detailDensity"] = graphicsSettings.detailDensity;
 	j["shadowDistance"] = graphicsSettings.shadowDistance;
 	j["shadowCascades"] = graphicsSettings.shadowCascades;
+	j["shadowResolution"] = graphicsSettings.shadowResolution;
+	j["shadowCascadeSplit"] = graphicsSettings.shadowCascadeSplit;
+	j["shadowLodBias"] = graphicsSettings.shadowLodBias;
+	j["detailShadowDistance"] = graphicsSettings.detailShadowDistance;
 
 	j["godraysEnabled"] = graphicsSettings.godraysEnabled;
 	j["godraysDecay"] = graphicsSettings.godraysDecay;
 	j["godraysDensity"] = graphicsSettings.godraysDensity;
+
+	j["volumetricFogEnabled"] = graphicsSettings.volumetricFogEnabled;
+	j["fogQuality"] = graphicsSettings.fogQuality;
+	j["fogDensity"] = graphicsSettings.fogDensity;
+	j["fogBaseHeight"] = graphicsSettings.fogBaseHeight;
+	j["fogHeightFalloff"] = graphicsSettings.fogHeightFalloff;
+	j["fogRange"] = graphicsSettings.fogRange;
+	j["fogAnisotropy"] = graphicsSettings.fogAnisotropy;
+	j["fogAlbedo"] = { graphicsSettings.fogAlbedo.x, graphicsSettings.fogAlbedo.y, graphicsSettings.fogAlbedo.z };
+	j["fogSunIntensity"] = graphicsSettings.fogSunIntensity;
+	j["fogAmbientIntensity"] = graphicsSettings.fogAmbientIntensity;
+	j["fogNoiseStrength"] = graphicsSettings.fogNoiseStrength;
+	j["fogNoiseScale"] = graphicsSettings.fogNoiseScale;
+	j["fogWindSpeed"] = graphicsSettings.fogWindSpeed;
+	j["fogTemporalBlend"] = graphicsSettings.fogTemporalBlend;
 
 	j["volumetricSkyEnabled"] = graphicsSettings.volumetricSkyEnabled;
 	j["cloudsEnabled"] = graphicsSettings.cloudsEnabled;
@@ -1412,6 +1464,7 @@ void Application::StartPlayMode()
 	printf("[Application] Entering Play Mode.\n");
 	playState = PlayState::PlayMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
+	volumetricFog.InvalidateHistory(); // Camera cut: last frame's fog belongs to the editor camera
 
 	// Backup all object transforms so we can restore them when stopping
 	transformBackups.clear();
@@ -1470,6 +1523,7 @@ void Application::StopPlayMode()
 	printf("[Application] Exiting Play Mode.\n");
 	playState = PlayState::EditMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
+	volumetricFog.InvalidateHistory();
 
 	// Restore all object transforms to their pre-play state
 	for (auto& [obj, backup] : transformBackups)

@@ -1102,7 +1102,7 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 					if (!baseName.empty()) {
 						for (int lod = 1; lod <= 2; lod++) {
 							int lodIdx = findMesh(baseName + "_LOD" + std::to_string(lod));
-							if (lodIdx >= 0) group->SetLODMesh(lod, model->GetMesh(lodIdx), 0.0f);
+							if (lodIdx >= 0) group->SetLODMesh(lod, model->GetMesh(lodIdx));
 						}
 					}
 					scene.AddInstancedGroup(group);

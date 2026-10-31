@@ -3,333 +3,231 @@ layout(local_size_x = 256) in;
 
 /**
  * @file compute_cull.glsl
- * @brief GPU-driven Frustum Culling, Distance Culling, Hi-Z Occlusion Culling, and LOD Classification compute shader.
+ * @brief GPU-driven culling and LOD selection for instanced groups (one thread per instance).
+ *
+ * 1. Visibility in this pass: the 6 frustum planes of the pass (camera, reflection or a shadow
+ *    cascade — plane tests work for perspective and orthographic projections alike), or the
+ *    distance to an omni light; Hi-Z occlusion in the camera pass.
+ * 2. Level of detail from the size on the camera's screen (LODPolicy.h): the fraction of the screen
+ *    height covered by the bounding sphere. Every pass measures it from the camera, so the shadow
+ *    of a tree comes from the same LOD the camera sees (or a cheaper one in the far cascades).
+ * 3. Dithered cross-fade: inside a band above each threshold the instance is emitted to both
+ *    LODs with complementary 4x4 dither masks (the fragment shaders discard by vFadeFactor:
+ *    > 0 fades out, < 0 fades in), and it fades out before the minimum screen size and the
+ *    maximum draw distance — no popping.
+ * 4. Detail foliage (grass: thousands of cheap instances without LOD meshes) thins out with
+ *    distance instead: each instance keeps a stable random rank, blades about to drop out shrink
+ *    away first and the survivors grow so the field stays covered.
  */
 
-/**
- * @struct PackedInstance
- * @brief Represents a single placed model instance in GPU memory.
- */
 struct PackedInstance {
-    vec4 posAndScale;     ///< xyz = Position coordinates, w = Scale multiplier.
-    vec4 rotAndFlags;     ///< xyz = Euler rotation angles, w = Selection flags & fade factors.
+    vec4 posAndScale;     ///< xyz = position, w = uniform scale
+    vec4 rotAndFlags;     ///< xyz = euler degrees, w = selection flag (input) / fade factor + 10 * selected (output)
 };
 
-/**
- * @brief Read-only buffer containing all candidate instances to process.
- */
-layout(std430, binding = 0) readonly buffer AllInstances {
-    PackedInstance allInstances[];
-};
+layout(std430, binding = 0) readonly buffer AllInstances { PackedInstance allInstances[]; };
 
-/**
- * @brief Output buffer for visible instances assigned to LOD 0.
- */
-layout(std430, binding = 1) writeonly buffer VisibleInstancesLOD0 {
-    PackedInstance visibleLOD0[];
-};
+layout(std430, binding = 1) writeonly buffer VisibleInstancesLOD0 { PackedInstance visibleLOD0[]; };
+layout(std430, binding = 3) writeonly buffer VisibleInstancesLOD1 { PackedInstance visibleLOD1[]; };
+layout(std430, binding = 4) writeonly buffer VisibleInstancesLOD2 { PackedInstance visibleLOD2[]; };
 
-/**
- * @brief Draw command parameters for LOD 0 indirect drawing.
- */
 layout(std430, binding = 2) buffer DrawIndirectLOD0 {
-    uint indexCountLOD0;     ///< Indices count per instance.
-    uint instanceCountLOD0;  ///< Atomic counter of visible LOD 0 instances.
-    uint firstIndexLOD0;
-    uint baseVertexLOD0;
-    uint baseInstanceLOD0;
+    uint indexCountLOD0; uint instanceCountLOD0; uint firstIndexLOD0; uint baseVertexLOD0; uint baseInstanceLOD0;
 };
-
-/**
- * @brief Output buffer for visible instances assigned to LOD 1.
- */
-layout(std430, binding = 3) writeonly buffer VisibleInstancesLOD1 {
-    PackedInstance visibleLOD1[];
-};
-
-/**
- * @brief Output buffer for visible instances assigned to LOD 2.
- */
-layout(std430, binding = 4) writeonly buffer VisibleInstancesLOD2 {
-    PackedInstance visibleLOD2[];
-};
-
-/**
- * @brief Draw command parameters for LOD 1 indirect drawing.
- */
 layout(std430, binding = 5) buffer DrawIndirectLOD1 {
-    uint indexCountLOD1;
-    uint instanceCountLOD1;  ///< Atomic counter of visible LOD 1 instances.
-    uint firstIndexLOD1;
-    uint baseVertexLOD1;
-    uint baseInstanceLOD1;
+    uint indexCountLOD1; uint instanceCountLOD1; uint firstIndexLOD1; uint baseVertexLOD1; uint baseInstanceLOD1;
 };
-
-/**
- * @brief Draw command parameters for LOD 2 indirect drawing.
- */
 layout(std430, binding = 6) buffer DrawIndirectLOD2 {
-    uint indexCountLOD2;
-    uint instanceCountLOD2;  ///< Atomic counter of visible LOD 2 instances.
-    uint firstIndexLOD2;
-    uint baseVertexLOD2;
-    uint baseInstanceLOD2;
+    uint indexCountLOD2; uint instanceCountLOD2; uint firstIndexLOD2; uint baseVertexLOD2; uint baseInstanceLOD2;
 };
 
-uniform mat4  viewProj;            ///< Combined camera View-Projection matrix.
-uniform vec3  cameraPos;           ///< World-space camera position vector.
-uniform float maxDrawDistance;     ///< Maximum distance threshold for culling instances.
-uniform float instanceBoundRadius; ///< Radius of mesh bounding sphere.
-uniform uint  totalInstances;      ///< Total number of instances to process in this dispatch.
-uniform vec3  meshBoundsCenter;     ///< Center of the instance bounding sphere relative to origin.
+/// Camera pass, two-phase occlusion culling: 1 = the instance passed last frame's tests
+layout(std430, binding = 7) buffer VisibilityBuffer { uint visibility[]; };
 
-// Sphere culling (for omni light shadow pass)
-uniform vec3  lightPos;            ///< Position of light source (when omni casting).
-uniform int   useSphereCull;       ///< Set to 1 to enable sphere-based distance culling from light source.
+// --- Pass ---
+uniform vec4  frustumPlanes[6];    ///< Normalised planes of the pass, inside where dot(n, p) + d >= 0
+uniform int   useSphereCull;       ///< Omni shadows: distance to lightPos instead of the frustum
+uniform vec3  lightPos;
+uniform uint  totalInstances;      ///< Instances in this dispatch
+uniform uint  instanceOffset;      ///< Chunked dispatches: global index of this chunk's first instance
+uniform int   phase;               ///< 0: draw last frame's visible set, 1: test everything against Hi-Z, 2: single pass
 
-// LOD configuration
-uniform int   lodCount;            ///< Active LOD count (1, 2, or 3).
-uniform float lodDistances[3];     ///< Boundaries distance for LOD 0->1, 1->2.
+// --- Bounds ---
+uniform float instanceBoundRadius; ///< Bounding sphere radius of the LOD0 mesh (unscaled)
+uniform vec3  meshBoundsCenter;    ///< Bounding sphere centre relative to the mesh origin
 
-// Hi-Z Occlusion Culling
-uniform int useHiZ;                ///< Set to 1 to enable Hi-Z occlusion test.
-uniform vec2 screenSize;           ///< Viewport screen resolution (width, height).
-uniform float nearPlane;           ///< Camera near plane distance.
-uniform float farPlane;            ///< Camera far plane distance.
-uniform uint instanceOffset;       ///< Global offset mapping for chunked dispatches.
-uniform mat4 hizViewProj;          ///< Target View-Projection matrix for occlusion checking.
-layout(binding = 15) uniform sampler2D hizMap; ///< Input Hi-Z depth map texture.
+// --- Level of detail (always measured from the camera) ---
+uniform vec3  cameraPos;
+uniform float lodProjScale;        ///< projection[1][1] of the camera x LOD bias
+uniform float lodScreenSize[2];    ///< Below [0]: LOD1, below [1]: LOD2
+uniform float minScreenSize;       ///< Below: not drawn
+uniform float crossfadeWidth;      ///< Relative width of the transition bands, 0 = hard switches
+uniform int   lodCount;            ///< Distinct LOD meshes of the group (1-3)
+uniform int   lodMin;              ///< Most detailed LOD this pass may use (far shadow cascades: > 0)
+uniform float maxDrawDistance;     ///< Hard limit, faded out over its last 15%
+uniform float minCasterSize;       ///< Shadow cascades: casters thinner than a shadow texel are skipped
 
-uniform int phase;                 ///< Phase index for two-phase occlusion culling.
+// --- Detail foliage ---
+uniform int   detailFoliage;
+uniform vec2  detailRange;         ///< Full density up to x, a quarter from y on
+uniform float detailDensity;       ///< Global density multiplier (Graphics Settings)
 
-/**
- * @brief Visibility buffer tracking instance state from last frame.
- */
-layout(std430, binding = 7) buffer VisibilityBuffer {
-    uint visibility[];
-};
+// --- Hi-Z occlusion (camera pass) ---
+uniform int   useHiZ;
+uniform vec2  screenSize;
+uniform float nearPlane;
+uniform float farPlane;
+uniform mat4  hizViewProj;
+layout(binding = 15) uniform sampler2D hizMap;
 
-/**
- * @brief Instance rotation matrix — identical to eulerToMat3 in the instanced vertex shaders
- *        (instanced_header.glsl, instanced_object.vert, instanced_shadow.vert).
- *        The bounds center must be rotated exactly like the rendered mesh, otherwise
- *        tilted instances are culled against a sphere in the wrong place (popping).
- * @param euler Euler angles vector in degrees.
- * @return Rotation matrix.
- */
+/// Same rotation as the instanced vertex shaders (instanced_header.glsl, instanced_shadow.vert)
 mat3 eulerToMat3(vec3 euler) {
-    float cx = cos(radians(euler.x));
-    float sx = sin(radians(euler.x));
-    float cy = cos(radians(euler.y));
-    float sy = sin(radians(euler.y));
-    float cz = cos(radians(euler.z));
-    float sz = sin(radians(euler.z));
-
+    float cx = cos(radians(euler.x)), sx = sin(radians(euler.x));
+    float cy = cos(radians(euler.y)), sy = sin(radians(euler.y));
+    float cz = cos(radians(euler.z)), sz = sin(radians(euler.z));
     mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cx, -sx, 0.0, sx, cx);
     mat3 ry = mat3(cy, 0.0, sy, 0.0, 1.0, 0.0, -sy, 0.0, cy);
     mat3 rz = mat3(cz, -sz, 0.0, sz, cz, 0.0, 0.0, 0.0, 1.0);
-
     return rz * ry * rx;
 }
 
-/**
- * @brief Compute shader entry point. Checks visibility and classifies instances.
- */
-void main()
+/// Integer hash (lowbias32): a stable random rank per instance
+uint Hash(uint x) {
+    x ^= x >> 16; x *= 0x7feb352du;
+    x ^= x >> 15; x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
 
+float LinearDepth(float depth) {
+    return (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (depth * 2.0 - 1.0) * (farPlane - nearPlane));
+}
+
+/// Conservative test of the bounding sphere against the Hi-Z pyramid (max depth per texel)
+bool OccludedByHiZ(vec3 center, float radius) {
+    if (distance(cameraPos, center) <= radius) return false; // Camera inside the sphere
+
+    vec3 minPos = center - vec3(radius), maxPos = center + vec3(radius);
+    vec2 minNDC = vec2(1.0), maxNDC = vec2(-1.0);
+    for (int i = 0; i < 8; i++) {
+        vec3 corner = vec3((i & 1) != 0 ? maxPos.x : minPos.x, (i & 2) != 0 ? maxPos.y : minPos.y, (i & 4) != 0 ? maxPos.z : minPos.z);
+        vec4 clip = hizViewProj * vec4(corner, 1.0);
+        if (clip.w < 0.01) return false; // Crosses the near plane: treat as visible
+        vec2 ndc = clip.xy / clip.w;
+        minNDC = min(minNDC, ndc);
+        maxNDC = max(maxNDC, ndc);
+    }
+    vec2 minUV = clamp(minNDC, -1.0, 1.0) * 0.5 + 0.5;
+    vec2 maxUV = clamp(maxNDC, -1.0, 1.0) * 0.5 + 0.5;
+
+    // Mip where the box spans at most one texel, so the 4 corner samples cover it
+    vec2 sizePixels = (maxUV - minUV) * screenSize;
+    float mip = ceil(log2(max(max(sizePixels.x, sizePixels.y), 1.0)));
+
+    vec3 nearest = center + normalize(cameraPos - center) * radius;
+    vec4 nearestClip = hizViewProj * vec4(nearest, 1.0);
+    float nearestDepth = (nearestClip.z / nearestClip.w) * 0.5 + 0.5;
+
+    float d0 = textureLod(hizMap, vec2(minUV.x, minUV.y), mip).r;
+    float d1 = textureLod(hizMap, vec2(maxUV.x, minUV.y), mip).r;
+    float d2 = textureLod(hizMap, vec2(minUV.x, maxUV.y), mip).r;
+    float d3 = textureLod(hizMap, vec2(maxUV.x, maxUV.y), mip).r;
+    float occluderDepth = max(max(d0, d1), max(d2, d3));
+
+    // Compared linearly: raw depths 200 m and 300 m apart differ by ~0.0002
+    return LinearDepth(nearestDepth) > LinearDepth(occluderDepth) + 0.5;
+}
+
+void Emit(int lod, PackedInstance inst, float fade, float selectedFlag) {
+    inst.rotAndFlags.w = fade + selectedFlag;
+    if (lod == 0) {
+        uint i = atomicAdd(instanceCountLOD0, 1u);
+        visibleLOD0[i] = inst;
+    } else if (lod == 1) {
+        uint i = atomicAdd(instanceCountLOD1, 1u);
+        visibleLOD1[i] = inst;
+    } else {
+        uint i = atomicAdd(instanceCountLOD2, 1u);
+        visibleLOD2[i] = inst;
+    }
+}
+
+void main()
 {
     uint id = gl_GlobalInvocationID.x;
     if (id >= totalInstances) return;
+    uint globalId = id + instanceOffset;
+
+    // Phase 0 draws only what was visible last frame (it builds the depth for the Hi-Z)
+    bool wasVisible = (phase != 2) && visibility[globalId] == 1u;
+    if (phase == 0 && !wasVisible) return;
 
     PackedInstance inst = allInstances[id];
-    vec3 pos = inst.posAndScale.xyz;
     float scale = inst.posAndScale.w;
     float radius = instanceBoundRadius * scale;
+    vec3 center = inst.posAndScale.xyz + eulerToMat3(inst.rotAndFlags.xyz) * meshBoundsCenter * scale;
+    float selectedFlag = inst.rotAndFlags.w > 0.5 ? 10.0 : 0.0;
 
-    // Offset test position to the mesh's bounding sphere center.
-    // We must rotate the meshBoundsCenter by the instance's rotation before scaling and adding to pos.
-    vec3 rotatedCenter = eulerToMat3(inst.rotAndFlags.xyz) * meshBoundsCenter;
-    vec3 testPos = pos + rotatedCenter * scale;
+    float dist = distance(center, cameraPos);
+    bool visible = dist <= maxDrawDistance && radius * 2.0 >= minCasterSize;
 
-    // ------- Two-Phase Visibility Check -------
-    // Phase 0: Only process instances that were visible last frame
-    // Phase 1: Only process instances that were NOT visible last frame
-    // Phase 2: Process all instances (legacy single-phase mode)
-    uint globalId = id + instanceOffset;  // Map local chunk id to global visibility index
-    if (phase == 0 && visibility[globalId] == 0u) return;  // Phase 1: skip if wasn't visible
-    if (phase == 1 && visibility[globalId] == 1u) return;  // Phase 2: skip if already drawn in Phase 1
-
-    // ------- Distance Culling -------
-    float dist = distance(testPos, cameraPos);
-    if (dist > maxDrawDistance) return;
-
-    // ------- Distance Fade (dithered discard in fragment shader) -------
-    // Fade zone: 85% to 100% of maxDrawDistance
-    float fadeStart = maxDrawDistance * 0.85;
-    float fadeFactor = 0.0;
-    if (dist > fadeStart) {
-        fadeFactor = clamp((dist - fadeStart) / (maxDrawDistance - fadeStart), 0.0, 1.0);
-    }
-    // Store fade factor in rotAndFlags.w for the fragment shader
-    // Also preserve the original selection flag from CPU (1.0 = selected)
-    float isSelected = inst.rotAndFlags.w;
-    inst.rotAndFlags.w = fadeFactor + (isSelected > 0.5 ? 10.0 : 0.0);
-
-    // ------- Frustum Culling (clip-space sphere test) -------
-    // Skip frustum/Hi-Z when using sphere culling (omni light shadows)
-    if (useSphereCull == 1) {
-        // For omni shadows, just use distance from light and skip all view-dependent tests
-        float distToLight = distance(testPos, lightPos);
-        if (distToLight > maxDrawDistance) return;
-    } else {
-        vec4 clipPos = viewProj * vec4(testPos, 1.0);
-
-        float w = clipPos.w;
-        
-        // Behind camera check
-        if (w < -radius) return;
-
-        // Add a safety margin (20% of W + radius expansion) to prevent precision popping
-        float margin = radius * 2.0 + abs(w) * 0.2;
-        float absW = abs(w) + margin;
-
-        // Left/Right planes
-        if (clipPos.x < -absW || clipPos.x > absW) return;
-        // Bottom/Top planes
-        if (clipPos.y < -absW || clipPos.y > absW) return;
-        // Near/Far planes (standard OpenGL depth range -w to w)
-        if (clipPos.z < -absW || clipPos.z > absW) return;
-
-        // ------- Hi-Z Occlusion Culling -------
-        if (useHiZ == 1) {
-            // If the camera is inside the bounding sphere, it cannot be occluded!
-            if (distance(cameraPos, testPos) <= radius) {
-                // Skip Hi-Z
-            } else {
-                // Compute NDC coordinates of the bounding sphere's screen projection
-                // We use a simplified conservative screen-space bounding box for the sphere
-                vec3 ndcPos = clipPos.xyz / clipPos.w;
-                
-                // Project the 8 corners of the world-space AABB to find the screen-space bounding box
-                // Use hizViewProj (camera VP) for projection — in shadow pass, viewProj is the light's VP
-                vec3 minPos = testPos - vec3(radius);
-                vec3 maxPos = testPos + vec3(radius);
-                
-                vec4 corners[8];
-                corners[0] = hizViewProj * vec4(minPos.x, minPos.y, minPos.z, 1.0);
-                corners[1] = hizViewProj * vec4(maxPos.x, minPos.y, minPos.z, 1.0);
-                corners[2] = hizViewProj * vec4(minPos.x, maxPos.y, minPos.z, 1.0);
-                corners[3] = hizViewProj * vec4(maxPos.x, maxPos.y, minPos.z, 1.0);
-                corners[4] = hizViewProj * vec4(minPos.x, minPos.y, maxPos.z, 1.0);
-                corners[5] = hizViewProj * vec4(maxPos.x, minPos.y, maxPos.z, 1.0);
-                corners[6] = hizViewProj * vec4(minPos.x, maxPos.y, maxPos.z, 1.0);
-                corners[7] = hizViewProj * vec4(maxPos.x, maxPos.y, maxPos.z, 1.0);
-                
-                vec2 minNDC = vec2(1.0);
-                vec2 maxNDC = vec2(-1.0);
-                bool crossesNearPlane = false;
-                
-                for(int i = 0; i < 8; ++i) {
-                    if (corners[i].w < 0.01) {
-                        crossesNearPlane = true;
-                        break;
-                    }
-                    vec2 ndc = corners[i].xy / corners[i].w;
-                    minNDC = min(minNDC, ndc);
-                    maxNDC = max(maxNDC, ndc);
-                }
-                
-                // If the object crosses the camera near plane, it's highly visible and mathematically tricky to bound in NDC
-                if (crossesNearPlane) {
-                    // skip Hi-Z
-                } else {
-                    minNDC = clamp(minNDC, -1.0, 1.0);
-                    maxNDC = clamp(maxNDC, -1.0, 1.0);
-                    
-                    vec2 minUV = minNDC * 0.5 + 0.5;
-                    vec2 maxUV = maxNDC * 0.5 + 0.5;
-                    
-                    // Convert to screen pixels to determine mip level
-                    vec2 sizePixels = (maxUV - minUV) * screenSize;
-                    float maxDim = max(sizePixels.x, sizePixels.y);
-                    
-                    // NVIDIA-style mip selection: pick the level where the bbox
-                    // spans ~2x2 texels (not 1x1). Using maxDim/2 ensures we read
-                    // 4 distinct texels instead of the same one 4 times.
-                    // Pick mip where bbox spans <= 1 texel, so 4 corner samples
-                    // cover the full 2x2 texel footprint. The old * 0.5 caused
-                    // the bbox to span 2+ texels, missing center texels (false occlusion).
-                    float mip = ceil(log2(max(maxDim, 1.0)));
-                    
-                    // Compute conservative depth of the instance nearest point
-                    // Calculate the point on the bounding sphere closest to the camera
-                    vec3 toCamera = normalize(cameraPos - testPos);
-                    vec3 nearestPos = testPos + toCamera * radius;
-                    
-                    // Project the nearest point to get its depth
-                    vec4 nearestClip = hizViewProj * vec4(nearestPos, 1.0);
-                    float nearestZ = nearestClip.z / nearestClip.w;
-                    float nearestDepth = nearestZ * 0.5 + 0.5; // NDC to 0..1 range
-                
-                    // Sample the 4 texels from the Hi-Z map
-                    float d0 = textureLod(hizMap, vec2(minUV.x, minUV.y), mip).r;
-                    float d1 = textureLod(hizMap, vec2(maxUV.x, minUV.y), mip).r;
-                    float d2 = textureLod(hizMap, vec2(minUV.x, maxUV.y), mip).r;
-                    float d3 = textureLod(hizMap, vec2(maxUV.x, maxUV.y), mip).r;
-                    
-                    // The max value from the map is the deepest point of the occluders in that region.
-                    // If the nearest part of our instance is deeper than the deepest occluder, it's hidden!
-                    float maxOccluderDepth = max(max(d0, d1), max(d2, d3));
-                    
-                    // Linearize both depths for comparison.
-                    // Standard OpenGL depth is nonlinearly compressed: objects at 200m and 300m
-                    // differ by only ~0.0002 in raw depth. Any fixed bias would either
-                    // fail to cull or over-cull. Linearizing makes the comparison work correctly.
-                    float linNearest  = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (nearestDepth * 2.0 - 1.0) * (farPlane - nearPlane));
-                    float linOccluder = (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - (maxOccluderDepth * 2.0 - 1.0) * (farPlane - nearPlane));
-                    
-                    // In linear space, 0.5m bias is tight enough to cull behind walls
-                    // but prevents false occlusion from z-fighting at surface boundaries
-                    if (linNearest > linOccluder + 0.5) {
-                        return; // Occluded!
-                    }
-                }
-                
+    if (visible) {
+        if (useSphereCull == 1) {
+            visible = distance(center, lightPos) - radius <= maxDrawDistance;
+        } else {
+            for (int p = 0; p < 6; p++) {
+                if (dot(frustumPlanes[p].xyz, center) + frustumPlanes[p].w < -radius) { visible = false; break; }
             }
         }
+    }
+    if (visible && useHiZ == 1 && OccludedByHiZ(center, radius)) visible = false;
 
-        // ------- Contribution Culling (skip sub-pixel instances) -------
-        // Project the bounding sphere to screen pixels; skip if < 2px
-        if (screenSize.x > 0.0 && w > 0.01) {
-            float projSize = (radius * screenSize.y) / w;
-            if (projSize < 2.0) return;
-        }
+    // Phase 1 refreshes the visible set for the next frame and draws only the newcomers
+    if (phase == 1) {
+        visibility[globalId] = visible ? 1u : 0u;
+        if (wasVisible) return; // Already drawn in phase 0
+    }
+    if (!visible) return;
+
+    // Fade out over the last 15% of the draw distance, and just above the minimum screen size
+    float fadeOut = clamp((dist - maxDrawDistance * 0.85) / (maxDrawDistance * 0.15), 0.0, 1.0);
+    float size = radius * lodProjScale / max(dist, 1e-4);
+    if (size < minScreenSize) return;
+    if (crossfadeWidth > 0.0)
+        fadeOut = max(fadeOut, clamp((minScreenSize * (1.0 + crossfadeWidth) - size) / (minScreenSize * crossfadeWidth), 0.0, 1.0));
+
+    if (detailFoliage == 1) {
+        // Down to a quarter of the instances across detailRange; the survivors grow by
+        // 1/sqrt(density) so the ground stays just as covered (only the distance thinning is
+        // compensated, not the global density setting)
+        float distanceDensity = mix(1.0, 0.25, smoothstep(detailRange.x, detailRange.y, dist));
+        float density = distanceDensity * detailDensity;
+        float rank = float(Hash(globalId) & 0xFFFFu) / 65536.0;
+        if (rank >= density) return;
+        float shrink = clamp((density - rank) / 0.08, 0.0, 1.0);
+        inst.posAndScale.w *= shrink * inversesqrt(distanceDensity);
+        Emit(0, inst, fadeOut, selectedFlag);
+        return;
     }
 
-    // ------- LOD Classification + Density-Based Culling -------
-    // Density culling skips instances at far distances to reduce triangle count:
-    //   LOD 1: keep every 2nd instance (50% density)
-    //   LOD 2: keep every 4th instance (25% density)
-    if (lodCount >= 3 && dist > lodDistances[1]) {
-        // LOD 2: Farthest — 25% density (keep every 4th instance)
-        if (id % 4u != 0u) return;
-        uint idx = atomicAdd(instanceCountLOD2, 1);
-        visibleLOD2[idx] = inst;
-    }
-    else if (lodCount >= 2 && dist > lodDistances[0]) {
-        // LOD 1: Medium distance — 50% density (keep every 2nd instance)
-        if (id % 2u != 0u) return;
-        uint idx = atomicAdd(instanceCountLOD1, 1);
-        visibleLOD1[idx] = inst;
-    }
-    else {
-        // LOD 0: Closest — full density, full detail
-        uint idx = atomicAdd(instanceCountLOD0, 1);
-        visibleLOD0[idx] = inst;
-    }
+    int lod = size >= lodScreenSize[0] ? 0 : (size >= lodScreenSize[1] ? 1 : 2);
+    lod = min(max(lod, lodMin), lodCount - 1);
 
-    // Mark this instance as visible for the NEXT frame's Phase 1
-    if (phase != 2) {
-        visibility[globalId] = 1u;
+    // Progress of the transition to the next LOD inside the band above its threshold,
+    // quantised to the 16 dither levels so the two halves cover every pixel exactly once
+    float t = 0.0;
+    if (crossfadeWidth > 0.0 && lod + 1 < lodCount) {
+        float threshold = lodScreenSize[lod];
+        t = clamp((threshold * (1.0 + crossfadeWidth) - size) / (threshold * crossfadeWidth), 0.0, 1.0);
+    }
+    float q = floor(t * 16.0 + 0.5) / 16.0;
+
+    if (fadeOut > 0.0 || q <= 0.0) {
+        Emit(lod, inst, fadeOut, selectedFlag);
+    } else if (q >= 1.0) {
+        Emit(lod + 1, inst, 0.0, selectedFlag);
+    } else {
+        Emit(lod, inst, q, selectedFlag);
+        Emit(lod + 1, inst, -q, selectedFlag);
     }
 }

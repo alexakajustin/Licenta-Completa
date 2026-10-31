@@ -2162,19 +2162,72 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 
 	if (ImGui::Begin("Graphics Settings", &windowState.isGraphicsSettingsOpen, ImGuiWindowFlags_NoCollapse))
 	{
-		if (ImGui::CollapsingHeader("Culling & Distance", ImGuiTreeNodeFlags_DefaultOpen))
+		// Every section has its own reset; this one restores the whole window (asks first)
+		if (ImGui::Button("Reset All to Defaults", ImVec2(-1, 0))) ImGui::OpenPopup("Reset all graphics settings?");
+		if (ImGui::BeginPopupModal("Reset all graphics settings?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			ImGui::Text("Global Distances (Base)");
-			ImGui::DragFloat("LOD 0 -> 1", &graphicsSettingsPtr->lod0Distance, 1.0f, 1.0f, 1000.0f, "%.0f m");
-			ImGui::DragFloat("LOD 1 -> 2", &graphicsSettingsPtr->lod1Distance, 1.0f, 1.0f, 2000.0f, "%.0f m");
-			ImGui::DragFloat("LOD 2 -> Cull", &graphicsSettingsPtr->lod2Distance, 1.0f, 1.0f, 5000.0f, "%.0f m");
-			ImGui::Spacing();
-			ImGui::DragFloat("Render Distance", &graphicsSettingsPtr->renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
-			ImGui::DragFloat("Shadow Max Dist", &graphicsSettingsPtr->shadowDistance, 1.0f, 1.0f, 5000.0f, "%.0f m");
-			ImGui::SliderInt("Shadow Cascades", &graphicsSettingsPtr->shadowCascades, 1, 4);
+			ImGui::Text("Every value in Graphics Settings goes back to its default.");
+			if (ImGui::Button("Reset", ImVec2(120, 0))) {
+				*graphicsSettingsPtr = GraphicsSettings();
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+		ImGui::Separator();
+
+		if (ImGui::CollapsingHeader("Level of Detail", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::SliderFloat("LOD Bias", &g.lodBias, 0.25f, 4.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("LODs switch by their size on screen: a big tree keeps its detail\nfurther away than a rock. > 1 keeps the detailed LODs longer, < 1 switches sooner.");
+			ImGui::Checkbox("LOD Cross-fade", &g.lodCrossfade);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Dithered transition between two LODs instead of a pop");
+			ImGui::DragFloat("Render Distance", &g.renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Hard cut-off; big objects (trees) are drawn up to 10x further");
+
+			ImGui::SeparatorText("Detail Foliage (grass)");
+			ImGui::DragFloat("Detail Distance", &g.detailDistance, 1.0f, 10.0f, 2000.0f, "%.0f m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Grass thins out to a quarter of its blades by this distance;\nthe remaining blades grow so the ground stays covered");
+			ImGui::SliderFloat("Detail Density", &g.detailDensity, 0.1f, 1.0f, "%.2f");
+
+			if (ImGui::Button("Reset Defaults##LOD", ImVec2(-1, 0))) {
+				GraphicsSettings defaults;
+				g.lodBias = defaults.lodBias;
+				g.lodCrossfade = defaults.lodCrossfade;
+				g.renderDistance = defaults.renderDistance;
+				g.detailDistance = defaults.detailDistance;
+				g.detailDensity = defaults.detailDensity;
+			}
 		}
 
+		if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::DragFloat("Shadow Distance", &g.shadowDistance, 1.0f, 10.0f, 2000.0f, "%.0f m");
+			ImGui::SliderInt("Cascades", &g.shadowCascades, 1, 4);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("More cascades = sharper shadows near the camera.\nEach cascade only draws what lands in its own area, with cheaper LODs further out.");
+			const char* resolutions[] = { "1024", "2048", "4096" };
+			int resIndex = g.shadowResolution <= 1024 ? 0 : (g.shadowResolution <= 2048 ? 1 : 2);
+			if (ImGui::Combo("Resolution", &resIndex, resolutions, 3)) g.shadowResolution = 1024 << resIndex;
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Per cascade");
+			ImGui::SliderFloat("Cascade Split", &g.shadowCascadeSplit, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("0 = even split distances, 1 = logarithmic (sharper near the camera, coarser far away)");
+			ImGui::SliderInt("Shadow LOD Bias", &g.shadowLodBias, 0, 2);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Each further cascade may draw a cheaper LOD (0 = always the LOD the camera sees)");
+			ImGui::DragFloat("Grass Shadow Distance", &g.detailShadowDistance, 0.5f, 0.0f, 200.0f, "%.0f m");
 
+			if (ImGui::Button("Reset Defaults##Shadows", ImVec2(-1, 0))) {
+				GraphicsSettings defaults;
+				g.shadowDistance = defaults.shadowDistance;
+				g.shadowCascades = defaults.shadowCascades;
+				g.shadowResolution = defaults.shadowResolution;
+				g.shadowCascadeSplit = defaults.shadowCascadeSplit;
+				g.shadowLodBias = defaults.shadowLodBias;
+				g.detailShadowDistance = defaults.detailShadowDistance;
+			}
+		}
 
 		if (ImGui::CollapsingHeader("Sky & Environment", ImGuiTreeNodeFlags_DefaultOpen))
 		{
@@ -2208,9 +2261,10 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
 
 				if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
-					graphicsSettingsPtr->cloudsDensity = 0.5f;
-					graphicsSettingsPtr->cloudsSpeed = 0.05f;
-					graphicsSettingsPtr->cloudsSharpness = 0.3f;
+					GraphicsSettings defaults;
+					graphicsSettingsPtr->cloudsDensity = defaults.cloudsDensity;
+					graphicsSettingsPtr->cloudsSpeed = defaults.cloudsSpeed;
+					graphicsSettingsPtr->cloudsSharpness = defaults.cloudsSharpness;
 				}
 
 				if (!graphicsSettingsPtr->cloudsEnabled) {
@@ -2228,12 +2282,13 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				ImGui::ColorEdit3("Nebula Color 2", &graphicsSettingsPtr->universeNebulaColor2.x);
 
 				if (ImGui::Button("Reset Defaults##Universe", ImVec2(-1, 0))) {
-					graphicsSettingsPtr->universeStarDensity = 0.5f;
-					graphicsSettingsPtr->universeStarBrightness = 1.0f;
-					graphicsSettingsPtr->universeNebulaIntensity = 0.5f;
-					graphicsSettingsPtr->universeSpeed = 0.01f;
-					graphicsSettingsPtr->universeNebulaColor1 = glm::vec3(0.5f, 0.2f, 0.8f);
-					graphicsSettingsPtr->universeNebulaColor2 = glm::vec3(0.1f, 0.5f, 0.9f);
+					GraphicsSettings defaults;
+					graphicsSettingsPtr->universeStarDensity = defaults.universeStarDensity;
+					graphicsSettingsPtr->universeStarBrightness = defaults.universeStarBrightness;
+					graphicsSettingsPtr->universeNebulaIntensity = defaults.universeNebulaIntensity;
+					graphicsSettingsPtr->universeSpeed = defaults.universeSpeed;
+					graphicsSettingsPtr->universeNebulaColor1 = defaults.universeNebulaColor1;
+					graphicsSettingsPtr->universeNebulaColor2 = defaults.universeNebulaColor2;
 				}
 			}
 
@@ -2257,11 +2312,75 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			ImGui::SliderFloat("Density", &graphicsSettingsPtr->godraysDensity, 0.1f, 1.0f);
 
 			if (ImGui::Button("Reset Defaults##GodRays", ImVec2(-1, 0))) {
-				graphicsSettingsPtr->godraysDecay = 0.95f;
-				graphicsSettingsPtr->godraysDensity = 1.0f;
+				GraphicsSettings defaults;
+				graphicsSettingsPtr->godraysDecay = defaults.godraysDecay;
+				graphicsSettingsPtr->godraysDensity = defaults.godraysDensity;
 			}
 
 			if (!graphicsSettingsPtr->godraysEnabled) {
+				ImGui::EndDisabled();
+				ImGui::PopStyleVar();
+			}
+		}
+
+		if (ImGui::CollapsingHeader("Volumetric Fog", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::Checkbox("Enable Volumetric Fog", &g.volumetricFogEnabled);
+			ImGui::Separator();
+
+			if (!g.volumetricFogEnabled) {
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.4f);
+				ImGui::BeginDisabled();
+			}
+
+			const char* qualities[] = { "Low (16px tiles, 64 slices)", "Medium (8px tiles, 64 slices)", "High (8px tiles, 128 slices)" };
+			ImGui::Combo("Quality##Fog", &g.fogQuality, qualities, 3);
+
+			ImGui::SeparatorText("Medium");
+			ImGui::DragFloat("Density##Fog", &g.fogDensity, 0.0005f, 0.0f, 0.2f, "%.4f /m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Extinction per metre at and below the base height");
+			ImGui::DragFloat("Base Height##Fog", &g.fogBaseHeight, 0.5f, -1000.0f, 5000.0f, "%.1f m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("World height below which the fog is at full density (valley fog)");
+			ImGui::DragFloat("Height Falloff##Fog", &g.fogHeightFalloff, 0.001f, 0.0f, 1.0f, "%.3f /m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("How fast the fog thins out above the base height (0 = same density everywhere)");
+			ImGui::DragFloat("Range##Fog", &g.fogRange, 1.0f, 20.0f, 2000.0f, "%.0f m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("View distance covered by the froxel grid; beyond it the fog stays as at this distance");
+			ImGui::ColorEdit3("Albedo##Fog", &g.fogAlbedo.x);
+
+			ImGui::SeparatorText("Lighting");
+			ImGui::SliderFloat("Anisotropy (g)##Fog", &g.fogAnisotropy, -0.9f, 0.95f);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Forward scattering: glow around the sun and light shafts through gaps");
+			ImGui::SliderFloat("Sun Intensity##Fog", &g.fogSunIntensity, 0.0f, 3.0f);
+			ImGui::SliderFloat("Ambient Intensity##Fog", &g.fogAmbientIntensity, 0.0f, 3.0f);
+
+			ImGui::SeparatorText("Wisps");
+			ImGui::SliderFloat("Noise Strength##Fog", &g.fogNoiseStrength, 0.0f, 1.0f);
+			ImGui::DragFloat("Noise Scale##Fog", &g.fogNoiseScale, 0.0005f, 0.001f, 0.5f, "%.4f");
+			ImGui::DragFloat("Wind Speed##Fog", &g.fogWindSpeed, 0.05f, 0.0f, 20.0f, "%.2f m/s");
+
+			ImGui::SeparatorText("Temporal");
+			ImGui::SliderFloat("New Frame Weight##Fog", &g.fogTemporalBlend, 0.05f, 1.0f);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Lower = smoother fog (more frames averaged), higher = less ghosting when moving fast.\nChanging any fog or sun setting resets the history, so edits show up immediately.");
+
+			if (ImGui::Button("Reset Defaults##Fog", ImVec2(-1, 0))) {
+				GraphicsSettings defaults;
+				g.fogQuality = defaults.fogQuality;
+				g.fogDensity = defaults.fogDensity;
+				g.fogBaseHeight = defaults.fogBaseHeight;
+				g.fogHeightFalloff = defaults.fogHeightFalloff;
+				g.fogRange = defaults.fogRange;
+				g.fogAnisotropy = defaults.fogAnisotropy;
+				g.fogAlbedo = defaults.fogAlbedo;
+				g.fogSunIntensity = defaults.fogSunIntensity;
+				g.fogAmbientIntensity = defaults.fogAmbientIntensity;
+				g.fogNoiseStrength = defaults.fogNoiseStrength;
+				g.fogNoiseScale = defaults.fogNoiseScale;
+				g.fogWindSpeed = defaults.fogWindSpeed;
+				g.fogTemporalBlend = defaults.fogTemporalBlend;
+			}
+
+			if (!g.volumetricFogEnabled) {
 				ImGui::EndDisabled();
 				ImGui::PopStyleVar();
 			}
@@ -2298,6 +2417,17 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 					ImVec2 size(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x * (1080.0f / 1920.0f));
 					ImGui::Image((void*)(intptr_t)debugTex, size, ImVec2(0, 1), ImVec2(1, 0));
 				}
+			}
+
+			if (ImGui::Button("Reset Defaults##Debug", ImVec2(-1, 0))) {
+				GraphicsSettings defaults;
+				graphicsSettingsPtr->debugLODColoring = defaults.debugLODColoring;
+				graphicsSettingsPtr->debugShowBounds = defaults.debugShowBounds;
+				graphicsSettingsPtr->debugFreezeCulling = defaults.debugFreezeCulling;
+				graphicsSettingsPtr->showWireframe = defaults.showWireframe;
+				graphicsSettingsPtr->debugShowCulling = defaults.debugShowCulling;
+				graphicsSettingsPtr->enableOcclusionCulling = defaults.enableOcclusionCulling;
+				graphicsSettingsPtr->debugShowHiZ = defaults.debugShowHiZ;
 			}
 		}
 	}

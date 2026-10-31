@@ -233,6 +233,7 @@
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
     <ClCompile Include="Rendering\WaterFoamMap.cpp" />
+    <ClCompile Include="Rendering\VolumetricFog.cpp" />
     <ClCompile Include="Rendering\ShadowMap.cpp" />
     <ClCompile Include="Rendering\Skybox.cpp" />
     <ClCompile Include="Lighting\SpotLight.cpp" />
@@ -1036,6 +1037,7 @@
     <ClInclude Include="Nodes\IGenerator.h" />
     <ClInclude Include="Core\InputHandler.h" />
     <ClInclude Include="Rendering\InstancedGroup.h" />
+    <ClInclude Include="Rendering\LODPolicy.h" />
     <ClInclude Include="Lighting\Light.h" />
     <ClInclude Include="Lighting\LightObject.h" />
     <ClInclude Include="Rendering\Material.h" />
@@ -1058,6 +1060,7 @@
     <ClInclude Include="Scene\SceneSerializer.h" />
     <ClInclude Include="Rendering\Shader.h" />
     <ClInclude Include="Rendering\WaterFoamMap.h" />
+    <ClInclude Include="Rendering\VolumetricFog.h" />
     <ClInclude Include="Rendering\ShadowMap.h" />
     <ClInclude Include="Rendering\Skybox.h" />
     <ClInclude Include="Lighting\SpotLight.h" />

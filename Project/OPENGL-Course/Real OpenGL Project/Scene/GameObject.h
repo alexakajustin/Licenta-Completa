@@ -237,7 +237,8 @@ public:
 		const glm::vec3& cameraPos,
 		const GraphicsSettings* gs = nullptr,
 		GLuint shaderID = 0,
-		bool shaderSupportsTessellation = false);
+		bool shaderSupportsTessellation = false,
+		float lodProjScale = 1.732f); // projection[1][1] of the camera x LOD bias (screen-size LOD)
 
 	// Texture layers
 	

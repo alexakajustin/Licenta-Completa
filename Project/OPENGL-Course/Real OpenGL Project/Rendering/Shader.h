@@ -77,6 +77,9 @@ public:
 	void SetDirectionalShadowMap(GLuint textureUnit);
 	void SetDirectionalShadowColorMap(GLuint textureUnit);
 	void SetDirectionalLightTransform(glm::mat4 lTransform);
+	// Cascaded directional shadows: light matrices, split distances, cascade count, texel
+	// sizes and depth ranges, as computed by DirectionalLight::CalculateCascadedLightMatrices
+	void SetCascadedShadows(DirectionalLight& light);
 	void SetLightMatrices(std::vector<glm::mat4> lightMatrices);
 
 
@@ -112,6 +115,11 @@ private:
 	int pointLightCount;
 	int spotLightCount;
 	GLuint shaderID;
+	// Locations of the cascaded-shadow uniforms (SetCascadedShadows), looked up per program
+	struct CascadeLocations {
+		GLuint program = 0;
+		GLint matrix[4], split[4], texel[4], depthRange[4], count, distance;
+	} cascadeLocs;
 	GLint uniformProjection, uniformModel, uniformView, uniformEyePosition,
 		uniformSpecularIntensity, uniformShininess,
 		uniformTexture, uniformNormalMap, uniformUseNormalMap,

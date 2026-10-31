@@ -1,259 +1,19 @@
 {
     "camera": {
         "front": [
-            0.94932621717453,
-            0.09584575146436691,
-            -0.29932141304016113
+            0.7486063838005066,
+            -0.030538514256477356,
+            0.6623110175132751
         ],
-        "pitch": 5.5,
+        "pitch": -1.75,
         "position": [
-            549.0687866210938,
-            303.3734436035156,
-            -278.5440979003906
+            531.4534301757813,
+            174.8695526123047,
+            -433.23077392578125
         ],
-        "yaw": -17.5
+        "yaw": 41.5
     },
     "instancedGroups": [
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A_.inst",
-            "name": "Scatter_Instanced_5005_Cedar A_",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A__1.inst",
-            "name": "Scatter_Instanced_5005_Cedar A__1",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A__2.inst",
-            "name": "Scatter_Instanced_5005_Cedar A__2",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A__3.inst",
-            "name": "Scatter_Instanced_5005_Cedar A__3",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A__4.inst",
-            "name": "Scatter_Instanced_5005_Cedar A__4",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A__5.inst",
-            "name": "Scatter_Instanced_5005_Cedar A__5",
-            "sourceObjectName": "Cedar A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B_.inst",
-            "name": "Scatter_Instanced_5038_Cedar B_",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B__1.inst",
-            "name": "Scatter_Instanced_5038_Cedar B__1",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B__2.inst",
-            "name": "Scatter_Instanced_5038_Cedar B__2",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B__3.inst",
-            "name": "Scatter_Instanced_5038_Cedar B__3",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B__4.inst",
-            "name": "Scatter_Instanced_5038_Cedar B__4",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5038_Cedar_B__5.inst",
-            "name": "Scatter_Instanced_5038_Cedar B__5",
-            "sourceObjectName": "Cedar B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C_.inst",
-            "name": "Scatter_Instanced_5071_Cedar C_",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C__1.inst",
-            "name": "Scatter_Instanced_5071_Cedar C__1",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C__2.inst",
-            "name": "Scatter_Instanced_5071_Cedar C__2",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C__3.inst",
-            "name": "Scatter_Instanced_5071_Cedar C__3",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C__4.inst",
-            "name": "Scatter_Instanced_5071_Cedar C__4",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5071_Cedar_C__5.inst",
-            "name": "Scatter_Instanced_5071_Cedar C__5",
-            "sourceObjectName": "Cedar C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5104_Fern_A_.inst",
-            "name": "Scatter_Instanced_5104_Fern A_",
-            "sourceObjectName": "Fern A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5104_Fern_A__1.inst",
-            "name": "Scatter_Instanced_5104_Fern A__1",
-            "sourceObjectName": "Fern A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5104_Fern_A__2.inst",
-            "name": "Scatter_Instanced_5104_Fern A__2",
-            "sourceObjectName": "Fern A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5137_Fern_B_.inst",
-            "name": "Scatter_Instanced_5137_Fern B_",
-            "sourceObjectName": "Fern B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5137_Fern_B__1.inst",
-            "name": "Scatter_Instanced_5137_Fern B__1",
-            "sourceObjectName": "Fern B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5137_Fern_B__2.inst",
-            "name": "Scatter_Instanced_5137_Fern B__2",
-            "sourceObjectName": "Fern B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5170_Dry_Branches_.inst",
-            "name": "Scatter_Instanced_5170_Dry Branches_",
-            "sourceObjectName": "Dry Branches"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5170_Dry_Branches__1.inst",
-            "name": "Scatter_Instanced_5170_Dry Branches__1",
-            "sourceObjectName": "Dry Branches"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5170_Dry_Branches__2.inst",
-            "name": "Scatter_Instanced_5170_Dry Branches__2",
-            "sourceObjectName": "Dry Branches"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5203_Stump_A_.inst",
-            "name": "Scatter_Instanced_5203_Stump A_",
-            "sourceObjectName": "Stump A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5203_Stump_A__1.inst",
-            "name": "Scatter_Instanced_5203_Stump A__1",
-            "sourceObjectName": "Stump A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5203_Stump_A__2.inst",
-            "name": "Scatter_Instanced_5203_Stump A__2",
-            "sourceObjectName": "Stump A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5236_Stump_B_.inst",
-            "name": "Scatter_Instanced_5236_Stump B_",
-            "sourceObjectName": "Stump B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5236_Stump_B__1.inst",
-            "name": "Scatter_Instanced_5236_Stump B__1",
-            "sourceObjectName": "Stump B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5236_Stump_B__2.inst",
-            "name": "Scatter_Instanced_5236_Stump B__2",
-            "sourceObjectName": "Stump B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5269_Fallen_Log_.inst",
-            "name": "Scatter_Instanced_5269_Fallen Log_",
-            "sourceObjectName": "Fallen Log"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5269_Fallen_Log__1.inst",
-            "name": "Scatter_Instanced_5269_Fallen Log__1",
-            "sourceObjectName": "Fallen Log"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5269_Fallen_Log__2.inst",
-            "name": "Scatter_Instanced_5269_Fallen Log__2",
-            "sourceObjectName": "Fallen Log"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5302_Boulder_.inst",
-            "name": "Scatter_Instanced_5302_Boulder_",
-            "sourceObjectName": "Boulder"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5302_Boulder__1.inst",
-            "name": "Scatter_Instanced_5302_Boulder__1",
-            "sourceObjectName": "Boulder"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5302_Boulder__2.inst",
-            "name": "Scatter_Instanced_5302_Boulder__2",
-            "sourceObjectName": "Boulder"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5325_Mossy_Rock_A_.inst",
-            "name": "Scatter_Instanced_5325_Mossy Rock A_",
-            "sourceObjectName": "Mossy Rock A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5325_Mossy_Rock_A__1.inst",
-            "name": "Scatter_Instanced_5325_Mossy Rock A__1",
-            "sourceObjectName": "Mossy Rock A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5325_Mossy_Rock_A__2.inst",
-            "name": "Scatter_Instanced_5325_Mossy Rock A__2",
-            "sourceObjectName": "Mossy Rock A"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5348_Mossy_Rock_B_.inst",
-            "name": "Scatter_Instanced_5348_Mossy Rock B_",
-            "sourceObjectName": "Mossy Rock B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5348_Mossy_Rock_B__1.inst",
-            "name": "Scatter_Instanced_5348_Mossy Rock B__1",
-            "sourceObjectName": "Mossy Rock B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5348_Mossy_Rock_B__2.inst",
-            "name": "Scatter_Instanced_5348_Mossy Rock B__2",
-            "sourceObjectName": "Mossy Rock B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5371_Mossy_Rock_C_.inst",
-            "name": "Scatter_Instanced_5371_Mossy Rock C_",
-            "sourceObjectName": "Mossy Rock C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5371_Mossy_Rock_C__1.inst",
-            "name": "Scatter_Instanced_5371_Mossy Rock C__1",
-            "sourceObjectName": "Mossy Rock C"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5371_Mossy_Rock_C__2.inst",
-            "name": "Scatter_Instanced_5371_Mossy Rock C__2",
-            "sourceObjectName": "Mossy Rock C"
-        },
         {
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_5005_Cedar_A_Bark.inst",
             "name": "Scatter_Instanced_5005_Cedar A_Bark",
@@ -350,9 +110,9 @@
             ],
             "diffuseIntensity": 2.0,
             "direction": [
-                -0.913323163986206,
-                -0.1908089965581894,
-                0.35976749658584595
+                -0.9133232831954956,
+                -0.19080902636051178,
+                0.35976752638816833
             ],
             "name": "Sun",
             "type": "Directional"
@@ -360,7 +120,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 6566,
+        "nextId": 6925,
         "tabs": [
             {
                 "graph": {
@@ -386,7 +146,7 @@
                             "start": 469
                         }
                     ],
-                    "nextId": 6566,
+                    "nextId": 6925,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -518,7 +278,7 @@
                             ],
                             "persistence": 0.44999998807907104,
                             "ridged": true,
-                            "seed": 26500,
+                            "seed": 19169,
                             "title": "Perlin Noise",
                             "useNormalDisplacement": false
                         },
@@ -682,7 +442,7 @@
                             "start": 5092
                         }
                     ],
-                    "nextId": 6566,
+                    "nextId": 6925,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -850,14 +610,8 @@
                             "count": 4000,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5005_Cedar A",
-                                "Scatter_Instanced_5005_Cedar A_",
                                 "Scatter_Instanced_5005_Cedar A_Bark",
-                                "Scatter_Instanced_5005_Cedar A_Leaves",
-                                "Scatter_Instanced_5005_Cedar A__1",
-                                "Scatter_Instanced_5005_Cedar A__2",
-                                "Scatter_Instanced_5005_Cedar A__3",
-                                "Scatter_Instanced_5005_Cedar A__4",
-                                "Scatter_Instanced_5005_Cedar A__5"
+                                "Scatter_Instanced_5005_Cedar A_Leaves"
                             ],
                             "deletionVolumes": [
                                 {
@@ -1177,14 +931,8 @@
                             "count": 2200,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5038_Cedar B",
-                                "Scatter_Instanced_5038_Cedar B_",
                                 "Scatter_Instanced_5038_Cedar B_Bark",
-                                "Scatter_Instanced_5038_Cedar B_Leaves",
-                                "Scatter_Instanced_5038_Cedar B__1",
-                                "Scatter_Instanced_5038_Cedar B__2",
-                                "Scatter_Instanced_5038_Cedar B__3",
-                                "Scatter_Instanced_5038_Cedar B__4",
-                                "Scatter_Instanced_5038_Cedar B__5"
+                                "Scatter_Instanced_5038_Cedar B_Leaves"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -1467,14 +1215,8 @@
                             "count": 900,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5071_Cedar C",
-                                "Scatter_Instanced_5071_Cedar C_",
                                 "Scatter_Instanced_5071_Cedar C_Bark",
-                                "Scatter_Instanced_5071_Cedar C_Leaves",
-                                "Scatter_Instanced_5071_Cedar C__1",
-                                "Scatter_Instanced_5071_Cedar C__2",
-                                "Scatter_Instanced_5071_Cedar C__3",
-                                "Scatter_Instanced_5071_Cedar C__4",
-                                "Scatter_Instanced_5071_Cedar C__5"
+                                "Scatter_Instanced_5071_Cedar C_Leaves"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -1779,7 +1521,7 @@
                             "start": 5290
                         }
                     ],
-                    "nextId": 6566,
+                    "nextId": 6925,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1947,10 +1689,7 @@
                             "count": 26000,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5104_Fern A",
-                                "Scatter_Instanced_5104_Fern A_",
-                                "Scatter_Instanced_5104_Fern A_Mesh",
-                                "Scatter_Instanced_5104_Fern A__1",
-                                "Scatter_Instanced_5104_Fern A__2"
+                                "Scatter_Instanced_5104_Fern A_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -2233,10 +1972,7 @@
                             "count": 16000,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5137_Fern B",
-                                "Scatter_Instanced_5137_Fern B_",
-                                "Scatter_Instanced_5137_Fern B_Mesh",
-                                "Scatter_Instanced_5137_Fern B__1",
-                                "Scatter_Instanced_5137_Fern B__2"
+                                "Scatter_Instanced_5137_Fern B_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -2519,10 +2255,7 @@
                             "count": 3500,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5170_Dry Branches",
-                                "Scatter_Instanced_5170_Dry Branches_",
-                                "Scatter_Instanced_5170_Dry Branches_Mesh",
-                                "Scatter_Instanced_5170_Dry Branches__1",
-                                "Scatter_Instanced_5170_Dry Branches__2"
+                                "Scatter_Instanced_5170_Dry Branches_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -2805,10 +2538,7 @@
                             "count": 500,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5203_Stump A",
-                                "Scatter_Instanced_5203_Stump A_",
-                                "Scatter_Instanced_5203_Stump A_Mesh",
-                                "Scatter_Instanced_5203_Stump A__1",
-                                "Scatter_Instanced_5203_Stump A__2"
+                                "Scatter_Instanced_5203_Stump A_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -3091,10 +2821,7 @@
                             "count": 500,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5236_Stump B",
-                                "Scatter_Instanced_5236_Stump B_",
-                                "Scatter_Instanced_5236_Stump B_Mesh",
-                                "Scatter_Instanced_5236_Stump B__1",
-                                "Scatter_Instanced_5236_Stump B__2"
+                                "Scatter_Instanced_5236_Stump B_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -3377,10 +3104,7 @@
                             "count": 450,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5269_Fallen Log",
-                                "Scatter_Instanced_5269_Fallen Log_",
-                                "Scatter_Instanced_5269_Fallen Log_Mesh",
-                                "Scatter_Instanced_5269_Fallen Log__1",
-                                "Scatter_Instanced_5269_Fallen Log__2"
+                                "Scatter_Instanced_5269_Fallen Log_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -3585,7 +3309,7 @@
                             "start": 5381
                         }
                     ],
-                    "nextId": 6566,
+                    "nextId": 6925,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3753,10 +3477,7 @@
                             "count": 260,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5302_Boulder",
-                                "Scatter_Instanced_5302_Boulder_",
-                                "Scatter_Instanced_5302_Boulder_Mesh",
-                                "Scatter_Instanced_5302_Boulder__1",
-                                "Scatter_Instanced_5302_Boulder__2"
+                                "Scatter_Instanced_5302_Boulder_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -3999,10 +3720,7 @@
                             "count": 1500,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5325_Mossy Rock A",
-                                "Scatter_Instanced_5325_Mossy Rock A_",
-                                "Scatter_Instanced_5325_Mossy Rock A_Mesh",
-                                "Scatter_Instanced_5325_Mossy Rock A__1",
-                                "Scatter_Instanced_5325_Mossy Rock A__2"
+                                "Scatter_Instanced_5325_Mossy Rock A_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -4245,10 +3963,7 @@
                             "count": 1500,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5348_Mossy Rock B",
-                                "Scatter_Instanced_5348_Mossy Rock B_",
-                                "Scatter_Instanced_5348_Mossy Rock B_Mesh",
-                                "Scatter_Instanced_5348_Mossy Rock B__1",
-                                "Scatter_Instanced_5348_Mossy Rock B__2"
+                                "Scatter_Instanced_5348_Mossy Rock B_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -4491,10 +4206,7 @@
                             "count": 1200,
                             "createdGroupNames": [
                                 "Scatter_Instanced_5371_Mossy Rock C",
-                                "Scatter_Instanced_5371_Mossy Rock C_",
-                                "Scatter_Instanced_5371_Mossy Rock C_Mesh",
-                                "Scatter_Instanced_5371_Mossy Rock C__1",
-                                "Scatter_Instanced_5371_Mossy Rock C__2"
+                                "Scatter_Instanced_5371_Mossy Rock C_Mesh"
                             ],
                             "deletionVolumes": [],
                             "editorPos": [
@@ -4609,7 +4321,7 @@
                             "start": 820
                         }
                     ],
-                    "nextId": 6566,
+                    "nextId": 6925,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -5092,12 +4804,12 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    840.6273803710938,
-                    275.7154235839844,
-                    -124.04734802246094
+                    565.3316650390625,
+                    175.61929321289063,
+                    -238.72715759277344
                 ],
                 "rotation": [
-                    0.0,
+                    -0.0,
                     0.0,
                     0.0
                 ],

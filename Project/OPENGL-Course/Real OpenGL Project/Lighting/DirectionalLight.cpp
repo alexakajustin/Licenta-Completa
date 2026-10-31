@@ -1,5 +1,6 @@
 #include "Lighting/DirectionalLight.h"
 #include <algorithm>
+#include <cmath>
 #include "Rendering/CascadedShadowMap.h"
 
 DirectionalLight::DirectionalLight() : Light()
@@ -70,116 +71,97 @@ glm::mat4 DirectionalLight::CalculateLightTransform(glm::vec3 target)
 	return lightProj * glm::lookAt(target + glm::normalize(-direction) * 250.0f, target, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
-void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCountIn)
+void DirectionalLight::CalculateCascadedLightMatrices(const glm::mat4& view, const glm::mat4& projection, float near, float far, int cascadeCountIn, float splitLambda)
 {
 	const int cascadeCount = std::max(1, std::min(cascadeCountIn, 4));
 	cascadedLightMatrices.clear();
 	cascadeSplitDistances.clear();
+	cascadeTexelSizes.clear();
+	cascadeDepthRanges.clear();
+	if (!shadowMap) return;
 
-	float cascadeSplits[5]; // max 4 cascades + 1
-	
-	// Split distances (Logarithmic/Linear mix)
-	// lambda = 0.8 - 0.9 is better for balancing sharpness at close range with distant coverage
-	// Using 0.95 to keep the first cascade very tight even at large shadow distances (preventing blur)
-	float lambda = 0.95f; 
-	float ratio = far / near;
-
-	cascadeSplits[0] = near;
+	// Practical split scheme (Zhang et al., "Parallel-Split Shadow Maps"): a blend of the
+	// logarithmic and the uniform distribution. The logarithmic part starts at 1 m, not at the
+	// camera's 0.1 m near plane, which would spend whole cascades on the first few metres.
+	float splitNear = std::max(near, 1.0f);
+	far = std::max(far, splitNear + 1.0f);
+	float lambda = glm::clamp(splitLambda, 0.0f, 1.0f);
+	float splits[5];
+	splits[0] = near;
 	for (int i = 1; i < cascadeCount; i++)
 	{
 		float si = i / (float)cascadeCount;
-		cascadeSplits[i] = lambda * (near * powf(ratio, si)) + (1 - lambda) * (near + si * (far - near));
+		float logSplit = splitNear * std::pow(far / splitNear, si);
+		float uniformSplit = splitNear + si * (far - splitNear);
+		splits[i] = lambda * logSplit + (1.0f - lambda) * uniformSplit;
 	}
-	cascadeSplits[cascadeCount] = far;
+	splits[cascadeCount] = far;
 
-	glm::mat4 invVP = glm::inverse(projection * view);
+	glm::mat4 invView = glm::inverse(view);
+	glm::vec3 cameraPos = glm::vec3(invView[3]);
+	glm::vec3 cameraForward = -glm::normalize(glm::vec3(invView[2]));
+
+	// Half-diagonal of a view slice per metre of depth
+	float tanHalfFovY = 1.0f / projection[1][1];
+	float aspect = projection[1][1] / projection[0][0];
+	float k = tanHalfFovY * std::sqrt(1.0f + aspect * aspect);
+
+	float resolution = (float)shadowMap->GetShadowWidth();
+	glm::vec3 lightDir = glm::normalize(direction);
+	glm::vec3 up = std::abs(lightDir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
 
 	for (int i = 0; i < cascadeCount; i++)
 	{
-		float prevSplit = cascadeSplits[i];
-		float nextSplit = cascadeSplits[i + 1];
-		cascadeSplitDistances.push_back(nextSplit);
+		float n = splits[i], f = splits[i + 1];
+		cascadeSplitDistances.push_back(f);
 
-		// 1. Find the bounding sphere of this frustum segment
-		// The sphere is invariant to camera rotation, which is key for stabilization.
-		auto getNDCFromViewDepth = [&](float depth) {
-			glm::vec4 clip = projection * glm::vec4(0, 0, -depth, 1.0);
-			return clip.z / clip.w;
-		};
-
-		float ndcNear = getNDCFromViewDepth(prevSplit);
-		float ndcFar = getNDCFromViewDepth(nextSplit);
-
-		glm::vec4 corners[8] = {
-			glm::vec4(-1, -1, ndcNear, 1.0), glm::vec4(1, -1, ndcNear, 1.0),
-			glm::vec4(-1,  1, ndcNear, 1.0), glm::vec4(1,  1, ndcNear, 1.0),
-			glm::vec4(-1, -1, ndcFar, 1.0),  glm::vec4(1, -1, ndcFar, 1.0),
-			glm::vec4(-1,  1, ndcFar, 1.0),  glm::vec4(1,  1, ndcFar, 1.0)
-		};
-
-		glm::vec3 center(0, 0, 0);
-		for (int j = 0; j < 8; j++) {
-			corners[j] = invVP * corners[j];
-			corners[j] /= corners[j].w;
-			center += glm::vec3(corners[j]);
+		// Smallest sphere around the slice [n, f] of the view frustum. Its size depends only on
+		// the split distances and the field of view, never on where the camera looks, so the
+		// shadow map keeps its scale and only slides (in whole texels, see below) — stable,
+		// shimmer-free shadows (Valient, "Stable Cascaded Shadow Maps", ShaderX6).
+		float centerDepth = 0.5f * (n + f) * (1.0f + k * k);
+		float radius;
+		if (centerDepth >= f) {
+			centerDepth = f;
+			radius = f * k;
+		} else {
+			radius = std::sqrt((f - centerDepth) * (f - centerDepth) + f * f * k * k);
 		}
-		center /= 8.0f;
-		// Snap center to world grid to prevent sub-texel camera movement from affecting light view
-		center = glm::floor(center * 2.0f) / 2.0f; 
+		radius = std::ceil(radius * 4.0f) / 4.0f;
+		glm::vec3 center = cameraPos + cameraForward * centerDepth;
 
-
-		// 1. Find a rotation-invariant bounding sphere for this frustum segment
-		// Instead of calculating from corners (which can fluctuate), we use a stable radius
-		// based on the split distance and the FOV.
-		float tanHalfFOV = 1.0f / projection[1][1];
-		float aspect = projection[1][1] / projection[0][0];
-		
-		float h = nextSplit * tanHalfFOV;
-		float w = h * aspect;
-		float radius = std::sqrt(nextSplit * nextSplit + h * h + w * w);
-		
-		// Round to a coarse step to be extra safe
-		radius = std::ceil(radius / 8.0f) * 8.0f;
-
-		// 2. Create stable light view/proj matrices
-		glm::vec3 lightDir = glm::normalize(direction);
-		
-		// Use a fixed UP vector unless light is parallel to it
-		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-		if (std::abs(glm::dot(lightDir, up)) > 0.99f) {
-			up = glm::vec3(0.0f, 0.0f, 1.0f);
-		}
-
-		// Fixed radius quantization to prevent flickering as the frustum segment shifts
-		// We use a coarser step (1.0 units) to ensure the orthographic box size is extremely stable
-		radius = std::ceil(radius); 
-
-		// Build a view matrix that only translates with the center and rotates with the light
-		glm::mat4 lightView = glm::lookAt(center - lightDir * radius, center, up);
-		
-		// Projection is a fixed-size square based on the stable radius.
-		// We dynamically scale near/far planes with radius to prevent clipping at high shadow distances,
-		// while keeping a minimum bound to ensure sufficient caster coverage behind the camera.
+		// The depth range reaches far toward the light: casters outside the slice (a hill, a tall
+		// tree behind the camera) still have to land in the map
 		float zMult = std::max(2000.0f, radius * 4.0f);
+		glm::mat4 lightView = glm::lookAt(center - lightDir * radius, center, up);
 		glm::mat4 lightProjection = glm::ortho(-radius, radius, -radius, radius, -zMult, zMult);
 
-		// 3. PIXEL-PERFECT SNAPPING
-		// We transform the origin to light-space, snap it to the texel grid, and apply the offset.
+		// Snap the projection to the texel grid: moving the camera shifts the map by whole texels
 		glm::mat4 shadowMatrix = lightProjection * lightView;
 		glm::vec4 shadowOrigin = shadowMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		float texelsPerUnit = (float)shadowMap->GetShadowWidth() / (radius * 2.0f);
-
-		shadowOrigin *= (float)shadowMap->GetShadowWidth() / 2.0f;
-
+		shadowOrigin *= resolution / 2.0f;
 		glm::vec2 roundedOrigin = glm::round(glm::vec2(shadowOrigin.x, shadowOrigin.y));
-		glm::vec2 roundOffset = roundedOrigin - glm::vec2(shadowOrigin.x, shadowOrigin.y);
-		roundOffset = roundOffset * 2.0f / (float)shadowMap->GetShadowWidth();
-
+		glm::vec2 roundOffset = (roundedOrigin - glm::vec2(shadowOrigin.x, shadowOrigin.y)) * 2.0f / resolution;
 		lightProjection[3][0] += roundOffset.x;
 		lightProjection[3][1] += roundOffset.y;
 
 		cascadedLightMatrices.push_back(lightProjection * lightView);
+		cascadeTexelSizes.push_back(2.0f * radius / resolution);
+		cascadeDepthRanges.push_back(2.0f * zMult);
 	}
+}
+
+void DirectionalLight::EnsureCascadeMap(int resolution, int cascadeCount)
+{
+	resolution = std::max(256, std::min(resolution, 8192));
+	cascadeCount = std::max(1, std::min(cascadeCount, 4));
+	CascadedShadowMap* csm = dynamic_cast<CascadedShadowMap*>(shadowMap.get());
+	if (csm && csm->GetShadowWidth() == (GLuint)resolution && csm->GetCascadeCount() == (GLuint)cascadeCount) return;
+	if (!csm) {
+		shadowMap = std::make_unique<CascadedShadowMap>();
+		csm = static_cast<CascadedShadowMap*>(shadowMap.get());
+	}
+	csm->Init((GLuint)resolution, (GLuint)resolution, (GLuint)cascadeCount);
 }
 
 DirectionalLight::~DirectionalLight()
