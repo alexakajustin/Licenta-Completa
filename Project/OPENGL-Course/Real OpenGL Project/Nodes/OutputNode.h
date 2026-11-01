@@ -2,42 +2,24 @@
 
 #include "Nodes/NodeGraph.h"
 #include <string>
+#include <vector>
 
-class SceneManager;
-
-/**
- * Targets an existing GameObject in the scene and overwrites its mesh
- * with the mesh data received from the input pin.
- */
+// =====================================================================
+// Mesh Output: writes a mesh into a scene object (by default the object it was read from)
+// The object keeps its own transform: the rotation and scale baked into the mesh by Scene Object
+// are taken back out before the upload.
+// =====================================================================
 class OutputNode : public GraphNode
 {
 public:
-	OutputNode(NodeGraph& graph);
-
-	void RenderContent(SceneManager* scene) override;
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	json Serialize() const override;
-	void Deserialize(const json& j) override;
-
-	// Helper for the graph execution to find where to push the mesh
-	int GetTargetIndex() const { return targetIndex; }
-	std::string GetTargetName() const { return targetName; }
-	void SetTargetIndex(int index, const std::string& name) { targetIndex = index; targetName = name; }
-	bool IsSameAsInput() const { return sameAsInput; }
+	explicit OutputNode(NodeGraph& graph);
+	void Execute(NodeContext& ctx) override;
 
 	void SetSameAsInput(bool value) { sameAsInput = value; }
-
-	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
-	{
-		if (targetName == oldName) targetName = newName;
-	}
-
-	bool ShouldUpdateMesh() const { return updateMesh; }
+	void SetTarget(const std::string& name) { target = { name }; }
 
 private:
-	int targetIndex = -1;
-	std::string targetName = "(none)";
-	bool sameAsInput = false;
-	bool updateMesh = true; // New: Toggle whether to bake the input mesh into the target object
+	bool sameAsInput = true;
+	std::vector<std::string> target;
+	bool updateMesh = true;
 };

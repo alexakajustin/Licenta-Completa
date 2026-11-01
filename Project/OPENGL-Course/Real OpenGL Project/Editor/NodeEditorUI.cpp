@@ -1,27 +1,10 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "Editor/NodeEditorUI.h"
 #include "Nodes/NodeGraph.h"
-#include "Procedural/PerlinNoiseNode.h"
+#include "Nodes/NodeRegistry.h"
 #include "Nodes/SceneInputNode.h"
-#include "Procedural/HydraulicErosionNode.h"
-#include "Procedural/BeautifulErosionNode.h"
-#include "Procedural/RiverNode.h"
-#include "Procedural/ScatterNode.h"
-#include "Nodes/Math/MergeMeshNode.h"
-#include "Nodes/OutputNode.h"
 #include "Nodes/CustomNode.h"
 #include "Editor/NodeBuilderUI.h"
-#include "Nodes/Math/ConstantNode.h"
-#include "Nodes/Math/MathNode.h"
-#include "Nodes/Math/CompareNode.h"
-#include "Nodes/Math/BranchNode.h"
-#include "Nodes/Math/FilterTransformListNode.h"
-#include "Nodes/Math/ForEachNode.h"
-#include "Procedural/CityGridNode.h"
-#include "Procedural/BuildingGenNode.h"
-#include "Procedural/InteriorGenNode.h"
-#include "Nodes/Math/ObjectIntersectionFilterNode.h"
-#include "Procedural/SolarSystemNode.h"
 #include "Scene/SceneManager.h"
 
 #include "imgui.h"
@@ -38,91 +21,64 @@
 #include <string>
 
 namespace {
-	// Every node the editor can create, by category (the add-node menu and the header colours)
-	struct NodeType {
-		const char* category;
-		const char* name;
-		GraphNode* (*create)(NodeGraph&);
-	};
-
-	const std::vector<NodeType>& NodeTypes()
-	{
-		static const std::vector<NodeType> types = {
-			{ "Scene", "Scene Input", [](NodeGraph& g) -> GraphNode* { return new SceneInputNode(g); } },
-			{ "Scene", "Output", [](NodeGraph& g) -> GraphNode* { return new OutputNode(g); } },
-			{ "Terrain", "Perlin Noise", [](NodeGraph& g) -> GraphNode* { return new PerlinNoiseNode(g); } },
-			{ "Terrain", "Hydraulic Erosion", [](NodeGraph& g) -> GraphNode* { return new HydraulicErosionNode(g); } },
-			{ "Terrain", "Beautiful Erosion", [](NodeGraph& g) -> GraphNode* { return new BeautifulErosionNode(g); } },
-			{ "Terrain", "River", [](NodeGraph& g) -> GraphNode* { return new RiverNode(g); } },
-			{ "Placement", "Scatter", [](NodeGraph& g) -> GraphNode* { return new ScatterNode(g); } },
-			{ "Placement", "Filter Transforms", [](NodeGraph& g) -> GraphNode* { return new FilterTransformListNode(g); } },
-			{ "Placement", "Object Filter", [](NodeGraph& g) -> GraphNode* { return new ObjectIntersectionFilterNode(g); } },
-			{ "Placement", "For Each", [](NodeGraph& g) -> GraphNode* { return new ForEachNode(g); } },
-			{ "Mesh", "Merge Mesh", [](NodeGraph& g) -> GraphNode* { return new MergeMeshNode(g); } },
-			{ "City", "City Grid", [](NodeGraph& g) -> GraphNode* { return new CityGridNode(g); } },
-			{ "City", "Building Gen", [](NodeGraph& g) -> GraphNode* { return new BuildingGenNode(g); } },
-			{ "City", "Interior Gen", [](NodeGraph& g) -> GraphNode* { return new InteriorGenNode(g); } },
-			{ "Space", "Solar System", [](NodeGraph& g) -> GraphNode* { return new SolarSystemNode(g); } },
-			{ "Logic", "Compare", [](NodeGraph& g) -> GraphNode* { return new CompareNode(g); } },
-			{ "Logic", "Branch", [](NodeGraph& g) -> GraphNode* { return new BranchNode(g); } },
-			{ "Math", "Math", [](NodeGraph& g) -> GraphNode* { return new MathNode(g); } },
-			{ "Constants", "Float", [](NodeGraph& g) -> GraphNode* { return new FloatConstantNode(g); } },
-			{ "Constants", "Int", [](NodeGraph& g) -> GraphNode* { return new IntConstantNode(g); } },
-			{ "Constants", "Vec3", [](NodeGraph& g) -> GraphNode* { return new Vec3ConstantNode(g); } },
-			{ "Constants", "Bool", [](NodeGraph& g) -> GraphNode* { return new BoolConstantNode(g); } },
-		};
-		return types;
-	}
-
 	// Pin types of each node type (input types, output types), from throwaway instances on a scratch
 	// graph: the add-node menu offers only the nodes a dropped link can connect to
 	struct PinTypes { std::set<int> inputs, outputs; };
 
-	const PinTypes& PinTypesOf(const std::string& name, const std::function<GraphNode*(NodeGraph&)>& create)
+	const PinTypes& PinTypesOf(const std::string& id, const std::function<GraphNode*(NodeGraph&)>& create)
 	{
 		static std::map<std::string, PinTypes> cache;
-		auto it = cache.find(name);
+		auto it = cache.find(id);
 		if (it != cache.end()) return it->second;
 		static NodeGraph scratch;
 		PinTypes types;
 		if (GraphNode* n = create(scratch)) {
-			for (auto& p : n->inputs) types.inputs.insert((int)p.dataType);
-			for (auto& p : n->outputs) types.outputs.insert((int)p.dataType);
+			for (auto& p : n->inputs) types.inputs.insert((int)p.type);
+			for (auto& p : n->outputs) types.outputs.insert((int)p.type);
 			delete n;
 		}
-		return cache[name] = types;
+		return cache[id] = types;
+	}
+
+	// Whether a node with these pins can take (or feed) a pin of this type
+	bool Accepts(const std::set<int>& types, int type, bool intoInputs)
+	{
+		for (int t : types)
+			if (intoInputs ? PinTypesConvertible((PinType)type, (PinType)t) : PinTypesConvertible((PinType)t, (PinType)type)) return true;
+		return false;
+	}
+
+	ImU32 CategoryColor(const std::string& category)
+	{
+		if (category == "Input") return IM_COL32(42, 108, 70, 255);
+		if (category == "Terrain") return IM_COL32(46, 80, 148, 255);
+		if (category == "Points") return IM_COL32(26, 106, 98, 255);
+		if (category == "Output") return IM_COL32(138, 46, 66, 255);
+		if (category == "Mesh") return IM_COL32(98, 60, 146, 255);
+		if (category == "City") return IM_COL32(144, 86, 36, 255);
+		if (category == "Space" || category == "World") return IM_COL32(36, 56, 118, 255);
+		if (category == "Math") return IM_COL32(110, 92, 42, 255);
+		return IM_COL32(90, 54, 134, 255);
 	}
 
 	ImU32 HeaderColor(const GraphNode* node)
 	{
-		if (node->title == "Output") return IM_COL32(138, 46, 66, 255);
-		std::string category = "Custom";
-		for (const NodeType& t : NodeTypes())
-			if (node->title == t.name) { category = t.category; break; }
-		if (category == "Scene") return IM_COL32(42, 108, 70, 255);
-		if (category == "Terrain") return IM_COL32(46, 80, 148, 255);
-		if (category == "Placement") return IM_COL32(26, 106, 98, 255);
-		if (category == "Mesh") return IM_COL32(98, 60, 146, 255);
-		if (category == "City") return IM_COL32(144, 86, 36, 255);
-		if (category == "Space") return IM_COL32(36, 56, 118, 255);
-		if (category == "Logic") return IM_COL32(110, 68, 68, 255);
-		if (category == "Math") return IM_COL32(116, 102, 42, 255);
-		if (category == "Constants") return IM_COL32(68, 72, 86, 255);
-		return IM_COL32(90, 54, 134, 255);
+		return CategoryColor(NodeRegistry::CategoryOf(node));
 	}
 
 	ImU32 PinColor(int type, float alpha = 1.0f)
 	{
 		ImVec4 c;
-		switch ((PinDataType)type) {
-		case PinDataType::Mesh:          c = ImVec4(0.66f, 0.46f, 0.98f, 1.0f); break;
-		case PinDataType::TransformList: c = ImVec4(0.98f, 0.62f, 0.26f, 1.0f); break;
-		case PinDataType::Float:         c = ImVec4(0.48f, 0.86f, 0.46f, 1.0f); break;
-		case PinDataType::Int:           c = ImVec4(0.36f, 0.76f, 0.96f, 1.0f); break;
-		case PinDataType::Vec3:          c = ImVec4(0.96f, 0.86f, 0.36f, 1.0f); break;
-		case PinDataType::Vec2:          c = ImVec4(0.88f, 0.76f, 0.42f, 1.0f); break;
-		case PinDataType::Bool:          c = ImVec4(0.96f, 0.42f, 0.42f, 1.0f); break;
-		default:                         c = ImVec4(0.60f, 0.60f, 0.60f, 1.0f); break;
+		switch ((PinType)type) {
+		case PinType::Mesh:    c = ImVec4(0.66f, 0.46f, 0.98f, 1.0f); break;
+		case PinType::Points:  c = ImVec4(0.98f, 0.62f, 0.26f, 1.0f); break;
+		case PinType::Objects: c = ImVec4(0.30f, 0.84f, 0.74f, 1.0f); break;
+		case PinType::Float:   c = ImVec4(0.62f, 0.62f, 0.66f, 1.0f); break;
+		case PinType::Int:     c = ImVec4(0.36f, 0.76f, 0.96f, 1.0f); break;
+		case PinType::Vec3:    c = ImVec4(0.96f, 0.86f, 0.36f, 1.0f); break;
+		case PinType::Vec2:    c = ImVec4(0.88f, 0.76f, 0.42f, 1.0f); break;
+		case PinType::Bool:    c = ImVec4(0.96f, 0.42f, 0.52f, 1.0f); break;
+		default:               c = ImVec4(0.60f, 0.60f, 0.60f, 1.0f); break;
 		}
 		c.w = alpha;
 		return ImGui::ColorConvertFloat4ToU32(c);
@@ -195,7 +151,14 @@ NodeEditorAction NodeEditorUI::Render(SceneManager& scene, Texture* defaultTex, 
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				if (ImGui::MenuItem("Clear Active Tab")) scene.GetNodeGraph().Clear();
+				if (ImGui::MenuItem("Clear Active Tab")) {
+					// Node by node: what each one generated in the scene goes with it
+					NodeGraph& g = scene.GetNodeGraph();
+					std::vector<int> ids;
+					for (auto* n : g.GetNodes()) ids.push_back(n->id);
+					for (int id : ids) g.RemoveNode(id, &scene);
+				}
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Deletes every node of this tab and what they generated in the scene");
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Execute"))
@@ -466,12 +429,14 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 		bool valid = false;
 		if (hoveredPin >= 0 && hoveredPin != linkPin) {
 			const PinInfo& c = pins[hoveredPin];
-			valid = c.output != from.output && c.type == from.type && c.nodeId != from.nodeId;
+			valid = c.output != from.output && c.nodeId != from.nodeId &&
+				(from.output ? PinTypesConvertible((PinType)from.type, (PinType)c.type) : PinTypesConvertible((PinType)c.type, (PinType)from.type));
 			if (valid) target = c.pos;
 		}
 		// Compatible pins light up
 		for (auto& [id, p] : pins)
-			if (p.output != from.output && p.type == from.type && p.nodeId != from.nodeId)
+			if (p.output != from.output && p.nodeId != from.nodeId &&
+				(from.output ? PinTypesConvertible((PinType)from.type, (PinType)p.type) : PinTypesConvertible((PinType)p.type, (PinType)from.type)))
 				dl->AddCircle(p.pos, ImMax(9.0f * view.zoom, 6.0f), PinColor(p.type, 0.55f), 20, 1.5f);
 		ImVec2 a = from.output ? from.pos : target, b = from.output ? target : from.pos, c1, c2;
 		LinkCurve(a, b, view.zoom, c1, c2);
@@ -486,7 +451,10 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 		const char* hint = graph.GetNodes().empty()
 			? "Right click or Tab: add a node  |  drag scene objects here"
 			: "Wheel: zoom  |  Middle / right drag: pan  |  Right click: add  |  Drag from a pin: link  |  F: frame  |  Del: delete";
-		dl->AddText(ImVec2(canvasMin.x + 10.0f, canvasMax.y - ImGui::GetFontSize() - 8.0f), IM_COL32(150, 150, 172, 120), hint);
+		ImVec2 at(canvasMin.x + 10.0f, canvasMax.y - ImGui::GetFontSize() - 8.0f);
+		ImVec2 size = ImGui::CalcTextSize(hint);
+		dl->AddRectFilled(at - ImVec2(6.0f, 3.0f), at + size + ImVec2(6.0f, 3.0f), IM_COL32(15, 15, 21, 200), 4.0f);
+		dl->AddText(at, IM_COL32(150, 150, 172, 150), hint);
 	}
 	splitter.Merge(dl);
 
@@ -502,7 +470,9 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 		} else if (hoveredPin >= 0) {
 			// From an occupied input: pick its link up and re-route it from the output end
 			linkPin = hoveredPin;
-			if (!pins[hoveredPin].output) {
+			// From an occupied single input: pick its link up (a multi input starts a new one)
+			Pin* pressed = graph.FindPin(hoveredPin);
+			if (!pins[hoveredPin].output && pressed && !pressed->multi) {
 				for (auto& l : graph.GetLinks())
 					if (l.endPinId == hoveredPin) { linkPin = l.startPinId; graph.RemoveLink(l.id); break; }
 			}
@@ -608,7 +578,7 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 	// Keyboard (not while typing into a field)
 	// =================================================================
 	if (canvasFocused && !io.WantTextInput && !widgetActive) {
-		if (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)) DeleteSelection(graph, view);
+		if (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)) DeleteSelection(graph, scene, view);
 		if (ImGui::IsKeyPressed(ImGuiKey_F, false)) FrameNodes(graph, view, !view.selectedNodes.empty());
 		if (ctrl && ImGui::IsKeyPressed(ImGuiKey_A, false)) {
 			view.selectedNodes.clear();
@@ -636,7 +606,7 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 			int objIndex = *(const int*)payload->Data;
 			auto& objects = scene.GetObjects();
 			if (objIndex >= 0 && objIndex < (int)objects.size()) {
-				SceneInputNode* input = new SceneInputNode(graph);
+				auto* input = static_cast<SceneInputNode*>(NodeRegistry::Create("scene_object", graph));
 				input->SetSelection(objIndex, objects[objIndex]->GetName());
 				ImVec2 g = ToGrid(view, mouse);
 				input->editorPos = glm::vec2(g.x, g.y);
@@ -679,6 +649,9 @@ void NodeEditorUI::RenderNode(GraphNode* node, SceneManager& scene, GraphView& v
 	const float rowH = fontSize + 7.0f * z;
 	const float pinR = ImMax(4.5f * z, 2.5f);
 
+	// Inline pins are placed by the parameter rows drawn this frame
+	for (auto& p : node->inputs) p.anchorY = -1.0f;
+
 	// --- Widgets (only the node under the mouse may react to it) ---
 	float contentRight = 0.0f;
 	float pinsTop = layout.pinsTop * z;
@@ -696,7 +669,7 @@ void NodeEditorUI::RenderNode(GraphNode* node, SceneManager& scene, GraphView& v
 		ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, style.GrabMinSize * z);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, style.FrameRounding * z);
 		ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, style.GrabRounding * z);
-		ImGui::SetCursorScreenPos(pos + ImVec2(pad, titleH + pad));
+		ImGui::SetCursorScreenPos(pos + ImVec2(pad + 4.0f * z, titleH + pad));
 		ImGui::BeginGroup();
 		ImGui::PushItemWidth(120.0f * z);
 		node->RenderContent(&scene);
@@ -712,33 +685,61 @@ void NodeEditorUI::RenderNode(GraphNode* node, SceneManager& scene, GraphView& v
 		pinsTop = (contentMax.y - pos.y) + pad * 0.75f;
 	}
 
-	// --- Size: content, title, pin rows ---
-	const size_t rows = std::max(node->inputs.size(), node->outputs.size());
+	// --- Pin rows: the main inputs (left) and the outputs (right). Parameter pins sit on their
+	// rows in the content; linked ones without a row (hidden parameter, compact node) get one here.
+	std::vector<Pin*> leftPins;
+	for (auto& p : node->inputs)
+		if (p.param < 0 || (p.anchorY < 0.0f && connectedPins.count(p.id))) leftPins.push_back(&p);
+	const size_t rows = std::max(leftPins.size(), node->outputs.size());
+
+	// Last run: the result (or the error) under the pins
+	std::string statusLine;
+	ImU32 statusCol = IM_COL32(150, 150, 172, 255);
+	if (node->status.failed) {
+		statusLine = node->status.message;
+		statusCol = IM_COL32(255, 110, 110, 255);
+	} else if (node->status.ran) {
+		statusLine = node->status.info;
+		if (node->status.ms >= 50.0) {
+			char buf[48];
+			snprintf(buf, sizeof(buf), statusLine.empty() ? "%.0f ms" : "  |  %.0f ms", node->status.ms);
+			statusLine += buf;
+		}
+		if (!node->status.message.empty()) statusCol = IM_COL32(255, 196, 96, 255);
+	}
+	size_t newline = statusLine.find('\n');
+	if (newline != std::string::npos) statusLine = statusLine.substr(0, newline) + " ...";
+	const bool showStatus = !compact && !statusLine.empty();
+
+	// --- Size: content, title, pin rows, status ---
 	float width = layout.size.x * z;
 	float height = layout.size.y * z;
-	if (drawWidgets) {
+	if (drawWidgets || compact) {
 		float rowsW = 0.0f;
 		for (size_t r = 0; r < rows; r++) {
 			float w = 0.0f;
-			if (r < node->inputs.size()) w += ImGui::CalcTextSize(node->inputs[r].name.c_str()).x;
-			if (r < node->outputs.size()) w += ImGui::CalcTextSize(node->outputs[r].name.c_str()).x;
+			if (r < leftPins.size() && !compact) w += ImGui::CalcTextSize(leftPins[r]->name.c_str()).x;
+			if (r < node->outputs.size() && !compact) w += ImGui::CalcTextSize(node->outputs[r].name.c_str()).x;
 			rowsW = ImMax(rowsW, w + 4.0f * pad);
 		}
 		float titleW = ImGui::CalcTextSize(node->title.c_str()).x + 3.0f * pad;
-		width = ImMax(ImMax(contentRight + pad, titleW), ImMax(rowsW, 150.0f * z));
-		height = pinsTop + rows * rowH + pad * 0.6f;
-		layout.size = ImVec2(width, height) / z;
-		layout.pinsTop = pinsTop / z;
-		layout.measured = true;
+		float statusW = showStatus ? ImMin(ImGui::CalcTextSize(statusLine.c_str()).x + 2.0f * pad, 340.0f * z) : 0.0f;
+		if (drawWidgets) {
+			width = ImMax(ImMax(contentRight + pad, titleW), ImMax(ImMax(rowsW, statusW), 150.0f * z));
+			height = pinsTop + rows * rowH + (showStatus ? rowH : 0.0f) + pad * 0.6f;
+			layout.size = ImVec2(width, height) / z;
+			layout.pinsTop = pinsTop / z;
+			layout.measured = true;
+		}
 	}
+	if (compact) pinsTop = titleH + pad * 0.5f;
 	const ImVec2 nodeMax = pos + ImVec2(width, height);
 
 	// --- Title ---
 	{
 		ImU32 textCol = IM_COL32(242, 242, 250, 255);
-		dl->PushClipRect(pos, ImVec2(nodeMax.x, pos.y + titleH), true);
 		if (compact) {
-			// Readable when zoomed far out: a larger title centred in the header
+			// Readable when zoomed far out: a larger title centred on the node
 			ImGui::PushFont(nullptr, ImMin(style.FontSizeBase * z * 1.8f, style.FontSizeBase));
 			ImVec2 ts = ImGui::CalcTextSize(node->title.c_str());
 			dl->PushClipRect(pos, nodeMax, true);
@@ -746,57 +747,91 @@ void NodeEditorUI::RenderNode(GraphNode* node, SceneManager& scene, GraphView& v
 			dl->PopClipRect();
 			ImGui::PopFont();
 		} else {
+			dl->PushClipRect(pos, ImVec2(nodeMax.x, pos.y + titleH), true);
 			dl->AddText(pos + ImVec2(pad, (titleH - fontSize) * 0.5f), textCol, node->title.c_str());
+			dl->PopClipRect();
 		}
-		dl->PopClipRect();
 	}
 
-	// --- Pins: inputs on the left edge, outputs on the right, one row each ---
+	// --- Pins ---
 	ImU32 labelCol = IM_COL32(205, 205, 218, 255);
-	auto drawPin = [&](const ImVec2& c, int type, bool isConnected, bool isHovered) {
+	auto drawPin = [&](const ImVec2& c, const Pin& p, bool isConnected, bool isHovered) {
 		float r = pinR * (isHovered ? 1.35f : 1.0f);
-		dl->AddCircleFilled(c, r + ImMax(1.5f * z, 1.0f), IM_COL32(15, 15, 21, 255));
+		// Parameter pins stay small until used
+		if (p.param >= 0 && !isConnected && !isHovered) r *= 0.78f;
+		ImU32 col = PinColor((int)p.type, p.param >= 0 && !isConnected ? 0.75f : 1.0f);
+		float outline = ImMax(1.5f * z, 1.0f);
+		if (p.multi) {
+			// A multi input (takes any number of links): a rounded bar
+			ImVec2 h(r * 0.85f, r * 1.45f);
+			dl->AddRectFilled(c - h - ImVec2(outline, outline), c + h + ImVec2(outline, outline), IM_COL32(15, 15, 21, 255), r);
+			if (isConnected) dl->AddRectFilled(c - h, c + h, col, r);
+			else {
+				dl->AddRectFilled(c - h, c + h, IM_COL32(30, 30, 40, 255), r);
+				dl->AddRect(c - h, c + h, col, r, 0, ImMax(1.6f * z, 1.0f));
+			}
+			return;
+		}
+		dl->AddCircleFilled(c, r + outline, IM_COL32(15, 15, 21, 255));
 		if (isConnected) {
-			dl->AddCircleFilled(c, r, PinColor(type));
+			dl->AddCircleFilled(c, r, col);
 		} else {
 			dl->AddCircleFilled(c, r, IM_COL32(30, 30, 40, 255));
-			dl->AddCircle(c, r, PinColor(type), 0, ImMax(1.6f * z, 1.0f));
+			dl->AddCircle(c, r, col, 0, ImMax(1.6f * z, 1.0f));
 		}
 	};
+	auto registerPin = [&](const Pin& p, const ImVec2& c, const ImVec2& hitMin, const ImVec2& hitMax, bool output) {
+		PinInfo info;
+		info.pos = c;
+		info.hitMin = hitMin;
+		info.hitMax = hitMax;
+		info.nodeId = node->id;
+		info.type = (int)p.type;
+		info.output = output;
+		pins[p.id] = info;
+	};
 	const float slop = ImMax(0.0f, 7.0f - pinR); // Small pins are still easy to grab
+
+	// Inline parameter pins, on their rows
+	for (auto& p : node->inputs) {
+		if (p.param < 0 || p.anchorY < 0.0f) continue;
+		ImVec2 c(pos.x, p.anchorY);
+		drawPin(c, p, connectedPins.count(p.id) > 0, lastHoveredPin == p.id);
+		float reach = ImMax(rowH * 0.5f, pinR + slop);
+		registerPin(p, c, ImVec2(c.x - pinR - slop - 2.0f, c.y - reach * 0.8f), ImVec2(c.x + pad, c.y + reach * 0.8f), false);
+	}
 	for (size_t r = 0; r < rows; r++) {
 		float cy = pos.y + pinsTop + (r + 0.5f) * rowH;
-		if (r < node->inputs.size()) {
-			const Pin& p = node->inputs[r];
+		if (r < leftPins.size()) {
+			const Pin& p = *leftPins[r];
 			ImVec2 c(pos.x, cy);
 			float lw = compact ? 0.0f : ImGui::CalcTextSize(p.name.c_str()).x;
-			drawPin(c, (int)p.dataType, connectedPins.count(p.id) > 0, lastHoveredPin == p.id);
+			drawPin(c, p, connectedPins.count(p.id) > 0, lastHoveredPin == p.id);
 			if (!compact) dl->AddText(ImVec2(pos.x + pad + 2.0f * z, cy - fontSize * 0.5f), labelCol, p.name.c_str());
-			PinInfo info;
-			info.pos = c;
-			info.hitMin = ImVec2(c.x - pinR - slop - 2.0f, cy - ImMax(rowH * 0.5f, pinR + slop));
-			info.hitMax = ImVec2(pos.x + pad + 2.0f * z + lw + 4.0f, cy + ImMax(rowH * 0.5f, pinR + slop));
-			info.nodeId = node->id;
-			info.type = (int)p.dataType;
-			info.output = false;
-			pins[p.id] = info;
+			registerPin(p, c, ImVec2(c.x - pinR - slop - 2.0f, cy - ImMax(rowH * 0.5f, pinR + slop)),
+				ImVec2(pos.x + pad + 2.0f * z + lw + 4.0f, cy + ImMax(rowH * 0.5f, pinR + slop)), false);
 		}
 		if (r < node->outputs.size()) {
 			const Pin& p = node->outputs[r];
 			ImVec2 c(pos.x + width, cy);
 			float lw = compact ? 0.0f : ImGui::CalcTextSize(p.name.c_str()).x;
 			float labelX = pos.x + width - pad - 2.0f * z - lw;
-			drawPin(c, (int)p.dataType, connectedPins.count(p.id) > 0, lastHoveredPin == p.id);
+			drawPin(c, p, connectedPins.count(p.id) > 0, lastHoveredPin == p.id);
 			if (!compact) dl->AddText(ImVec2(labelX, cy - fontSize * 0.5f), labelCol, p.name.c_str());
-			PinInfo info;
-			info.pos = c;
-			info.hitMin = ImVec2(compact ? c.x - pinR - slop - 2.0f : labelX - 4.0f, cy - ImMax(rowH * 0.5f, pinR + slop));
-			info.hitMax = ImVec2(c.x + pinR + slop + 2.0f, cy + ImMax(rowH * 0.5f, pinR + slop));
-			info.nodeId = node->id;
-			info.type = (int)p.dataType;
-			info.output = true;
-			pins[p.id] = info;
+			registerPin(p, c, ImVec2(compact ? c.x - pinR - slop - 2.0f : labelX - 4.0f, cy - ImMax(rowH * 0.5f, pinR + slop)),
+				ImVec2(c.x + pinR + slop + 2.0f, cy + ImMax(rowH * 0.5f, pinR + slop)), true);
 		}
+	}
+
+	// --- Status line ---
+	if (showStatus) {
+		float y = pos.y + pinsTop + rows * rowH + (rowH - fontSize) * 0.5f;
+		dl->PushClipRect(pos, ImVec2(nodeMax.x - pad * 0.5f, nodeMax.y), true);
+		dl->AddText(ImVec2(pos.x + pad, y), statusCol, statusLine.c_str());
+		dl->PopClipRect();
+		if (hoveredNode == node->id && (node->status.failed || !node->status.message.empty()) &&
+			io.MousePos.y >= y && io.MousePos.y < y + fontSize && !ImGui::IsAnyItemHovered())
+			ImGui::SetTooltip("%s", node->status.message.c_str());
 	}
 
 	// --- Body behind the widgets ---
@@ -808,7 +843,8 @@ void NodeEditorUI::RenderNode(GraphNode* node, SceneManager& scene, GraphView& v
 	dl->AddLine(ImVec2(pos.x, pos.y + titleH), ImVec2(nodeMax.x, pos.y + titleH), IM_COL32(0, 0, 0, 90));
 	bool hovered = hoveredNode == node->id;
 	ImU32 border = selected ? IM_COL32(190, 140, 255, 255) : (hovered ? IM_COL32(118, 108, 150, 255) : IM_COL32(58, 58, 74, 255));
-	dl->AddRect(pos, nodeMax, border, rounding, 0, selected ? ImMax(2.0f * z, 1.5f) : 1.0f);
+	if (node->status.failed && !selected) border = IM_COL32(220, 80, 80, 255);
+	dl->AddRect(pos, nodeMax, border, rounding, 0, selected || node->status.failed ? ImMax(2.0f * z, 1.5f) : 1.0f);
 
 	ImGui::PopFont();
 }
@@ -869,20 +905,22 @@ bool NodeEditorUI::TryLink(NodeGraph& graph, int pinA, int pinB)
 	if (a == pins.end() || b == pins.end() || a->second.output == b->second.output) return false;
 	int out = a->second.output ? pinA : pinB;
 	int in = a->second.output ? pinB : pinA;
-	// An input takes one link: the new one replaces it (put back if the new one is refused)
+	// A single input takes one link: the new one replaces it (put back if the new one is refused)
 	std::vector<Link> replaced;
-	for (auto& l : graph.GetLinks()) if (l.endPinId == in) replaced.push_back(l);
+	Pin* inPin = graph.FindPin(in);
+	if (inPin && !inPin->multi)
+		for (auto& l : graph.GetLinks()) if (l.endPinId == in) replaced.push_back(l);
 	for (auto& l : replaced) graph.RemoveLink(l.id);
 	if (graph.AddLink(out, in)) return true;
 	for (auto& l : replaced) graph.GetLinks().push_back(l);
 	return false;
 }
 
-void NodeEditorUI::DeleteSelection(NodeGraph& graph, GraphView& view)
+void NodeEditorUI::DeleteSelection(NodeGraph& graph, SceneManager& scene, GraphView& view)
 {
 	for (int id : view.selectedLinks) graph.RemoveLink(id);
 	for (int id : view.selectedNodes) {
-		graph.RemoveNode(id);
+		graph.RemoveNode(id, &scene);
 		view.layouts.erase(id);
 	}
 	view.selectedLinks.clear();
@@ -1021,7 +1059,7 @@ void NodeEditorUI::RenderAddNodeMenu(NodeGraph& graph, GraphView& view)
 		ImGui::TextDisabled(from->second.output ? "Nodes taking this output:" : "Nodes feeding this input:");
 	auto compatible = [&](const PinTypes& t) {
 		if (from == pins.end()) return true;
-		return from->second.output ? t.inputs.count(from->second.type) > 0 : t.outputs.count(from->second.type) > 0;
+		return from->second.output ? Accepts(t.inputs, from->second.type, true) : Accepts(t.outputs, from->second.type, false);
 	};
 	auto matches = [&](const char* name, const char* category) {
 		return query.empty() || Lower(name).find(query) != std::string::npos || Lower(category).find(query) != std::string::npos;
@@ -1029,22 +1067,23 @@ void NodeEditorUI::RenderAddNodeMenu(NodeGraph& graph, GraphView& view)
 
 	GraphNode* created = nullptr;
 	int matchIndex = 0;
-	const char* lastCategory = nullptr;
-	for (const NodeType& t : NodeTypes()) {
-		if (!matches(t.name, t.category)) continue;
-		if (!compatible(PinTypesOf(t.name, t.create))) continue;
-		if (query.empty() && (!lastCategory || std::strcmp(lastCategory, t.category) != 0)) {
-			ImGui::SeparatorText(t.category);
+	std::string lastCategory;
+	for (const NodeTypeInfo& t : NodeRegistry::Types()) {
+		if (!matches(t.name.c_str(), t.category.c_str())) continue;
+		if (!compatible(PinTypesOf(t.id, t.create))) continue;
+		if (query.empty() && t.category != lastCategory) {
+			ImGui::SeparatorText(t.category.c_str());
 			lastCategory = t.category;
 		}
-		if (ImGui::Selectable(t.name) || (enter && matchIndex == 0)) created = t.create(graph);
+		if (ImGui::Selectable(t.name.c_str()) || (enter && matchIndex == 0)) created = NodeRegistry::Create(t.id, graph);
+		if (ImGui::IsItemHovered() && !t.description.empty()) ImGui::SetTooltip("%s", t.description.c_str());
 		matchIndex++;
 	}
 	const auto& customDefs = NodeBuilderUI::GetSavedDefinitions();
 	bool customHeader = false;
 	for (const auto& def : customDefs) {
 		if (!matches(def.name.c_str(), "Custom")) continue;
-		if (!compatible(PinTypesOf("Custom/" + def.name, [&def](NodeGraph& g) -> GraphNode* { return new CustomNode(g, def); }))) continue;
+		if (!compatible(PinTypesOf("custom:" + def.name, [&def](NodeGraph& g) -> GraphNode* { return new CustomNode(g, def); }))) continue;
 		if (query.empty() && !customHeader) { ImGui::SeparatorText("Custom"); customHeader = true; }
 		if (ImGui::Selectable(def.name.c_str()) || (enter && matchIndex == 0)) created = new CustomNode(graph, def);
 		matchIndex++;
@@ -1060,18 +1099,27 @@ void NodeEditorUI::RenderAddNodeMenu(NodeGraph& graph, GraphView& view)
 		view.order.push_back(created->id);
 		view.selectedNodes = { created->id };
 		view.selectedLinks.clear();
-		// Connect it to the link that was dropped here
+		// Connect it to the link that was dropped here: a pin of the same type first (main pins
+		// before parameter pins), else one it converts to
 		if (from != pins.end()) {
+			PinType type = (PinType)from->second.type;
+			auto best = [&](std::vector<Pin>& list, bool intoInputs) -> Pin* {
+				Pin* found = nullptr;
+				int foundRank = 99;
+				for (auto& p : list) {
+					bool ok = intoInputs ? PinTypesConvertible(type, p.type) : PinTypesConvertible(p.type, type);
+					if (!ok) continue;
+					int rank = (p.type == type ? 0 : 2) + (p.param >= 0 ? 1 : 0);
+					if (rank < foundRank) { found = &p; foundRank = rank; }
+				}
+				return found;
+			};
 			if (from->second.output) {
-				for (auto& p : created->inputs)
-					if ((int)p.dataType == from->second.type) { graph.AddLink(pendingLinkPin, p.id); break; }
-			} else {
-				for (auto& p : created->outputs)
-					if ((int)p.dataType == from->second.type) {
-						graph.RemoveLinkByPinId(pendingLinkPin);
-						graph.AddLink(p.id, pendingLinkPin);
-						break;
-					}
+				if (Pin* p = best(created->inputs, true)) graph.AddLink(pendingLinkPin, p->id);
+			} else if (Pin* p = best(created->outputs, false)) {
+				Pin* target = graph.FindPin(pendingLinkPin);
+				if (target && !target->multi) graph.RemoveLinkByPinId(pendingLinkPin);
+				graph.AddLink(p->id, pendingLinkPin);
 			}
 		}
 		pendingLinkPin = -1;
@@ -1082,7 +1130,6 @@ void NodeEditorUI::RenderAddNodeMenu(NodeGraph& graph, GraphView& view)
 
 void NodeEditorUI::RenderContextMenus(NodeGraph& graph, SceneManager& scene, GraphView& view)
 {
-	(void)scene;
 	if (ImGui::BeginPopup("##NodeMenu")) {
 		GraphNode* n = graph.FindNode(contextNode);
 		if (!n || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
@@ -1101,7 +1148,7 @@ void NodeEditorUI::RenderContextMenus(NodeGraph& graph, SceneManager& scene, Gra
 			ImGui::Separator();
 			if (ImGui::MenuItem(view.selectedNodes.size() > 1 ? "Delete selected" : "Delete", "Del")) {
 				if (!view.selectedNodes.count(contextNode)) view.selectedNodes = { contextNode };
-				DeleteSelection(graph, view);
+				DeleteSelection(graph, scene, view);
 			}
 		}
 		ImGui::EndPopup();

@@ -28,19 +28,6 @@ struct TransformData
 
 using TransformList = std::vector<TransformData>;
 
-// ========== Pin Data Types ==========
-enum class PinDataType
-{
-	None,
-	Mesh,
-	TransformList,
-	Float,
-	Int,
-	Vec3,
-	Vec2,
-	Bool
-};
-
 // ========== CPU-side Mesh Data ==========
 // Vertex layout: pos(3) + uv(2) + normal(3) + tangent(3) + bitangent(3) = 14 floats
 struct MeshData
@@ -387,22 +374,3 @@ private:
 	}
 };
 
-struct PinData
-{
-	PinDataType type = PinDataType::None;
-	MeshData meshData;
-	TransformList transforms;
-	std::vector<MeshData> instanceMeshes;
-	std::string sourceObjectName = "(none)";
-	GameObject* sourceObject = nullptr;
-	Material* sourceMaterial = nullptr;
-	Texture* sourceTexture = nullptr;
-	Texture* sourceNormalMap = nullptr;
-	std::vector<TextureLayer> textureLayers;
-	float floatValue = 0.0f; int intValue = 0;
-	glm::vec3 vec3Value = glm::vec3(0.0f); glm::vec2 vec2Value = glm::vec2(0.0f);
-	bool boolValue = false;
-
-	void Clear() { type = PinDataType::None; meshData.Clear(); transforms.clear(); instanceMeshes.clear(); sourceObjectName = "(none)"; sourceObject = nullptr; sourceMaterial = nullptr; sourceTexture = nullptr; sourceNormalMap = nullptr; textureLayers.clear(); floatValue = 0.0f; int intValue = 0; vec3Value = glm::vec3(0.0f); vec2Value = glm::vec2(0.0f); boolValue = false; }
-	void DeepClear() { type = PinDataType::None; meshData.DeepClear(); std::vector<TransformData>().swap(transforms); for (auto& m : instanceMeshes) m.DeepClear(); std::vector<MeshData>().swap(instanceMeshes); sourceObjectName = "(none)"; sourceObject = nullptr; sourceMaterial = nullptr; sourceTexture = nullptr; sourceNormalMap = nullptr; std::vector<TextureLayer>().swap(textureLayers); floatValue = 0.0f; int intValue = 0; vec3Value = glm::vec3(0.0f); vec2Value = glm::vec2(0.0f); boolValue = false; }
-};

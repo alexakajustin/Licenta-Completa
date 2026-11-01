@@ -43,7 +43,6 @@ TEST_CASE("RAMY Engine Performance Profiler Suite")
         std::cout << "==================================================\n";
 
         MeshData surfaceMesh = PrimitiveGenerator::GetPlaneData(200, 200); 
-        MeshData objectMesh = PrimitiveGenerator::GetCubeData();
 
         std::vector<int> instanceCounts = { 
             100, 500, 1000, 5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 750000, 1000000 
@@ -52,25 +51,19 @@ TEST_CASE("RAMY Engine Performance Profiler Suite")
         for (int count : instanceCounts)
         {
             ScatterNode scatterNode(graph);
-            scatterNode.inputs[0].data.type = PinDataType::Mesh;
-            scatterNode.inputs[0].data.meshData = surfaceMesh;
+            MeshValue surface;
+            surface.Set(MeshData(surfaceMesh));
+            scatterNode.inputs[0].value = NodeValue::FromMesh(surface);
+            scatterNode.SetParamValue("count", count);
+            scatterNode.SetParamValue("seed", 42 + count);
+            scatterNode.SetParamValue("randomRotation", 1);
 
-            scatterNode.inputs[1].data.type = PinDataType::Mesh;
-            scatterNode.inputs[1].data.meshData = objectMesh;
-
-            nlohmann::json j;
-            j["count"] = count;
-            j["seed"] = 42 + count;
-            j["alignToNormal"] = true;
-            j["randomRotation"] = true;
-            j["spawnAsObjects"] = false; 
-            scatterNode.Deserialize(j);
-
+            NodeContext ctx(scene, graph, scatterNode, nullptr);
             profiler.Profile("ScatterNode_Execution", count, [&]() {
-                scatterNode.Execute(scene);
+                scatterNode.Execute(ctx);
             });
 
-            CHECK(scatterNode.outputs[1].data.transforms.size() == (size_t)count);
+            CHECK(scatterNode.outputs[0].value.Points().size() == (size_t)count);
         }
     }
 
@@ -128,15 +121,16 @@ TEST_CASE("RAMY Engine Performance Profiler Suite")
             erosionNode.SetDepositSpeed(0.3f);
             erosionNode.SetSmoothPasses(1);
 
-            MeshData terrainMesh = PrimitiveGenerator::GetPlaneData(res - 1, res - 1); 
-            erosionNode.inputs[0].data.type = PinDataType::Mesh;
-            erosionNode.inputs[0].data.meshData = terrainMesh;
+            MeshValue terrain;
+            terrain.Set(PrimitiveGenerator::GetPlaneData(res - 1, res - 1));
+            erosionNode.inputs[0].value = NodeValue::FromMesh(terrain);
 
+            NodeContext ctx(scene, graph, erosionNode, nullptr);
             profiler.Profile("HydraulicErosion_Execution", res * res, [&]() {
-                erosionNode.Execute(scene);
+                erosionNode.Execute(ctx);
             });
 
-            CHECK(erosionNode.outputs[0].data.type == PinDataType::Mesh);
+            CHECK(erosionNode.outputs[0].value.type == PinType::Mesh);
         }
     }
 

@@ -65,38 +65,11 @@ struct RoadIntersection
 class CityGridNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	CityGridNode(NodeGraph& graph);
+	explicit CityGridNode(NodeGraph& graph);
+	// Lays out roads, sidewalks, lamps and park trees (scene objects) and the building plots
+	void Execute(NodeContext& ctx) override;
 
-	/**
-	 * @brief Renders the editor UI panel for configuring road parameters.
-	 * @param scene Pointer to active scene manager.
-	 */
-	void RenderContent(SceneManager* scene) override;
-
-	/**
-	 * @brief Executes the city grid generator, calculating street segments, intersections, and building plots.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	/**
-	 * @brief Serializes node properties to JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
-
-	// City Parameters (public for template configuration)
+	// City parameters
 	float citySize = 100.0f;          ///< Total extent size of the city grid.
 	float roadWidth = 6.0f;           ///< Width of generated roads.
 	float roadSpacingX = 30.0f;       ///< Spacing distance between roads along the X axis.
@@ -106,7 +79,7 @@ public:
 	float buildingSetback = 1.0f;     ///< Offset distance of buildings from roads.
 	float residentialProbability = 0.5f; ///< Zoning probability distribution factor.
 	int parkRate = 8;                 ///< Ratio of park placement (1 in N plots).
-	int seed = 42;                    ///< Random seed.
+	int seed = 42;                    ///< Random seed (new nodes roll their own).
 
 private:
 	// Texture tiling

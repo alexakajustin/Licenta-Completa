@@ -1,4 +1,5 @@
 #include "Procedural/SolarSystemNode.h"
+#include "Nodes/NodeRandom.h"
 #include "Scene/SceneManager.h"
 #include "Scene/Planet.h"
 #include "imgui.h"
@@ -7,9 +8,40 @@
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 
-void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+SolarSystemNode::SolarSystemNode(NodeGraph& graph) : GraphNode(graph)
 {
-	if (progress) progress(0.0f, "Cleaning up old solar system...");
+	seed = NodeRandom::TrueRandomSeed();
+	AddInput(PinType::Mesh, "Center", "center");
+	AddOutput(PinType::Mesh, "Sun Output", "sun");
+	AddOutput(PinType::Points, "Planet Transforms", "planets");
+	AddInt("planetCount", "Planets", &planetCount, 0.2f, 0, 100);
+	AddFloat("minRadius", "Min distance", &minRadius, 1.0f, 10.0f, 10000.0f, "%.0f").Tip("Closest orbit, from the sun");
+	AddFloat("maxRadius", "Max distance", &maxRadius, 1.0f, 10.0f, 10000.0f, "%.0f").Tip("Farthest orbit, from the sun");
+	AddFloat("minScale", "Min planet scale", &minScale, 0.1f, 0.1f, 1000.0f, "%.1f");
+	AddFloat("maxScale", "Max planet scale", &maxScale, 0.1f, 0.1f, 1000.0f, "%.1f");
+	AddBool("generateSun", "Sun", &generateSun);
+	AddFloat("sunScale", "Sun size", &sunScale, 1.0f, 1.0f, 10000.0f, "%.0f").ShowIf([this] { return generateSun; });
+	AddSeed("seed", "Seed", &seed);
+}
+
+void SolarSystemNode::SaveState(json& j) const
+{
+	j["spawnedObjects"] = spawnedObjects;
+}
+
+void SolarSystemNode::LoadState(const json& j)
+{
+	spawnedObjects.clear();
+	if (j.contains("spawnedObjects"))
+		for (const auto& name : j["spawnedObjects"]) spawnedObjects.insert(name.get<std::string>());
+	if (!j.contains("seed")) seed = 12345;
+}
+
+void SolarSystemNode::Execute(NodeContext& ctx)
+{
+	SceneManager& scene = ctx.scene;
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
+	progress(0.0f, "Cleaning up old solar system...");
 
 	// Cache previous states of existing spawned planets/sun to preserve manual inspector customizations
 	std::map<std::string, glm::vec3> savedRotations;
@@ -37,9 +69,8 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	// Get center point from input 0 if connected
 	glm::vec3 center(0.0f);
-	if (!inputs[0].data.transforms.empty()) {
-		center = inputs[0].data.transforms[0].position;
-	}
+	const NodeValue& centerIn = In("center");
+	if (centerIn.Valid()) center = centerIn.mesh.origin;
 
 	std::mt19937 gen(seed);
 	std::uniform_real_distribution<float> radDist(minRadius, maxRadius);
@@ -49,7 +80,7 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	std::string basePrefix = "SolarSystem_" + std::to_string(id) + "_";
 
-	if (progress) progress(20.0f, "Generating Sun...");
+	progress(20.0f, "Generating Sun...");
 
 	std::vector<std::pair<glm::vec3, float>> generatedSpheres;
 
@@ -102,15 +133,15 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		scene.AddObject(sun);
 		spawnedObjects.insert(sunName);
+		ctx.Claim(sunName);
 		
 		generatedSpheres.push_back({sun->GetTransform().GetPosition(), pParams.radius});
 	}
 
-	if (progress) progress(50.0f, "Generating Planets...");
+	progress(50.0f, "Generating Planets...");
 
 	// 2. Generate Planets — exactly like the context menu: new Planet -> Generate
-	outputs[1].data.transforms.clear();
-	outputs[1].data.type = PinDataType::TransformList;
+	TransformList planetTransforms;
 
 	std::uniform_real_distribution<float> noiseDist(0.5f, 2.5f);
 	std::uniform_int_distribution<int> octavesDist(4, 8);
@@ -230,15 +261,16 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 		scene.AddObject(p);
 		spawnedObjects.insert(planetName);
+		ctx.Claim(planetName);
 
 		TransformData td;
 		td.position = p->GetTransform().GetPosition();
 		td.scale = p->GetTransform().GetScale();
 		td.rotation = p->GetTransform().GetRotation();
 		td.normal = glm::vec3(0, 1, 0);
-		outputs[1].data.transforms.push_back(td);
+		planetTransforms.push_back(td);
 
-		if (progress) progress(50.0f + (50.0f * (float)i / planetCount), "Generating Planet " + std::to_string(i));
+		progress(50.0f + (50.0f * (float)i / planetCount), "Generating Planet " + std::to_string(i));
 	}
 
 	// Clean up any saved materials that were NOT reused (e.g. planet count decreased)
@@ -247,81 +279,9 @@ void SolarSystemNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 	savedMaterials.clear();
 
-	// Pass through input 0 to output 0
-	outputs[0].data = inputs[0].data;
+	if (centerIn.Valid()) Out(0, centerIn);
+	Out(1, NodeValue::FromPoints(std::move(planetTransforms)));
 
-	if (progress) progress(100.0f, "Solar System Generation Complete.");
+	progress(100.0f, "Solar System Generation Complete.");
 }
 
-void SolarSystemNode::RenderContent(SceneManager* scene)
-{
-	ImGui::PushID(this);
-
-	ImGui::DragInt("Planet Count", &planetCount, 1.0f, 0, 100);
-	ImGui::DragFloat("MIN_DISTANCE (from sun)", &minRadius, 1.0f, 10.0f, 10000.0f);
-	ImGui::DragFloat("MAX_DISTANCE (from sun)", &maxRadius, 1.0f, 10.0f, 10000.0f);
-	ImGui::DragFloat("MIN_SCALE (planet scale)", &minScale, 0.1f, 0.1f, 1000.0f);
-	ImGui::DragFloat("MAX_SCALE (planet scale)", &maxScale, 0.1f, 0.1f, 1000.0f);
-
-	ImGui::Checkbox("Generate Sun", &generateSun);
-	if (generateSun) {
-		ImGui::DragFloat("SUN_DIMENSION", &sunScale, 1.0f, 1.0f, 10000.0f);
-	}
-
-	if (ImGui::InputInt("Seed", &seed)) {}
-	ImGui::SameLine();
-	if (ImGui::Button("Rand")) {
-		seed = std::rand();
-	}
-
-	ImGui::PopID();
-}
-
-void SolarSystemNode::OnRemove(SceneManager& scene)
-{
-	for (const auto& name : spawnedObjects) {
-		scene.RemoveObject(name);
-	}
-	spawnedObjects.clear();
-}
-
-json SolarSystemNode::Serialize() const
-{
-	json j = GraphNode::Serialize();
-	j["planetCount"] = planetCount;
-	j["minRadius"] = minRadius;
-	j["maxRadius"] = maxRadius;
-	j["minScale"] = minScale;
-	j["maxScale"] = maxScale;
-	j["seed"] = seed;
-	j["generateSun"] = generateSun;
-	j["sunScale"] = sunScale;
-
-	json sObjs = json::array();
-	for (const auto& name : spawnedObjects) {
-		sObjs.push_back(name);
-	}
-	j["spawnedObjects"] = sObjs;
-
-	return j;
-}
-
-void SolarSystemNode::Deserialize(const json& j)
-{
-	GraphNode::Deserialize(j);
-	planetCount = j.value("planetCount", 5);
-	minRadius = j.value("minRadius", 150.0f);
-	maxRadius = j.value("maxRadius", 1500.0f);
-	minScale = j.value("minScale", 5.0f);
-	maxScale = j.value("maxScale", 30.0f);
-	seed = j.value("seed", 12345);
-	generateSun = j.value("generateSun", true);
-	sunScale = j.value("sunScale", 100.0f);
-
-	spawnedObjects.clear();
-	if (j.contains("spawnedObjects")) {
-		for (const auto& name : j["spawnedObjects"]) {
-			spawnedObjects.insert(name.get<std::string>());
-		}
-	}
-}

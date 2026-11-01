@@ -2,56 +2,43 @@
 
 #include "Nodes/NodeGraph.h"
 
-// Merges two meshes into one.
+// Joins any number of meshes into one (link as many as needed into Meshes)
 class MergeMeshNode : public GraphNode
 {
 public:
-	MergeMeshNode(NodeGraph& graph)
+	explicit MergeMeshNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Merge Mesh";
-
-		// Inputs
-		Pin a(graph.NextPinId(), PinDataType::Mesh, "Mesh A");
-		Pin b(graph.NextPinId(), PinDataType::Mesh, "Mesh B");
-		inputs.push_back(a);
-		inputs.push_back(b);
-
-		// Outputs
-		Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Merged");
-		outputs.push_back(meshOut);
+		AddInput(PinType::Mesh, "Meshes", "meshes", true);
+		AddOutput(PinType::Mesh, "Merged", "mesh");
 	}
 
-	json Serialize() const override { return GraphNode::Serialize(); }
-	void Deserialize(const json& j) override { GraphNode::Deserialize(j); }
+	std::vector<std::string> LegacyInputKeys() const override { return { "meshes", "meshes" }; }
 
-	void RenderContent(SceneManager* scene) override
+	void Execute(NodeContext&) override
 	{
-		ImGui::Text("Combines two mesh inputs.");
-	}
+		const auto& sources = inputs[0].sources;
+		if (sources.empty()) return;
+		if (sources.size() == 1) { Out(0, sources[0]); return; }
 
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Mesh;
-
-		MeshData& meshA = inputs[0].data.meshData;
-		MeshData& meshB = inputs[1].data.meshData;
-
-		MeshData result = meshA;
-		result.Append(meshB);
-
-		outputs[0].data.meshData = result;
-
-		// Propagate source name: Prefer latest (B), fallback to first (A)
-		std::string target = inputs[1].data.sourceObjectName;
-		if (target == "(none)") target = inputs[0].data.sourceObjectName;
-		outputs[0].data.sourceObjectName = target;
-
-		PinData& prefSrc = (target == inputs[1].data.sourceObjectName) ? inputs[1].data : inputs[0].data;
-		outputs[0].data.sourceMaterial = prefSrc.sourceMaterial;
-		outputs[0].data.sourceTexture = prefSrc.sourceTexture;
-		outputs[0].data.sourceNormalMap = prefSrc.sourceNormalMap;
-		outputs[0].data.textureLayers = prefSrc.textureLayers;
+		// The first mesh's frame; the others are moved into it
+		MeshValue result = sources[0].mesh;
+		MeshData merged = sources[0].mesh.Data();
+		for (size_t i = 1; i < sources.size(); i++) {
+			const MeshValue& m = sources[i].mesh;
+			if (m.Empty()) continue;
+			glm::vec3 offset = m.origin - result.origin;
+			size_t start = merged.vertices.size();
+			merged.Append(m.Data());
+			if (offset != glm::vec3(0.0f))
+				for (size_t v = start; v < merged.vertices.size(); v += 14) {
+					merged.vertices[v] += offset.x;
+					merged.vertices[v + 1] += offset.y;
+					merged.vertices[v + 2] += offset.z;
+				}
+			// The latest mesh read from an object decides the look (as Merge always did)
+			if (!m.sourceObject.empty()) { result.sourceObject = m.sourceObject; result.look = m.look; }
+		}
+		result.Set(std::move(merged));
+		Out(0, NodeValue::FromMesh(std::move(result)));
 	}
 };

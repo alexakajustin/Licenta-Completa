@@ -6,86 +6,41 @@
 
 #define TAU 6.28318530717959f
 
-BeautifulErosionNode::BeautifulErosionNode(NodeGraph& graph)
+BeautifulErosionNode::BeautifulErosionNode(NodeGraph& graph) : GraphNode(graph)
 {
-	id = graph.NextNodeId();
-	title = "Beautiful Erosion";
-
-	Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	inputs.push_back(meshIn);
-
-	Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	outputs.push_back(meshOut);
+	AddInput(PinType::Mesh, "Mesh", "mesh");
+	AddOutput(PinType::Mesh, "Mesh", "mesh");
+	AddFloat("erosionScale", "Scale", &erosionScale, 0.01f, 0.01f, 1.0f);
+	AddFloat("erosionStrength", "Strength", &erosionStrength, 0.01f, 0.0f, 2.0f);
+	AddFloat("erosionGullyWeight", "Gully weight", &erosionGullyWeight, 0.01f, 0.0f, 1.0f);
+	AddFloat("erosionDetail", "Detail", &erosionDetail, 0.01f, 0.0f, 3.0f);
+	AddInt("smoothPasses", "Smooth passes", &smoothPasses, 0.1f, 0, 10);
+	AddFloat("ridgeRounding", "Ridge rounding", &erosionRounding.x, 0.01f, 0.0f, 1.0f).Section("Rounding");
+	AddFloat("creaseRounding", "Crease rounding", &erosionRounding.y, 0.01f, 0.0f, 1.0f);
+	AddFloat("baseRounding", "Base rounding", &erosionRounding.z, 0.01f, 0.0f, 2.0f);
+	AddFloat("octaveRounding", "Octave rounding", &erosionRounding.w, 0.01f, 1.0f, 4.0f);
+	AddInt("erosionOctaves", "Octaves", &erosionOctaves, 0.1f, 1, 10).Section("Noise");
+	AddFloat("erosionLacunarity", "Lacunarity", &erosionLacunarity, 0.05f, 1.0f, 5.0f);
+	AddFloat("erosionGain", "Gain", &erosionGain, 0.05f, 0.0f, 2.0f);
+	AddFloat("erosionCellScale", "Cell scale", &erosionCellScale, 0.05f, 0.1f, 2.0f);
+	AddFloat("erosionNormalization", "Normalization", &erosionNormalization, 0.05f, 0.0f, 1.0f);
 }
 
-void BeautifulErosionNode::RenderContent(SceneManager* scene)
+void BeautifulErosionNode::SaveState(json& j) const
 {
-	ImGui::PushItemWidth(ImGui::GetFontSize() * 6.7f); // Relative to the font: scales with the node editor's zoom
-	ImGui::Text("Erosion Parameters");
-	ImGui::DragFloat("Scale", &erosionScale, 0.01f, 0.01f, 1.0f);
-	ImGui::DragFloat("Strength", &erosionStrength, 0.01f, 0.0f, 2.0f);
-	ImGui::DragFloat("Gully Weight", &erosionGullyWeight, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Detail", &erosionDetail, 0.01f, 0.0f, 3.0f);
-	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 10);
-	
-	ImGui::Text("Advanced Rounding");
-	ImGui::SliderFloat("Ridge Rounding", &erosionRounding.x, 0.0f, 1.0f);
-	ImGui::SliderFloat("Crease Rounding", &erosionRounding.y, 0.0f, 1.0f);
-	ImGui::SliderFloat("Base Rounding", &erosionRounding.z, 0.0f, 2.0f);
-	ImGui::SliderFloat("Octave Rounding", &erosionRounding.w, 1.0f, 4.0f);
-
-	ImGui::Separator();
-	ImGui::Text("Noise Properties");
-	ImGui::DragInt("Octaves", &erosionOctaves, 1, 1, 10);
-	ImGui::DragFloat("Lacunarity", &erosionLacunarity, 0.05f, 1.0f, 5.0f);
-	ImGui::DragFloat("Gain", &erosionGain, 0.05f, 0.0f, 2.0f);
-	ImGui::DragFloat("Cell Scale", &erosionCellScale, 0.05f, 0.1f, 2.0f);
-	ImGui::DragFloat("Normalization", &erosionNormalization, 0.05f, 0.0f, 1.0f);
-	
-	ImGui::PopItemWidth();
-}
-
-json BeautifulErosionNode::Serialize() const
-{
-	json j = GraphNode::Serialize();
-	j["erosionScale"] = erosionScale;
-	j["erosionStrength"] = erosionStrength;
-	j["erosionGullyWeight"] = erosionGullyWeight;
-	j["erosionDetail"] = erosionDetail;
-	j["erosionOctaves"] = erosionOctaves;
-	j["erosionLacunarity"] = erosionLacunarity;
-	j["erosionGain"] = erosionGain;
-	j["erosionCellScale"] = erosionCellScale;
-	j["erosionNormalization"] = erosionNormalization;
-	j["smoothPasses"] = smoothPasses;
-	j["erosionRounding"] = { erosionRounding.x, erosionRounding.y, erosionRounding.z, erosionRounding.w };
 	j["erosionOnset"] = { erosionOnset.x, erosionOnset.y, erosionOnset.z, erosionOnset.w };
-	return j;
 }
 
-void BeautifulErosionNode::Deserialize(const json& j)
+void BeautifulErosionNode::LoadState(const json& j)
 {
-	GraphNode::Deserialize(j);
-	erosionScale = j.value("erosionScale", 0.15f);
-	erosionStrength = j.value("erosionStrength", 0.22f);
-	erosionGullyWeight = j.value("erosionGullyWeight", 0.5f);
-	erosionDetail = j.value("erosionDetail", 1.5f);
-	erosionOctaves = j.value("erosionOctaves", 5);
-	erosionLacunarity = j.value("erosionLacunarity", 2.0f);
-	erosionGain = j.value("erosionGain", 0.5f);
-	erosionCellScale = j.value("erosionCellScale", 0.7f);
-	erosionNormalization = j.value("erosionNormalization", 0.5f);
-	smoothPasses = j.value("smoothPasses", 1);
-	
-	if (j.contains("erosionRounding")) {
-		auto r = j["erosionRounding"];
-		erosionRounding = glm::vec4(r[0], r[1], r[2], r[3]);
-	} else {
-		erosionRounding = glm::vec4(0.3f, 0.0f, 0.1f, 2.0f);
+	// Older saves: the rounding as one array
+	if (j.contains("erosionRounding") && j["erosionRounding"].size() >= 4) {
+		auto& r = j["erosionRounding"];
+		erosionRounding = glm::vec4(r[0].get<float>(), r[1].get<float>(), r[2].get<float>(), r[3].get<float>());
 	}
-	if (j.contains("erosionOnset")) {
-		auto o = j["erosionOnset"];
-		erosionOnset = glm::vec4(o[0], o[1], o[2], o[3]);
+	if (j.contains("erosionOnset") && j["erosionOnset"].size() >= 4) {
+		auto& o = j["erosionOnset"];
+		erosionOnset = glm::vec4(o[0].get<float>(), o[1].get<float>(), o[2].get<float>(), o[3].get<float>());
 	}
 }
 
@@ -216,25 +171,24 @@ BeautifulErosionNode::ErosionResult BeautifulErosionNode::ErosionFilter(glm::vec
 	return res;
 }
 
-void BeautifulErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+void BeautifulErosionNode::Execute(NodeContext& ctx)
 {
-	outputs[0].data.Clear();
-	PinData inputData = inputs[0].data;
-	if (inputData.type != PinDataType::Mesh) return;
-
-	MeshData data = inputData.meshData;
-	if (data.vertices.empty()) return;
+	const NodeValue& input = In("mesh");
+	if (input.mesh.Empty()) return;
+	MeshData data = input.mesh.Data();
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
 
 	int totalVerts = (int)data.vertices.size() / 14;
 	int gridRes = (int)std::sqrt(totalVerts);
 
 	if (gridRes * gridRes != totalVerts)
 	{
-		outputs[0].data = inputData;
+		ctx.Warn("Needs a square grid mesh (a subdivided plane): passed through unchanged");
+		Out(0, input);
 		return;
 	}
 
-	if (progress) progress(10.0f, "Preparing Beautiful Erosion...");
+	progress(10.0f, "Preparing Beautiful Erosion...");
 
 	std::vector<float> originalHeights(gridRes * gridRes);
 	float minH = 1e10f, maxH = -1e10f;
@@ -308,7 +262,7 @@ void BeautifulErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 
 	if (smoothPasses > 0)
 	{
-		if (progress) progress(85.0f, "Smoothing Terrain...");
+		progress(85.0f, "Smoothing Terrain...");
 		std::vector<float> heightBuffer(gridRes * gridRes);
 		for (int pass = 0; pass < smoothPasses; pass++)
 		{
@@ -327,7 +281,7 @@ void BeautifulErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 		}
 	}
 
-	if (progress) progress(90.0f, "Recomputing Normals...");
+	progress(90.0f, "Recomputing Normals...");
 	RecomputeNormals(data, gridRes - 1, gridRes - 1);
 
 	// Encode RidgeMap into Tangent Length for optional shader usage (rivers)
@@ -340,9 +294,10 @@ void BeautifulErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 		data.vertices[base + 10] *= scale;
 	}
 
-	if (progress) progress(100.0f, "Done!");
-	outputs[0].data = inputData;
-	outputs[0].data.meshData = data;
+	progress(100.0f, "Done!");
+	MeshValue out = input.mesh;
+	out.Set(std::move(data));
+	Out(0, NodeValue::FromMesh(std::move(out)));
 }
 
 void BeautifulErosionNode::RecomputeNormals(MeshData& data, int resX, int resZ)

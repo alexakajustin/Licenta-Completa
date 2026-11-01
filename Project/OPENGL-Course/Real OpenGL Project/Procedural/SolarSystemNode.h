@@ -11,43 +11,11 @@
 class SolarSystemNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor setup of center inputs and planetary transform outputs.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	SolarSystemNode(NodeGraph& graph)
-	{
-		id = graph.NextNodeId();
-		title = "Solar System";
-		
-		// Input 0: Optional surface/center point
-		inputs.push_back(Pin(graph.NextPinId(), PinDataType::Mesh, "Center"));
-		
-		// Output 0: Sun pass-through
-		outputs.push_back(Pin(graph.NextPinId(), PinDataType::Mesh, "Sun Output"));
-		// Output 1: Planet Transforms
-		outputs.push_back(Pin(graph.NextPinId(), PinDataType::TransformList, "Planet Transforms"));
-	}
-
-	virtual ~SolarSystemNode() = default;
-
-	/**
-	 * @brief Computes orbits and spawns sun and planet GameObjects in the scene.
-	 */
-	void Execute(class SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	/**
-	 * @brief Renders the editor UI panel for configuring orbit boundaries, count of planets, and scaling factors.
-	 */
-	void RenderContent(class SceneManager* scene = nullptr) override;
-
-	/**
-	 * @brief Cleans up spawned system bodies upon node removal.
-	 */
-	void OnRemove(class SceneManager& scene) override;
-
-	json Serialize() const override;
-	void Deserialize(const json& j) override;
+	explicit SolarSystemNode(NodeGraph& graph);
+	// A sun and planets as Planet objects (their materials and turned rotations survive a re-run)
+	void Execute(NodeContext& ctx) override;
+	void SaveState(json& j) const override;
+	void LoadState(const json& j) override;
 
 	void AddSpawnedObjectName(const std::string& name) { spawnedObjects.insert(name); }
 

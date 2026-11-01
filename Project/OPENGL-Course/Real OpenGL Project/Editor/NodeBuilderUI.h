@@ -62,7 +62,7 @@ private:
 	static std::vector<CustomNodeDef> savedDefinitions;
 
 	// Helper: render pin type as a readable string
-	static const char* PinTypeLabel(PinDataType type);
+	static const char* PinTypeLabel(PinType type);
 
 	// Helper: render the pin type dropdown
 	static int PinTypeDropdown(const char* label, int currentType);

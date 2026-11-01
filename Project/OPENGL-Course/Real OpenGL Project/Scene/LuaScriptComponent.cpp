@@ -117,6 +117,14 @@ void LuaScriptComponent::DrawInspector()
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
         ImGui::Button(scriptName.c_str(), ImVec2(scriptButtonWidth, 0));
         ImGui::PopStyleColor();
+
+        // A .lua file dragged from the Project window
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_PATH"))
+                filepath = (const char*)payload->Data; // Not reloaded in edit mode (top-level code would run)
+            ImGui::EndDragDropTarget();
+        }
         
         if (ImGui::IsItemHovered())
         {

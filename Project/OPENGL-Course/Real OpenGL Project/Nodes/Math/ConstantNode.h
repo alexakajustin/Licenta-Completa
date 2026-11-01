@@ -1,181 +1,134 @@
 #pragma once
 
 #include "Nodes/NodeGraph.h"
+#include "Nodes/NodeRandom.h"
 #include "imgui.h"
+#include <cmath>
 
 // =====================================================================
-//  FloatConstantNode — Outputs a user-editable float value
+// Values: constants, seeds and random numbers to drive other nodes' parameters
 // =====================================================================
+
 class FloatConstantNode : public GraphNode
 {
 public:
-	FloatConstantNode(NodeGraph& graph)
+	explicit FloatConstantNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Float";
-
-		Pin out(graph.NextPinId(), PinDataType::Float, "Value");
-		outputs.push_back(out);
+		paramPins = false;
+		AddOutput(PinType::Float, "Value", "value");
+		AddFloat("value", "Value", &value, 0.1f);
 	}
-
-	json Serialize() const override
-	{
-		json j = GraphNode::Serialize();
-		j["value"] = value;
-		return j;
-	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		value = j.value("value", 0.0f);
-	}
-
-	void RenderContent(SceneManager* scene) override
-	{
-		ImGui::DragFloat("##val", &value, 0.1f);
-	}
-
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Float;
-		outputs[0].data.floatValue = value;
-	}
+	void Execute(NodeContext&) override { Out(0, NodeValue::Float(value)); }
 
 private:
 	float value = 0.0f;
 };
 
-// =====================================================================
-//  IntConstantNode — Outputs a user-editable integer value
-// =====================================================================
 class IntConstantNode : public GraphNode
 {
 public:
-	IntConstantNode(NodeGraph& graph)
+	explicit IntConstantNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Int";
-
-		Pin out(graph.NextPinId(), PinDataType::Int, "Value");
-		outputs.push_back(out);
+		paramPins = false;
+		AddOutput(PinType::Int, "Value", "value");
+		AddInt("value", "Value", &value, 1.0f);
 	}
-
-	json Serialize() const override
-	{
-		json j = GraphNode::Serialize();
-		j["value"] = value;
-		return j;
-	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		value = j.value("value", 0);
-	}
-
-	void RenderContent(SceneManager* scene) override
-	{
-		ImGui::DragInt("##val", &value, 1);
-	}
-
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Int;
-		outputs[0].data.intValue = value;
-	}
+	void Execute(NodeContext&) override { Out(0, NodeValue::Int(value)); }
 
 private:
 	int value = 0;
 };
 
-// =====================================================================
-//  Vec3ConstantNode — Outputs a user-editable vec3 value
-// =====================================================================
+class BoolConstantNode : public GraphNode
+{
+public:
+	explicit BoolConstantNode(NodeGraph& graph) : GraphNode(graph)
+	{
+		paramPins = false;
+		AddOutput(PinType::Bool, "Value", "value");
+		AddBool("value", "Value", &value);
+	}
+	void Execute(NodeContext&) override { Out(0, NodeValue::Bool(value)); }
+
+private:
+	bool value = false;
+};
+
 class Vec3ConstantNode : public GraphNode
 {
 public:
-	Vec3ConstantNode(NodeGraph& graph)
+	explicit Vec3ConstantNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Vec3";
-
-		Pin out(graph.NextPinId(), PinDataType::Vec3, "Value");
-		outputs.push_back(out);
+		paramPins = false;
+		AddOutput(PinType::Vec3, "Value", "value");
+		AddVec3("value", "Value", &value, 0.1f);
 	}
-
-	json Serialize() const override
-	{
-		json j = GraphNode::Serialize();
-		j["value"] = { value.x, value.y, value.z };
-		return j;
-	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		if (j.contains("value") && j["value"].size() >= 3)
-			value = glm::vec3(j["value"][0], j["value"][1], j["value"][2]);
-	}
-
-	void RenderContent(SceneManager* scene) override
-	{
-		ImGui::DragFloat3("##val", &value.x, 0.1f);
-	}
-
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Vec3;
-		outputs[0].data.vec3Value = value;
-	}
+	void Execute(NodeContext&) override { Out(0, NodeValue::Vec3(value)); }
 
 private:
 	glm::vec3 value = glm::vec3(0.0f);
 };
 
-// =====================================================================
-//  BoolConstantNode — Outputs a user-editable boolean value
-// =====================================================================
-class BoolConstantNode : public GraphNode
+// A seed for other nodes: fixed (reproducible), or a new truly random one every run. One Seed
+// node linked to many nodes re-rolls all of them at once (each still gets its own variation).
+class SeedNode : public GraphNode
 {
 public:
-	BoolConstantNode(NodeGraph& graph)
+	explicit SeedNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Bool";
-
-		Pin out(graph.NextPinId(), PinDataType::Bool, "Value");
-		outputs.push_back(out);
+		paramPins = false;
+		AddOutput(PinType::Int, "Seed", "seed");
+		AddEnum("mode", "Mode", &mode, { "Fixed", "New every run" })
+			.Tip("Fixed: the same seed every run (reproducible).\nNew every run: a fresh random seed each time the graph runs.");
+		AddSeed("seed", "Seed", &seed).Tip("The seed passed on. In 'New every run' mode: the last one rolled\n(switch back to Fixed to keep it).");
 	}
 
-	json Serialize() const override
+	void Execute(NodeContext& ctx) override
 	{
-		json j = GraphNode::Serialize();
-		j["value"] = value;
-		return j;
-	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		value = j.value("value", false);
-	}
-
-	void RenderContent(SceneManager* scene) override
-	{
-		ImGui::Checkbox("##val", &value);
-	}
-
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Bool;
-		outputs[0].data.boolValue = value;
+		if (mode == 1) seed = NodeRandom::TrueRandomSeed();
+		Out(0, NodeValue::Int(seed));
+		ctx.Info("seed " + std::to_string(seed));
 	}
 
 private:
-	bool value = false;
+	int mode = 0;
+	int seed = NodeRandom::TrueRandomSeed();
+};
+
+// A random number between Min and Max, for any parameter (a count, a height, an angle...)
+class RandomValueNode : public GraphNode
+{
+public:
+	explicit RandomValueNode(NodeGraph& graph) : GraphNode(graph)
+	{
+		AddOutput(PinType::Float, "Value", "value");
+		AddOutput(PinType::Int, "Integer", "integer");
+		AddFloat("min", "Min", &minValue, 0.1f);
+		AddFloat("max", "Max", &maxValue, 0.1f);
+		AddSeed("seed", "Seed", &seed);
+		paramPins = false;
+		AddEnum("mode", "Mode", &mode, { "From seed", "New every run" })
+			.Tip("From seed: the same value for the same seed.\nNew every run: a different value each time the graph runs.");
+	}
+
+	void Execute(NodeContext& ctx) override
+	{
+		if (mode == 1) seed = NodeRandom::TrueRandomSeed();
+		float u = NodeRandom::Float01((uint32_t)seed, 0, 0x52414E44u);
+		float lo = std::min(minValue, maxValue), hi = std::max(minValue, maxValue);
+		float value = lo + (hi - lo) * u;
+		int ilo = (int)std::ceil(lo), ihi = (int)std::floor(hi);
+		int integer = ihi < ilo ? (int)std::lround(value) : ilo + std::min((int)(u * (float)(ihi - ilo + 1)), ihi - ilo);
+		Out(0, NodeValue::Float(value));
+		Out(1, NodeValue::Int(integer));
+		char buf[64];
+		snprintf(buf, sizeof(buf), "%.3g  (int %d)", value, integer);
+		ctx.Info(buf);
+	}
+
+private:
+	float minValue = 0.0f;
+	float maxValue = 1.0f;
+	int seed = NodeRandom::TrueRandomSeed();
+	int mode = 0;
 };

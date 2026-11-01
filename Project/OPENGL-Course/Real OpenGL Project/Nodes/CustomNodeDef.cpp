@@ -5,31 +5,14 @@
 //  Type string conversions
 // =====================================================================
 
-std::string CustomNodeDef::PinTypeToString(PinDataType type)
+std::string CustomNodeDef::PinTypeToString(PinType type)
 {
-	switch (type)
-	{
-	case PinDataType::Mesh:          return "Mesh";
-	case PinDataType::TransformList: return "TransformList";
-	case PinDataType::Float:         return "Float";
-	case PinDataType::Int:           return "Int";
-	case PinDataType::Vec3:          return "Vec3";
-	case PinDataType::Vec2:          return "Vec2";
-	case PinDataType::Bool:          return "Bool";
-	default:                         return "None";
-	}
+	return PinTypeName(type);
 }
 
-PinDataType CustomNodeDef::StringToPinType(const std::string& str)
+PinType CustomNodeDef::StringToPinType(const std::string& str)
 {
-	if (str == "Mesh")          return PinDataType::Mesh;
-	if (str == "TransformList") return PinDataType::TransformList;
-	if (str == "Float")         return PinDataType::Float;
-	if (str == "Int")           return PinDataType::Int;
-	if (str == "Vec3")          return PinDataType::Vec3;
-	if (str == "Vec2")          return PinDataType::Vec2;
-	if (str == "Bool")          return PinDataType::Bool;
-	return PinDataType::None;
+	return PinTypeFromName(str); // Also the older "TransformList"
 }
 
 std::string CustomNodeDef::ParamTypeToString(ParamType type)

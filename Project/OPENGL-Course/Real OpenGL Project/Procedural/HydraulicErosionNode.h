@@ -3,45 +3,14 @@
 #include "Nodes/NodeGraph.h"
 #include <string>
 
-// Simulates fluid dynamics (hydraulic erosion) over the Y channels of the incoming MeshData stream.
-/**
- * @class HydraulicErosionNode
- * @brief Droplet-based hydraulic erosion (Beyer 2015, see Procedural/DropletErosion.h) over the
- *        height coordinates of an incoming MeshData grid.
- */
+// Droplet-based hydraulic erosion (Beyer 2015, see Procedural/DropletErosion.h) with thermal
+// erosion settling the slopes, over the heights of an incoming grid mesh
 class HydraulicErosionNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	HydraulicErosionNode(NodeGraph& graph);
-
-	/**
-	 * @brief Renders the editor UI panel for configuring simulation parameters.
-	 * @param scene Pointer to active scene manager.
-	 */
-	void RenderContent(SceneManager* scene) override;
-
-	/**
-	 * @brief Executes the hydraulic erosion simulation in-place on the connected mesh data.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	/**
-	 * @brief Serializes node properties to JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
+	explicit HydraulicErosionNode(NodeGraph& graph);
+	void Execute(NodeContext& ctx) override;
+	void LoadState(const json& j) override;
 
 	void SetDropletsPerCell(float d) { dropletsPerCell = d; }
 	void SetErodeSpeed(float e) { erodeSpeed = e; }
@@ -67,6 +36,7 @@ private:
 	float talusAngle = 35.0f;      ///< Thermal erosion: steepest stable slope (deg); steeper material slides down.
 	int thermalIterations = 20;    ///< Thermal relaxation per erosion round (x3 before, x1 after). 0 = off.
 	float edgeFadeCells = 40.0f;   ///< Erosion fades out over this many cells at the map border.
+	int seed;                      ///< Where the droplets fall (saves from before it existed: 42).
 
 	/**
 	 * @brief Helper to rebuild normal vectors across the processed grid resolution.

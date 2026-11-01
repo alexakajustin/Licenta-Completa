@@ -43,6 +43,15 @@ public:
 
 	NodeEditorAction Render(SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState);
 
+	// Where a pin was drawn last frame (tools and tests)
+	bool GetPinScreenPos(int pinId, ImVec2& pos) const
+	{
+		auto it = pins.find(pinId);
+		if (it == pins.end()) return false;
+		pos = it->second.pos;
+		return true;
+	}
+
 private:
 	// Measured layout of a node (grid units, relative to its position)
 	struct NodeLayout {
@@ -67,7 +76,7 @@ private:
 		ImVec2 pos;           // Screen centre of the pin
 		ImVec2 hitMin, hitMax; // Pin + label: where a drag can start
 		int nodeId;
-		int type;             // PinDataType
+		int type;             // PinType
 		bool output;
 	};
 
@@ -121,7 +130,7 @@ private:
 	int HitTestPin(const ImVec2& mouse, int hoveredNode) const;
 	int HitTestLink(NodeGraph& graph, const GraphView& view, const ImVec2& mouse) const;
 	bool TryLink(NodeGraph& graph, int pinA, int pinB);
-	void DeleteSelection(NodeGraph& graph, GraphView& view);
+	void DeleteSelection(NodeGraph& graph, SceneManager& scene, GraphView& view);
 	void FrameNodes(NodeGraph& graph, GraphView& view, bool selectedOnly);
 	void ArrangeNodes(NodeGraph& graph, GraphView& view);
 	bool NodesOverlap(NodeGraph& graph, GraphView& view) const;

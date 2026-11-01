@@ -884,6 +884,12 @@ void Application::Run()
 		// Reset forceLayout after ALL ImGui panels have rendered for this frame
 		editorUI.GetWindowState().forceLayout = false;
 
+		// A scene opened from the Project window
+		{
+			std::string sceneToOpen = assetBrowser.TakeSceneOpenRequest();
+			if (!sceneToOpen.empty()) editorUI.RequestSceneLoad(sceneToOpen);
+		}
+
 		// Handle pending scene file actions
 		auto sceneAction = editorUI.GetPendingSceneAction();
 		if (sceneAction != EditorUI::SceneAction::None)

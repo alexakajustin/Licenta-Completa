@@ -8,26 +8,12 @@
 // =====================================================================
 
 CustomNode::CustomNode(NodeGraph& graph, const CustomNodeDef& def)
-	: definition(def)
+	: GraphNode(graph), definition(def)
 {
-	id = graph.NextNodeId();
+	type = "custom:" + def.name;
 	title = def.name;
-
-	// Create input pins from definition
-	for (const auto& pinDef : def.inputDefs)
-	{
-		Pin pin(graph.NextPinId(), pinDef.type, pinDef.name);
-		inputs.push_back(pin);
-	}
-
-	// Create output pins from definition
-	for (const auto& pinDef : def.outputDefs)
-	{
-		Pin pin(graph.NextPinId(), pinDef.type, pinDef.name);
-		outputs.push_back(pin);
-	}
-
-	// Instantiate operations
+	for (const auto& pinDef : def.inputDefs) AddInput(pinDef.type, pinDef.name, pinDef.name);
+	for (const auto& pinDef : def.outputDefs) AddOutput(pinDef.type, pinDef.name, pinDef.name);
 	RebuildOperations();
 }
 
@@ -73,43 +59,23 @@ void CustomNode::RebuildOperations()
 		definition.name.c_str(), (int)operationInstances.size());
 }
 
-json CustomNode::Serialize() const
+void CustomNode::SaveState(json& j) const
 {
-	json j = GraphNode::Serialize();
 	j["definitionName"] = definition.name;
-	
 	json ops = json::array();
 	for (auto* op : operationInstances)
-	{
-		json oj;
-		oj["name"] = op->GetName();
-		oj["params"] = op->GetParams(); // Uses the to_json we just added to ParamValue
-		ops.push_back(oj);
-	}
+		ops.push_back({ { "name", op->GetName() }, { "params", op->GetParams() } });
 	j["operations"] = ops;
-	return j;
 }
 
-void CustomNode::Deserialize(const json& j)
+void CustomNode::LoadState(const json& j)
 {
-	GraphNode::Deserialize(j);
-	// Note: definition is usually set by factory during NodeGraph::Deserialize
-	
-	if (j.contains("operations"))
-	{
-		const auto& ops = j["operations"];
-		for (size_t i = 0; i < ops.size() && i < operationInstances.size(); i++)
-		{
-			Operation* op = operationInstances[i];
-			if (ops[i].contains("params"))
-			{
-				auto params = ops[i]["params"].get<std::map<std::string, ParamValue>>();
-				for (const auto& p : params)
-				{
-					op->GetParams()[p.first] = p.second;
-				}
-			}
-		}
+	if (!j.contains("operations")) return;
+	const auto& ops = j["operations"];
+	for (size_t i = 0; i < ops.size() && i < operationInstances.size(); i++) {
+		if (!ops[i].contains("params")) continue;
+		auto params = ops[i]["params"].get<std::map<std::string, ParamValue>>();
+		for (const auto& p : params) operationInstances[i]->GetParams()[p.first] = p.second;
 	}
 }
 
@@ -153,167 +119,71 @@ void CustomNode::RenderContent(SceneManager* scene)
 }
 
 // =====================================================================
-//  MapInputsToContext — copy input pin data into the workspace
+//  Execute — inputs into the workspace, the operations in order, the workspace into the outputs
 // =====================================================================
 
-void CustomNode::MapInputsToContext(OperationContext& ctx)
-{
-	ctx.Clear();
-
-	for (int i = 0; i < (int)inputs.size(); i++)
-	{
-		const Pin& pin = inputs[i];
-		const PinData& data = pin.data;
-		const std::string& pinName = pin.name;
-
-		switch (pin.dataType)
-		{
-		case PinDataType::Mesh:
-			// First mesh input becomes the primary mesh
-			if (ctx.mesh.vertices.empty())
-			{
-				ctx.mesh = data.meshData;
-				ctx.transforms = data.transforms;
-				ctx.sourceObjectName = data.sourceObjectName;
-				ctx.sourceMaterial = data.sourceMaterial;
-				ctx.sourceTexture = data.sourceTexture;
-				ctx.sourceNormalMap = data.sourceNormalMap;
-				ctx.textureLayers = data.textureLayers;
-			}
-			else
-			{
-				// Subsequent mesh inputs go to the secondary mesh
-				ctx.secondaryMesh = data.meshData;
-			}
-			break;
-
-		case PinDataType::Float:
-			ctx.floatVars[pinName] = data.floatValue;
-			break;
-
-		case PinDataType::Int:
-			ctx.intVars[pinName] = data.intValue;
-			break;
-
-		case PinDataType::Vec3:
-			ctx.vec3Vars[pinName] = data.vec3Value;
-			break;
-
-		case PinDataType::Vec2:
-			ctx.vec2Vars[pinName] = data.vec2Value;
-			break;
-
-		case PinDataType::Bool:
-			ctx.boolVars[pinName] = data.boolValue;
-			break;
-
-		case PinDataType::TransformList:
-			ctx.transforms = data.transforms;
-			break;
-
-		default:
-			break;
-		}
-	}
-}
-
-// =====================================================================
-//  MapContextToOutputs — copy workspace results to output pins
-// =====================================================================
-
-void CustomNode::MapContextToOutputs(OperationContext& ctx)
-{
-	for (int i = 0; i < (int)outputs.size(); i++)
-	{
-		Pin& pin = outputs[i];
-		PinData& data = pin.data;
-		data.Clear();
-		data.type = pin.dataType;
-
-		switch (pin.dataType)
-		{
-		case PinDataType::Mesh:
-			data.meshData = ctx.mesh;
-			data.transforms = ctx.transforms;
-			data.sourceObjectName = ctx.sourceObjectName;
-			data.sourceMaterial = ctx.sourceMaterial;
-			data.sourceTexture = ctx.sourceTexture;
-			data.sourceNormalMap = ctx.sourceNormalMap;
-			data.textureLayers = ctx.textureLayers;
-			break;
-
-		case PinDataType::Float:
-		{
-			// Try to find a float variable with the output pin's name
-			auto it = ctx.floatVars.find(pin.name);
-			if (it != ctx.floatVars.end())
-				data.floatValue = it->second;
-			break;
-		}
-
-		case PinDataType::Int:
-		{
-			auto it = ctx.intVars.find(pin.name);
-			if (it != ctx.intVars.end())
-				data.intValue = it->second;
-			break;
-		}
-
-		case PinDataType::Vec3:
-		{
-			auto it = ctx.vec3Vars.find(pin.name);
-			if (it != ctx.vec3Vars.end())
-				data.vec3Value = it->second;
-			break;
-		}
-
-		case PinDataType::Vec2:
-		{
-			auto it = ctx.vec2Vars.find(pin.name);
-			if (it != ctx.vec2Vars.end())
-				data.vec2Value = it->second;
-			break;
-		}
-
-		case PinDataType::Bool:
-		{
-			auto it = ctx.boolVars.find(pin.name);
-			if (it != ctx.boolVars.end())
-				data.boolValue = it->second;
-			break;
-		}
-
-		case PinDataType::TransformList:
-			data.transforms = ctx.transforms;
-			break;
-
-		default:
-			break;
-		}
-	}
-}
-
-// =====================================================================
-//  Execute — the interpreter loop
-// =====================================================================
-
-void CustomNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+void CustomNode::Execute(NodeContext& ctx)
 {
 	if (operationInstances.empty()) return;
 
-	// 1. Map input pin data → workspace
-	OperationContext ctx;
-	MapInputsToContext(ctx);
-
-	// 2. Execute each operation in sequence
-	for (int i = 0; i < (int)operationInstances.size(); i++)
-	{
-		Operation* op = operationInstances[i];
-		if (!op) continue;
-
-		op->Execute(ctx);
+	OperationContext work;
+	work.Clear();
+	MeshValue meshFrame; // The first mesh's frame, origin and look: the output mesh keeps them
+	bool haveMesh = false;
+	for (const Pin& pin : inputs) {
+		const NodeValue& v = pin.value;
+		if (!v.Valid()) continue;
+		switch (pin.type) {
+		case PinType::Mesh:
+			if (!haveMesh) {
+				haveMesh = true;
+				meshFrame = v.mesh;
+				work.mesh = v.mesh.Data();
+				work.sourceObjectName = v.mesh.sourceObject.empty() ? std::string("(none)") : v.mesh.sourceObject;
+				work.sourceMaterial = v.mesh.look.material;
+				work.sourceTexture = v.mesh.look.texture;
+				work.sourceNormalMap = v.mesh.look.normalMap;
+				work.textureLayers = v.mesh.look.layers;
+			} else {
+				work.secondaryMesh = v.mesh.Data();
+			}
+			break;
+		case PinType::Points: work.transforms = v.Points(); break;
+		case PinType::Float:  work.floatVars[pin.name] = v.AsFloat(); break;
+		case PinType::Int:    work.intVars[pin.name] = v.AsInt(); break;
+		case PinType::Bool:   work.boolVars[pin.name] = v.AsBool(); break;
+		case PinType::Vec2:   work.vec2Vars[pin.name] = v.AsVec2(); break;
+		case PinType::Vec3:   work.vec3Vars[pin.name] = v.AsVec3(); break;
+		default: break;
+		}
 	}
 
-	// 3. Map workspace → output pins
-	MapContextToOutputs(ctx);
+	for (size_t i = 0; i < operationInstances.size(); i++) {
+		if (operationInstances[i]) operationInstances[i]->Execute(work);
+		ctx.Progress(100.0f * (i + 1) / operationInstances.size(), operationInstances[i] ? operationInstances[i]->GetName() : "");
+	}
+
+	for (size_t i = 0; i < outputs.size(); i++) {
+		const Pin& pin = outputs[i];
+		switch (pin.type) {
+		case PinType::Mesh: {
+			MeshValue out = meshFrame;
+			out.Set(std::move(work.mesh));
+			out.look.material = work.sourceMaterial;
+			out.look.texture = work.sourceTexture;
+			out.look.normalMap = work.sourceNormalMap;
+			out.look.layers = work.textureLayers;
+			Out(i, NodeValue::FromMesh(std::move(out)));
+			work.mesh = MeshData();
+			break;
+		}
+		case PinType::Points: Out(i, NodeValue::FromPoints(TransformList(work.transforms))); break;
+		case PinType::Float: { auto it = work.floatVars.find(pin.name); Out(i, NodeValue::Float(it != work.floatVars.end() ? it->second : 0.0f)); break; }
+		case PinType::Int:   { auto it = work.intVars.find(pin.name);   Out(i, NodeValue::Int(it != work.intVars.end() ? it->second : 0)); break; }
+		case PinType::Bool:  { auto it = work.boolVars.find(pin.name);  Out(i, NodeValue::Bool(it != work.boolVars.end() && it->second)); break; }
+		case PinType::Vec2:  { auto it = work.vec2Vars.find(pin.name);  Out(i, NodeValue::Vec2(it != work.vec2Vars.end() ? it->second : glm::vec2(0.0f))); break; }
+		case PinType::Vec3:  { auto it = work.vec3Vars.find(pin.name);  Out(i, NodeValue::Vec3(it != work.vec3Vars.end() ? it->second : glm::vec3(0.0f))); break; }
+		default: break;
+		}
+	}
 }

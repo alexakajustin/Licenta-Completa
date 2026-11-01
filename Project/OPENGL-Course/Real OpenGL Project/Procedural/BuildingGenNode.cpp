@@ -1,4 +1,6 @@
 #include "Procedural/BuildingGenNode.h"
+#include "Nodes/NodeAssets.h"
+#include "Nodes/NodeRandom.h"
 #include "Scene/GameObject.h"
 #include "imgui.h"
 #include <string>
@@ -63,63 +65,18 @@ static const char* FLAT_ROOF_TEXTURE = "Assets/Textures/buildings/concrete.jpg";
 // Construction
 // =====================================================================
 
-BuildingGenNode::BuildingGenNode(NodeGraph& graph)
+BuildingGenNode::BuildingGenNode(NodeGraph& graph) : GraphNode(graph)
 {
-	id = graph.NextNodeId();
-	title = "Building Gen";
-
-	Pin plotsIn(graph.NextPinId(), PinDataType::TransformList, "Plots");
-	inputs.push_back(plotsIn);
-}
-
-// =====================================================================
-// UI
-// =====================================================================
-
-void BuildingGenNode::RenderContent(SceneManager* scene)
-{
-	ImGui::Text("Building Generation");
-	ImGui::Separator();
-
-	ImGui::DragFloat("Min Height", &minHeight, 0.5f, 1.0f, 50.0f, "%.1f");
-	ImGui::DragFloat("Max Height", &maxHeight, 0.5f, 5.0f, 200.0f, "%.1f");
-	ImGui::DragFloat("Floor Height", &floorHeight, 0.1f, 1.0f, 10.0f, "%.1f");
-	ImGui::DragFloat("Wall Inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
-	ImGui::DragFloat("Roof Overhang", &roofOverhang, 0.05f, 0.0f, 2.0f, "%.2f");
-	ImGui::DragFloat("Upper Section %", &upperSectionProb, 0.01f, 0.0f, 1.0f, "%.2f");
-	ImGui::DragFloat("Upper Scale", &upperSectionScale, 0.01f, 0.3f, 0.95f, "%.2f");
-	ImGui::DragInt("Seed", &seed, 1, 0, 9999);
-}
-
-// =====================================================================
-// Serialization
-// =====================================================================
-
-json BuildingGenNode::Serialize() const
-{
-	json j = GraphNode::Serialize();
-	j["minHeight"] = minHeight;
-	j["maxHeight"] = maxHeight;
-	j["floorHeight"] = floorHeight;
-	j["wallInset"] = wallInset;
-	j["roofOverhang"] = roofOverhang;
-	j["upperSectionProb"] = upperSectionProb;
-	j["upperSectionScale"] = upperSectionScale;
-	j["seed"] = seed;
-	return j;
-}
-
-void BuildingGenNode::Deserialize(const json& j)
-{
-	GraphNode::Deserialize(j);
-	minHeight = j.value("minHeight", 5.0f);
-	maxHeight = j.value("maxHeight", 25.0f);
-	floorHeight = j.value("floorHeight", 3.0f);
-	wallInset = j.value("wallInset", 0.5f);
-	roofOverhang = j.value("roofOverhang", 0.3f);
-	upperSectionProb = j.value("upperSectionProb", 0.5f);
-	upperSectionScale = j.value("upperSectionScale", 0.65f);
-	seed = j.value("seed", 42);
+	seed = NodeRandom::TrueRandomSeed();
+	AddInput(PinType::Points, "Plots", "plots");
+	AddFloat("minHeight", "Min height", &minHeight, 0.5f, 1.0f, 50.0f, "%.1f");
+	AddFloat("maxHeight", "Max height", &maxHeight, 0.5f, 5.0f, 200.0f, "%.1f");
+	AddFloat("floorHeight", "Floor height", &floorHeight, 0.1f, 1.0f, 10.0f, "%.1f");
+	AddFloat("wallInset", "Wall inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
+	AddFloat("roofOverhang", "Roof overhang", &roofOverhang, 0.05f, 0.0f, 2.0f, "%.2f");
+	AddFloat("upperSectionProb", "Upper section", &upperSectionProb, 0.01f, 0.0f, 1.0f, "%.2f").Tip("Chance of a narrower upper section");
+	AddFloat("upperSectionScale", "Upper scale", &upperSectionScale, 0.01f, 0.3f, 0.95f, "%.2f");
+	AddSeed("seed", "Seed", &seed);
 }
 
 // =====================================================================
@@ -284,22 +241,17 @@ void BuildingGenNode::AddFlatRoof(MeshData& mesh, glm::vec3 base, float halfW, f
 // Execute — generate multi-part buildings and spawn as GameObjects
 // =====================================================================
 
-void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+void BuildingGenNode::Execute(NodeContext& ctx)
 {
-	if (progress) progress(0.0f, "Reading plot data...");
-
-	if (inputs[0].data.type != PinDataType::TransformList) {
-		printf("[BuildingGenNode] No plot data connected!\n");
-		return;
-	}
-
-	const TransformList& plots = inputs[0].data.transforms;
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
+	SceneManager& scene = ctx.scene;
+	const TransformList& plots = In("plots").Points();
 	if (plots.empty()) {
-		printf("[BuildingGenNode] No plots to build on!\n");
+		ctx.Info("no plots");
 		return;
 	}
 
-	if (progress) progress(10.0f, "Generating buildings...");
+	progress(10.0f, "Generating buildings...");
 
 	std::mt19937 rng(seed);
 	std::uniform_real_distribution<float> heightDist(minHeight, maxHeight);
@@ -307,23 +259,13 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	std::uniform_int_distribution<int> texDist(0, NUM_WALL_TEXTURES - 1);
 
 	std::string prefix = "Building_" + std::to_string(id) + "_";
-	std::map<int, Texture*> texCache;
-
-	Texture* roofTex = new Texture(ROOF_TEXTURE);
-	roofTex->LoadTexture();
-	Texture* flatRoofTex = new Texture(FLAT_ROOF_TEXTURE);
-	flatRoofTex->LoadTexture();
 
 	int builtCount = 0;
 
 	// Root node for all buildings
 	std::string rootName = "City_Buildings_" + std::to_string(id);
-	GameObject* cityRoot = scene.FindObject(rootName);
-	if (!cityRoot) {
-		cityRoot = new GameObject(rootName);
-		cityRoot->SetSaveInScene(false); // Do not save the generated city in JSON, the graph will recreate it
-		scene.AddObject(cityRoot);
-	}
+	GameObject* cityRoot = ctx.Object(rootName);
+	cityRoot->SetSaveInScene(false); // Not saved with the scene: the graph recreates it
 	cityRoot->GetTransform().SetPosition(glm::vec3(0.0f));
 	cityRoot->GetTransform().SetRotation(glm::vec3(0.0f));
 	cityRoot->GetTransform().SetScale(glm::vec3(1.0f));
@@ -491,7 +433,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		t.join();
 	}
 	
-	if (progress) progress(80.0f, "Merging batches...");
+	progress(80.0f, "Merging batches...");
 
 	// Phase 2: Merge all meshes by texture into batched mega-meshes
 	// This reduces ~1500 draw calls to ~9 (one per unique texture).
@@ -524,7 +466,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	results.clear();
 	results.shrink_to_fit();
 
-	if (progress) progress(90.0f, "Uploading to GPU...");
+	progress(90.0f, "Uploading to GPU...");
 
 	// Clean up old children from previous executions
 	{
@@ -577,11 +519,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		if (mergedMesh.GetVertexCount() == 0) continue;
 
 		std::string batchObjName = prefix + getBatchName(texKey);
-		GameObject* batchObj = scene.FindObject(batchObjName);
-		if (!batchObj) {
-			batchObj = new GameObject(batchObjName);
-			scene.AddObject(batchObj);
-		}
+		GameObject* batchObj = ctx.Object(batchObjName);
 
 		batchObj->GetTransform().SetPosition(glm::vec3(0.0f));
 		batchObj->GetTransform().SetRotation(glm::vec3(0.0f));
@@ -594,14 +532,10 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		while (batchObj->GetTextureLayers().size() > 0) batchObj->RemoveTextureLayer(0);
 
 		const char* texPath = getTexPathForKey(texKey);
-		if (texCache.find(texKey) == texCache.end()) {
-			texCache[texKey] = new Texture(texPath);
-			texCache[texKey]->LoadTexture();
-		}
 
 		TextureLayer layer;
 		layer.texturePath = texPath;
-		layer.texture = texCache[texKey];
+		layer.texture = NodeAssets::GetTexture(texPath);
 		layer.blendMode = LayerBlendMode::Normal;
 		layer.opacity = 1.0f;
 		layer.tiling = getTilingForKey(texKey);
@@ -610,6 +544,7 @@ void BuildingGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		batchCount++;
 	}
 
-	if (progress) progress(100.0f, "Buildings complete!");
+	progress(100.0f, "Buildings complete!");
 	printf("[BuildingGenNode] Generated %d buildings -> %d batched draw calls across %d threads.\n", builtCount, batchCount, numThreads);
+	ctx.Info(std::to_string(builtCount) + " buildings, " + std::to_string(batchCount) + " batches");
 }

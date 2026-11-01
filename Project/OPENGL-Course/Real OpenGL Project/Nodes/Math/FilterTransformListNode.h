@@ -9,252 +9,104 @@
 #include <cstring>
 
 // =====================================================================
-//  FilterTransformListNode — Filter scatter transforms by spatial rules
+// Filter Points: splits points by height (or any axis) and by slope
+//
+//  - Height: an absolute threshold, or a percentage of the points' own range (0% = the lowest
+//    point, 100% = the highest).
+//  - Slope: a component of the surface normal (normal Y = cos(slope angle)).
+//  - Falloff: instead of a hard cut (every tree stopping on the same contour line), points within
+//    +-falloff/2 of a threshold pass with a chance ramping from 0 to 1. The chance is hashed from
+//    the point's position: the same points pass every run.
+// Chain several to combine rules: Scatter -> Filter (height) -> Filter (slope) -> Spawn.
 // =====================================================================
-//
-//  Percentage-based height filtering:
-//    Threshold is 0–100% of the terrain's actual height range.
-//    0% = lowest point, 100% = highest point.
-//    Example: "Y < 40%" means "only in the bottom 40% of terrain height"
-//
-//  Takes a Mesh input (carrying a TransformList from ScatterNode) and
-//  filters the transforms based on configurable spatial conditions.
-//  Outputs the same mesh data with the filtered TransformList.
-//
-//  Sits between Scatter and Output in the graph:
-//    SceneInput → Scatter → FilterTransforms → Output
-//
-//  Supports chaining multiple filters in sequence:
-//    Scatter → Filter(Y < 40%) → Filter(slope > 0.8) → Output
-//
-//  Falloff: instead of a hard cut (every tree stopping on the same contour line), instances
-//  within +-falloff/2 of a threshold pass with a probability that ramps from 0 to 1.
-//  The random value is hashed from the instance position, so regeneration is deterministic.
-//
 class FilterTransformListNode : public GraphNode
 {
 public:
-	FilterTransformListNode(NodeGraph& graph)
+	explicit FilterTransformListNode(NodeGraph& graph) : GraphNode(graph)
 	{
-		id = graph.NextNodeId();
-		title = "Filter Transforms";
+		AddInput(PinType::Points, "Points", "points");
+		AddOutput(PinType::Points, "Passed", "passed");
+		AddOutput(PinType::Points, "Rejected", "rejected");
 
-		// Inputs
-		Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Input");
-		Pin threshIn(graph.NextPinId(), PinDataType::Float, "Threshold");
-		inputs.push_back(meshIn);
-		inputs.push_back(threshIn);
+		AddEnum("axis", "Axis", &axis, { "X", "Y (height)", "Z" }).Section("Position");
+		AddEnum("comparison", "Keep", &comparison, { "below", "above", "below or at", "above or at" });
+		AddBool("usePercentage", "Percent of range", &usePercentage)
+			.Tip("Threshold as 0-100% of the points' own range on this axis, instead of world units");
+		AddFloat("threshold", "Threshold", &threshold, 0.5f, -100000.0f, 100000.0f, "%.1f");
+		AddFloat("positionFalloff", "Falloff", &positionFalloff, 0.5f, 0.0f, 100000.0f, "%.1f")
+			.Tip("Soft edge width around the threshold (same unit as the threshold)");
 
-		// Outputs
-		Pin passedOut(graph.NextPinId(), PinDataType::Mesh, "Passed");
-		Pin rejectedOut(graph.NextPinId(), PinDataType::Mesh, "Rejected");
-		outputs.push_back(passedOut);
-		outputs.push_back(rejectedOut);
+		AddBool("useNormalFilter", "Slope filter", &useNormalFilter).Section("Slope");
+		AddEnum("normalAxis", "Normal axis", &normalAxis, { "X", "Y (up)", "Z" }).ShowIf([this] { return useNormalFilter; });
+		AddEnum("normalComparison", "Keep normal", &normalComparison, { "below", "above", "below or at", "above or at" })
+			.ShowIf([this] { return useNormalFilter; });
+		AddFloat("normalThreshold", "Normal threshold", &normalThreshold, 0.01f, -1.0f, 1.0f, "%.2f")
+			.ShowIf([this] { return useNormalFilter; })
+			.Tip("Normal Y = cos(slope): 1 = flat ground, 0.7 = about 45 degrees, 0 = a cliff");
+		AddFloat("normalFalloff", "Slope falloff", &normalFalloff, 0.005f, 0.0f, 1.0f, "%.3f").ShowIf([this] { return useNormalFilter; });
 	}
 
-	json Serialize() const override
-	{
-		json j = GraphNode::Serialize();
-		j["axis"] = axis;
-		j["comparison"] = comparison;
-		j["threshold"] = threshold;
-		j["usePercentage"] = usePercentage;
-		j["useNormalFilter"] = useNormalFilter;
-		j["normalAxis"] = normalAxis;
-		j["normalThreshold"] = normalThreshold;
-		j["normalComparison"] = normalComparison;
-		j["positionFalloff"] = positionFalloff;
-		j["normalFalloff"] = normalFalloff;
-		return j;
-	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		axis = j.value("axis", 1);
-		comparison = j.value("comparison", 0);
-		threshold = j.value("threshold", 50.0f);
-		usePercentage = j.value("usePercentage", true);
-		useNormalFilter = j.value("useNormalFilter", false);
-		normalAxis = j.value("normalAxis", 1);
-		normalThreshold = j.value("normalThreshold", 0.7f);
-		normalComparison = j.value("normalComparison", 1);
-		positionFalloff = j.value("positionFalloff", 0.0f);
-		normalFalloff = j.value("normalFalloff", 0.0f);
-	}
+	// Older saves: (Input, Threshold)
+	std::vector<std::string> LegacyInputKeys() const override { return { "points", "threshold" }; }
 
 	void RenderContent(SceneManager* scene) override
 	{
-		// Position filter
-		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Position Filter");
-		
-		const char* axes[] = { "X", "Y", "Z" };
-		ImGui::Combo("Axis", &axis, axes, 3);
-
-		const char* ops[] = { "<", ">", "<=", ">=" };
-		ImGui::Combo("Compare", &comparison, ops, 4);
-
-		ImGui::Checkbox("Use Percentage", &usePercentage);
-
-		if (usePercentage)
-		{
-			ImGui::SliderFloat("Threshold %", &threshold, 0.0f, 100.0f, "%.1f%%");
-			if (lastMinVal != FLT_MAX)
-			{
-				float actualThresh = lastMinVal + (threshold / 100.0f) * (lastMaxVal - lastMinVal);
-				ImGui::TextDisabled("Range: %.1f to %.1f", lastMinVal, lastMaxVal);
-				ImGui::TextDisabled("Actual: %.1f", actualThresh);
-			}
-		}
-		else
-		{
-			ImGui::DragFloat("Threshold", &threshold, 0.5f, -10000.0f, 10000.0f);
-		}
-		ImGui::DragFloat("Falloff", &positionFalloff, 0.5f, 0.0f, usePercentage ? 100.0f : 10000.0f);
-
-		ImGui::Separator();
-
-		// Normal/slope filter
-		ImGui::Checkbox("Slope Filter", &useNormalFilter);
-		if (useNormalFilter)
-		{
-			ImGui::Combo("Normal Axis", &normalAxis, axes, 3);
-			ImGui::Combo("Normal Cmp", &normalComparison, ops, 4);
-			ImGui::DragFloat("Slope Thresh", &normalThreshold, 0.01f, -1.0f, 1.0f);
-			ImGui::DragFloat("Slope Falloff", &normalFalloff, 0.005f, 0.0f, 1.0f);
-			// Normal Y = cos(slope angle): show the angle the threshold corresponds to
-			if (normalAxis == 1)
-				ImGui::TextDisabled("= %.1f deg", glm::degrees(std::acos(std::clamp(normalThreshold, -1.0f, 1.0f))));
-		}
+		DrawParams(scene);
+		if (usePercentage && lastMin != FLT_MAX)
+			ImGui::TextDisabled("Range %.1f .. %.1f  -> %.1f", lastMin, lastMax, lastMin + threshold / 100.0f * (lastMax - lastMin));
+		if (useNormalFilter && normalAxis == 1)
+			ImGui::TextDisabled("Normal %.2f = %.1f deg slope", normalThreshold, glm::degrees(std::acos(std::clamp(normalThreshold, -1.0f, 1.0f))));
 	}
 
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
+	void Execute(NodeContext& ctx) override
 	{
-		outputs[0].data.Clear();
-		outputs[1].data.Clear();
+		const TransformList& points = In("points").Points();
+		if (points.empty()) return;
 
-		// Copy through all source metadata
-		outputs[0].data.type = PinDataType::Mesh;
-		outputs[0].data.meshData = inputs[0].data.meshData;
-		outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName;
-		outputs[0].data.sourceObject = inputs[0].data.sourceObject;
-		outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
-		outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
-		outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
-		outputs[0].data.textureLayers = inputs[0].data.textureLayers;
-
-		outputs[1].data.type = PinDataType::Mesh;
-		outputs[1].data.sourceObjectName = inputs[0].data.sourceObjectName;
-		outputs[1].data.sourceObject = inputs[0].data.sourceObject;
-		outputs[1].data.sourceMaterial = inputs[0].data.sourceMaterial;
-		outputs[1].data.sourceTexture = inputs[0].data.sourceTexture;
-		outputs[1].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
-		outputs[1].data.textureLayers = inputs[0].data.textureLayers;
-
-		auto& inputTransforms = inputs[0].data.transforms;
-		if (inputTransforms.empty())
-		{
-			printf("[FilterTransforms] No input transforms, nothing to filter.\n");
-			return;
-		}
-
-		// Allow threshold override from connected Float pin
-		float rawThresh = (inputs[1].data.type == PinDataType::Float)
-			? inputs[1].data.floatValue
-			: threshold;
-
-		// === Compute actual threshold ===
-		float actualThresh = rawThresh;
+		float actualThresh = threshold;
 		float actualFalloff = positionFalloff;
-
-		if (usePercentage)
-		{
-			// Scan min/max of the chosen axis across ALL input transforms
-			float minVal = FLT_MAX;
-			float maxVal = -FLT_MAX;
-
-			for (const auto& t : inputTransforms)
-			{
-				float val = GetAxisValue(t, axis);
-				if (val < minVal) minVal = val;
-				if (val > maxVal) maxVal = val;
+		if (usePercentage) {
+			float lo = FLT_MAX, hi = -FLT_MAX;
+			for (const auto& t : points) {
+				float v = t.position[axis];
+				lo = std::min(lo, v);
+				hi = std::max(hi, v);
 			}
-
-			// Cache for UI display
-			lastMinVal = minVal;
-			lastMaxVal = maxVal;
-
-			float range = maxVal - minVal;
-			if (range < 0.001f) range = 0.001f; // Avoid division by zero
-
-			// Convert percentage (0-100) to actual value in the range
-			actualThresh = minVal + (rawThresh / 100.0f) * range;
-			actualFalloff = (positionFalloff / 100.0f) * range;
-
-			printf("[FilterTransforms] Axis %d range: [%.1f, %.1f], %.1f%% => threshold=%.1f\n",
-				axis, minVal, maxVal, rawThresh, actualThresh);
+			lastMin = lo;
+			lastMax = hi;
+			float range = std::max(hi - lo, 0.001f);
+			actualThresh = lo + threshold / 100.0f * range;
+			actualFalloff = positionFalloff / 100.0f * range;
 		}
 
-		// Filter the transform list
-		TransformList passed;
-		TransformList rejected;
-		passed.reserve(inputTransforms.size());
-		rejected.reserve(inputTransforms.size() / 4);
-
-		for (const auto& t : inputTransforms)
-		{
-			bool positionPass = EvaluatePosition(t, actualThresh, actualFalloff);
-			bool normalPass = useNormalFilter ? EvaluateNormal(t) : true;
-
-			if (positionPass && normalPass)
-				passed.push_back(t);
-			else
-				rejected.push_back(t);
+		TransformList passed, rejected;
+		passed.reserve(points.size());
+		rejected.reserve(points.size() / 4);
+		for (const auto& t : points) {
+			bool pass = Compare(t.position[axis], comparison, actualThresh, actualFalloff, PositionHash(t, 0x68E31DA4u));
+			if (pass && useNormalFilter)
+				pass = Compare(t.normal[normalAxis], normalComparison, normalThreshold, normalFalloff, PositionHash(t, 0xB5297A4Du));
+			(pass ? passed : rejected).push_back(t);
 		}
-
-		outputs[0].data.transforms = std::move(passed);
-		outputs[1].data.transforms = std::move(rejected);
-
-		printf("[FilterTransforms] %d passed, %d rejected (axis=%d, op=%d, thresh=%.1f%s)\n",
-			(int)outputs[0].data.transforms.size(),
-			(int)outputs[1].data.transforms.size(),
-			axis, comparison, actualThresh,
-			usePercentage ? " [pct]" : "");
+		ctx.Info(std::to_string(passed.size()) + " passed, " + std::to_string(rejected.size()) + " rejected");
+		Out(0, NodeValue::FromPoints(std::move(passed)));
+		Out(1, NodeValue::FromPoints(std::move(rejected)));
 	}
 
 private:
-	// Position filter settings
-	int axis = 1;             // 0=X, 1=Y, 2=Z
-	int comparison = 0;       // 0=<, 1=>, 2=<=, 3=>=
-	float threshold = 50.0f;  // Percentage (0-100) when usePercentage=true, absolute otherwise
-	bool usePercentage = true; // Default: percentage mode
-
-	// Slope/normal filter settings
+	int axis = 1;
+	int comparison = 0;
+	float threshold = 50.0f;
+	bool usePercentage = true;
 	bool useNormalFilter = false;
 	int normalAxis = 1;
 	float normalThreshold = 0.7f;
 	int normalComparison = 1;
-
-	// Soft transition widths (0 = hard cut). positionFalloff is in % when usePercentage.
 	float positionFalloff = 0.0f;
 	float normalFalloff = 0.0f;
+	float lastMin = FLT_MAX, lastMax = -FLT_MAX;
 
-	// Cached range for UI display
-	mutable float lastMinVal = FLT_MAX;
-	mutable float lastMaxVal = -FLT_MAX;
-
-	static float GetAxisValue(const TransformData& t, int ax)
-	{
-		switch (ax)
-		{
-		case 0: return t.position.x;
-		case 1: return t.position.y;
-		case 2: return t.position.z;
-		}
-		return 0.0f;
-	}
-
-	// Deterministic [0,1) value per instance position (independent hashes for each filter kind)
+	// Deterministic [0,1) value per point position
 	static float PositionHash(const TransformData& t, uint32_t salt)
 	{
 		auto bits = [](float f) { uint32_t u; std::memcpy(&u, &f, sizeof(u)); return u; };
@@ -263,13 +115,11 @@ private:
 		return (float)(h >> 8) / 16777216.0f;
 	}
 
-	// Hard comparison, or with falloff > 0 a probabilistic pass across [thresh - f/2, thresh + f/2]
-	static bool Compare(float val, int op, float thresh, float falloff, float randomValue)
+	// A hard comparison, or with a falloff a chance ramping across [thresh - f/2, thresh + f/2]
+	static bool Compare(float val, int op, float thresh, float falloff, float random)
 	{
-		if (falloff <= 0.0f)
-		{
-			switch (op)
-			{
+		if (falloff <= 0.0f) {
+			switch (op) {
 			case 0: return val < thresh;
 			case 1: return val > thresh;
 			case 2: return val <= thresh;
@@ -277,27 +127,9 @@ private:
 			}
 			return true;
 		}
-		// Signed distance on the passing side of the threshold
 		float margin = (op == 1 || op == 3) ? (val - thresh) : (thresh - val);
-		float passChance = std::clamp(margin / falloff + 0.5f, 0.0f, 1.0f);
-		passChance = passChance * passChance * (3.0f - 2.0f * passChance);
-		return randomValue < passChance;
-	}
-
-	bool EvaluatePosition(const TransformData& t, float thresh, float falloff) const
-	{
-		return Compare(GetAxisValue(t, axis), comparison, thresh, falloff, PositionHash(t, 0x68E31DA4u));
-	}
-
-	bool EvaluateNormal(const TransformData& t) const
-	{
-		float val = 0.0f;
-		switch (normalAxis)
-		{
-		case 0: val = t.normal.x; break;
-		case 1: val = t.normal.y; break;
-		case 2: val = t.normal.z; break;
-		}
-		return Compare(val, normalComparison, normalThreshold, normalFalloff, PositionHash(t, 0xB5297A4Du));
+		float chance = std::clamp(margin / falloff + 0.5f, 0.0f, 1.0f);
+		chance = chance * chance * (3.0f - 2.0f * chance);
+		return random < chance;
 	}
 };

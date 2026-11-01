@@ -1,4 +1,8 @@
 #include "Procedural/InteriorGenNode.h"
+#include "Nodes/NodeAssets.h"
+#include "Nodes/NodeRandom.h"
+#include <cctype>
+#include <set>
 #include "Procedural/InteriorDecorators.h"
 #include "Scene/GameObject.h"
 #include "Rendering/Mesh.h"
@@ -82,118 +86,188 @@ static std::string GetInteriorBatchName(int matKey)
 // Construction
 // =====================================================================
 
-InteriorGenNode::InteriorGenNode(NodeGraph& graph)
+InteriorGenNode::InteriorGenNode(NodeGraph& graph) : GraphNode(graph)
 {
-	id = graph.NextNodeId();
-	title = "Interior Gen";
+	seed = NodeRandom::TrueRandomSeed();
+	AddInput(PinType::Points, "Plots", "plots");
+	AddInput(PinType::Objects, "Furniture", "furniture", true);
 
-	Pin plotsIn(graph.NextPinId(), PinDataType::TransformList, "Plots");
-	inputs.push_back(plotsIn);
-
-	Pin bedIn(graph.NextPinId(), PinDataType::Mesh, "Bed Model");
-	Pin deskIn(graph.NextPinId(), PinDataType::Mesh, "Desk Model");
-	Pin tvIn(graph.NextPinId(), PinDataType::Mesh, "TV Model");
-	Pin stoveIn(graph.NextPinId(), PinDataType::Mesh, "Stove Model");
-	Pin fridgeIn(graph.NextPinId(), PinDataType::Mesh, "Fridge Model");
-	Pin sinkIn(graph.NextPinId(), PinDataType::Mesh, "Sink Model");
-	Pin toiletIn(graph.NextPinId(), PinDataType::Mesh, "Toilet Model");
-	Pin bathtubIn(graph.NextPinId(), PinDataType::Mesh, "Bathtub Model");
-	Pin sofaIn(graph.NextPinId(), PinDataType::Mesh, "Sofa Model");
-	Pin coffeeTableIn(graph.NextPinId(), PinDataType::Mesh, "Coffee Table Model");
-	Pin tvStandIn(graph.NextPinId(), PinDataType::Mesh, "TV Stand Model");
-	inputs.push_back(bedIn);
-	inputs.push_back(deskIn);
-	inputs.push_back(tvIn);
-	inputs.push_back(stoveIn);
-	inputs.push_back(fridgeIn);
-	inputs.push_back(sinkIn);
-	inputs.push_back(toiletIn);
-	inputs.push_back(bathtubIn);
-	inputs.push_back(sofaIn);
-	inputs.push_back(coffeeTableIn);
-	inputs.push_back(tvStandIn);
+	AddFloat("floorHeight", "Floor height", &floorHeight, 0.1f, 1.5f, 6.0f, "%.1f");
+	AddFloat("wallThickness", "Wall thickness", &wallThickness, 0.01f, 0.05f, 0.5f, "%.2f");
+	AddFloat("doorWidth", "Door width", &doorWidth, 0.05f, 0.6f, 2.0f, "%.2f");
+	AddFloat("doorHeight", "Door height", &doorHeight, 0.05f, 1.5f, 3.5f, "%.2f");
+	AddFloat("hallwayWidth", "Hallway width", &hallwayWidth, 0.1f, 1.0f, 5.0f, "%.1f");
+	AddFloat("wallInset", "Wall inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
+	AddFloat("singleWidth", "Width", &singleWidth, 0.5f, 4.0f, 200.0f, "%.1f").Section("Without plots")
+		.ShowIf([this] { return !owner->IsPinLinked(inputs[0].id); }).Tip("Footprint of the one building generated when no plots are linked");
+	AddFloat("singleDepth", "Depth", &singleDepth, 0.5f, 4.0f, 200.0f, "%.1f")
+		.ShowIf([this] { return !owner->IsPinLinked(inputs[0].id); });
+	AddInt("numBedrooms", "Bedrooms", &numBedrooms, 0.1f, 0, 10).Section("Rooms");
+	AddInt("numBathrooms", "Bathrooms", &numBathrooms, 0.1f, 0, 10);
+	AddInt("numKitchens", "Kitchens", &numKitchens, 0.1f, 0, 5);
+	AddInt("numLivingRooms", "Living rooms", &numLivingRooms, 0.1f, 0, 5);
+	AddBool("generateWalls", "Interior walls", &generateWalls).Section("Build");
+	AddBool("generateCeiling", "Ceilings", &generateCeiling);
+	AddBool("generateFurniture", "Placeholder furniture", &generateFurniture)
+		.Tip("Furnish rooms even without furniture objects (simple placeholder geometry)");
+	AddSeed("seed", "Seed", &seed);
 }
 
-// =====================================================================
-// UI
-// =====================================================================
-
-void InteriorGenNode::RenderContent(SceneManager* scene)
+const std::vector<std::pair<std::string, std::string>>& InteriorGenNode::Categories()
 {
-	ImGui::Text("Interior Generation");
-	ImGui::Separator();
+	static const std::vector<std::pair<std::string, std::string>> categories = {
+		{ "bed", "Bed" }, { "desk", "Desk" }, { "tv", "TV" }, { "stove", "Stove" }, { "fridge", "Fridge" },
+		{ "sink", "Sink" }, { "toilet", "Toilet" }, { "bathtub", "Bathtub" }, { "sofa", "Sofa" },
+		{ "coffee_table", "Coffee table" }, { "tv_stand", "TV stand" },
+	};
+	return categories;
+}
 
-	ImGui::DragFloat("Floor Height", &floorHeight, 0.1f, 1.5f, 6.0f, "%.1f");
-	ImGui::DragFloat("Wall Thickness", &wallThickness, 0.01f, 0.05f, 0.5f, "%.2f");
-	ImGui::DragFloat("Door Width", &doorWidth, 0.05f, 0.6f, 2.0f, "%.2f");
-	ImGui::DragFloat("Door Height", &doorHeight, 0.05f, 1.5f, 3.5f, "%.2f");
-	ImGui::DragFloat("Hallway Width", &hallwayWidth, 0.1f, 1.0f, 5.0f, "%.1f");
-	ImGui::DragFloat("Wall Inset", &wallInset, 0.1f, 0.0f, 5.0f, "%.1f");
-	ImGui::DragInt("Seed", &seed, 1, 0, 9999);
-	ImGui::Checkbox("Generate Furniture", &generateFurniture);
-	ImGui::Checkbox("Draw Interior Walls", &generateWalls);
-	ImGui::Checkbox("Draw Ceilings", &generateCeiling);
+std::vector<std::string> InteriorGenNode::LegacyInputKeys() const
+{
+	std::vector<std::string> keys = { "plots" };
+	for (const auto& c : Categories()) keys.push_back("furniture:" + c.first);
+	return keys;
+}
 
-	ImGui::Separator();
-	ImGui::Text("Room Layout Configuration");
-	ImGui::DragInt("Bedrooms", &numBedrooms, 0.1f, 0, 10);
-	ImGui::DragInt("Bathrooms", &numBathrooms, 0.1f, 0, 10);
-	ImGui::DragInt("Kitchens", &numKitchens, 0.1f, 0, 5);
-	ImGui::DragInt("Living Rooms", &numLivingRooms, 0.1f, 0, 5);
+void InteriorGenNode::SaveState(json& j) const
+{
+	if (!furnitureOverrides.empty()) j["furnitureOverrides"] = furnitureOverrides;
+	j["floorThick"] = floorThick;
+}
 
-	if (numBedrooms < 0) numBedrooms = 0;
-	if (numBathrooms < 0) numBathrooms = 0;
-	if (numKitchens < 0) numKitchens = 0;
-	if (numLivingRooms < 0) numLivingRooms = 0;
-	if (numBedrooms + numBathrooms + numKitchens + numLivingRooms == 0)
+void InteriorGenNode::LoadState(const json& j)
+{
+	furnitureOverrides.clear();
+	if (j.contains("furnitureOverrides") && j["furnitureOverrides"].is_object())
+		for (auto it = j["furnitureOverrides"].begin(); it != j["furnitureOverrides"].end(); ++it)
+			furnitureOverrides[it.key()] = it.value().get<std::vector<std::string>>();
+	floorThick = j.value("floorThick", floorThick);
+	// At least one room
+	if (numBedrooms + numBathrooms + numKitchens + numLivingRooms <= 0) numBedrooms = 1;
+}
+
+namespace {
+	std::string LowerCase(std::string s)
 	{
-		numBedrooms = 1;
+		for (auto& c : s) c = (char)std::tolower((unsigned char)c);
+		return s;
+	}
+
+	// The category an object's name (or label) suggests: the longest keyword it contains
+	std::string GuessCategory(const std::string& text)
+	{
+		static const std::vector<std::pair<std::string, std::vector<std::string>>> keywords = {
+			{ "bed", { "bed" } },
+			{ "desk", { "desk", "table" } },
+			{ "tv", { "tv", "television", "monitor" } },
+			{ "stove", { "stove", "oven", "cooker" } },
+			{ "fridge", { "fridge", "refrigerator" } },
+			{ "sink", { "sink", "basin" } },
+			{ "toilet", { "toilet", "wc" } },
+			{ "bathtub", { "bathtub", "bath", "tub", "shower" } },
+			{ "sofa", { "sofa", "couch" } },
+			{ "coffee_table", { "coffee", "coffee_table", "glass_table", "side_table" } },
+			{ "tv_stand", { "tv_stand", "tvstand", "stand", "cabinet", "tumba", "dresser" } },
+		};
+		std::string lower = LowerCase(text);
+		std::string best;
+		size_t bestLen = 0;
+		for (const auto& [category, words] : keywords)
+			for (const auto& w : words)
+				if (w.size() > bestLen && lower.find(w) != std::string::npos) { best = category; bestLen = w.size(); }
+		return best;
 	}
 }
 
-// =====================================================================
-// Serialization
-// =====================================================================
-
-json InteriorGenNode::Serialize() const
+std::map<std::string, std::vector<GameObject*>> InteriorGenNode::ResolveFurniture(NodeContext& ctx)
 {
-	json j = GraphNode::Serialize();
-	j["floorHeight"]       = floorHeight;
-	j["wallThickness"]     = wallThickness;
-	j["floorThick"]        = floorThick;
-	j["doorWidth"]         = doorWidth;
-	j["doorHeight"]        = doorHeight;
-	j["hallwayWidth"]      = hallwayWidth;
-	j["wallInset"]         = wallInset;
-	j["seed"]              = seed;
-	j["generateFurniture"] = generateFurniture;
-	j["numBedrooms"]       = numBedrooms;
-	j["numBathrooms"]      = numBathrooms;
-	j["numKitchens"]       = numKitchens;
-	j["numLivingRooms"]    = numLivingRooms;
-	j["generateWalls"]     = generateWalls;
-	j["generateCeiling"]   = generateCeiling;
-	return j;
+	std::map<std::string, std::vector<GameObject*>> result;
+	std::set<std::string> assigned;
+	auto add = [&](const std::string& category, GameObject* obj) {
+		auto& list = result[category];
+		if (std::find(list.begin(), list.end(), obj) == list.end()) list.push_back(obj);
+		assigned.insert(obj->GetName());
+	};
+
+	// 1. The table on the node
+	for (const auto& [category, names] : furnitureOverrides)
+		for (const auto& name : names) {
+			GameObject* obj = ctx.scene.FindObject(name);
+			if (obj) add(category, obj);
+			else ctx.Warn("Furniture '" + name + "' (" + category + ") is not in the scene");
+		}
+
+	// 2. The linked objects: by their label, else by their name
+	for (const auto& e : In("furniture").Objects()) {
+		GameObject* obj = e.object ? e.object : ctx.scene.FindObject(e.name);
+		if (!obj || assigned.count(e.name)) continue;
+		std::string category = e.label.empty() ? std::string() : GuessCategory(e.label);
+		if (category.empty()) category = GuessCategory(e.name);
+		if (category.empty()) { ctx.Warn("No furniture category for '" + e.name + "': pick it in the table (or give it a label)"); continue; }
+		add(category, obj);
+	}
+
+	lastAssignment.clear();
+	for (const auto& [category, objs] : result)
+		for (auto* o : objs) lastAssignment[category].push_back(o->GetName());
+	return result;
 }
 
-void InteriorGenNode::Deserialize(const json& j)
+void InteriorGenNode::RenderContent(SceneManager* scene)
 {
-	GraphNode::Deserialize(j);
-	floorHeight       = j.value("floorHeight", 3.0f);
-	wallThickness     = j.value("wallThickness", 0.15f);
-	floorThick        = j.value("floorThick", 0.1f);
-	doorWidth         = j.value("doorWidth", 0.8f);
-	doorHeight        = j.value("doorHeight", 2.1f);
-	hallwayWidth      = j.value("hallwayWidth", 1.8f);
-	wallInset         = j.value("wallInset", 0.5f);
-	seed              = j.value("seed", 42);
-	generateFurniture = j.value("generateFurniture", false);
-	numBedrooms       = j.value("numBedrooms", 1);
-	numBathrooms      = j.value("numBathrooms", 1);
-	numKitchens       = j.value("numKitchens", 1);
-	numLivingRooms    = j.value("numLivingRooms", 1);
-	generateWalls     = j.value("generateWalls", true);
-	generateCeiling   = j.value("generateCeiling", false);
+	DrawParams(scene);
+
+	ImGui::SeparatorText("Furniture");
+	ImGui::TextDisabled("Linked objects are sorted by name;");
+	ImGui::TextDisabled("pick (or drop) them per category here");
+	float width = ImGui::CalcItemWidth();
+	for (const auto& [key, label] : Categories()) {
+		ImGui::PushID(key.c_str());
+		auto over = furnitureOverrides.find(key);
+		std::string current = over != furnitureOverrides.end() && !over->second.empty() ? over->second[0] : std::string("(auto)");
+		if (over != furnitureOverrides.end() && over->second.size() > 1) current += " +" + std::to_string(over->second.size() - 1);
+		ImGui::SetNextItemWidth(width);
+		if (ImGui::BeginCombo("##obj", current.c_str(), ImGuiComboFlags_HeightLarge)) {
+			if (ImGui::Selectable("(auto)", over == furnitureOverrides.end())) furnitureOverrides.erase(key);
+			if (scene) {
+				std::vector<GameObject*> all;
+				scene->GetAllObjects(all);
+				for (int i = 0; i < (int)all.size(); i++) {
+					ImGui::PushID(i);
+					if (ImGui::Selectable(all[i]->GetName().c_str(), all[i]->GetName() == current)) furnitureOverrides[key] = { all[i]->GetName() };
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		if (ImGui::BeginDragDropTarget()) {
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_OBJECT_INDEX")) {
+				int index = *(const int*)payload->Data;
+				if (scene && index >= 0 && index < (int)scene->GetObjects().size()) {
+					auto& list = furnitureOverrides[key];
+					std::string name = scene->GetObjects()[index]->GetName();
+					if (std::find(list.begin(), list.end(), name) == list.end()) list.push_back(name);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+		ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+		ImGui::AlignTextToFramePadding();
+		ImGui::TextUnformatted(label.c_str());
+		auto used = lastAssignment.find(key);
+		if (used != lastAssignment.end() && !used->second.empty()) {
+			ImGui::SameLine();
+			if (used->second.size() == 1) ImGui::TextDisabled("= %s", used->second[0].c_str());
+			else ImGui::TextDisabled("= %d variants", (int)used->second.size());
+			if (ImGui::IsItemHovered()) {
+				std::string tip;
+				for (auto& n : used->second) tip += n + "\n";
+				ImGui::SetTooltip("%s", tip.c_str());
+			}
+		}
+		ImGui::PopID();
+	}
 }
 
 // =====================================================================
@@ -1262,22 +1336,38 @@ static glm::vec3 GetObjectAABBSize(GameObject* obj, glm::vec3 defaultVal) {
 // Execute â€” Main entry point
 // =====================================================================
 
-void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+void InteriorGenNode::Execute(NodeContext& ctx)
 {
-	if (progress) progress(0.0f, "Reading plot data...");
+	SceneManager& scene = ctx.scene;
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
+	progress(0.0f, "Reading plot data...");
 
-	// Retrieve modular bedroom mesh inputs from pins
-	GameObject* bedSrcObj = (inputs.size() > 1 && inputs[1].data.type == PinDataType::Mesh) ? inputs[1].data.sourceObject : nullptr;
-	GameObject* deskSrcObj = (inputs.size() > 2 && inputs[2].data.type == PinDataType::Mesh) ? inputs[2].data.sourceObject : nullptr;
-	GameObject* tvSrcObj = (inputs.size() > 3 && inputs[3].data.type == PinDataType::Mesh) ? inputs[3].data.sourceObject : nullptr;
-	GameObject* stoveSrcObj = (inputs.size() > 4 && inputs[4].data.type == PinDataType::Mesh) ? inputs[4].data.sourceObject : nullptr;
-	GameObject* fridgeSrcObj = (inputs.size() > 5 && inputs[5].data.type == PinDataType::Mesh) ? inputs[5].data.sourceObject : nullptr;
-	GameObject* sinkSrcObj = (inputs.size() > 6 && inputs[6].data.type == PinDataType::Mesh) ? inputs[6].data.sourceObject : nullptr;
-	GameObject* toiletSrcObj = (inputs.size() > 7 && inputs[7].data.type == PinDataType::Mesh) ? inputs[7].data.sourceObject : nullptr;
-	GameObject* bathtubSrcObj = (inputs.size() > 8 && inputs[8].data.type == PinDataType::Mesh) ? inputs[8].data.sourceObject : nullptr;
-	GameObject* sofaSrcObj = (inputs.size() > 9 && inputs[9].data.type == PinDataType::Mesh) ? inputs[9].data.sourceObject : nullptr;
-	GameObject* coffeeTableSrcObj = (inputs.size() > 10 && inputs[10].data.type == PinDataType::Mesh) ? inputs[10].data.sourceObject : nullptr;
-	GameObject* tvStandSrcObj = (inputs.size() > 11 && inputs[11].data.type == PinDataType::Mesh) ? inputs[11].data.sourceObject : nullptr;
+	// Furniture: category -> objects. Rooms are planned around the largest object of a category;
+	// each placement picks one of its objects
+	auto furniture = ResolveFurniture(ctx);
+	const bool furnished = generateFurniture || !furniture.empty();
+	auto largest = [&](const char* category) -> GameObject* {
+		auto it = furniture.find(category);
+		if (it == furniture.end() || it->second.empty()) return nullptr;
+		GameObject* best = nullptr;
+		float bestVolume = -1.0f;
+		for (GameObject* o : it->second) {
+			glm::vec3 size = GetObjectAABBSize(o, glm::vec3(0.0f));
+			if (size.x * size.y * size.z > bestVolume) { bestVolume = size.x * size.y * size.z; best = o; }
+		}
+		return best;
+	};
+	GameObject* bedSrcObj = largest("bed");
+	GameObject* deskSrcObj = largest("desk");
+	GameObject* tvSrcObj = largest("tv");
+	GameObject* stoveSrcObj = largest("stove");
+	GameObject* fridgeSrcObj = largest("fridge");
+	GameObject* sinkSrcObj = largest("sink");
+	GameObject* toiletSrcObj = largest("toilet");
+	GameObject* bathtubSrcObj = largest("bathtub");
+	GameObject* sofaSrcObj = largest("sofa");
+	GameObject* coffeeTableSrcObj = largest("coffee_table");
+	GameObject* tvStandSrcObj = largest("tv_stand");
 
 	glm::vec3 bedSize = GetObjectAABBSize(bedSrcObj, glm::vec3(1.6f, 0.8f, 2.0f));
 	glm::vec3 deskSize = GetObjectAABBSize(deskSrcObj, glm::vec3(1.2f, 0.75f, 0.6f));
@@ -1291,69 +1381,8 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	glm::vec3 coffeeTableSize = GetObjectAABBSize(coffeeTableSrcObj, glm::vec3(1.0f, 0.45f, 0.7f));
 	glm::vec3 tvStandSize = GetObjectAABBSize(tvStandSrcObj, glm::vec3(1.2f, 0.5f, 0.6f));
 
-	if (bedSrcObj) printf("[InteriorGenNode] Connected Bed: %s (Size: %.2f x %.2f x %.2f)\n", bedSrcObj->GetName().c_str(), bedSize.x, bedSize.y, bedSize.z);
-	if (deskSrcObj) printf("[InteriorGenNode] Connected Desk: %s (Size: %.2f x %.2f x %.2f)\n", deskSrcObj->GetName().c_str(), deskSize.x, deskSize.y, deskSize.z);
-	if (tvSrcObj) printf("[InteriorGenNode] Connected TV: %s (Size: %.2f x %.2f x %.2f)\n", tvSrcObj->GetName().c_str(), tvSize.x, tvSize.y, tvSize.z);
-	if (stoveSrcObj) printf("[InteriorGenNode] Connected Stove: %s (Size: %.2f x %.2f x %.2f)\n", stoveSrcObj->GetName().c_str(), stoveSize.x, stoveSize.y, stoveSize.z);
-	if (fridgeSrcObj) printf("[InteriorGenNode] Connected Fridge: %s (Size: %.2f x %.2f x %.2f)\n", fridgeSrcObj->GetName().c_str(), fridgeSize.x, fridgeSize.y, fridgeSize.z);
-	if (sinkSrcObj) printf("[InteriorGenNode] Connected Sink: %s (Size: %.2f x %.2f x %.2f)\n", sinkSrcObj->GetName().c_str(), sinkSize.x, sinkSize.y, sinkSize.z);
-	if (toiletSrcObj) printf("[InteriorGenNode] Connected Toilet: %s (Size: %.2f x %.2f x %.2f)\n", toiletSrcObj->GetName().c_str(), toiletSize.x, toiletSize.y, toiletSize.z);
-	if (bathtubSrcObj) printf("[InteriorGenNode] Connected Bathtub: %s (Size: %.2f x %.2f x %.2f)\n", bathtubSrcObj->GetName().c_str(), bathtubSize.x, bathtubSize.y, bathtubSize.z);
-	if (sofaSrcObj) printf("[InteriorGenNode] Connected Sofa: %s (Size: %.2f x %.2f x %.2f)\n", sofaSrcObj->GetName().c_str(), sofaSize.x, sofaSize.y, sofaSize.z);
-	if (coffeeTableSrcObj) printf("[InteriorGenNode] Connected Coffee Table: %s (Size: %.2f x %.2f x %.2f)\n", coffeeTableSrcObj->GetName().c_str(), coffeeTableSize.x, coffeeTableSize.y, coffeeTableSize.z);
-	if (tvStandSrcObj) printf("[InteriorGenNode] Connected TV Stand: %s (Size: %.2f x %.2f x %.2f)\n", tvStandSrcObj->GetName().c_str(), tvStandSize.x, tvStandSize.y, tvStandSize.z);
-
-	// Write debugging information to a file in the workspace
-	{
-		std::ofstream f("C:\\Users\\Justin\\Desktop\\Licenta-Completa\\debug_interior.txt", std::ios::trunc);
-		if (f.is_open()) {
-			f << "=== Interior Gen Debug ===\n";
-			if (bedSrcObj) {
-				f << "Bed: " << bedSrcObj->GetName() << "\n";
-				glm::vec3 s = bedSrcObj->GetTransform().GetScale();
-				glm::vec3 r = bedSrcObj->GetTransform().GetRotation();
-				glm::vec3 p = bedSrcObj->GetTransform().GetPosition();
-				f << "  Source Transform: Pos(" << p.x << ", " << p.y << ", " << p.z 
-				  << ") Rot(" << r.x << ", " << r.y << ", " << r.z 
-				  << ") Scl(" << s.x << ", " << s.y << ", " << s.z << ")\n";
-				f << "  Calculated AABB Size: " << bedSize.x << " x " << bedSize.y << " x " << bedSize.z << "\n";
-			} else {
-				f << "Bed: None connected\n";
-			}
-			if (deskSrcObj) {
-				f << "Desk: " << deskSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << deskSize.x << " x " << deskSize.y << " x " << deskSize.z << "\n";
-			}
-			if (sinkSrcObj) {
-				f << "Sink: " << sinkSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << sinkSize.x << " x " << sinkSize.y << " x " << sinkSize.z << "\n";
-			}
-			if (toiletSrcObj) {
-				f << "Toilet: " << toiletSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << toiletSize.x << " x " << toiletSize.y << " x " << toiletSize.z << "\n";
-			}
-			if (bathtubSrcObj) {
-				f << "Bathtub: " << bathtubSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << bathtubSize.x << " x " << bathtubSize.y << " x " << bathtubSize.z << "\n";
-			}
-			if (sofaSrcObj) {
-				f << "Sofa: " << sofaSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << sofaSize.x << " x " << sofaSize.y << " x " << sofaSize.z << "\n";
-			}
-			if (coffeeTableSrcObj) {
-				f << "Coffee Table: " << coffeeTableSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << coffeeTableSize.x << " x " << coffeeTableSize.y << " x " << coffeeTableSize.z << "\n";
-			}
-			if (tvStandSrcObj) {
-				f << "TV Stand: " << tvStandSrcObj->GetName() << "\n";
-				f << "  Calculated AABB Size: " << tvStandSize.x << " x " << tvStandSize.y << " x " << tvStandSize.z << "\n";
-			}
-			f.close();
-		}
-	}
-
 	TransformList plots;
-	if (inputs.empty() || inputs[0].data.type != PinDataType::TransformList || inputs[0].data.transforms.empty())
+	if (In("plots").Points().empty())
 	{
 		TransformData defaultPlot;
 		defaultPlot.position = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -1363,10 +1392,10 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 	else
 	{
-		plots = inputs[0].data.transforms;
+		plots = In("plots").Points();
 	}
 
-	if (progress) progress(5.0f, "Generating interiors...");
+	progress(5.0f, "Generating interiors...");
 
 	// Phase 1: Generate interior data for all buildings (multi-threaded)
 	std::vector<BuildingInterior> interiors(plots.size());
@@ -1407,7 +1436,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	for (auto& t : threads) t.join();
 
-	if (progress) progress(40.0f, "Building structural meshes...");
+	progress(40.0f, "Building structural meshes...");
 
 	// Phase 2: Build structural + furniture meshes into material buckets
 	std::map<int, MeshData> meshBuckets;
@@ -1427,7 +1456,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		BuildStructuralMesh(interior, plotMat, meshBuckets);
 
 		// Furniture decoration
-		if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj || sofaSrcObj || coffeeTableSrcObj || tvStandSrcObj)
+		if (furnished)
 		{
 			std::mt19937 decorRng(seed + (int)i + 13337);
 			for (const auto& room : interior.rooms)
@@ -1440,26 +1469,20 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			}
 		}
 
-		if (progress)
 		{
 			float pct = 40.0f + 40.0f * ((float)(i + 1) / interiors.size());
 			progress(pct, "Processing building " + std::to_string(i + 1) + "/" + std::to_string(interiors.size()));
 		}
 	}
 
-	if (progress) progress(85.0f, "Uploading to GPU...");
+	progress(85.0f, "Uploading to GPU...");
 
 	// Phase 3: Upload batched meshes as GameObjects
 	std::string prefix = "Interior_" + std::to_string(id) + "_";
 	std::string rootName = "City_Interiors_" + std::to_string(id);
 
-	GameObject* root = scene.FindObject(rootName);
-	if (!root)
-	{
-		root = new GameObject(rootName);
-		root->SetSaveInScene(false);
-		scene.AddObject(root);
-	}
+	GameObject* root = ctx.Object(rootName);
+	root->SetSaveInScene(false);
 	root->GetTransform().SetPosition(glm::vec3(0.0f));
 	root->GetTransform().SetRotation(glm::vec3(0.0f));
 	root->GetTransform().SetScale(glm::vec3(1.0f));
@@ -1473,7 +1496,6 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			scene.RemoveObject(name);
 	}
 
-	std::map<int, Texture*> texCache;
 	int batchCount = 0;
 
 	for (auto& [matKey, mergedMesh] : meshBuckets)
@@ -1481,12 +1503,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		if (mergedMesh.GetVertexCount() == 0) continue;
 
 		std::string batchName = prefix + GetInteriorBatchName(matKey);
-		GameObject* batchObj = scene.FindObject(batchName);
-		if (!batchObj)
-		{
-			batchObj = new GameObject(batchName);
-			scene.AddObject(batchObj);
-		}
+		GameObject* batchObj = ctx.Object(batchName);
 
 		batchObj->GetTransform().SetPosition(glm::vec3(0.0f));
 		batchObj->GetTransform().SetRotation(glm::vec3(0.0f));
@@ -1499,15 +1516,10 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 		while (batchObj->GetTextureLayers().size() > 0) batchObj->RemoveTextureLayer(0);
 
 		const char* texPath = GetInteriorTexture(matKey);
-		if (texCache.find(matKey) == texCache.end())
-		{
-			texCache[matKey] = new Texture(texPath);
-			texCache[matKey]->LoadTexture();
-		}
 
 		TextureLayer layer;
 		layer.texturePath = texPath;
-		layer.texture = texCache[matKey];
+		layer.texture = NodeAssets::GetTexture(texPath);
 		layer.blendMode = LayerBlendMode::Normal;
 		layer.opacity = 1.0f;
 		layer.tiling = GetInteriorTiling(matKey);
@@ -1517,9 +1529,11 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	}
 
 	// Phase 3b: Instantiate high-fidelity props as GameObjects
-	if (generateFurniture || bedSrcObj || deskSrcObj || tvSrcObj || stoveSrcObj || fridgeSrcObj || sinkSrcObj || toiletSrcObj || bathtubSrcObj || sofaSrcObj || coffeeTableSrcObj || tvStandSrcObj)
+	int propId = 0;
+	size_t roomCount = 0;
+	for (const auto& interior : interiors) roomCount += interior.rooms.size();
+	if (furnished)
 	{
-		int propId = 0;
 		for (size_t i = 0; i < interiors.size(); i++)
 		{
 			auto& interior = interiors[i];
@@ -1533,23 +1547,21 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 			bldRoot->GetTransform().SetScale(glm::vec3(1.0f));
 			bldRoot->SetParent(root);
 			scene.AddObject(bldRoot);
+			ctx.Claim(bldRootName);
 
 			for (const auto& prop : interior.props)
 			{
+				// The prop's category (washing machines and cabinets borrow others'), then one of its objects
+				std::string category = prop.category;
+				if (category == "washing_machine") category = "toilet";
+				else if (category == "couch") category = "sofa";
+				else if (category == "cabinet") category = furniture.count("tv_stand") ? "tv_stand" : (furniture.count("desk") ? "desk" : "sink");
 				GameObject* sourceObj = nullptr;
-				if (prop.category == "bed") sourceObj = bedSrcObj;
-				else if (prop.category == "desk") sourceObj = deskSrcObj;
-				else if (prop.category == "tv") sourceObj = tvSrcObj;
-				else if (prop.category == "stove") sourceObj = stoveSrcObj;
-				else if (prop.category == "fridge") sourceObj = fridgeSrcObj;
-				else if (prop.category == "sink") sourceObj = sinkSrcObj;
-				else if (prop.category == "toilet") sourceObj = toiletSrcObj;
-				else if (prop.category == "bathtub") sourceObj = bathtubSrcObj;
-				else if (prop.category == "washing_machine") sourceObj = toiletSrcObj; // reuse bathroom input
-				else if (prop.category == "cabinet") sourceObj = tvStandSrcObj ? tvStandSrcObj : (deskSrcObj ? deskSrcObj : sinkSrcObj); // reuse cabinet/desk input instead of sink
-				else if (prop.category == "couch") sourceObj = sofaSrcObj;
-				else if (prop.category == "coffee_table") sourceObj = coffeeTableSrcObj;
-				else if (prop.category == "tv_stand") sourceObj = tvStandSrcObj;
+				auto variants = furniture.find(category);
+				if (variants != furniture.end() && !variants->second.empty()) {
+					size_t pick = (size_t)NodeRandom::Mix(NodeRandom::Mix((uint64_t)seed, (uint64_t)i), (uint64_t)propId) % variants->second.size();
+					sourceObj = variants->second[pick];
+				}
 
 				if (prop.category == "debug_fail_bathtub")
 				{
@@ -1565,6 +1577,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 					gizmo->SetMaterial(redMat);
 
 					scene.AddObject(gizmo);
+					ctx.Claim(gizmo->GetName());
 					continue;
 				}
 
@@ -1583,6 +1596,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 					wrapObj->GetTransform().SetScale(prop.scale);
 					
 					scene.AddObject(wrapObj);
+					ctx.Claim(wrapName);
 
 					// 2. Clone the source object
 					GameObject* propObj = sourceObj->Clone(wrapName + "_model");
@@ -1619,6 +1633,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 					// Recursively register all cloned GameObjects to the scene so they are rendered and cleaned up correctly!
 					std::function<void(GameObject*)> registerRecursive = [&](GameObject* obj) {
 						scene.AddObject(obj);
+						ctx.Claim(obj->GetName());
 						for (auto* child : obj->GetChildren()) {
 							registerRecursive(child);
 						}
@@ -1633,7 +1648,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 	interiors.clear();
 	interiors.shrink_to_fit();
 
-	if (progress) progress(100.0f, "Interiors complete!");
+	progress(100.0f, "Interiors complete!");
 
 	int totalRooms = 0;
 	for (const auto& [k, m] : meshBuckets)
@@ -1641,5 +1656,7 @@ void InteriorGenNode::Execute(SceneManager& scene, NodeProgressCallback progress
 
 	printf("[InteriorGenNode] Generated interiors for %d buildings -> %d material batches, %d total triangles\n",
 		(int)plots.size(), batchCount, totalRooms);
+	ctx.Info(std::to_string(plots.size()) + (plots.size() == 1 ? " building, " : " buildings, ") + std::to_string(roomCount) +
+		" rooms, " + std::to_string(propId) + " props");
 }
 

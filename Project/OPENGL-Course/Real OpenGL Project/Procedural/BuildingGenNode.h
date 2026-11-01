@@ -28,36 +28,9 @@
 class BuildingGenNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	BuildingGenNode(NodeGraph& graph);
-
-	/**
-	 * @brief Renders the editor UI panel for configuring building dimensions, section probabilities, and random seeds.
-	 * @param scene Pointer to active scene manager.
-	 */
-	void RenderContent(SceneManager* scene) override;
-
-	/**
-	 * @brief Executes the building placement generator, creating GameObject instances directly within the active scene.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	/**
-	 * @brief Serializes node properties to JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
+	explicit BuildingGenNode(NodeGraph& graph);
+	// Builds a house or a tower on every plot (batched by material into scene objects)
+	void Execute(NodeContext& ctx) override;
 
 private:
 	// Generation parameters

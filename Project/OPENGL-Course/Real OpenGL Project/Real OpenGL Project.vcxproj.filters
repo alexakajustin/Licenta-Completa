@@ -165,6 +165,27 @@
     <ClCompile Include="Editor\GenerationPipelineUI.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Nodes\NodeValue.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Nodes\NodeRegistry.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Nodes\NodeParams.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Nodes\GraphMigration.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Nodes\NodeAssets.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Nodes\SceneObjectsNode.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Procedural\SpawnInstancesNode.cpp">
+      <Filter>Procedural</Filter>
+    </ClCompile>
     <ClCompile Include="Nodes\NodeGraph.cpp">
       <Filter>Nodes</Filter>
     </ClCompile>
@@ -268,6 +289,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Tests\PerformanceProfilerTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\NodeGraphTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Player.cpp">
@@ -2296,6 +2320,27 @@
     <ClInclude Include="Nodes\GenerationStack.h">
       <Filter>Nodes</Filter>
     </ClInclude>
+    <ClInclude Include="Nodes\NodeValue.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Nodes\NodeRandom.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Nodes\NodeRegistry.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Nodes\GraphMigration.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Nodes\NodeAssets.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Nodes\SceneObjectsNode.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="Procedural\SpawnInstancesNode.h">
+      <Filter>Procedural</Filter>
+    </ClInclude>
     <ClInclude Include="Nodes\NodeGraph.h">
       <Filter>Nodes</Filter>
     </ClInclude>
@@ -2319,9 +2364,6 @@
     </ClInclude>
     <ClInclude Include="External Libs\imnodes\imnodes_internal.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Procedural\PerlinTerrainNode.h">
-      <Filter>Procedural</Filter>
     </ClInclude>
     <ClInclude Include="Nodes\Math\MergeMeshNode.h">
       <Filter>Nodes\Math</Filter>

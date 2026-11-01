@@ -59,3 +59,6 @@ Project/OPENGL-Course/Real OpenGL Project/Assets/Models/russiancore
 **/Assets/Textures/Ultimate_Scene/
 **/Assets/Models/Ultimate_Scene/
 __pycache__/
+
+# Editor thumbnail cache (Project window)
+**/Cache/Thumbnails/

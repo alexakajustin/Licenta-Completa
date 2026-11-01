@@ -13,36 +13,9 @@
 class RiverNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	RiverNode(NodeGraph& graph);
-
-	/**
-	 * @brief Serializes node properties to JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
-
-	/**
-	 * @brief Renders the editor UI panel for configuring river paths, spring counts, widths, and depths.
-	 * @param scene Pointer to active scene manager.
-	 */
-	void RenderContent(SceneManager* scene) override;
-
-	/**
-	 * @brief Executes the river carving algorithm, editing the height coordinates of the terrain.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
+	explicit RiverNode(NodeGraph& graph);
+	// Carves the rivers and lakes into the terrain; their water surfaces become scene objects
+	void Execute(NodeContext& ctx) override;
 
 	void SetBaseDepth(float d) { baseDepth = d; }
 	void SetBaseWidth(float w) { baseWidth = w; }

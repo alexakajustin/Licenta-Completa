@@ -1,4 +1,6 @@
 #include "Procedural/CityGridNode.h"
+#include "Nodes/NodeAssets.h"
+#include "Nodes/NodeRandom.h"
 #include "Rendering/PrimitiveGenerator.h"
 #include "Scene/GameObject.h"
 #include "Rendering/Mesh.h"
@@ -16,76 +18,23 @@
 // Construction
 // =====================================================================
 
-CityGridNode::CityGridNode(NodeGraph& graph)
+CityGridNode::CityGridNode(NodeGraph& graph) : GraphNode(graph)
 {
-	id = graph.NextNodeId();
-	title = "City Grid";
+	seed = NodeRandom::TrueRandomSeed();
+	AddInput(PinType::Mesh, "Surface", "surface");
+	AddOutput(PinType::Mesh, "Roads", "roads");
+	AddOutput(PinType::Points, "Plots", "plots");
 
-	// Inputs
-	Pin surfaceIn(graph.NextPinId(), PinDataType::Mesh, "Surface");
-	inputs.push_back(surfaceIn);
-
-	// Outputs
-	Pin roadsOut(graph.NextPinId(), PinDataType::Mesh, "Roads");
-	Pin plotsOut(graph.NextPinId(), PinDataType::TransformList, "Plots");
-	outputs.push_back(roadsOut);
-	outputs.push_back(plotsOut);
-}
-
-// =====================================================================
-// UI
-// =====================================================================
-
-void CityGridNode::RenderContent(SceneManager* scene)
-{
-	ImGui::Text("City Layout");
-	ImGui::Separator();
-
-	ImGui::DragFloat("City Size", &citySize, 1.0f, 20.0f, 2000.0f, "%.0f");
-	ImGui::DragFloat("Road Width", &roadWidth, 0.1f, 0.5f, 10.0f, "%.1f");
-	ImGui::DragFloat("Spacing X", &roadSpacingX, 0.5f, 5.0f, 100.0f, "%.1f");
-	ImGui::DragFloat("Spacing Z", &roadSpacingZ, 0.5f, 5.0f, 100.0f, "%.1f");
-	ImGui::DragFloat("Sidewalk W", &sidewalkWidth, 0.05f, 0.0f, 2.0f, "%.2f");
-	ImGui::DragFloat("Road Height", &roadHeight, 0.005f, 0.0f, 0.5f, "%.3f");
-	ImGui::DragFloat("Setback", &buildingSetback, 0.1f, 0.0f, 10.0f, "%.1f");
-	ImGui::SliderFloat("Residential", &residentialProbability, 0.0f, 1.0f, "%.2f");
-	ImGui::DragInt("Park Rate", &parkRate, 1, 0, 20);
-	ImGui::DragInt("Seed", &seed, 1, 0, 9999);
-}
-
-// =====================================================================
-// Serialization
-// =====================================================================
-
-json CityGridNode::Serialize() const
-{
-	json j = GraphNode::Serialize();
-	j["citySize"] = citySize;
-	j["roadWidth"] = roadWidth;
-	j["roadSpacingX"] = roadSpacingX;
-	j["roadSpacingZ"] = roadSpacingZ;
-	j["sidewalkWidth"] = sidewalkWidth;
-	j["roadHeight"] = roadHeight;
-	j["buildingSetback"] = buildingSetback;
-	j["residentialProbability"] = residentialProbability;
-	j["parkRate"] = parkRate;
-	j["seed"] = seed;
-	return j;
-}
-
-void CityGridNode::Deserialize(const json& j)
-{
-	GraphNode::Deserialize(j);
-	citySize = j.value("citySize", 100.0f);
-	roadWidth = j.value("roadWidth", 6.0f);
-	roadSpacingX = j.value("roadSpacingX", 30.0f);
-	roadSpacingZ = j.value("roadSpacingZ", 30.0f);
-	sidewalkWidth = j.value("sidewalkWidth", 1.5f);
-	roadHeight = j.value("roadHeight", 0.02f);
-	buildingSetback = j.value("buildingSetback", 1.0f);
-	residentialProbability = j.value("residentialProbability", 0.5f);
-	parkRate = j.value("parkRate", 8);
-	seed = j.value("seed", 42);
+	AddFloat("citySize", "City size", &citySize, 1.0f, 20.0f, 2000.0f, "%.0f");
+	AddFloat("roadWidth", "Road width", &roadWidth, 0.1f, 0.5f, 10.0f, "%.1f");
+	AddFloat("roadSpacingX", "Spacing X", &roadSpacingX, 0.5f, 5.0f, 100.0f, "%.1f");
+	AddFloat("roadSpacingZ", "Spacing Z", &roadSpacingZ, 0.5f, 5.0f, 100.0f, "%.1f");
+	AddFloat("sidewalkWidth", "Sidewalk width", &sidewalkWidth, 0.05f, 0.0f, 2.0f, "%.2f");
+	AddFloat("roadHeight", "Road height", &roadHeight, 0.005f, 0.0f, 0.5f, "%.3f");
+	AddFloat("buildingSetback", "Setback", &buildingSetback, 0.1f, 0.0f, 10.0f, "%.1f");
+	AddFloat("residentialProbability", "Residential", &residentialProbability, 0.01f, 0.0f, 1.0f, "%.2f");
+	AddInt("parkRate", "Park rate", &parkRate, 0.2f, 0, 20).Tip("One plot in N becomes a park (0: none)");
+	AddSeed("seed", "Seed", &seed);
 }
 
 // =====================================================================
@@ -471,13 +420,15 @@ float CityGridNode::SampleTerrainHeight(const MeshData& terrain, float x, float 
 // Execute — spawns road GameObjects directly into the scene
 // =====================================================================
 
-void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
+void CityGridNode::Execute(NodeContext& ctx)
 {
-	if (progress) progress(0.0f, "Generating city grid...");
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
+	const NodeValue& surface = In("surface");
+	progress(0.0f, "Generating city grid...");
 
 	// 1. Generate the grid layout
 	GenerateGrid();
-	if (progress) progress(30.0f, "Building road meshes...");
+	progress(30.0f, "Building road meshes...");
 	
 	// 2. Build road and sidewalk meshes separately
 	MeshData roadMesh, sidewalkMesh, plotMesh;
@@ -486,9 +437,9 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	// 3. If we have a terrain input, offset all geometry to match
 	float terrainOffset = 0.0f;
-	if (!inputs[0].data.meshData.vertices.empty())
+	if (!surface.mesh.Empty())
 	{
-		const MeshData& terrain = inputs[0].data.meshData;
+		const MeshData& terrain = surface.mesh.Data();
 		terrainOffset = SampleTerrainHeight(terrain, 0.0f, 0.0f);
 
 		for (int i = 0; i < roadMesh.GetVertexCount(); i++)
@@ -502,17 +453,13 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			plot.center.y += terrainOffset;
 	}
 
-	if (progress) progress(50.0f, "Spawning city objects...");
+	progress(50.0f, "Spawning city objects...");
 
 	// ---- Helper: find-or-create a GameObject and assign mesh + texture ----
 	std::string idStr = std::to_string(id);
 
 	auto syncCityObject = [&](const std::string& name, MeshData& meshData, const std::string& texPath, float tiling) {
-		GameObject* obj = scene.FindObject(name);
-		if (!obj) {
-			obj = new GameObject(name);
-			scene.AddObject(obj);
-		}
+		GameObject* obj = ctx.Object(name);
 		obj->GetTransform().SetPosition(glm::vec3(0.0f));
 		obj->GetTransform().SetRotation(glm::vec3(0.0f));
 		obj->GetTransform().SetScale(glm::vec3(1.0f));
@@ -530,8 +477,7 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 			TextureLayer layer;
 			layer.texturePath = texPath;
-			layer.texture = new Texture(texPath.c_str());
-			layer.texture->LoadTexture();
+			layer.texture = NodeAssets::GetTexture(texPath);
 			layer.blendMode = LayerBlendMode::Normal;
 			layer.opacity = 1.0f;
 			layer.tiling = tiling;
@@ -544,7 +490,7 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	syncCityObject("City_Sidewalks_" + idStr, sidewalkMesh, "Assets/Textures/buildings/concrete.jpg", 2.0f);
 	syncCityObject("City_Plots_" + idStr, plotMesh, "Assets/Textures/terrain/grass/albedo.jpg", 2.0f);
 
-	if (progress) progress(60.0f, "Generating street lamps...");
+	progress(60.0f, "Generating street lamps...");
 
 	// ---- Phase 3: Street Decoration ----
 
@@ -632,7 +578,7 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	syncCityObject("City_Lamps_" + idStr, lampMesh, "Assets/Textures/buildings/metal_building.jpg", 1.0f);
 
-	if (progress) progress(75.0f, "Planting trees...");
+	progress(75.0f, "Planting trees...");
 
 	// 5b. Trees on park plots — simple procedural trunk + canopy
 	MeshData treeMesh;
@@ -672,25 +618,26 @@ void CityGridNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	syncCityObject("City_Trees_" + idStr, treeMesh, "Assets/Textures/roads/grass_park.jpg", 1.0f);
 
-	if (progress) progress(80.0f, "Building plot data...");
+	progress(80.0f, "Building plot data...");
 
 	// 6. Build plot transform list
 	TransformList plotTransforms;
 	BuildPlotTransforms(plotTransforms);
 
-	// 7. Pass-through terrain mesh on output
-	if (!inputs[0].data.meshData.vertices.empty()) {
-		outputs[0].data = inputs[0].data;
+	// 7. Roads output: the terrain passed through, or the road mesh when there is none
+	if (!surface.mesh.Empty()) {
+		Out(0, surface);
 	} else {
-		outputs[0].data.type = PinDataType::Mesh;
-		outputs[0].data.meshData = roadMesh;
+		MeshValue roads;
+		roads.Set(MeshData(roadMesh));
+		Out(0, NodeValue::FromMesh(std::move(roads)));
 	}
+	size_t plotCount = plotTransforms.size();
+	Out(1, NodeValue::FromPoints(std::move(plotTransforms)));
+	ctx.Info(std::to_string(plotCount) + " building plots");
 
-	outputs[1].data.type = PinDataType::TransformList;
-	outputs[1].data.transforms = std::move(plotTransforms);
-
-	if (progress) progress(100.0f, "City grid complete!");
+	progress(100.0f, "City grid complete!");
 
 	printf("[CityGridNode] Spawned roads + plots + %d lamps + trees. %d building plots available.\n",
-		(int)(lampMesh.GetVertexCount() / 48), (int)outputs[1].data.transforms.size());
+		(int)(lampMesh.GetVertexCount() / 48), (int)plotCount);
 }

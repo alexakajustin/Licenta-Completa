@@ -12,18 +12,7 @@
 #include "Rendering/Material.h"
 #include "Core/Camera.h"
 #include "Nodes/NodeGraph.h"
-#include "Nodes/SceneInputNode.h"
-#include "Procedural/PerlinNoiseNode.h"
-#include "Procedural/ScatterNode.h"
-#include "Nodes/Math/FilterTransformListNode.h"
-#include "Nodes/Math/MergeMeshNode.h"
-#include "Nodes/OutputNode.h"
-#include "Procedural/HydraulicErosionNode.h"
-#include "Procedural/RiverNode.h"
-#include "Procedural/CityGridNode.h"
-#include "Procedural/BuildingGenNode.h"
-#include "Procedural/BeautifulErosionNode.h"
-#include "Procedural/InteriorGenNode.h"
+#include "Nodes/NodeRegistry.h"
 #include "Scene/SceneSerializer.h"
 #include "Scene/UndoActions.h"
 #include "Scene/Planet.h"
@@ -660,273 +649,134 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 
 		if (ImGui::BeginMenu("Templates"))
 		{
+			// Nodes by type id, links by pin key
+			auto add = [&](const char* type, float x, float y) -> GraphNode* {
+				GraphNode* n = NodeRegistry::Create(type, nodeGraph);
+				n->editorPos = glm::vec2(x, y);
+				nodeGraph.AddNode(n);
+				return n;
+			};
+			auto link = [&](GraphNode* a, const char* out, GraphNode* b, const char* in) {
+				Pin* o = a ? a->Output(out) : nullptr;
+				Pin* i = b ? b->Input(in) : nullptr;
+				if (o && i) nodeGraph.AddLink(o->id, i->id);
+			};
+			// The first scene object whose name matches one of these (exact, or followed by a space)
+			auto findObject = [&](std::initializer_list<const char*> names) -> std::string {
+				for (const char* want : names)
+					for (auto* obj : scene.GetObjects()) {
+						const std::string& n = obj->GetName();
+						if (n == want || n.rfind(std::string(want) + " ", 0) == 0) return n;
+					}
+				return "";
+			};
+			auto pick = [&](GraphNode* sceneObject, const std::string& name) {
+				if (!name.empty()) sceneObject->SetParamObjects("selectedName", { name });
+			};
+			auto mountains = [&](const char* erosionType) {
+				nodeGraph.Clear();
+				GraphNode* input = add("scene_object", 0, 150);
+				GraphNode* noise = add("perlin_noise", 260, 150);
+				GraphNode* erosion = add(erosionType, 560, 150);
+				GraphNode* river = add("river", 860, 150);
+				GraphNode* output = add("mesh_output", 1140, 150);
+				// Cinematic rocky mountains: 400 m peaks on a 1000 m terrain, about two of them across
+				noise->SetParamValue("ridged", 1);
+				noise->SetParamValue("amplitude", 400.0);
+				noise->SetParamValue("frequency", 0.5);
+				noise->SetParamValue("octaves", 8);
+				noise->SetParamValue("persistence", 0.45);
+				river->SetParamValue("baseDepth", 1.0);
+				river->SetParamValue("baseWidth", 15.0);
+				river->SetParamValue("smoothPasses", 8);
+				link(input, "mesh", noise, "mesh");
+				link(noise, "mesh", erosion, "mesh");
+				link(erosion, "mesh", river, "mesh");
+				link(river, "mesh", output, "mesh");
+				std::string plane = findObject({ "Plane" });
+				pick(input, plane);
+				if (GameObject* obj = scene.FindObject(plane)) obj->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f));
+			};
+			// Scatter on a ground object, filters, Spawn Instances of the objects
+			auto scattering = [&](bool filtered) {
+				nodeGraph.Clear();
+				GraphNode* ground = add("scene_object", 0, 0);
+				GraphNode* objects = add("scene_object", 0, 260);
+				GraphNode* scatter = add("scatter", 280, 0);
+				GraphNode* spawn = add("spawn_instances", filtered ? 860 : 580, 120);
+				link(ground, "mesh", scatter, "surface");
+				link(objects, "object", spawn, "objects");
+				if (filtered) {
+					GraphNode* filter = add("filter_points", 560, 0);
+					link(scatter, "points", filter, "points");
+					link(filter, "passed", spawn, "points");
+				} else {
+					link(scatter, "points", spawn, "points");
+				}
+				ground->SetParamValue("forceOriginalPrimitive", 0); // The terrain as generated, not a flat plane
+				pick(ground, findObject({ "Plane" }));
+				pick(objects, findObject({ "grass", "Sphere", "Cube" }));
+			};
+
 			if (ImGui::MenuItem("Procedural Terrain"))
 			{
 				nodeGraph.Clear();
-				SceneInputNode* input = new SceneInputNode(nodeGraph);
-				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
-				OutputNode* output = new OutputNode(nodeGraph);
-
-				input->editorPos = glm::vec2(50, 100);
-				noise->editorPos = glm::vec2(300, 100);
-				output->editorPos = glm::vec2(550, 100);
-
-				nodeGraph.AddNode(input);
-				nodeGraph.AddNode(noise);
-				nodeGraph.AddNode(output);
-
-				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
-				nodeGraph.AddLink(noise->outputs[0].id, output->inputs[0].id);
-
-				// Auto-setup: try to find "Plane" or "Plane X"
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
-						input->SetSelection(i, name);
-						break;
-					}
-				}
+				GraphNode* input = add("scene_object", 0, 100);
+				GraphNode* noise = add("perlin_noise", 260, 100);
+				GraphNode* output = add("mesh_output", 560, 100);
+				link(input, "mesh", noise, "mesh");
+				link(noise, "mesh", output, "mesh");
+				pick(input, findObject({ "Plane" }));
 			}
-
-			if (ImGui::MenuItem("Distributed Nature"))
+			if (ImGui::MenuItem("Distributed Nature")) scattering(false);
+			if (ImGui::MenuItem("Filtered Scattering")) scattering(true);
+			if (ImGui::MenuItem("Seeded Forest"))
 			{
+				// One Seed node re-rolls the whole forest; Scene Objects holds the tree variants
 				nodeGraph.Clear();
-				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
-				SceneInputNode* rockInput = new SceneInputNode(nodeGraph);
-				ScatterNode* scatter = new ScatterNode(nodeGraph);
-
-				groundInput->editorPos = glm::vec2(50, 50);
-				rockInput->editorPos = glm::vec2(50, 250);
-				scatter->editorPos = glm::vec2(300, 150);
-
-				scatter->SetSpawnAsObjects(true);
-
-				nodeGraph.AddNode(groundInput);
-				nodeGraph.AddNode(rockInput);
-				nodeGraph.AddNode(scatter);
-
-				// Connect Scatter Surface (from ground)
-				nodeGraph.AddLink(groundInput->outputs[0].id, scatter->inputs[0].id);
-
-				// Connect Rock Input to Scatter
-				nodeGraph.AddLink(rockInput->outputs[0].id, scatter->inputs[1].id);
-
-				// Auto-setup: try to find "Plane" and "Cube"
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
-						groundInput->SetSelection(i, name);
-					}
-					if (name == "Cube 1" || name == "Cube" || name.rfind("Cube ", 0) == 0) {
-						rockInput->SetSelection(i, name);
-					}
-				}
+				GraphNode* seed = add("seed", 0, -160);
+				GraphNode* ground = add("scene_object", 0, 40);
+				GraphNode* trees = add("scene_objects", 0, 260);
+				GraphNode* scatter = add("scatter", 300, 0);
+				GraphNode* slope = add("filter_points", 580, 0);
+				GraphNode* spawn = add("spawn_instances", 880, 120);
+				scatter->SetParamValue("count", 5000);
+				slope->SetParamValue("useNormalFilter", 1);
+				slope->SetParamValue("usePercentage", 1);
+				slope->SetParamValue("threshold", 100.0);
+				slope->SetParamValue("normalThreshold", 0.8);
+				link(seed, "seed", scatter, "seed");
+				link(seed, "seed", spawn, "seed");
+				link(ground, "mesh", scatter, "surface");
+				link(scatter, "points", slope, "points");
+				link(slope, "passed", spawn, "points");
+				link(trees, "objects", spawn, "objects");
+				ground->SetParamValue("forceOriginalPrimitive", 0);
+				pick(ground, findObject({ "Plane" }));
 			}
-
-			if (ImGui::MenuItem("Filtered Scattering"))
-			{
-				nodeGraph.Clear();
-				SceneInputNode* groundInput = new SceneInputNode(nodeGraph);
-				SceneInputNode* objectInput = new SceneInputNode(nodeGraph);
-				ScatterNode* scatter = new ScatterNode(nodeGraph);
-				FilterTransformListNode* filter = new FilterTransformListNode(nodeGraph);
-
-				groundInput->editorPos = glm::vec2(50, 50);
-				objectInput->editorPos = glm::vec2(50, 250);
-				scatter->editorPos = glm::vec2(250, 150);
-				filter->editorPos = glm::vec2(500, 150);
-
-				scatter->SetSpawnAsObjects(true);
-
-				nodeGraph.AddNode(groundInput);
-				nodeGraph.AddNode(objectInput);
-				nodeGraph.AddNode(scatter);
-				nodeGraph.AddNode(filter);
-
-				// Connect Scatter Pipeline
-				nodeGraph.AddLink(groundInput->outputs[0].id, scatter->inputs[0].id); // Surface
-				nodeGraph.AddLink(objectInput->outputs[0].id, scatter->inputs[1].id); // Object
-
-				// Connect Filter Pipeline
-				nodeGraph.AddLink(scatter->outputs[1].id, filter->inputs[0].id); // Instances -> Filter
-
-				// Auto-setup defaults
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
-						groundInput->SetSelection(i, name);
-					}
-					if (name == "grass 1" || name.rfind("grass ", 0) == 0 ||
-						name == "Sphere 1" || name.rfind("Sphere ", 0) == 0 ||
-						name == "Cube 1" || name.rfind("Cube ", 0) == 0) {
-						objectInput->SetSelection(i, name);
-					}
-				}
-			}
-
-			if (ImGui::MenuItem("Cinematic Mountains (1000m)"))
-			{
-				nodeGraph.Clear();
-				SceneInputNode* input = new SceneInputNode(nodeGraph);
-				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
-				RiverNode* river = new RiverNode(nodeGraph);
-				HydraulicErosionNode* erosion = new HydraulicErosionNode(nodeGraph);
-				OutputNode* output = new OutputNode(nodeGraph);
-
-				// Boost parameters for cinematic rocky mountains
-				noise->SetRidged(true);
-				noise->SetAmplitude(400.0f); // 400m height on 1000m terrain gives realistic massive peaks
-				noise->SetFrequency(0.5f); // Spans ~2 massive peaks across the map
-				noise->SetOctaves(8);
-				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
-				
-				// Droplet erosion defaults (tuned on this exact template's terrain)
-				erosion->SetDropletsPerCell(8.0f);
-				erosion->SetErodeSpeed(0.4f);
-				erosion->SetDepositSpeed(0.3f);
-				erosion->SetSedimentCapacity(6.0f);
-				erosion->SetBrushRadius(3);
-				erosion->SetSmoothPasses(0);
-
-				// Original River parameters
-				river->SetBaseDepth(1.0f);
-				river->SetBaseWidth(15.0f);
-				river->SetSmoothPasses(8);
-
-				input->editorPos = glm::vec2(50, 150);
-				noise->editorPos = glm::vec2(250, 150);
-				erosion->editorPos = glm::vec2(450, 150);
-				river->editorPos = glm::vec2(650, 150);
-				output->editorPos = glm::vec2(850, 150);
-
-				nodeGraph.AddNode(input);
-				nodeGraph.AddNode(noise);
-				nodeGraph.AddNode(river);
-				nodeGraph.AddNode(erosion);
-				nodeGraph.AddNode(output);
-
-				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
-				nodeGraph.AddLink(noise->outputs[0].id, erosion->inputs[0].id);
-				nodeGraph.AddLink(erosion->outputs[0].id, river->inputs[0].id);
-				nodeGraph.AddLink(river->outputs[0].id, output->inputs[0].id);
-
-				// Auto-assign Plane and set good erosion defaults
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
-						input->SetSelection(i, name);
-						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
-						break;
-					}
-				}
-			}
-
-			if (ImGui::MenuItem("Cinematic Mountains V2 (1000m)"))
-			{
-				nodeGraph.Clear();
-				SceneInputNode* input = new SceneInputNode(nodeGraph);
-				PerlinNoiseNode* noise = new PerlinNoiseNode(nodeGraph);
-				BeautifulErosionNode* erosion = new BeautifulErosionNode(nodeGraph);
-				RiverNode* river = new RiverNode(nodeGraph);
-				OutputNode* output = new OutputNode(nodeGraph);
-
-				// Boost parameters for cinematic rocky mountains
-				noise->SetRidged(true);
-				noise->SetAmplitude(400.0f); // 400m height on 1000m terrain gives realistic massive peaks
-				noise->SetFrequency(0.5f); // Spans ~2 massive peaks across the map
-				noise->SetOctaves(8);
-				noise->SetPersistence(0.45f); // Prevent high octaves from turning the terrain into chaotic static
-
-				// Original River parameters
-				river->SetBaseDepth(1.0f);
-				river->SetBaseWidth(15.0f);
-				river->SetSmoothPasses(8);
-
-				input->editorPos = glm::vec2(50, 150);
-				noise->editorPos = glm::vec2(250, 150);
-				erosion->editorPos = glm::vec2(450, 150);
-				river->editorPos = glm::vec2(650, 150);
-				output->editorPos = glm::vec2(850, 150);
-
-				nodeGraph.AddNode(input);
-				nodeGraph.AddNode(noise);
-				nodeGraph.AddNode(erosion);
-				nodeGraph.AddNode(river);
-				nodeGraph.AddNode(output);
-
-				nodeGraph.AddLink(input->outputs[0].id, noise->inputs[0].id);
-				nodeGraph.AddLink(noise->outputs[0].id, erosion->inputs[0].id);
-				nodeGraph.AddLink(erosion->outputs[0].id, river->inputs[0].id);
-				nodeGraph.AddLink(river->outputs[0].id, output->inputs[0].id);
-
-				// Auto-assign Plane and set good erosion defaults
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					std::string name = scene.GetObjects()[i]->GetName();
-					if (name == "Plane" || name.rfind("Plane ", 0) == 0) {
-						input->SetSelection(i, name);
-						scene.GetObjects()[i]->GetTransform().SetScale(glm::vec3(1000.0f, 1.0f, 1000.0f)); // 1000x1000 size
-						break;
-					}
-				}
-			}
-
+			if (ImGui::MenuItem("Cinematic Mountains (1000m)")) mountains("hydraulic_erosion");
+			if (ImGui::MenuItem("Cinematic Mountains V2 (1000m)")) mountains("beautiful_erosion");
 			if (ImGui::MenuItem("Procedural City"))
 			{
-				// Clear the scene
 				nodeGraph.Clear();
-				// Create nodes
-				SceneInputNode* input = new SceneInputNode(nodeGraph);
-				CityGridNode* city = new CityGridNode(nodeGraph);
-				OutputNode* output = new OutputNode(nodeGraph);
-				BuildingGenNode* buildings = new BuildingGenNode(nodeGraph);
-
-				// Layout positions
-				input->editorPos = glm::vec2(50, 150);
-				city->editorPos = glm::vec2(300, 150);
-				output->editorPos = glm::vec2(550, 100);
-				buildings->editorPos = glm::vec2(550, 350);
-
-				nodeGraph.AddNode(input);
-				nodeGraph.AddNode(city);
-				nodeGraph.AddNode(output);
-				nodeGraph.AddNode(buildings);
-
-				// Wire: SceneInput -> CityGrid -> Output (roads pin)
-				nodeGraph.AddLink(input->outputs[0].id, city->inputs[0].id);
-				nodeGraph.AddLink(city->outputs[0].id, output->inputs[0].id);
-				// Wire: CityGrid (plots) -> BuildingGen
-				nodeGraph.AddLink(city->outputs[1].id, buildings->inputs[0].id);
-
-				// Auto-select City_Ground for the SceneInput
-				for (int i = 0; i < (int)scene.GetObjects().size(); i++) {
-					if (scene.GetObjects()[i]->GetName() == "City_Ground") {
-						input->SetSelection(i, "City_Ground");
-						break;
-					}
-				}
-
-				// Position camera for city overview
-				if (camera) {
-					camera->SetPositionAndLookAt(glm::vec3(0.0f, 0.0f, 0.0f), 85.0f);
-				}
+				GraphNode* input = add("scene_object", 0, 150);
+				GraphNode* city = add("city_grid", 280, 150);
+				GraphNode* output = add("mesh_output", 600, 60);
+				GraphNode* buildings = add("building_gen", 600, 300);
+				link(input, "mesh", city, "surface");
+				link(city, "roads", output, "mesh");
+				link(city, "plots", buildings, "plots");
+				pick(input, findObject({ "City_Ground" }));
+				if (camera) camera->SetPositionAndLookAt(glm::vec3(0.0f, 0.0f, 0.0f), 85.0f);
 			}
-
 			if (ImGui::MenuItem("Procedural Interior"))
 			{
-				// Clear the scene
+				// One Furniture list: objects are sorted into categories by name (or picked per category)
 				nodeGraph.Clear();
-				// Create the standalone InteriorGenNode
-				InteriorGenNode* interiors = new InteriorGenNode(nodeGraph);
-
-				// Layout position (center)
-				interiors->editorPos = glm::vec2(300, 150);
-
-				nodeGraph.AddNode(interiors);
-
-				// Position camera close for detailed interior viewing
-				if (camera) {
-					camera->SetPositionAndLookAt(glm::vec3(0.0f, 5.0f, 0.0f), 30.0f);
-				}
+				GraphNode* furniture = add("scene_objects", 0, 150);
+				GraphNode* interiors = add("interior_gen", 360, 100);
+				link(furniture, "objects", interiors, "furniture");
+				if (camera) camera->SetPositionAndLookAt(glm::vec3(0.0f, 5.0f, 0.0f), 30.0f);
 			}
 			ImGui::EndMenu();
 		}

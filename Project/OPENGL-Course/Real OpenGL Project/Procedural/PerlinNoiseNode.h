@@ -1,123 +1,54 @@
 #pragma once
 
 #include "Nodes/NodeGraph.h"
+#include "Nodes/NodeRandom.h"
 #include "Procedural/PerlinNoiseGenerator.h"
 
-// Applies Perlin noise displacement to an input mesh.
-// Input: Mesh, Output: Mesh
+// Displaces a mesh with fractal Perlin noise (terrain from a plane)
 class PerlinNoiseNode : public GraphNode
 {
 public:
-	PerlinNoiseNode(NodeGraph& graph)
+	explicit PerlinNoiseNode(NodeGraph& graph) : GraphNode(graph), seed(NodeRandom::TrueRandomSeed())
 	{
-		id = graph.NextNodeId();
-		title = "Perlin Noise";
-
-		// One input: Mesh
-		Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-		inputs.push_back(meshIn);
-
-		// One output: Mesh
-		Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-		outputs.push_back(meshOut);
+		AddInput(PinType::Mesh, "Mesh", "mesh");
+		AddOutput(PinType::Mesh, "Mesh", "mesh");
+		AddFloat("amplitude", "Amplitude", &amplitude, 0.5f, 0.0f, 10000.0f, "%.1f").Tip("Height of the noise, in world units");
+		AddFloat("frequency", "Frequency", &frequency, 0.01f, 0.0001f, 10.0f).Tip("Higher: smaller, more frequent hills");
+		AddInt("octaves", "Octaves", &octaves, 0.1f, 1, 12).Tip("Layers of finer detail");
+		AddFloat("persistence", "Persistence", &persistence, 0.01f, 0.01f, 1.0f, "%.3f").Tip("How much each finer layer keeps of the previous one's height");
+		AddBool("ridged", "Ridged", &ridged).Tip("Sharp ridges (mountains) instead of rounded hills");
+		AddBool("useNormalDisplacement", "Along normals", &useNormalDisplacement).Tip("Displace along the surface normals instead of straight up");
+		AddFloat("offsetX", "Offset X", &offsetX, 0.1f);
+		AddFloat("offsetZ", "Offset Z", &offsetZ, 0.1f);
+		AddSeed("seed", "Seed", &seed);
 	}
 
-	json Serialize() const override
+	void Execute(NodeContext&) override
 	{
-		json j = GraphNode::Serialize();
-		j["frequency"] = generator.GetFrequency();
-		j["amplitude"] = generator.GetAmplitude();
-		j["octaves"] = generator.GetOctaves();
-		j["persistence"] = generator.GetPersistence();
-		j["seed"] = generator.GetSeed();
-		j["ridged"] = generator.GetRidged();
-		j["useNormalDisplacement"] = generator.GetUseNormalDisplacement();
-		j["offsetX"] = generator.GetOffsetX();
-		j["offsetZ"] = generator.GetOffsetZ();
-		return j;
+		const NodeValue& in = In("mesh");
+		if (in.mesh.Empty()) return;
+		generator.SetAmplitude(amplitude);
+		generator.SetFrequency(frequency);
+		generator.SetOctaves(octaves);
+		generator.SetPersistence(persistence);
+		generator.SetRidged(ridged);
+		generator.SetUseNormalDisplacement(useNormalDisplacement);
+		generator.SetOffset(offsetX, offsetZ);
+		generator.SetSeed(seed);
+
+		MeshValue out = in.mesh;
+		out.Set(generator.Generate(&in.mesh.Data()));
+		Out(0, NodeValue::FromMesh(std::move(out)));
 	}
-
-	void Deserialize(const json& j) override
-	{
-		GraphNode::Deserialize(j);
-		generator.SetFrequency(j.value("frequency", 1.0f));
-		generator.SetAmplitude(j.value("amplitude", 1.0f));
-		generator.SetOctaves(j.value("octaves", 4));
-		generator.SetPersistence(j.value("persistence", 0.5f));
-		generator.SetSeed(j.value("seed", 42));
-		generator.SetRidged(j.value("ridged", false));
-		generator.SetUseNormalDisplacement(j.value("useNormalDisplacement", false));
-		generator.SetOffset(j.value("offsetX", 0.0f), j.value("offsetZ", 0.0f));
-	}
-
-	void RenderContent(SceneManager* scene) override
-	{
-		generator.RenderUI();
-	}
-
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override
-	{
-		outputs[0].data.Clear();
-		outputs[0].data.type = PinDataType::Mesh;
-		outputs[0].data.sourceObjectName = inputs[0].data.sourceObjectName;
-		outputs[0].data.sourceMaterial = inputs[0].data.sourceMaterial;
-		outputs[0].data.sourceTexture = inputs[0].data.sourceTexture;
-		outputs[0].data.sourceNormalMap = inputs[0].data.sourceNormalMap;
-		outputs[0].data.textureLayers = inputs[0].data.textureLayers;
-
-		if (inputs[0].data.type != PinDataType::Mesh) return;
-
-		auto& inputTransforms = inputs[0].data.transforms;
-		auto& inputInstances = inputs[0].data.instanceMeshes;
-
-		if (!inputInstances.empty())
-		{
-			// Process each instance individually
-			outputs[0].data.transforms = inputTransforms;
-			outputs[0].data.instanceMeshes.reserve(inputInstances.size());
-			
-			// We also need to rebuild the baked "meshData" for the output
-			// If the input has a base mesh (like the Plane), keep it as the start,
-			// but we skip it if it's strictly a scatter output. 
-			// For simplicity: we'll follow the ScatterNode pattern and merge all instances into outputs[0].data.meshData.
-			MeshData merged;
-
-			for (size_t i = 0; i < inputInstances.size(); i++)
-			{
-				const MeshData& instance = inputInstances[i];
-				
-				// Apply noise with offset from transform position
-				if (i < inputTransforms.size())
-				{
-					generator.SetOffset(inputTransforms[i].position.x, inputTransforms[i].position.z);
-				}
-				
-				MeshData deformed = generator.Generate(&instance);
-				outputs[0].data.instanceMeshes.push_back(deformed);
-
-				// Merge into baked result "instanced style" (this part is tricky, MeshData::Append? No, we need transforms!)
-				// Actually, ScatterNode already merged them. If we change them, we have to re-merge.
-				// This might be slow for 1000 objects, but it's the "correct" way.
-				
-				// Re-use logic for merging but we need a way to access MergeTransformed...
-				// Or we just rely on the user using the modular "Spawning" output.
-				// Let's at least provide a basic merged result if possible.
-			}
-		}
-		else
-		{
-			// Standard single-mesh mode
-			outputs[0].data.meshData = generator.Generate(&inputs[0].data.meshData);
-			outputs[0].data.transforms = inputs[0].data.transforms; // Propagate transform
-		}
-	}
-
-	void SetAmplitude(float a) { generator.SetAmplitude(a); }
-	void SetFrequency(float f) { generator.SetFrequency(f); }
-	void SetRidged(bool r) { generator.SetRidged(r); }
-	void SetOctaves(int o) { generator.SetOctaves(o); }
-	void SetPersistence(float p) { generator.SetPersistence(p); }
 
 private:
 	PerlinNoiseGenerator generator;
+	float amplitude = 15.0f;
+	float frequency = 0.028f;
+	int octaves = 10;
+	float persistence = 1.0f;
+	bool ridged = false;
+	bool useNormalDisplacement = false;
+	float offsetX = 0.0f, offsetZ = 0.0f;
+	int seed;
 };

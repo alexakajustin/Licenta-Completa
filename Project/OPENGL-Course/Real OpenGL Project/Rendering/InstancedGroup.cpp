@@ -12,13 +12,24 @@
 #include "Scene/GameObject.h"
 #include "Scene/SceneManager.h"
 #include "Nodes/NodeGraph.h"
-#include "Procedural/ScatterNode.h"
+#include "Procedural/SpawnInstancesNode.h"
 #include <cstdio>
 #include <cmath>
 #include <map>
 #include <algorithm>
 #include <execution>
 #include <numeric>
+
+// The Spawn Instances node that made a group (its id is in the group's name): instances erased in
+// the viewport are remembered there, so they stay erased when the graph runs again
+static SpawnInstancesNode* FindSpawnNode(SceneManager* scene, const std::string& groupName)
+{
+	if (!scene || groupName.find("Scatter_") == std::string::npos) return nullptr;
+	int nodeID = -1;
+	if (sscanf_s(groupName.c_str(), "Scatter_Instanced_%d_", &nodeID) != 1 &&
+		sscanf_s(groupName.c_str(), "Scatter_Group_%d_", &nodeID) != 1) return nullptr;
+	return dynamic_cast<SpawnInstancesNode*>(scene->FindNodeInAllGraphs(nodeID));
+}
 
 namespace {
 	// Uniform locations of the cull program (compute_cull.glsl), looked up once
@@ -900,18 +911,7 @@ void InstancedGroup::ExtractInstance(int index, SceneManager* scene, bool skipRe
 	PackedInstance inst = cpuInstances[index];
 	
 	// Extract the node ID from the name if it's procedurally generated
-	ScatterNode* scatterNode = nullptr;
-	if (scene && name.find("Scatter_") != std::string::npos) {
-		int nodeID = -1;
-		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
-			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
-		{
-			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
-			if (node && node->title == "Scatter") {
-				scatterNode = static_cast<ScatterNode*>(node);
-			}
-		}
-	}
+	SpawnInstancesNode* scatterNode = FindSpawnNode(scene, name);
 
 	if (scatterNode) {
 		glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
@@ -990,18 +990,7 @@ void InstancedGroup::ExtractInstances(const std::vector<int>& indices, SceneMana
 	});
 
 	// Extract the node ID from the name if it's procedurally generated
-	ScatterNode* scatterNode = nullptr;
-	if (scene && name.find("Scatter_") != std::string::npos) {
-		int nodeID = -1;
-		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
-			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
-		{
-			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
-			if (node && node->title == "Scatter") {
-				scatterNode = static_cast<ScatterNode*>(node);
-			}
-		}
-	}
+	SpawnInstancesNode* scatterNode = FindSpawnNode(scene, name);
 
 	// Sequential removal from cpuInstances (O(1) swap-pop in descending order)
 	for (int idx : sortedIndices) {
@@ -1085,18 +1074,7 @@ void InstancedGroup::DeleteSelectedInstances(SceneManager* scene)
 	if (selectedInstanceIndices.empty()) return;
 
 	// Extract the node ID from the name if it's procedurally generated
-	ScatterNode* scatterNode = nullptr;
-	if (scene && name.find("Scatter_") != std::string::npos) {
-		int nodeID = -1;
-		if (sscanf_s(name.c_str(), "Scatter_Instanced_%d_", &nodeID) == 1 ||
-			sscanf_s(name.c_str(), "Scatter_Group_%d_", &nodeID) == 1) 
-		{
-			GraphNode* node = scene->FindNodeInAllGraphs(nodeID);
-			if (node && node->title == "Scatter") {
-				scatterNode = static_cast<ScatterNode*>(node);
-			}
-		}
-	}
+	SpawnInstancesNode* scatterNode = FindSpawnNode(scene, name);
 
 	// O(N) filter to delete instances physically
 	std::vector<PackedInstance> newInstances;

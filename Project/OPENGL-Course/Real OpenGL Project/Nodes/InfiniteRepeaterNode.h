@@ -2,27 +2,18 @@
 
 #include "Nodes/NodeGraph.h"
 #include <string>
+#include <vector>
 
-/**
- * @class InfiniteRepeaterNode
- * @brief Configuration Node that attaches a WorldStreamerComponent to a target GameObject, allowing for infinite terrain/grid streaming around the player.
- */
+// Attaches a WorldStreamerComponent to a target object: its grid streams infinitely around the
+// camera (a configuration node: no pins)
 class InfiniteRepeaterNode : public GraphNode
 {
 public:
-	InfiniteRepeaterNode(NodeGraph& graph);
-	virtual ~InfiniteRepeaterNode() = default;
-
-	virtual void RenderContent(SceneManager* scene) override;
-	virtual void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	virtual json Serialize() const override;
-	virtual void Deserialize(const json& j) override;
+	explicit InfiniteRepeaterNode(NodeGraph& graph);
+	void Execute(NodeContext& ctx) override;
 
 private:
-	std::string targetName;
-	int targetIndex;
-	std::string referenceName;
-	int referenceIndex;
-	int radius;
+	std::vector<std::string> target;
+	std::vector<std::string> reference;
+	int radius = 2;
 };

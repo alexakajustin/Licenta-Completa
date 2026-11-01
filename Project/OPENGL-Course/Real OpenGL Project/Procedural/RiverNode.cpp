@@ -11,16 +11,10 @@
 #include <thread>
 #include <glm/gtc/matrix_transform.hpp>
 
-RiverNode::RiverNode(NodeGraph& graph)
+RiverNode::RiverNode(NodeGraph& graph) : GraphNode(graph)
 {
-	id = graph.NextNodeId();
-	title = "River";
-
-	Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	inputs.push_back(meshIn);
-
-	Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	outputs.push_back(meshOut);
+	AddInput(PinType::Mesh, "Mesh", "mesh");
+	AddOutput(PinType::Mesh, "Mesh", "mesh");
 
 	springCount = 8;
 	maxSteps = 1500;
@@ -30,58 +24,25 @@ RiverNode::RiverNode(NodeGraph& graph)
 	lakeWaterOffset = 0.005f;
 	smoothPasses = 8;
 	lakeDepth = 4.0f;
+
+	AddInt("springCount", "Springs", &springCount, 0.2f, 1, 50).Tip("Rivers start at the highest points, this many of them");
+	AddInt("maxSteps", "Max length", &maxSteps, 10.0f, 10, 4000);
+	AddFloat("baseDepth", "Base depth", &baseDepth, 0.1f, 0.0f, 50.0f, "%.2f");
+	AddFloat("baseWidth", "Base width", &baseWidth, 0.1f, 0.1f, 100.0f, "%.1f");
+	AddFloat("riverWaterOffset", "River offset", &riverWaterOffset, 0.01f, -10.0f, 10.0f).Legacy("waterOffset");
+	AddFloat("lakeWaterOffset", "Lake offset", &lakeWaterOffset, 0.01f, -10.0f, 10.0f).Legacy("waterOffset");
+	AddInt("smoothPasses", "Smooth passes", &smoothPasses, 0.1f, 0, 30);
+	AddFloat("lakeDepth", "Lake depth", &lakeDepth, 0.1f, 0.0f, 50.0f, "%.1f m").Section("Lakes")
+		.Tip("Depth of each lake away from its shore (the bed is dug out). The lake's extent follows the terrain up to its outlet.");
 }
 
-json RiverNode::Serialize() const
+void RiverNode::Execute(NodeContext& ctx)
 {
-	json j = GraphNode::Serialize();
-	j["springCount"] = springCount;
-	j["maxSteps"] = maxSteps;
-	j["baseDepth"] = baseDepth;
-	j["baseWidth"] = baseWidth;
-	j["riverWaterOffset"] = riverWaterOffset;
-	j["lakeWaterOffset"] = lakeWaterOffset;
-	j["smoothPasses"] = smoothPasses;
-	j["lakeDepth"] = lakeDepth;
-	return j;
-}
+	const NodeValue& input = In("mesh");
+	if (input.mesh.Empty()) return;
+	auto progress = [&](float pct, const std::string& msg) { ctx.Progress(pct, msg); };
 
-void RiverNode::Deserialize(const json& j)
-{
-	GraphNode::Deserialize(j);
-	springCount = j.value("springCount", 5);
-	maxSteps = j.value("maxSteps", 500);
-	baseDepth = j.value("baseDepth", 0.08f);
-	baseWidth = j.value("baseWidth", 15.0f);
-	riverWaterOffset = j.value("riverWaterOffset", j.value("waterOffset", -0.005f));
-	lakeWaterOffset = j.value("lakeWaterOffset", j.value("waterOffset", -0.005f));
-	smoothPasses = j.value("smoothPasses", 8);
-	// The old "lakeVolumeMultiplier" was in arbitrary units and flooded past spill points;
-	// lakeDepth is in meters, so old values are not converted.
-	lakeDepth = j.value("lakeDepth", 4.0f);
-}
-
-void RiverNode::RenderContent(SceneManager* scene)
-{
-	ImGui::DragInt("Springs", &springCount, 1, 1, 50);
-	ImGui::DragInt("Max Length", &maxSteps, 10, 10, 2000);
-	ImGui::DragFloat("Base Depth", &baseDepth, 0.1f, 0.0f, 50.0f);
-	ImGui::DragFloat("Base Width", &baseWidth, 0.1f, 0.1f, 100.0f);
-	ImGui::DragFloat("River Offset", &riverWaterOffset, 0.1f, -10.0f, 10.0f);
-	ImGui::DragFloat("Lake Offset", &lakeWaterOffset, 0.1f, -10.0f, 10.0f);
-	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 30);
-	ImGui::Separator();
-	ImGui::Text("Lakes");
-	ImGui::DragFloat("Lake Depth", &lakeDepth, 0.1f, 0.0f, 50.0f, "%.1f m");
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Depth of each lake away from its shore (the bed is dug out). The lake's extent follows the terrain up to its outlet.");
-}
-
-void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
-{
-	outputs[0].data.Clear();
-	if (inputs[0].data.type != PinDataType::Mesh) return;
-
-	MeshData data = inputs[0].data.meshData;
+	MeshData data = input.mesh.Data();
 	if (data.vertices.empty()) return;
 
 	int totalVerts = (int)data.vertices.size() / 14;
@@ -89,18 +50,13 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	if (gridRes * gridRes != totalVerts)
 	{
-		outputs[0].data = inputs[0].data;
+		ctx.Warn("Needs a square grid mesh (a subdivided plane): passed through unchanged");
+		Out(0, input);
 		return;
 	}
 
-	glm::vec3 terrainScale(1.0f);
-	GameObject* terrainObj = scene.FindObject(inputs[0].data.sourceObjectName);
-	if (terrainObj) {
-		terrainScale = terrainObj->GetTransform().GetScale();
-	}
-	if (!inputs[0].data.transforms.empty()) {
-		terrainScale = inputs[0].data.transforms[0].scale;
-	}
+	// The terrain's size: its scale is baked into the vertices (Scene Object)
+	glm::vec3 terrainScale = input.mesh.scale;
 
 	// 1. Identify "Springs"
 	struct Spring { int x, z; float height; };
@@ -134,7 +90,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	if (progress) progress(10.0f, "Seeding Springs...");
+	progress(10.0f, "Seeding Springs...");
 
 	// 2. Trace Paths
 	std::vector<int> flowVolume(totalVerts, 0);
@@ -243,7 +199,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 		}
 	}
 
-	if (progress) progress(30.0f, "Calculating Flow...");
+	progress(30.0f, "Calculating Flow...");
 
 	std::vector<float> originalHeights(totalVerts);
 	for (int i = 0; i < totalVerts; i++) {
@@ -566,7 +522,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	}
 	RecomputeNormals(data, gridRes);
 
-	if (progress) progress(80.0f, "Generating Water Meshes...");
+	progress(80.0f, "Generating Water Meshes...");
 
 	MeshData riverMesh;
 	MeshData lakeMesh;
@@ -837,16 +793,11 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 	// 7. Sync Objects & Materials
 	auto syncWaterObject = [&](const std::string& name, MeshData& meshData, const std::string& matPath) {
-		GameObject* obj = scene.FindObject(name);
-		if (!obj) {
-			obj = new GameObject(name);
-			scene.AddObject(obj);
-		}
-		if (terrainObj) {
-			obj->GetTransform().SetPosition(terrainObj->GetTransform().GetPosition());
-			obj->GetTransform().SetRotation(glm::vec3(0.0f));
-			obj->GetTransform().SetScale(glm::vec3(1.0f));
-		}
+		// In the terrain's frame: at its position, unrotated and unscaled (the vertices have both)
+		GameObject* obj = ctx.Object(name);
+		obj->GetTransform().SetPosition(input.mesh.origin);
+		obj->GetTransform().SetRotation(glm::vec3(0.0f));
+		obj->GetTransform().SetScale(glm::vec3(1.0f));
 		if (!obj->GetMaterial()) {
 			Material* mat = Material::LoadFromFile(matPath);
 			if (mat) obj->SetMaterial(mat);
@@ -860,9 +811,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 	syncWaterObject("River_Water_" + std::to_string(id), riverMesh, "Assets/Materials/River.mat");
 	syncWaterObject("Lake_Water_" + std::to_string(id), lakeMesh, "Assets/Materials/Water.mat");
 
-	if (progress) progress(100.0f, "Done!");
-	outputs[0].data = inputs[0].data;
-	outputs[0].data.meshData = data;
+	progress(100.0f, "Done!");
+	MeshValue out = input.mesh;
+	out.Set(std::move(data));
+	Out(0, NodeValue::FromMesh(std::move(out)));
 }
 
 void RiverNode::RecomputeNormals(MeshData& data, int gridRes)

@@ -36,6 +36,7 @@ public:
 	SceneAction GetPendingSceneAction() const { return pendingSceneAction; }
 	const std::string& GetPendingScenePath() const { return pendingScenePath; }
 	void ClearPendingSceneAction() { pendingSceneAction = SceneAction::None; pendingScenePath.clear(); }
+	void RequestSceneLoad(const std::string& path) { pendingSceneAction = SceneAction::Load; pendingScenePath = path; }
 
 	// Play/Stop actions (signaled from toolbar, handled by Application)
 	enum class PlayAction { None, Play, Stop };

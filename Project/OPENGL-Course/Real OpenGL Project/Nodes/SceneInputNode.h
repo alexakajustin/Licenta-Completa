@@ -1,58 +1,56 @@
 #pragma once
 
 #include "Nodes/NodeGraph.h"
-#include "Scene/SceneManager.h"
-#include "Scene/GameObject.h"
-#include "Rendering/PrimitiveGenerator.h"
-#include "imgui.h"
+#include "Rendering/TextureLayer.h"
 #include <string>
+#include <vector>
 
-// Picks a GameObject from the scene hierarchy and outputs its mesh data.
+class Texture;
+class Material;
+
+// An object's geometry and its children's, in the object's frame with its rotation and scale baked
+// in (relative to its world position), plus its look. originalPrimitives: planes, cubes and
+// spheres as fresh primitives rather than the mesh a graph last generated into them.
+MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives);
+
+// =====================================================================
+// Scene Object: one object of the scene, as geometry and as an object reference
+//
+//  Mesh    its geometry and its children's, rotation and scale baked in (computed only when the
+//          output is linked)
+//  Object  the object itself, for nodes that place or clone objects (Spawn Instances, Interior
+//          Gen...) or test against them (Object Filter)
+// If the object is deleted, the mesh is rebuilt from what was cached the last time it was read
+// (primitive type or model file, transform, material).
+// =====================================================================
 class SceneInputNode : public GraphNode
 {
 public:
-	SceneInputNode(NodeGraph& graph);
+	explicit SceneInputNode(NodeGraph& graph);
+	~SceneInputNode() override;
 
-	void RenderContent(SceneManager* scene) override;
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
+	void Execute(NodeContext& ctx) override;
+	void SaveState(json& j) const override;
+	void LoadState(const json& j) override;
+	std::vector<std::string> LegacyOutputKeys() const override { return { "mesh" }; }
 
-	json Serialize() const override;
-	void Deserialize(const json& j) override;
-
-	std::string GetSelectedName() const { return selectedName; }
-	int GetSelectedIndex() const { return selectedIndex; }
-
-	void OnObjectRenamed(const std::string& oldName, const std::string& newName) override
-	{
-		if (selectedName == oldName) selectedName = newName;
-	}
-
-	void SetSelection(int index, const std::string& name)
-	{
-		selectedIndex = index;
-		selectedName = name;
-	}
-
+	std::string GetSelectedName() const { return selected.empty() ? std::string("(none)") : selected[0]; }
+	void SetSelection(int index, const std::string& name) { (void)index; selected = { name }; }
 	void SetForceOriginalPrimitive(bool force) { forceOriginalPrimitive = force; }
 
 private:
-	int selectedIndex = -1;
-	std::string selectedName = "(none)";
+	std::vector<std::string> selected;
+	bool forceOriginalPrimitive = true; // Planes/cubes/spheres as fresh primitives, not their last generated mesh
 
-	bool forceOriginalPrimitive = true; // If true, generates fresh primitive mesh instead of reading modified one
-
-	// Fallback Cache (Protects against vuser deleting the base object)
-	std::string cachedPrimitiveType = "";
-	std::string cachedModelPath = "";
+	// Fallback cache (the object may be deleted later)
+	std::string cachedPrimitiveType;
+	std::string cachedModelPath;
 	glm::vec3 cachedPosition = glm::vec3(0.0f);
 	glm::vec3 cachedRotation = glm::vec3(0.0f);
 	glm::vec3 cachedScale = glm::vec3(1.0f);
-
-	std::string cachedTexturePath = "";
-	std::string cachedNormalMapPath = "";
-	
+	std::string cachedTexturePath;
+	std::string cachedNormalMapPath;
 	std::vector<TextureLayer> cachedTextureLayers;
-
 	bool hasCachedMaterial = false;
 	float cachedMatSpecular = 0.5f;
 	float cachedMatShininess = 32.0f;
@@ -60,14 +58,12 @@ private:
 	glm::vec2 cachedMatTiling = glm::vec2(1.0f);
 	glm::vec2 cachedMatOffset = glm::vec2(0.0f);
 
-	// Instances created purely for fallback
 	Texture* fallbackTexture = nullptr;
 	Texture* fallbackNormalMap = nullptr;
 	Material* fallbackMaterial = nullptr;
-	
 	std::vector<Texture*> fallbackLayersTextures;
 	std::vector<Texture*> fallbackLayersNormals;
 
-	~SceneInputNode(); // Need destructor to clean up fallback memory
 	void CleanupFallbacks();
+	MeshValue RebuildFromCache();
 };

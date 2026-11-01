@@ -6,23 +6,24 @@
 #include "imgui.h"
 #include <string>
 #include <vector>
+#include <map>
 #include <random>
 
 // =====================================================================
 // InteriorGenNode — Procedural Building Interior Generator
 //
-// Takes building plot data and generates fully detailed interiors:
+// Takes building plots (or a single standalone footprint) and generates interiors:
 //   - Recursive floorplan subdivision (rooms, hallways)
 //   - Door placement with hinge-swing collision avoidance
 //   - Wall/window mullion alignment
-//   - Modular room decoration (furniture, fixtures, props)
-//   - Material-batched mega-mesh output for minimal draw calls
+//   - Room decoration with furniture
+//   - Material-batched meshes for few draw calls
 //
 // Inputs:
-//   [0] Plots (TransformList) — building positions + sizes from CityGridNode
-//
-// Outputs:
-//   (none — spawns GameObjects directly, matching BuildingGenNode pattern)
+//   Plots      (Points)  building positions + sizes, e.g. from City Grid
+//   Furniture  (Objects) any number of furniture objects. Each is sorted into a category (bed,
+//              desk, TV, stove...) by its label, or by its name, or by the category table on the
+//              node; a category with several objects picks one per placement (variety).
 // =====================================================================
 
 /**
@@ -32,36 +33,19 @@
 class InteriorGenNode : public GraphNode
 {
 public:
-	/**
-	 * @brief Constructor.
-	 * @param graph NodeGraph that owns this node.
-	 */
-	InteriorGenNode(NodeGraph& graph);
-
-	/**
-	 * @brief Renders the editor UI panel for configuring room counts, door sizes, and furniture toggles.
-	 * @param scene Pointer to active scene manager.
-	 */
+	explicit InteriorGenNode(NodeGraph& graph);
+	void Execute(NodeContext& ctx) override;
 	void RenderContent(SceneManager* scene) override;
+	void SaveState(json& j) const override;
+	void LoadState(const json& j) override;
 
-	/**
-	 * @brief Executes the interior layout generation process, producing walls, floors, and furniture GameObjects in the scene.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
+	// Older saves: plots, then one mesh pin per furniture category
+	std::vector<std::string> LegacyInputKeys() const override;
 
-	/**
-	 * @brief Serializes node properties to JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
+	// The furniture categories (key, label)
+	static const std::vector<std::pair<std::string, std::string>>& Categories();
+	// Objects assigned to a category by hand (or by the conversion of an older save)
+	void SetFurnitureOverride(const std::string& category, const std::vector<std::string>& objects) { furnitureOverrides[category] = objects; }
 
 private:
 	// Generation parameters (exposed in ImGui)
@@ -82,6 +66,12 @@ private:
 	int   numBathrooms   = 1;       ///< Requested bathroom count.
 	int   numKitchens    = 1;       ///< Requested kitchen count.
 	int   numLivingRooms = 1;       ///< Requested living room count.
+
+	std::map<std::string, std::vector<std::string>> furnitureOverrides; ///< Category -> objects, set by hand
+	std::map<std::string, std::vector<std::string>> lastAssignment;     ///< What the last run used, for the UI
+
+	// Category -> furniture objects: the table first, then labels, then names
+	std::map<std::string, std::vector<GameObject*>> ResolveFurniture(NodeContext& ctx);
 
 	// Core generation pipeline
 	

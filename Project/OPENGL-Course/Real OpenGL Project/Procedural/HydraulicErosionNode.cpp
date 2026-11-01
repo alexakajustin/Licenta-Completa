@@ -1,4 +1,5 @@
 #include "Procedural/HydraulicErosionNode.h"
+#include "Nodes/NodeRandom.h"
 #include "Procedural/DropletErosion.h"
 #include "Procedural/ThermalErosion.h"
 #include <algorithm>
@@ -8,86 +9,44 @@
 #include <vector>
 #include <string>
 
-HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
+HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph) : GraphNode(graph), seed(NodeRandom::TrueRandomSeed())
 {
-	id = graph.NextNodeId();
-	title = "Hydraulic Erosion";
-
-	Pin meshIn(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	inputs.push_back(meshIn);
-
-	Pin meshOut(graph.NextPinId(), PinDataType::Mesh, "Mesh");
-	outputs.push_back(meshOut);
+	AddInput(PinType::Mesh, "Mesh", "mesh");
+	AddOutput(PinType::Mesh, "Mesh", "mesh");
+	AddFloat("dropletsPerCell", "Droplets / cell", &dropletsPerCell, 0.1f, 0.0f, 100.0f, "%.1f").Tip("Rain: droplets simulated per heightmap cell");
+	AddFloat("erodeSpeed", "Erosion", &erodeSpeed, 0.01f, 0.0f, 1.0f);
+	AddFloat("depositSpeed", "Deposition", &depositSpeed, 0.01f, 0.0f, 1.0f);
+	AddFloat("sedimentCapacity", "Capacity", &sedimentCapacity, 0.1f, 0.1f, 32.0f, "%.2f").Tip("Sediment a droplet carries per unit of slope, speed and water");
+	AddInt("brushRadius", "Brush radius", &brushRadius, 0.1f, 1, 8).Tip("Wider: smoother gullies");
+	AddFloat("inertia", "Inertia", &inertia, 0.01f, 0.0f, 0.95f);
+	AddFloat("evaporation", "Evaporation", &evaporation, 0.001f, 0.0f, 0.2f, "%.3f");
+	AddFloat("talusAngle", "Talus angle", &talusAngle, 0.5f, 15.0f, 70.0f, "%.1f deg").Tip("Thermal erosion: the steepest stable slope; steeper material slides down");
+	AddInt("thermalIterations", "Thermal iterations", &thermalIterations, 0.5f, 0, 200);
+	AddFloat("edgeFadeCells", "Edge fade", &edgeFadeCells, 1.0f, 0.0f, 200.0f, "%.0f cells");
+	AddInt("smoothPasses", "Smooth passes", &smoothPasses, 0.1f, 0, 20);
+	AddSeed("seed", "Seed", &seed);
 }
 
-void HydraulicErosionNode::RenderContent(SceneManager* scene)
+void HydraulicErosionNode::LoadState(const json& j)
 {
-	ImGui::PushItemWidth(ImGui::GetFontSize() * 5.6f); // Relative to the font: scales with the node editor's zoom
-	ImGui::DragFloat("Droplets / Cell", &dropletsPerCell, 0.1f, 0.0f, 100.0f, "%.1f");
-	ImGui::DragFloat("Erosion", &erodeSpeed, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Deposition", &depositSpeed, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Capacity", &sedimentCapacity, 0.1f, 0.1f, 32.0f);
-	ImGui::DragInt("Brush Radius", &brushRadius, 1, 1, 8);
-	ImGui::DragFloat("Inertia", &inertia, 0.01f, 0.0f, 0.95f);
-	ImGui::DragFloat("Evaporation", &evaporation, 0.001f, 0.0f, 0.2f, "%.3f");
-	ImGui::DragFloat("Talus Angle", &talusAngle, 0.5f, 15.0f, 70.0f, "%.1f deg");
-	ImGui::DragInt("Thermal Iter", &thermalIterations, 1, 0, 200);
-	ImGui::DragFloat("Edge Fade", &edgeFadeCells, 1.0f, 0.0f, 200.0f, "%.0f cells");
-	ImGui::DragInt("Smooth Passes", &smoothPasses, 1, 0, 20);
-	ImGui::PopItemWidth();
+	// Before it had a seed, every erosion used 42: same terrain as before
+	if (!j.contains("seed")) seed = 42;
 }
 
-json HydraulicErosionNode::Serialize() const
+void HydraulicErosionNode::Execute(NodeContext& ctx)
 {
-	json j = GraphNode::Serialize();
-	j["dropletsPerCell"] = dropletsPerCell;
-	j["erodeSpeed"] = erodeSpeed;
-	j["depositSpeed"] = depositSpeed;
-	j["sedimentCapacity"] = sedimentCapacity;
-	j["evaporation"] = evaporation;
-	j["brushRadius"] = brushRadius;
-	j["inertia"] = inertia;
-	j["smoothPasses"] = smoothPasses;
-	j["talusAngle"] = talusAngle;
-	j["thermalIterations"] = thermalIterations;
-	j["edgeFadeCells"] = edgeFadeCells;
-	return j;
-}
-
-void HydraulicErosionNode::Deserialize(const json& j)
-{
-	GraphNode::Deserialize(j);
-	// Keys of the previous (grid-locked) solver are ignored on purpose: its constants don't
-	// translate, so old graphs pick up the new solver's tuned defaults instead.
-	dropletsPerCell = j.value("dropletsPerCell", 8.0f);
-	erodeSpeed = j.value("erodeSpeed", 0.4f);
-	depositSpeed = j.value("depositSpeed", 0.3f);
-	sedimentCapacity = j.value("sedimentCapacity", 6.0f);
-	evaporation = j.value("evaporation", 0.01f);
-	brushRadius = j.value("brushRadius", 3);
-	inertia = j.value("inertia", 0.05f);
-	smoothPasses = j.value("smoothPasses", 0);
-	talusAngle = j.value("talusAngle", 35.0f);
-	thermalIterations = j.value("thermalIterations", 20);
-	edgeFadeCells = j.value("edgeFadeCells", 40.0f);
-}
-
-void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback progress)
-{
-	outputs[0].data.Clear();
-
-	PinData inputData = inputs[0].data;
-	if (inputData.type == PinDataType::Mesh)
+	const NodeValue& input = In("mesh");
+	if (!input.mesh.Empty())
 	{
-		MeshData data = inputData.meshData;
-		if (data.vertices.empty()) return;
+		MeshData data = input.mesh.Data();
 
 		int totalVerts = (int)data.vertices.size() / 14;
 		int gridRes = (int)std::sqrt(totalVerts);
 
 		if (gridRes * gridRes != totalVerts)
 		{
-			outputs[0].data = inputData;
+			ctx.Warn("Needs a square grid mesh (a subdivided plane): passed through unchanged");
+			Out(0, input);
 			return;
 		}
 
@@ -126,7 +85,7 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 		// fins (fine from above, walls from the side); thermal relaxes them to the talus angle
 		// after every round, so the gullies deepen as V-shaped valleys with scree slopes.
 		const int rounds = 4;
-		auto report = [&](float t, const std::string& what) { if (progress) progress(t * 100.0f, what); };
+		auto report = [&](float t, const std::string& what) { ctx.Progress(t * 100.0f, what); };
 
 		if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations * 3,
 			[&](float t) { report(t * 0.05f, "Thermal Erosion (settling)..."); });
@@ -134,7 +93,7 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 		for (int r = 0; r < rounds; r++)
 		{
 			params.numDroplets = totalDroplets / rounds;
-			params.seed = 42u + (unsigned int)r;
+			params.seed = (unsigned int)seed + (unsigned int)r;
 			float base = 0.05f + 0.9f * (float)r / (float)rounds;
 			float span = 0.9f / (float)rounds;
 			RunDropletErosion(hmap, gridRes, params, [&](float t) {
@@ -172,8 +131,9 @@ void HydraulicErosionNode::Execute(SceneManager& scene, NodeProgressCallback pro
 		}
 
 		RecomputeNormals(data, gridRes - 1, gridRes - 1);
-		outputs[0].data = inputData;
-		outputs[0].data.meshData = data;
+		MeshValue out = input.mesh;
+		out.Set(std::move(data));
+		Out(0, NodeValue::FromMesh(std::move(out)));
 	}
 }
 

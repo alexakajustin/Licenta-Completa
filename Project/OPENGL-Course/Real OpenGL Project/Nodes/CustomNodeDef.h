@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <filesystem>
 #include "Rendering/MeshData.h"
+#include "Nodes/NodeValue.h"
 #include "Nodes/Operation.h"
 
 // =====================================================================
@@ -17,10 +18,10 @@
 struct PinDefinition
 {
 	std::string name;
-	PinDataType type;
+	PinType type;
 
-	PinDefinition() : name("Unnamed"), type(PinDataType::Mesh) {}
-	PinDefinition(const std::string& n, PinDataType t) : name(n), type(t) {}
+	PinDefinition() : name("Unnamed"), type(PinType::Mesh) {}
+	PinDefinition(const std::string& n, PinType t) : name(n), type(t) {}
 };
 
 // =====================================================================
@@ -89,8 +90,8 @@ struct CustomNodeDef
 	static bool LoadFromFile(const std::string& path, CustomNodeDef& outDef);
 
 	// Internal helpers
-	static std::string PinTypeToString(PinDataType type);
-	static PinDataType StringToPinType(const std::string& str);
+	static std::string PinTypeToString(PinType type);
+	static PinType StringToPinType(const std::string& str);
 	static std::string ParamTypeToString(ParamType type);
 	static ParamType StringToParamType(const std::string& str);
 };

@@ -14,32 +14,10 @@ public:
 	 * @brief Constructor.
 	 * @param graph NodeGraph that owns this node.
 	 */
-	BeautifulErosionNode(NodeGraph& graph);
-
-	/**
-	 * @brief Renders the editor UI panel for configuring erosion variables.
-	 * @param scene Pointer to active scene manager.
-	 */
-	void RenderContent(SceneManager* scene) override;
-
-	/**
-	 * @brief Evaluates the node, applying the erosion algorithm to the mesh data in-place.
-	 * @param scene Active scene manager.
-	 * @param progress Callback for updating execution progress.
-	 */
-	void Execute(SceneManager& scene, NodeProgressCallback progress = nullptr) override;
-
-	/**
-	 * @brief Serializes node properties into JSON.
-	 * @return JSON object.
-	 */
-	json Serialize() const override;
-
-	/**
-	 * @brief Deserializes node properties from JSON.
-	 * @param j JSON object.
-	 */
-	void Deserialize(const json& j) override;
+	explicit BeautifulErosionNode(NodeGraph& graph);
+	void Execute(NodeContext& ctx) override;
+	void SaveState(json& j) const override;
+	void LoadState(const json& j) override;
 
 private:
 	/**

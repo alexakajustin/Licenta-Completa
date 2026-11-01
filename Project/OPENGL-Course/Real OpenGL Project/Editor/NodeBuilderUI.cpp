@@ -43,35 +43,35 @@ NodeBuilderUI::~NodeBuilderUI()
 //  Pin Type Helpers
 // =====================================================================
 
-const char* NodeBuilderUI::PinTypeLabel(PinDataType type)
+const char* NodeBuilderUI::PinTypeLabel(PinType type)
 {
 	switch (type)
 	{
-	case PinDataType::Mesh:          return "Mesh";
-	case PinDataType::Float:         return "Float";
-	case PinDataType::Int:           return "Int";
-	case PinDataType::Vec3:          return "Vec3";
-	case PinDataType::Vec2:          return "Vec2";
-	case PinDataType::Bool:          return "Bool";
-	case PinDataType::TransformList: return "TransformList";
+	case PinType::Mesh:          return "Mesh";
+	case PinType::Float:         return "Float";
+	case PinType::Int:           return "Int";
+	case PinType::Vec3:          return "Vec3";
+	case PinType::Vec2:          return "Vec2";
+	case PinType::Bool:          return "Bool";
+	case PinType::Points:        return "Points";
 	default:                         return "None";
 	}
 }
 
-static const PinDataType allPinTypes[] = {
-	PinDataType::Mesh,
-	PinDataType::Float,
-	PinDataType::Int,
-	PinDataType::Vec3,
-	PinDataType::Vec2,
-	PinDataType::Bool,
-	PinDataType::TransformList
+static const PinType allPinTypes[] = {
+	PinType::Mesh,
+	PinType::Float,
+	PinType::Int,
+	PinType::Vec3,
+	PinType::Vec2,
+	PinType::Bool,
+	PinType::Points
 };
 static const int numPinTypes = 7;
 
 int NodeBuilderUI::PinTypeDropdown(const char* label, int currentType)
 {
-	const char* preview = PinTypeLabel((PinDataType)currentType);
+	const char* preview = PinTypeLabel((PinType)currentType);
 	if (ImGui::BeginCombo(label, preview))
 	{
 		for (int i = 0; i < numPinTypes; i++)
@@ -97,8 +97,8 @@ void NodeBuilderUI::ClearEditor()
 	currentDef.category = "Custom";
 
 	// Default: one Mesh input, one Mesh output
-	currentDef.inputDefs.push_back(PinDefinition("Mesh", PinDataType::Mesh));
-	currentDef.outputDefs.push_back(PinDefinition("Result", PinDataType::Mesh));
+	currentDef.inputDefs.push_back(PinDefinition("Mesh", PinType::Mesh));
+	currentDef.outputDefs.push_back(PinDefinition("Result", PinType::Mesh));
 
 	strncpy_s(nameBuffer, sizeof(nameBuffer), "My Custom Node", _TRUNCATE);
 	strncpy_s(categoryBuffer, sizeof(categoryBuffer), "Custom", _TRUNCATE);
@@ -155,7 +155,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 	{
 		std::string pinName = std::string(newInputPinName);
 		if (pinName.empty()) pinName = "Input_" + std::to_string(currentDef.inputDefs.size());
-		currentDef.inputDefs.push_back(PinDefinition(pinName, (PinDataType)newInputPinType));
+		currentDef.inputDefs.push_back(PinDefinition(pinName, (PinType)newInputPinType));
 	}
 
 	// Pin type for next add
@@ -186,7 +186,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 		ImGui::PushItemWidth(80);
 		int type = (int)pin.type;
 		type = PinTypeDropdown("##PinType", type);
-		pin.type = (PinDataType)type;
+		pin.type = (PinType)type;
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
@@ -297,7 +297,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 	{
 		std::string pinName = std::string(newOutputPinName);
 		if (pinName.empty()) pinName = "Output_" + std::to_string(currentDef.outputDefs.size());
-		currentDef.outputDefs.push_back(PinDefinition(pinName, (PinDataType)newOutputPinType));
+		currentDef.outputDefs.push_back(PinDefinition(pinName, (PinType)newOutputPinType));
 	}
 
 	ImGui::SameLine();
@@ -325,7 +325,7 @@ void NodeBuilderUI::Render(NodeGraph& graph, EditorUI::WindowState& uiState)
 		ImGui::PushItemWidth(80);
 		int type = (int)pin.type;
 		type = PinTypeDropdown("##OutPinType", type);
-		pin.type = (PinDataType)type;
+		pin.type = (PinType)type;
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
