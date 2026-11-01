@@ -24,12 +24,13 @@ struct GraphicsSettings;
 //
 //   - Two triangles instead of thousands per tree, and they keep the whole crown.
 //   - The shadow cascades draw the same cards facing the light.
-//   - Coverage is dithered instead of alpha-tested: a far crown keeps its gaps like the meshes.
+//   - Alpha-tested like the leaf cards, on coverage-preserving mips (Castano 2010): clean edges,
+//     and the crowns do not thin out with distance.
 // =====================================================================
 
 struct ImpostorAtlas
 {
-	GLuint albedo = 0;          // rgb albedo, a coverage (mips: average coverage)
+	GLuint albedo = 0;          // rgb albedo, a coverage (coverage-preserving mips)
 	GLuint data = 0;            // rgb mesh-space normal * 0.5 + 0.5, a depth toward the viewer
 	GLuint material = 0;        // r: 1 leaves, 0 bark (each keeps its own lighting model)
 	int frames = 8;             // Views per side of the hemi-octahedral grid
@@ -53,9 +54,11 @@ class ImpostorSystem
 public:
 	~ImpostorSystem();
 
-	// Every frame before the shadow passes: finds the trees among the instanced groups (groups of
-	// one scatter sharing their instances), bakes the atlases still missing (one per frame) and
-	// tells every group whether and how it takes part. Frees the atlases of trees that are gone.
+	// Every frame before the shadow passes: finds the plants among the instanced groups (groups of
+	// one scatter sharing their instances) and tells every group how it moves in the wind (grass,
+	// bark, leaves: one plant, one base and height); then bakes the impostor atlases still missing
+	// (one per frame) and tells every group whether and how it takes part. Frees the atlases of
+	// trees that are gone.
 	void Update(std::vector<InstancedGroup*>& groups, const GraphicsSettings* gs);
 
 	// Camera-pass shader: the scene binds its lights and shadows like a material shader's
@@ -70,7 +73,7 @@ private:
 
 	std::map<std::string, ImpostorAtlas*> atlases; // By what the bake depends on (meshes, textures, size)
 	std::set<std::string> failed;                  // Bakes that produced nothing: not retried
-	Shader shader, shadowShader, bakeShader, resolveShader;
+	Shader shader, shadowShader, bakeShader, resolveShader, coverageShader;
 	Mesh* quad = nullptr;
 	bool initialized = false;
 	bool initFailed = false;

@@ -164,7 +164,10 @@ void VolumetricFog::Render(const glm::mat4& projection, const glm::mat4& view, c
 
 	float dt = lastTime < 0.0f ? 0.0f : std::clamp(time - lastTime, 0.0f, 0.25f);
 	lastTime = time;
-	windOffset += glm::vec3(1.0f, 0.05f, 0.4f) * gs.fogWindSpeed * dt;
+	// The wisps drift in the scene's wind direction (Graphics Settings > Wind) at their own speed;
+	// the noise is read at p + windOffset, so the offset runs against the wind
+	float windAngle = glm::radians(gs.windDirection);
+	windOffset += glm::vec3(-std::cos(windAngle), 0.05f, -std::sin(windAngle)) * gs.fogWindSpeed * dt;
 
 	// --- 1. Inject medium + light ---
 	injectShader.UseShader();

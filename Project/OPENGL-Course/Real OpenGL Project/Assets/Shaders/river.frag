@@ -13,8 +13,9 @@
  *  - ripples and foam advected by that field (FlowRipples, two-phase flow maps),
  *  - white-water foam where the bed is steep (rapids), where the current is forced around
  *    obstacles and in their wakes (WaterFoamMap smears the froth downstream),
- *  - sky reflection only (the planar reflection is rendered for the lake height, rivers sit higher),
- *    with the clouds and the fog between the water and the sky.
+ *  - sky reflection (the planar reflection is rendered for the lake height, rivers sit higher),
+ *    with the clouds and the fog between the water and the sky; at a lake mouth, where the river
+ *    runs at the lake's height, the lake's planar reflection, so both look the same where they meet.
  */
 
 in vec4 vertex_color;
@@ -29,7 +30,8 @@ in float vIsSelected;
 in float vFadeFactor;
 in vec4 clipSpaceCoords;
 in float vObjectScale;
-in vec2 RiverCoord;      // Raw mesh UV: x = across the river (0 = left bank, 1 = right bank)
+in vec2 RiverCoord;      // Raw mesh UV: x = across the river (0 = left bank, 1 = right bank),
+                         // y = -1 - opacity at a lake mouth (RiverNode; y >= 0 on other meshes)
 
 out vec4 colour;
 
@@ -80,6 +82,10 @@ uniform float waterFoamSize;        // World size of the window (0 = no foam map
 uniform sampler2D waterFoamProximity; // Proximity to obstacles crossing the surface (1 at their outline)
 uniform vec3 eyePosition;
 uniform float selectionTint;
+uniform sampler2D fogReflectionDepth;   // Depth of the planar reflection (mirrored camera)
+uniform int fogReflectionDepthValid;
+uniform float waterReflectionHeight;    // Height the planar reflection was rendered for (the lake)
+uniform int waterReflectionValid;
 
 // ===================== SHARED WATER MODEL (keep identical in water.frag) =====================
 // Ripples, glint and reflections after "Where the River Goes" by Paul Malin
@@ -152,6 +158,16 @@ vec3 FlowNoise(vec2 p, vec2 flow, float warp, float footprint, out float lost)
     return sum / total;
 }
 
+// Graphics Settings > Water > Detail Distance: how far the fine ripples and foam bubbles reach.
+// 1 = up to where they would start to shimmer; 2 = twice as far. Every detail fade below reads
+// the pixel footprint through this.
+uniform float waterDetail;
+
+float DetailFootprint(float footprint)
+{
+    return footprint / (waterDetail > 0.0 ? waterDetail : 1.0);
+}
+
 vec2 CycleOffset(float cycle, float salt)
 {
     return vec2(Hash21(vec2(cycle, salt)), Hash21(vec2(cycle, salt + 57.0))) * 97.0;
@@ -161,18 +177,19 @@ struct Ripples { vec3 normal; float height; float roughness; };
 
 // Surface of water flowing at 'flow' (noise units per cycle) at 'p' (noise units), 't' in
 // cycles: two FlowNoise copies over staggered cycles, cross-faded (Valve's flow maps), each
-// restarting at a random offset while invisible. 'flatness' sets how gentle the slopes are.
+// restarting at a random offset while invisible. The noise is read at p - flow * t, so the
+// pattern travels along 'flow' (downstream, with the foam). 'flatness' sets how gentle the slopes are.
 // Must be called in uniform control flow (screen-space derivatives).
 Ripples FlowRipples(vec2 p, vec2 flow, float warp, float flatness, float t)
 {
     // Pixel footprint as an area (geometric mean): at grazing angles the depth axis is stretched
     // and its max would wipe out every octave, while the detail across the view still resolves
     vec2 fp = fwidth(p);
-    float footprint = sqrt(max(fp.x * fp.y, 1e-12));
+    float footprint = DetailFootprint(sqrt(max(fp.x * fp.y, 1e-12)));
     float t0 = fract(t), t1 = fract(t + 0.5);
     float lost0, lost1;
-    vec3 n0 = FlowNoise(p + CycleOffset(floor(t), 1.0), flow * (t0 - 0.5), warp, footprint, lost0);
-    vec3 n1 = FlowNoise(p + CycleOffset(floor(t + 0.5), 31.0), flow * (t1 - 0.5), warp, footprint, lost1);
+    vec3 n0 = FlowNoise(p + CycleOffset(floor(t), 1.0), flow * (0.5 - t0), warp, footprint, lost0);
+    vec3 n1 = FlowNoise(p + CycleOffset(floor(t + 0.5), 31.0), flow * (0.5 - t1), warp, footprint, lost1);
     float w = abs(t0 - 0.5) * 2.0; // Copy 0 is fully faded out when it restarts
     vec3 n = mix(n0, n1, w);
     Ripples r;
@@ -442,13 +459,35 @@ void main()
     // fog between the water and the sky; the view's fog stops at fogRange, so does this ---
     vec3 viewDir = normalize(eyePosition - FragPos);
     vec3 skyDir = reflect(-viewDir, N);
-    vec3 reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb, FragPos, skyDir, max(fogRange - dist, 0.0));
+    float skyFog = max(fogRange - dist, 0.0);
+    vec3 reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb, FragPos, skyDir, skyFog);
+
+    // Where the river runs at (or a little above) the lake's height the planar reflection rendered
+    // for the lake holds for it too - a few metres of height shift the mirrored scene by less than
+    // the ripples do: the same reflection as the lake (water.frag) on both sides of the mouth
+    float planarWeight = waterReflectionValid == 1 ? 1.0 - smoothstep(0.5, 3.0, abs(FragPos.y - waterReflectionHeight)) : 0.0;
+    if (planarWeight > 0.0) {
+        vec2 screenUV = gl_FragCoord.xy / max(screenSize, vec2(1.0));
+        vec2 reflUV = clamp(screenUV + N.xz * 0.04, vec2(0.001), vec2(0.999));
+        vec3 planar = textureLod(reflectionMap, reflUV, 0.5 + r.roughness * 5.0).rgb;
+        if (dot(planar, planar) > 0.0001) {
+            float fogLength = skyFog;
+            if (fogReflectionDepthValid == 1) {
+                float mirroredDepth = textureLod(fogReflectionDepth, reflUV, 0.0).r;
+                if (mirroredDepth < 1.0) {
+                    float rayScale = dist / max(LinearDepth(gl_FragCoord.z), 1e-3);
+                    fogLength = min(max(LinearDepth(mirroredDepth) * rayScale - dist, 0.0), skyFog);
+                }
+            }
+            reflection = mix(reflection, FogReflection(planar, FragPos, reflect(-viewDir, vec3(0.0, 1.0, 0.0)), fogLength), planarWeight);
+        }
+    }
 
     // --- Foam carried by the current: two copies over staggered cycles like the ripples, each
     // restarting at a random spot while invisible, so it never shears or visibly repeats ---
     const float FOAM_CYCLE = 4.0;
     vec2 fp = fwidth(FragPos.xz);
-    float footprint = max(fp.x, fp.y);
+    float footprint = DetailFootprint(max(fp.x, fp.y));
     float c0 = fract(time / FOAM_CYCLE), c1 = fract(time / FOAM_CYCLE + 0.5);
     vec2 travel = velocity * FOAM_CYCLE;
     float patternA = FoamPattern(FragPos.xz - travel * c0 + CycleOffset(floor(time / FOAM_CYCLE), 5.0), footprint);
@@ -467,5 +506,7 @@ void main()
     vec3 finalColor = ws.color;
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
     finalColor += vec3(0.5, 0.4, 0.0) * selected;
-    colour = vec4(finalColor, ws.alpha);
+    // Lake mouth: the river fades out over the lake reaching up its channel (RiverNode)
+    float mouthFade = RiverCoord.y <= -0.5 ? clamp(-RiverCoord.y - 1.0, 0.0, 1.0) : 1.0;
+    colour = vec4(finalColor, ws.alpha * smoothstep(0.0, 1.0, mouthFade));
 }

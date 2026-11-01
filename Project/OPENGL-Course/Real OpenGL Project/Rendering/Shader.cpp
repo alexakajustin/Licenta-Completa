@@ -1,3 +1,4 @@
+#include "Rendering/Wind.h"
 #include "Rendering/Shader.h"
 #include <algorithm>
 #include <unordered_map>
@@ -314,6 +315,10 @@ void Shader::CompileProgram()
 	ServiceLocator::GetAssetManager()->RegisterShader(shaderID, name);
 	printf("[ShaderRegistry] ID %u -> %s\n", shaderID, name.c_str());
 
+	// The scene's wind (wind.glsl) is one uniform block shared by every program
+	GLuint windBlock = glGetUniformBlockIndex(shaderID, "WindBlock");
+	if (windBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, windBlock, WIND_UBO_BINDING);
+
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformProjection = glGetUniformLocation(shaderID, "projection");
 	uniformView = glGetUniformLocation(shaderID, "view");
@@ -458,6 +463,9 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 		n_lower.find("shadow") != std::string::npos ||
 		n_lower.find("transform") != std::string::npos ||
 		n_lower.find("waterfoam") != std::string::npos || // Per-frame foam map (WaterFoamMap)
+		n_lower.find("waterdetail") != std::string::npos || // Graphics Settings > Water
+		n_lower.find("waterreflection") != std::string::npos || // Planar reflection height (SceneManager)
+		n_lower.find("wind") != std::string::npos ||      // The scene's wind (WindBlock) and plant wind, set per draw
 		n_lower.find("foliage") != std::string::npos ||   // Set per draw (isFoliage, foliageRadius)
 		n_lower.find("lod") != std::string::npos ||       // LOD debug colouring, set per draw
 		n_lower.find("fog") != std::string::npos ||       // Analytic fog (SetAnalyticFog), reflection depth
@@ -591,13 +599,29 @@ std::string Shader::ReadFile(const char* fileLocation)
 		return "";
 	}
 
+	std::string path = fileLocation;
+	size_t slash = path.find_last_of("/\\");
+	std::string directory = slash == std::string::npos ? "" : path.substr(0, slash + 1);
+
 	std::string line = "";
 	while (!fileStream.eof())
 	{
 		std::getline(fileStream, line);
+		// #include "file": next to this file, else in Assets/Shaders/
+		size_t first = line.find_first_not_of(" \t");
+		if (first != std::string::npos && line.compare(first, 8, "#include") == 0) {
+			size_t open = line.find('"', first), close = line.find('"', open + 1);
+			if (open != std::string::npos && close != std::string::npos) {
+				std::string name = line.substr(open + 1, close - open - 1);
+				std::string candidate = directory + name;
+				if (!std::ifstream(candidate).good()) candidate = "Assets/Shaders/" + name;
+				content.append(ReadFile(candidate.c_str()));
+				continue;
+			}
+		}
 		content.append(line + "\n");
 	}
-	
+
 	fileStream.close();
 
 	return content;

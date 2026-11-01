@@ -161,7 +161,8 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 			InstancedGroup::CullPass pass;
 			pass.viewProj = lightProjView;
 			pass.cameraPos = cameraPos;
-			pass.lodProjScale = projection[1][1] * (gs ? gs->lodBias : 1.0f);
+			pass.settings = gs;
+			pass.projScale = projection[1][1];
 			pass.maxDrawDistance = gs ? gs->renderDistance : 2000.0f;
 			pass.lodMin = std::min((int)i * (gs ? gs->shadowLodBias : 1), MAX_LOD_LEVELS - 1);
 			pass.minScreenSize = LODPolicy::CULL_SCREEN_SIZE;
@@ -173,7 +174,6 @@ void Renderer::DirectionalShadowMapPass(DirectionalLight* light, SceneManager& s
 			pass.detailMaxDistance = gs ? gs->detailShadowDistance : 25.0f;
 			// Tree impostors cast too, as cards facing the light (the camera's representation)
 			pass.impostors = !gs || gs->impostors;
-			pass.impostorLevel = gs ? gs->impostorStartLod : 1;
 			pass.orthographic = true;
 			pass.lightDir = -glm::normalize(*light->GetDirectionPtr());
 			for (auto* group : groups)
@@ -491,13 +491,9 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 		hSource = hStream.str();
 	}
 
-	// 2. Read the original vertex shader
-	std::ifstream vFile(vertPath);
-	if (!vFile.is_open()) return &instancedRenderShader;
-	std::stringstream vStream;
-	vStream << vFile.rdbuf();
-	vFile.close();
-	std::string vSource = vStream.str();
+	// 2. Read the original vertex shader (includes resolved)
+	std::string vSource = Shader::ReadFile(vertPath.c_str());
+	if (vSource.empty()) return &instancedRenderShader;
 	// 3. Robust Patching Logic for multi-stage pipelines
 	auto patchSource = [&](std::string& src, int stageType, bool hasTessPipe = false) {
 		// stageType: 0=VS, 1=TCS, 2=TES, 3=FS
@@ -582,14 +578,10 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 
 	// 7. Create the hybrid shader
 	Shader* hybrid = new Shader();
-	std::ifstream fFile(fragPath);
-	if (!fFile.is_open()) { delete hybrid; return &instancedRenderShader; }
-	std::stringstream fStream;
-	fStream << fFile.rdbuf();
-	fFile.close();
+	std::string fSource = Shader::ReadFile(fragPath.c_str());
+	if (fSource.empty()) { delete hybrid; return &instancedRenderShader; }
 
 	// 6. Patch Fragment Shader
-	std::string fSource = fStream.str();
 	patchSource(fSource, 3, hasTess);
 
 	if (hasTess) {

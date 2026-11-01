@@ -4,9 +4,9 @@
 // Instanced Shadow Map Vertex Shader
 //
 // Reads per-instance packed transforms from an SSBO and renders
-// into the directional shadow map. Applies the same wind sway as
-// grass.vert so blade shadows move with the blades. InstancedGroup sets
-// windStrength per group (0 for groups without wind, e.g. trees).
+// into the directional shadow map, moving with the scene's wind exactly
+// like the camera's shaders (wind.glsl): InstancedGroup sets the plant's
+// wind mode, base and height per group.
 // =====================================================================
 
 layout (location = 0) in vec3 pos;
@@ -33,8 +33,13 @@ struct Material {
 uniform Material material;
 
 uniform float time;
-uniform float windSpeed;
-uniform float windStrength;
+// The scene's wind (wind.glsl). Plants (set per instanced group): 0 still, 1 grass, 2 plant
+// (trunk + branches: bark), 3 plant leaves (+ flutter). Base and height are the whole plant's
+// (bark and leaves together, mesh space), so every part of it moves as one.
+#include "wind.glsl"
+uniform int windMode;
+uniform float windPlantBase;
+uniform float windPlantHeight;
 
 out vec2 TexCoord;
 out float vFadeFactor;
@@ -63,19 +68,17 @@ void main()
     float instanceScale = inst.posAndScale.w;
     vec3 instanceRot = inst.rotAndFlags.xyz;
     
-    // Wind sway, identical to grass.vert (phase from the instance's world position)
-    vec2 phase = instancePos.xz * 0.35 + pos.xz;
-    float bend = pos.y > 0.0 ? 1.0 : 0.0;
-    vec3 localPos = pos;
-    localPos.x += sin(time * windSpeed + phase.x) * windStrength * bend;
-    localPos.z += cos(time * windSpeed * 0.83 + phase.y) * windStrength * bend;
-
-    // Build model transform
     mat3 rotMat = eulerToMat3(instanceRot);
-    vec3 scaledPos = localPos * instanceScale;
-    vec3 rotatedPos = rotMat * scaledPos;
-    
-    vec3 worldPos = rotatedPos + instancePos;
+    // The scene's wind, exactly as the camera sees the instance (grass.vert, shader.vert)
+    vec3 worldPos = rotMat * (pos * instanceScale) + instancePos;
+    if (windMode == 1) {
+        vec3 up = vec3(0.0, 1.0, 0.0);
+        worldPos = WindGrass(worldPos, instancePos, (windPlantHeight > 0.0 ? windPlantHeight : 1.0) * instanceScale, up);
+    } else if (windMode >= 2) {
+        vec3 root = instancePos + rotMat * vec3(0.0, windPlantBase, 0.0) * instanceScale;
+        worldPos = WindPlant(worldPos, root, windPlantHeight * instanceScale, length(pos.xz) * instanceScale,
+            pos, vec3(0.0, 1.0, 0.0), windMode == 3);
+    }
     
     TexCoord = tex * material.tiling + material.offset;
     float rawW = inst.rotAndFlags.w;

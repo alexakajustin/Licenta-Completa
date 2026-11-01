@@ -22,7 +22,7 @@ HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph)
 
 void HydraulicErosionNode::RenderContent(SceneManager* scene)
 {
-	ImGui::PushItemWidth(100.0f);
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 5.6f); // Relative to the font: scales with the node editor's zoom
 	ImGui::DragFloat("Droplets / Cell", &dropletsPerCell, 0.1f, 0.0f, 100.0f, "%.1f");
 	ImGui::DragFloat("Erosion", &erodeSpeed, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("Deposition", &depositSpeed, 0.01f, 0.0f, 1.0f);

@@ -52,7 +52,9 @@ public:
 
 	void Validate();
 
-	std::string ReadFile(const char* fileLocation);
+	// Reads a shader source, replacing '#include "file"' lines with that file (looked up next to
+	// the including file, then in Assets/Shaders/): GLSL has no includes of its own
+	static std::string ReadFile(const char* fileLocation);
 
 	GLint GetProjectionLocation();
 	GLint GetModelLocation();

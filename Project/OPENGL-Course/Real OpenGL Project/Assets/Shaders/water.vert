@@ -24,6 +24,7 @@ out float vIsSelected;
 out float vFadeFactor;
 out vec4 clipSpaceCoords;
 out float vObjectScale;
+out float LakeMouthFade;   // RiverNode lakes: opacity where the lake runs up a river channel (UV.x when UV.y = -1)
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -160,6 +161,7 @@ void main()
 	FragPos = worldPos.xyz; 
 	LocalPos = pos; 
 	vObjectScale = objectScale;
+	LakeMouthFade = tex.y < -0.5 ? clamp(tex.x, 0.0, 1.0) : 1.0;
 
 	TangentWorld = normalize(tangentW);
 	BitangentWorld = normalize(binormalW);

@@ -11,6 +11,7 @@
 #include "Lighting/PointLight.h"
 #include "Lighting/SpotLight.h"
 #include "Rendering/Skybox.h"
+#include "Rendering/Wind.h"
 
 class SceneManager;
 class Camera;
@@ -142,6 +143,10 @@ public:
 	 */
 	Shader* GetInstancedShader(Shader* original);
 
+	// The scene's wind (Wind.h): once per frame, before any pass draws
+	void UpdateWind(const GraphicsSettings* gs, float deltaTime) { wind.Update(gs, deltaTime); }
+	const WindSystem& GetWind() const { return wind; }
+
 	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
 	// Cloud noise volumes of the main sky (Application), so the sky cubemap has the same clouds
 	void SetCloudNoise(GLuint shape, GLuint detail) { cloudShapeNoise = shape; cloudDetailNoise = detail; }
@@ -173,6 +178,7 @@ public:
 
 
 private:
+	WindSystem wind;
 	Shader mainShader;
 	Shader directionalShadowShader;
 	Shader omniShadowShader;

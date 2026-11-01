@@ -170,6 +170,8 @@ public:
 	// Depth of this frame's planar water reflection (0 = none): the lake adds the fog between
 	// the water and what it mirrors
 	void SetReflectionDepthTexture(GLuint texture) { reflectionDepthTexture = texture; }
+	// Height the planar water reflection is rendered for (rivers use it where they reach that height)
+	void SetReflectionPlaneHeight(float height) { reflectionPlaneHeight = height; }
 	GLuint GetHiZDebugTexture() const { return hizDebugTexture; }
 	int GetHiZWidth() const { return hizWidth; }
 	int GetHiZHeight() const { return hizHeight; }
@@ -200,6 +202,7 @@ private:
 	GLuint hizTexture = 0;
 	GLuint waterDepthCopy = 0;   // Opaque depth copy sampled by water while it writes depth
 	GLuint reflectionDepthTexture = 0;
+	float reflectionPlaneHeight = -1.0e9f;
 	int waterDepthCopyW = 0, waterDepthCopyH = 0;
 	WaterFoamMap waterFoam;       // Foam around objects standing in the water + river wakes
 	ImpostorSystem impostors;     // Distant trees as cards baked from their full LOD0

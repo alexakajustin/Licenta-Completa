@@ -28,6 +28,7 @@ uniform float time;            ///< Current animation timer.
 uniform int cloudsEnabled;     ///< Set to 1 if clouds are drawn.
 uniform float cloudsDensity;   ///< Sky coverage (0.1 = few clouds, 0.9 = overcast).
 uniform float cloudsSpeed;     ///< Wind speed multiplier.
+#include "wind.glsl"              // The clouds drift in the scene's wind direction (Wind.h integrates it)
 uniform float cloudsSharpness; ///< Edge detail / erosion strength.
 uniform int jitterFrame;       ///< Frame counter for the temporal jitter (constant = static pattern).
 
@@ -200,7 +201,8 @@ void main()
 
         if (tEnd > tStart && tStart < 120000.0)
         {
-            gWind = vec3(1.0, 0.0, 0.35) * time * max(cloudsSpeed, 0.0) * 100.0;
+            gWind = WindActive() ? -vec3(windClouds.x, 0.0, windClouds.y)
+                                 : vec3(1.0, 0.0, 0.35) * time * max(cloudsSpeed, 0.0) * 100.0;
 
             // Interleaved gradient noise, shifted every frame (Jimenez 2014): the per-pixel start
             // offset hides step banding, and the temporal pass averages the frames into a smooth image

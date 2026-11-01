@@ -49,11 +49,7 @@ namespace {
 
 	std::string ReadText(const char* path)
 	{
-		std::ifstream file(path);
-		if (!file.is_open()) return "";
-		std::stringstream ss;
-		ss << file.rdbuf();
-		return ss.str();
+		return Shader::ReadFile(path); // Includes resolved (wind.glsl)
 	}
 
 	/// Pastes the shared atlas reader after the #version line (GLSL has no #include)
@@ -141,6 +137,7 @@ void ImpostorSystem::Release()
 	shadowShader.ClearShader();
 	bakeShader.ClearShader();
 	resolveShader.ClearShader();
+	coverageShader.ClearShader();
 	initialized = false;
 }
 
@@ -161,7 +158,8 @@ bool ImpostorSystem::Init()
 	shadowShader.CreateFromString(vert.c_str(), shadowFull.c_str());
 	bakeShader.CreateFromFiles("Assets/Shaders/impostor_bake.vert", "Assets/Shaders/impostor_bake.frag");
 	resolveShader.CreateComputeShader("Assets/Shaders/impostor_resolve.glsl");
-	if (!Linked(shader) || !Linked(shadowShader) || !Linked(bakeShader) || !Linked(resolveShader)) {
+	coverageShader.CreateComputeShader("Assets/Shaders/impostor_coverage.glsl");
+	if (!Linked(shader) || !Linked(shadowShader) || !Linked(bakeShader) || !Linked(resolveShader) || !Linked(coverageShader)) {
 		printf("[Impostor] Shaders failed to build, impostors disabled\n");
 		initFailed = true;
 		return false;
@@ -203,21 +201,18 @@ bool ImpostorSystem::Init()
 
 void ImpostorSystem::Update(std::vector<InstancedGroup*>& groups, const GraphicsSettings* gs)
 {
-	bool enabled = !gs || gs->impostors;
-	if (enabled && !initialized && !initFailed) Init();
-	if (!enabled || !initialized) {
-		for (auto* g : groups) if (g) g->ClearImpostor();
-		// Switched off: give the video memory back (re-enabling bakes them again)
-		for (auto& [key, atlas] : atlases) FreeAtlas(atlas);
-		atlases.clear();
-		return;
-	}
-	int resolution = gs ? std::clamp(gs->impostorResolution, 512, 4096) : 2048;
-
-	// A tree is every group of one scatter: same source object, the very same instances
+	// A plant is every group of one scatter: same source object, the very same instances
 	std::map<std::string, std::vector<InstancedGroup*>> trees;
 	for (auto* g : groups) {
 		if (!g) continue;
+		g->SetPlantWind(0, 0.0f, 0.0f);
+		// Grass (grass.vert) bends from each clump's origin, over the mesh's height
+		Material* gm = g->GetMaterial();
+		if (g->GetMesh() && gm && gm->GetShader() && gm->GetShader()->GetVertexPath().find("grass") != std::string::npos) {
+			glm::vec3 mn, mx;
+			g->GetMesh()->GetBounds(mn, mx);
+			g->SetPlantWind(1, mn.y, mx.y - mn.y);
+		}
 		if (g->GetTotalCount() == 0 || !g->GetMesh() || g->cpuInstances.empty() || g->IsDetailFoliage()) {
 			g->ClearImpostor();
 			continue;
@@ -229,6 +224,33 @@ void ImpostorSystem::Update(std::vector<InstancedGroup*>& groups, const Graphics
 			a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w);
 		trees[g->GetSourceObjectName() + key].push_back(g);
 	}
+
+	// Plants with leaf cards (trees, bushes, ferns) sway in the wind as one plant (wind.glsl): the
+	// bark and the leaves share the plant's base and height, the leaves flutter on top
+	for (auto& [treeKey, members] : trees) {
+		glm::vec3 bmin(FLT_MAX), bmax(-FLT_MAX);
+		bool leafy = false;
+		for (auto* g : members) {
+			glm::vec3 mn, mx;
+			g->GetMesh()->GetBounds(mn, mx);
+			bmin = glm::min(bmin, mn);
+			bmax = glm::max(bmax, mx);
+			leafy = leafy || IsCutout(g);
+		}
+		if (!leafy) continue;
+		for (auto* g : members) g->SetPlantWind(IsCutout(g) ? 3 : 2, bmin.y, bmax.y - bmin.y);
+	}
+
+	bool enabled = !gs || gs->impostors;
+	if (enabled && !initialized && !initFailed) Init();
+	if (!enabled || !initialized) {
+		for (auto* g : groups) if (g) g->ClearImpostor();
+		// Switched off: give the video memory back (re-enabling bakes them again)
+		for (auto& [key, atlas] : atlases) FreeAtlas(atlas);
+		atlases.clear();
+		return;
+	}
+	int resolution = gs ? std::clamp(gs->impostorResolution, 512, 4096) : 2048;
 
 	std::set<const ImpostorAtlas*> used;
 	bool bakedThisFrame = false;
@@ -461,6 +483,47 @@ ImpostorAtlas* ImpostorSystem::Bake(const std::vector<InstancedGroup*>& members,
 			glBindTexture(GL_TEXTURE_2D, t);
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
+		// Alpha scale per level: as many texels pass the 0.5 alpha test as on level 0
+		std::vector<float> alphaScale(levels, 1.0f);
+		{
+			GLuint histogram = 0;
+			std::vector<GLuint> bins((size_t)levels * 256, 0u);
+			glGenBuffers(1, &histogram);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, histogram);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, bins.size() * sizeof(GLuint), bins.data(), GL_STATIC_READ);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, histogram);
+			GLuint cp = coverageShader.GetShaderID();
+			glUseProgram(cp);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, premult[0]);
+			for (int l = 0; l < levels; l++) {
+				int s = size >> l;
+				glUniform1i(glGetUniformLocation(cp, "level"), l);
+				glUniform2i(glGetUniformLocation(cp, "levelSize"), s, s);
+				glDispatchCompute((s + 15) / 16, (s + 15) / 16, 1);
+			}
+			glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+			glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, bins.size() * sizeof(GLuint), bins.data());
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+			glDeleteBuffers(1, &histogram);
+
+			// Level 0 passes where coverage >= 0.5 (bins 128+); on each smaller level find the
+			// lowest coverage still letting the same fraction through and scale it up to 0.5
+			double passing0 = 0.0;
+			for (int b = 128; b < 256; b++) passing0 += bins[b];
+			double fraction = passing0 / ((double)size * size);
+			for (int l = 1; l < levels; l++) {
+				double texels = (double)(size >> l) * (size >> l);
+				double keep = fraction * texels, count = 0.0;
+				int b = 255;
+				for (; b > 1; b--) {
+					count += bins[(size_t)l * 256 + b];
+					if (count >= keep) break;
+				}
+				alphaScale[l] = std::clamp(0.5f / (b / 255.0f), 0.25f, 16.0f);
+			}
+		}
+
 		atlas = new ImpostorAtlas();
 		atlas->albedo = MakeAtlasTexture(GL_RGBA8, size, levels);
 		atlas->data = MakeAtlasTexture(GL_RGBA8, size, levels);
@@ -471,6 +534,7 @@ ImpostorAtlas* ImpostorSystem::Bake(const std::vector<InstancedGroup*>& members,
 		GLint locLevel = glGetUniformLocation(rp, "level");
 		GLint locCoarser = glGetUniformLocation(rp, "hasCoarser");
 		GLint locSize = glGetUniformLocation(rp, "levelSize");
+		GLint locScale = glGetUniformLocation(rp, "alphaScale");
 		const GLuint samplers[6] = { premult[0], premult[1], atlas->albedo, atlas->data, premult[2], atlas->material };
 		for (int u = 0; u < 6; u++) {
 			glActiveTexture(GL_TEXTURE0 + u);
@@ -481,6 +545,7 @@ ImpostorAtlas* ImpostorSystem::Bake(const std::vector<InstancedGroup*>& members,
 			glUniform1i(locLevel, l);
 			glUniform1i(locCoarser, l + 1 < levels ? 1 : 0);
 			glUniform2i(locSize, s, s);
+			glUniform1f(locScale, alphaScale[l]);
 			glBindImageTexture(0, atlas->albedo, l, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
 			glBindImageTexture(1, atlas->data, l, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
 			glBindImageTexture(2, atlas->material, l, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8);

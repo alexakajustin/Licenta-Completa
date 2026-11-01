@@ -331,7 +331,7 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 	const GraphicsSettings* gs,
 	GLuint shaderID,
 	bool shaderSupportsTessellation,
-	float lodProjScale)
+	float lodDistanceScale)
 {
 	glm::mat4 modelMatrix = GetWorldMatrix();
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(modelMatrix));
@@ -508,15 +508,17 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		}
 	}
 
-	// Screen-size LOD (LODPolicy): the fraction of the screen height its bounding sphere covers
+	// LOD stages by distance (LODPolicy, Graphics Settings): no impostors for single objects,
+	// their last LOD in use reaches the render distance
 	Mesh* meshToRender = mesh;
 	if (lodCount > 1 && mesh) {
 		glm::vec3 sphereCenter;
 		float sphereRadius;
 		GetWorldBoundingSphere(sphereCenter, sphereRadius);
-		float screenSize = LODPolicy::ScreenSize(sphereRadius, glm::distance(sphereCenter, cameraPos), lodProjScale);
+		LODPolicy::Stages stages = LODPolicy::Build(gs, lodCount, false, lodDistanceScale);
+		int lod = stages.rep[LODPolicy::Select(stages, glm::distance(sphereCenter, cameraPos))];
 		// lodMeshes[l - 1] holds LOD l; missing levels fall back to the next more detailed one
-		for (int l = LODPolicy::Select(screenSize, lodCount); l >= 1 && meshToRender == mesh; l--)
+		for (int l = lod; l >= 1 && meshToRender == mesh; l--)
 			if (lodMeshes[l - 1]) meshToRender = lodMeshes[l - 1];
 	}
 

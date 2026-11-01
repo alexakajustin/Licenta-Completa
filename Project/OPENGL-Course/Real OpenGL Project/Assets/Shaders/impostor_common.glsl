@@ -19,7 +19,7 @@ flat in vec3 ToViewer;
 flat in float vFadeFactor;
 flat in float vIsSelected;
 
-uniform sampler2D impostorAlbedo; ///< rgb albedo, a coverage (mips: average coverage)
+uniform sampler2D impostorAlbedo; ///< rgb albedo, a coverage (coverage-preserving mips)
 uniform sampler2D impostorData;   ///< rgb mesh-space normal * 0.5 + 0.5, a depth toward the viewer
 uniform sampler2D impostorMaterial; ///< r: 1 leaves, 0 bark
 uniform int impostorFrames;
@@ -50,13 +50,10 @@ bool DitherDiscard(float fade) {
     return fade > 0.0 ? fade > threshold : threshold >= -fade;
 }
 
-/// Coverage is dithered, not alpha-tested: a texel 60% covered draws 60% of its pixels. A far crown
-/// keeps its gaps (an alpha test would close the averaged mips into a solid blob) and the three
-/// views blend smoothly. Interleaved gradient noise (Jimenez 2014), uncorrelated with the Bayer
-/// pattern of the LOD cross-fades.
+/// Alpha test at 0.5 like the leaf cards of the meshes: clean edges, no noise. The mips keep the
+/// coverage of level 0 at the threshold (impostor_coverage.glsl), so far crowns do not thin out.
 bool CoverageDiscard(float coverage) {
-    float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-    return coverage <= noise;
+    return coverage < 0.5;
 }
 
 /// Atlas positions of the three views (a texel inside each view: filtering never reaches into the

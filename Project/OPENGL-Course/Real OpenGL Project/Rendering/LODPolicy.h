@@ -1,37 +1,64 @@
 #pragma once
 
 #include <algorithm>
+#include "GraphicsSettings.h"
 
 /**
  * @namespace LODPolicy
- * @brief Screen-size level of detail, shared by the GPU culler (compute_cull.glsl) and the CPU
- *        path (GameObject::RenderSingle).
+ * @brief Level of detail by distance to the camera, shared by the GPU culler (compute_cull.glsl)
+ *        and the CPU path (GameObject::RenderSingle).
  *
- * An object's screen size is the fraction of the screen height covered by its bounding sphere,
- * radius * projection[1][1] / distance — the metric of Unity's LODGroup and Unreal's LOD screen
- * sizes. A 20 m tree therefore keeps its detail ten times further away than a 2 m rock, and a
- * zoomed-in camera keeps detail further away too. The LOD bias (Graphics Settings) scales the
- * measured size; the thresholds below are the same for every pass.
+ * Graphics Settings -> Level of Detail defines the stages an object goes through as it gets
+ * further away: LOD0, LOD1 and LOD2, each ending at its own distance, then the impostor card
+ * (trees, Impostor.h). Every stage can be switched off and is then skipped: the next stage in
+ * use starts where the previous one ends (LOD2 off: LOD1, then the impostor). The last stage in
+ * use reaches the render distance. Objects without an impostor keep their last LOD in use.
  */
 namespace LODPolicy
 {
-	// Below LOD_SCREEN_SIZE[i] the object uses LOD i + 1
-	constexpr float LOD_SCREEN_SIZE[3] = { 0.25f, 0.08f, 0.03f };
-	// Below this the object is not drawn at all (about 2 px at 1080p)
+	constexpr int IMPOSTOR = 3;              // Representation of the impostor card (mesh LODs: 0-2)
+	constexpr int MAX_STAGES = 4;
+	constexpr float NO_END = 1.0e30f;
+	// Below this fraction of the screen height an instance is not drawn (about 2 px at 1080p)
 	constexpr float CULL_SCREEN_SIZE = 0.002f;
-	// Width of the dithered transition band above each threshold, relative to the threshold
-	constexpr float CROSSFADE_WIDTH = 0.2f;
+	// Dithered transition over the last 15% of a stage's distance range
+	constexpr float CROSSFADE_WIDTH = 0.15f;
 
-	inline float ScreenSize(float radius, float distance, float projScale)
+	struct Stages
 	{
-		return radius * projScale / std::max(distance, 1e-4f);
+		int count = 0;
+		int rep[MAX_STAGES] = { 0, 0, 0, 0 };  // Mesh LOD 0-2 or IMPOSTOR
+		float end[MAX_STAGES] = { NO_END, NO_END, NO_END, NO_END }; // Camera distance where it ends
+	};
+
+	// The stages of one object. lodCount: its LOD meshes (a missing level draws the last one);
+	// hasImpostor: it has an impostor card in this pass; distanceScale: secondary views (water
+	// reflection) switch sooner
+	inline Stages Build(const GraphicsSettings* gs, int lodCount, bool hasImpostor, float distanceScale = 1.0f)
+	{
+		static const GraphicsSettings defaults;
+		const GraphicsSettings& g = gs ? *gs : defaults;
+		const int lastMesh = std::max(lodCount, 1) - 1;
+		Stages s;
+		float end = 0.0f;
+		for (int i = 0; i < 3; i++) {
+			if (!g.lodEnabled[i]) continue;
+			end = std::max(end, g.lodDistance[i] * distanceScale); // Never before the previous stage ends
+			s.rep[s.count] = std::min(i, lastMesh);
+			s.end[s.count] = end;
+			s.count++;
+		}
+		if (g.impostors && hasImpostor) s.rep[s.count++] = IMPOSTOR;
+		if (s.count == 0) s.rep[s.count++] = 0; // Everything switched off: LOD0
+		s.end[s.count - 1] = NO_END;            // The last stage reaches the render distance
+		return s;
 	}
 
-	// Discrete LOD for a screen size, limited to the levels that exist (lodCount >= 1)
-	inline int Select(float screenSize, int lodCount)
+	// Stage at a camera distance; minStage skips the first stages (far shadow cascades)
+	inline int Select(const Stages& s, float distance, int minStage = 0)
 	{
-		int lod = 0;
-		while (lod < 3 && screenSize < LOD_SCREEN_SIZE[lod]) lod++;
-		return std::min(lod, std::max(lodCount, 1) - 1);
+		int stage = 0;
+		while (stage < s.count - 1 && distance >= s.end[stage]) stage++;
+		return std::max(stage, std::min(minStage, s.count - 1));
 	}
 }

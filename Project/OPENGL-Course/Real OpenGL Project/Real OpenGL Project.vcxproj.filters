@@ -204,6 +204,9 @@
     <ClCompile Include="Scene\SceneSerializer.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Wind.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\Impostor.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -2351,6 +2354,9 @@
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\TextureLayer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Wind.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Impostor.h">

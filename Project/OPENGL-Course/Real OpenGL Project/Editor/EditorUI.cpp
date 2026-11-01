@@ -4,8 +4,6 @@
 #include "External Libs/ImGUI/imgui_internal.h"
 
 #include "Scene/SceneManager.h"
-#include "Rendering/InstancedGroup.h"
-#include "Rendering/LODPolicy.h"
 #include "Lighting/LightObject.h"
 #include "Scene/WorldStreamerComponent.h"
 #include "Scene/LuaScriptComponent.h"
@@ -2182,66 +2180,54 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 		if (ImGui::CollapsingHeader("Level of Detail", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;
-			ImGui::SliderFloat("LOD Bias", &g.lodBias, 0.25f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("LODs switch by their size on screen, not at fixed distances: a big tree keeps\nits detail further away than a rock. The bias multiplies every switch distance\n(2 = twice as far). The table below shows where each object switches.");
 
-			// Where every object with LODs switches, in metres (the 60 degree camera of the editor
-			// and the game view; average instance scale): the bias is a multiplier, this is what it means
-			if (sceneManager && ImGui::TreeNodeEx("Switch distances", ImGuiTreeNodeFlags_DefaultOpen)) {
-				const float projScale = 1.0f / std::tan(glm::radians(30.0f)) * g.lodBias;
-				std::set<std::string> listed;
-				bool any = false;
-				if (ImGui::BeginTable("##lodDistances", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
-					ImGui::TableSetupColumn("Object");
-					ImGui::TableSetupColumn("Representation by distance");
-					ImGui::TableHeadersRow();
-					for (InstancedGroup* group : sceneManager->GetInstancedGroups()) {
-						if (!group || group->GetTotalCount() == 0 || group->cpuInstances.empty()) continue;
-						bool impostor = group->DrawsImpostor();
-						if (group->GetLODCount() < 2 && !impostor) continue;
-						if (!listed.insert(group->GetSourceObjectName()).second) continue; // Bark + leaves: one row
-						double scaleSum = 0.0;
-						for (const auto& inst : group->cpuInstances) scaleSum += inst.positionAndScale.w;
-						float radius = group->GetCullRadius() * (float)(scaleSum / group->cpuInstances.size());
-						float d0 = radius * projScale / LODPolicy::LOD_SCREEN_SIZE[0];
-						float d1 = radius * projScale / LODPolicy::LOD_SCREEN_SIZE[1];
-						// e.g. "LOD0 < 69 m, LOD1 < 217 m, then impostor"
-						char text[128];
-						if (impostor && g.impostorStartLod <= 1)
-							snprintf(text, sizeof(text), "LOD0 < %.0f m, then impostor", d0);
-						else if (impostor || group->GetLODCount() >= 3)
-							snprintf(text, sizeof(text), "LOD0 < %.0f m, LOD1 < %.0f m, then %s", d0, d1, impostor ? "impostor" : "LOD2");
-						else
-							snprintf(text, sizeof(text), "LOD0 < %.0f m, then LOD1", d0);
-						ImGui::TableNextRow();
-						ImGui::TableNextColumn(); ImGui::TextUnformatted(group->GetSourceObjectName().c_str());
-						ImGui::TableNextColumn(); ImGui::TextUnformatted(text);
-						any = true;
-					}
-					ImGui::EndTable();
+			// The stages an object goes through as it gets further away (LODPolicy.h). A stage
+			// switched off is skipped; the last one in use reaches the render distance.
+			ImGui::SeparatorText("Stages (distance from the camera)");
+			int lastMesh = -1;
+			for (int i = 0; i < 3; i++) if (g.lodEnabled[i]) lastMesh = i;
+			static const char* stageNames[3] = { "LOD0", "LOD1", "LOD2" };
+			float previousEnd = 0.0f;
+			for (int i = 0; i < 3; i++) {
+				ImGui::PushID(i);
+				ImGui::Checkbox("##on", &g.lodEnabled[i]);
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s on/off. Off: never drawn, the next stage in use starts\nwhere the previous one ends (e.g. LOD2 off: LOD1, then the impostors).", stageNames[i]);
+				ImGui::SameLine();
+				bool reachesRenderDistance = g.lodEnabled[i] && i == lastMesh && !g.impostors;
+				char format[64];
+				if (!g.lodEnabled[i]) snprintf(format, sizeof(format), "off");
+				else if (reachesRenderDistance) snprintf(format, sizeof(format), "%.0f m to the render distance", previousEnd);
+				else snprintf(format, sizeof(format), "%.0f to %%.0f m", previousEnd);
+				ImGui::BeginDisabled(!g.lodEnabled[i] || reachesRenderDistance);
+				ImGui::DragFloat(stageNames[i], &g.lodDistance[i], 1.0f, previousEnd + 1.0f, 20000.0f, format, ImGuiSliderFlags_AlwaysClamp);
+				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+					ImGui::SetTooltip("Distance where %s ends (camera to the object's centre).\nLater stages are pushed out so they never start before it.", stageNames[i]);
+				if (g.lodEnabled[i]) {
+					g.lodDistance[i] = std::max(g.lodDistance[i], previousEnd + 1.0f);
+					previousEnd = g.lodDistance[i];
 				}
-				if (!any) ImGui::TextDisabled("No object with LODs in the scene");
-				ImGui::TreePop();
+				ImGui::PopID();
 			}
-			ImGui::Checkbox("LOD Cross-fade", &g.lodCrossfade);
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Dithered transition between two LODs instead of a pop");
-			ImGui::DragFloat("Render Distance", &g.renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Hard cut-off; big objects (trees) are drawn up to 10x further");
-
-			ImGui::SeparatorText("Tree Impostors");
 			ImGui::Checkbox("Impostors", &g.impostors);
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("From the LOD2 distance on, every tree is one card baked from its full LOD0\n(8 x 8 views, lit live) instead of the sparse last LOD: all the leaves for two triangles.\nShadow cascades use the same cards.");
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Last stage: every tree is one card baked from its full LOD0 (8 x 8 views, lit live),\nthe whole crown for two triangles. Shadow cascades use the same cards.\nObjects without an impostor (rocks, plants) keep their last LOD in use.");
 			if (g.impostors) {
-				int start = g.impostorStartLod <= 1 ? 0 : 1;
-				const char* starts[] = { "LOD1 (fuller crowns, faster)", "LOD2" };
-				if (ImGui::Combo("Impostors From", &start, starts, 2)) g.impostorStartLod = start == 0 ? 1 : 2;
-				if (ImGui::IsItemHovered()) ImGui::SetTooltip("First LOD the impostor replaces. At a distance even detailed meshes lose\ntheir leaves (cards smaller than a pixel vanish): the baked card keeps the whole crown.");
+				ImGui::SameLine();
+				ImGui::TextDisabled("trees from %.0f m to the render distance", previousEnd);
 				const int sizes[] = { 1024, 2048, 4096 };
 				const char* labels[] = { "1024 (128 px views)", "2048 (256 px views)", "4096 (512 px views)" };
 				int current = g.impostorResolution <= 1024 ? 0 : (g.impostorResolution >= 4096 ? 2 : 1);
 				if (ImGui::Combo("Impostor Resolution", &current, labels, 3)) g.impostorResolution = sizes[current];
-				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Atlas size per tree type (video memory: about 12 / 48 / 190 MB each).\nRaise it when the LOD bias is low and impostors start close to the camera.");
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Atlas size per tree type (video memory: about 12 / 48 / 190 MB each).\nRaise it when the impostors start close to the camera.");
 			}
+
+			ImGui::Spacing();
+			ImGui::Checkbox("LOD Cross-fade", &g.lodCrossfade);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Dithered transition over the last 15%% of a stage instead of a pop");
+			ImGui::DragFloat("Render Distance", &g.renderDistance, 10.0f, 10.0f, 20000.0f, "%.0f m");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Hard cut-off; big objects (trees) are drawn up to 10x further");
 
 			ImGui::SeparatorText("Detail Foliage (grass)");
 			ImGui::DragFloat("Detail Distance", &g.detailDistance, 1.0f, 10.0f, 2000.0f, "%.0f m");
@@ -2250,15 +2236,84 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 
 			if (ImGui::Button("Reset Defaults##LOD", ImVec2(-1, 0))) {
 				GraphicsSettings defaults;
-				g.lodBias = defaults.lodBias;
+				for (int i = 0; i < 3; i++) {
+					g.lodEnabled[i] = defaults.lodEnabled[i];
+					g.lodDistance[i] = defaults.lodDistance[i];
+				}
 				g.lodCrossfade = defaults.lodCrossfade;
 				g.renderDistance = defaults.renderDistance;
 				g.impostors = defaults.impostors;
 				g.impostorResolution = defaults.impostorResolution;
-				g.impostorStartLod = defaults.impostorStartLod;
 				g.detailDistance = defaults.detailDistance;
 				g.detailDensity = defaults.detailDensity;
 			}
+		}
+
+		if (ImGui::CollapsingHeader("Wind", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			// Beaufort scale for the speed
+			static const float beaufortLimits[] = { 0.5f, 1.6f, 3.4f, 5.5f, 8.0f, 10.8f, 13.9f, 17.2f, 20.8f, 24.5f, 28.5f, 32.7f };
+			static const char* beaufortNames[] = { "calm", "light air", "light breeze", "gentle breeze", "moderate breeze",
+				"fresh breeze", "strong breeze", "near gale", "gale", "strong gale", "storm", "violent storm", "hurricane" };
+			int beaufort = 0;
+			while (beaufort < 12 && g.windSpeed >= beaufortLimits[beaufort]) beaufort++;
+			char speedFormat[64];
+			snprintf(speedFormat, sizeof(speedFormat), "%%.1f m/s - %s", beaufortNames[beaufort]);
+			ImGui::SliderFloat("Speed##wind", &g.windSpeed, 0.0f, 30.0f, speedFormat);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Mean wind speed. Trees lean and sway, branches bob, leaves flutter, grass bends\nand the lake gets choppier as it rises (Beaufort scale shown).");
+
+			// Direction: slider + a small top-down compass (+X right, +Z down)
+			ImGui::SliderFloat("Direction##wind", &g.windDirection, 0.0f, 360.0f, "%.0f deg");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Where the wind blows toward, in the xz plane (0 = +X, 90 = +Z).\nThe clouds and the fog wisps drift this way too.");
+			{
+				const float r = 22.0f;
+				ImVec2 origin = ImGui::GetCursorScreenPos();
+				ImVec2 c(origin.x + r + 4.0f, origin.y + r + 2.0f);
+				ImDrawList* dl = ImGui::GetWindowDrawList();
+				dl->AddCircle(c, r, IM_COL32(150, 150, 150, 160), 32, 1.5f);
+				float a = g.windDirection * 3.14159265f / 180.0f;
+				ImVec2 tip(c.x + std::cos(a) * (r - 3.0f), c.y + std::sin(a) * (r - 3.0f));
+				ImVec2 tail(c.x - std::cos(a) * (r - 6.0f), c.y - std::sin(a) * (r - 6.0f));
+				ImU32 arrow = IM_COL32(120, 200, 255, 255);
+				dl->AddLine(tail, tip, arrow, 2.5f);
+				ImVec2 side(-std::sin(a) * 5.0f, std::cos(a) * 5.0f);
+				ImVec2 back(tip.x - std::cos(a) * 8.0f, tip.y - std::sin(a) * 8.0f);
+				dl->AddTriangleFilled(tip, ImVec2(back.x + side.x, back.y + side.y), ImVec2(back.x - side.x, back.y - side.y), arrow);
+				ImGui::Dummy(ImVec2(r * 2.0f + 8.0f, r * 2.0f + 4.0f));
+				ImGui::SameLine();
+				ImGui::TextDisabled("top-down: +X right, +Z down");
+			}
+
+			ImGui::SliderFloat("Gustiness", &g.windGustiness, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("0 = steady wind. Higher: gusts sweep across the land downwind as wide fronts,\nvisible as waves over the grass and trees bowing one after another.");
+			ImGui::SliderFloat("Turbulence", &g.windTurbulence, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Small, fast swirls on top of the gusts: restless flicking and fluttering");
+
+			ImGui::SeparatorText("Response");
+			ImGui::SliderFloat("Tree Sway", &g.windTreeSway, 0.0f, 3.0f, "x %.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Trunks lean and sway (bigger trees slower), branches bob and swing");
+			ImGui::SliderFloat("Leaf Flutter", &g.windLeafFlutter, 0.0f, 3.0f, "x %.2f");
+			ImGui::SliderFloat("Grass Bend", &g.windGrassBend, 0.0f, 3.0f, "x %.2f");
+
+			if (ImGui::Button("Reset Defaults##Wind", ImVec2(-1, 0))) {
+				GraphicsSettings defaults;
+				g.windSpeed = defaults.windSpeed;
+				g.windDirection = defaults.windDirection;
+				g.windGustiness = defaults.windGustiness;
+				g.windTurbulence = defaults.windTurbulence;
+				g.windTreeSway = defaults.windTreeSway;
+				g.windLeafFlutter = defaults.windLeafFlutter;
+				g.windGrassBend = defaults.windGrassBend;
+			}
+		}
+
+		if (ImGui::CollapsingHeader("Water", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::SliderFloat("Detail Distance##water", &g.waterDetail, 0.5f, 6.0f, "x %.1f", ImGuiSliderFlags_Logarithmic);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far the fine ripples and the foam bubbles of lakes and rivers keep their detail.\nx 1 = until they would start to shimmer, x 2 = twice as far (more shimmer near the horizon).");
+			if (ImGui::Button("Reset Defaults##Water", ImVec2(-1, 0))) g.waterDetail = GraphicsSettings().waterDetail;
 		}
 
 		if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))

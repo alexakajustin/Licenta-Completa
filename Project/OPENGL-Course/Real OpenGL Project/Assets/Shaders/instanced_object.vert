@@ -27,6 +27,14 @@ uniform mat4 view;
 uniform mat4 directionalLightTransform[4];
 uniform vec4 clipPlane;
 
+// The scene's wind (wind.glsl). Plants (set per instanced group): 0 still, 1 grass, 2 plant
+// (trunk + branches: bark), 3 plant leaves (+ flutter). Base and height are the whole plant's
+// (bark and leaves together, mesh space), so every part of it moves as one.
+#include "wind.glsl"
+uniform int windMode;
+uniform float windPlantBase;
+uniform float windPlantHeight;
+
 // Material struct (same as main shader for compatibility)
 struct Material {
     float specularIntensity;
@@ -94,6 +102,11 @@ void main()
     
     // Generic placement
     vec3 worldPos = rotatedPos + instancePos;
+    if (windMode >= 2) {
+        vec3 root = instancePos + rotMat * vec3(0.0, windPlantBase, 0.0) * instanceScale;
+        worldPos = WindPlant(worldPos, root, windPlantHeight * instanceScale, length(pos.xz) * instanceScale,
+            pos, normalize(rotMat * norm), windMode == 3);
+    }
     
     // Build full 4x4 model matrix for normal/light calculations
     mat4 modelMatrix = mat4(1.0);

@@ -49,6 +49,14 @@ uniform Material material;
 uniform int textureLayerCount;  // Passed in so vertex shader can skip material tiling when layers are active
 uniform vec4 clipPlane;
 
+// The scene's wind (wind.glsl). Plants (set per instanced group): 0 still, 1 grass, 2 plant
+// (trunk + branches: bark), 3 plant leaves (+ flutter). Base and height are the whole plant's
+// (bark and leaves together, mesh space), so every part of it moves as one.
+#include "wind.glsl"
+uniform int windMode;
+uniform float windPlantBase;
+uniform float windPlantHeight;
+
 
 void main()
 {
@@ -61,6 +69,14 @@ void main()
 	vFadeFactor = 0.0; // Non-instanced objects are always fully visible
 
 	vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
+	if (windMode >= 2) {
+		// Trunk axis = the mesh's vertical axis; the base of the whole plant is its root
+		float plantScale = length(modelMatrix[1].xyz);
+		vec3 root = (modelMatrix * vec4(0.0, windPlantBase, 0.0, 1.0)).xyz;
+		vec3 windNormal = normalize(mat3(modelMatrix) * norm);
+		worldPosition.xyz = WindPlant(worldPosition.xyz, root, windPlantHeight * plantScale,
+			length(pos.xz) * plantScale, pos, windNormal, windMode == 3);
+	}
 	gl_ClipDistance[0] = dot(worldPosition, clipPlane);
 	gl_Position = projection * view * worldPosition;
 	// DirectionalLightSpacePos calculation removed for CSM

@@ -8,20 +8,21 @@ layout(local_size_x = 256) in;
  * 1. Visibility in this pass: the 6 frustum planes of the pass (camera, reflection or a shadow
  *    cascade — plane tests work for perspective and orthographic projections alike), or the
  *    distance to an omni light; Hi-Z occlusion in the camera pass.
- * 2. Level of detail from the size on the camera's screen (LODPolicy.h): the fraction of the screen
- *    height covered by the bounding sphere. Every pass measures it from the camera, so the shadow
- *    of a tree comes from the same LOD the camera sees (or a cheaper one in the far cascades).
- * 3. Dithered cross-fade: inside a band above each threshold the instance is emitted to both
- *    LODs with complementary 4x4 dither masks (the fragment shaders discard by vFadeFactor:
+ * 2. Level of detail by distance to the camera (LODPolicy.h): the stages of Graphics Settings
+ *    (LOD0, LOD1, LOD2, impostor; switched-off ones are left out on the CPU), each ending at its
+ *    own distance. Every pass measures it from the camera, so the shadow of a tree comes from the
+ *    representation the camera sees (or a later stage in the far cascades).
+ * 3. Dithered cross-fade: over the last 15% of a stage the instance is emitted to both stages
+ *    with complementary 4x4 dither masks (the fragment shaders discard by vFadeFactor:
  *    > 0 fades out, < 0 fades in), and it fades out before the minimum screen size and the
  *    maximum draw distance — no popping.
  * 4. Detail foliage (grass: thousands of cheap instances without LOD meshes) thins out with
  *    distance instead: each instance keeps a stable random rank, blades about to drop out shrink
  *    away first and the survivors grow so the field stays covered.
- * 5. Impostors (Impostor.h): trees replace their last LOD with one camera-facing card baked from
- *    the full LOD0. A tree is several groups (bark, leaves) sharing the same instances and the same
- *    bounds here, so they agree on every decision: one of them draws the impostor, the others draw
- *    nothing at that range.
+ * 5. Impostors (Impostor.h): the last stage of trees is one camera-facing card baked from the
+ *    full LOD0. A tree is several groups (bark, leaves) sharing the same instances, bounds and
+ *    stages here, so they agree on every decision: one of them draws the impostor, the others
+ *    draw nothing at that range.
  */
 
 struct PackedInstance {
@@ -67,16 +68,16 @@ uniform vec3  meshBoundsCenter;    ///< Bounding sphere centre relative to the m
 
 // --- Level of detail (always measured from the camera) ---
 uniform vec3  cameraPos;
-uniform float lodProjScale;        ///< projection[1][1] of the camera x LOD bias
-uniform float lodScreenSize[2];    ///< Below [0]: LOD1, below [1]: LOD2
-uniform float minScreenSize;       ///< Below: not drawn
+uniform int   stageCount;          ///< Stages in use, nearest first (1-4)
+uniform int   stageRep[4];         ///< What each stage draws: mesh LOD 0-2 or IMPOSTOR
+uniform float stageEnd[4];         ///< Camera distance where each stage ends (the last one: never)
+uniform int   lodMin;              ///< Stages skipped (far shadow cascades)
 uniform float crossfadeWidth;      ///< Relative width of the transition bands, 0 = hard switches
-uniform int   lodCount;            ///< Distinct LOD meshes of the group (1-3)
-uniform int   lodMin;              ///< Most detailed LOD this pass may use (far shadow cascades: > 0)
+uniform float projScale;           ///< projection[1][1] of the camera (screen size of the bounds)
+uniform float minScreenSize;       ///< Below: not drawn
 uniform float maxDrawDistance;     ///< Hard limit, faded out over its last 15%
 uniform float minCasterSize;       ///< Shadow cascades: casters thinner than a shadow texel are skipped
-uniform int   impostorMode;        ///< 0: none, 1: this group draws the tree's impostor, 2: a sibling group does
-uniform int   impostorLevel;       ///< First LOD level drawn as the impostor (1 or 2)
+uniform int   impostorMode;        ///< 1: this group draws the tree's impostor, 2: a sibling group does
 
 // --- Detail foliage ---
 uniform int   detailFoliage;
@@ -151,13 +152,6 @@ bool OccludedByHiZ(vec3 center, float radius) {
 
 const int IMPOSTOR = 3; ///< Representation slot of the impostor card
 
-/// What a LOD level is drawn with: its mesh (the last one repeats when the group has fewer),
-/// or the impostor from impostorLevel on
-int Representation(int level) {
-    if (impostorMode != 0 && level >= impostorLevel) return IMPOSTOR;
-    return min(level, lodCount - 1);
-}
-
 void Emit(int lod, PackedInstance inst, float fade, float selectedFlag) {
     inst.rotAndFlags.w = fade + selectedFlag;
     if (lod == IMPOSTOR) {
@@ -215,7 +209,7 @@ void main()
 
     // Fade out over the last 15% of the draw distance, and just above the minimum screen size
     float fadeOut = clamp((dist - maxDrawDistance * 0.85) / (maxDrawDistance * 0.15), 0.0, 1.0);
-    float size = radius * lodProjScale / max(dist, 1e-4);
+    float size = radius * projScale / max(dist, 1e-4);
     if (size < minScreenSize) return;
     if (crossfadeWidth > 0.0)
         fadeOut = max(fadeOut, clamp((minScreenSize * (1.0 + crossfadeWidth) - size) / (minScreenSize * crossfadeWidth), 0.0, 1.0));
@@ -234,17 +228,19 @@ void main()
         return;
     }
 
-    int level = size >= lodScreenSize[0] ? 0 : (size >= lodScreenSize[1] ? 1 : 2);
-    level = max(level, lodMin);
-    int rep = Representation(level);
-    int nextRep = level < 2 ? Representation(level + 1) : rep;
+    // Stage at this distance (LODPolicy::Select)
+    int stage = 0;
+    while (stage < stageCount - 1 && dist >= stageEnd[stage]) stage++;
+    stage = max(stage, min(lodMin, stageCount - 1));
+    int rep = stageRep[stage];
+    int nextRep = stage < stageCount - 1 ? stageRep[stage + 1] : rep;
 
-    // Progress of the transition to the next representation inside the band above its threshold,
-    // quantised to the 16 dither levels so the two halves cover every pixel exactly once
+    // Progress of the transition to the next stage over the last part of this one, quantised to
+    // the 16 dither levels so the two halves cover every pixel exactly once
     float t = 0.0;
     if (crossfadeWidth > 0.0 && nextRep != rep) {
-        float threshold = lodScreenSize[level];
-        t = clamp((threshold * (1.0 + crossfadeWidth) - size) / (threshold * crossfadeWidth), 0.0, 1.0);
+        float end = stageEnd[stage];
+        t = clamp((dist - end * (1.0 - crossfadeWidth)) / (end * crossfadeWidth), 0.0, 1.0);
     }
     float q = floor(t * 16.0 + 0.5) / 16.0;
 

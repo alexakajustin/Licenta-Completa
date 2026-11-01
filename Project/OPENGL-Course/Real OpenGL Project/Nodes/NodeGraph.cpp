@@ -184,6 +184,22 @@ bool NodeGraph::CanLink(int outputPinId, int inputPinId)
 	for (auto& link : links)
 		if (link.endPinId == inputPinId) return false;
 
+	// No cycles: the output's node must not already be fed by the input's node (walk downstream
+	// from the input's node; reaching the output's node would close a loop)
+	std::vector<GraphNode*> stack{ inNode };
+	std::set<GraphNode*> seen;
+	while (!stack.empty())
+	{
+		GraphNode* n = stack.back();
+		stack.pop_back();
+		if (n == outNode) return false;
+		if (!seen.insert(n).second) continue;
+		for (auto& out : n->outputs)
+			for (auto& link : links)
+				if (link.startPinId == out.id)
+					if (GraphNode* next = FindNodeByPinId(link.endPinId)) stack.push_back(next);
+	}
+
 	return true;
 }
 

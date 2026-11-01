@@ -30,6 +30,7 @@ in float vIsSelected;
 in float vFadeFactor;
 in vec4 clipSpaceCoords;
 in float vObjectScale;
+in float LakeMouthFade;   // RiverNode lakes fade out up the river channels they reach into
 
 out vec4 colour;
 
@@ -79,6 +80,7 @@ uniform vec2  waterFoamOrigin;      // World xz of the foam map window's corner
 uniform float waterFoamSize;        // World size of the window (0 = no foam map)
 uniform vec3 eyePosition;
 uniform float selectionTint;
+#include "wind.glsl"           // The scene's wind: the lake's ripples drift with it and grow with it
 uniform sampler2D fogReflectionDepth;   // Depth of the planar reflection (mirrored camera)
 uniform int fogReflectionDepthValid;
 
@@ -153,6 +155,16 @@ vec3 FlowNoise(vec2 p, vec2 flow, float warp, float footprint, out float lost)
     return sum / total;
 }
 
+// Graphics Settings > Water > Detail Distance: how far the fine ripples and foam bubbles reach.
+// 1 = up to where they would start to shimmer; 2 = twice as far. Every detail fade below reads
+// the pixel footprint through this.
+uniform float waterDetail;
+
+float DetailFootprint(float footprint)
+{
+    return footprint / (waterDetail > 0.0 ? waterDetail : 1.0);
+}
+
 vec2 CycleOffset(float cycle, float salt)
 {
     return vec2(Hash21(vec2(cycle, salt)), Hash21(vec2(cycle, salt + 57.0))) * 97.0;
@@ -162,18 +174,19 @@ struct Ripples { vec3 normal; float height; float roughness; };
 
 // Surface of water flowing at 'flow' (noise units per cycle) at 'p' (noise units), 't' in
 // cycles: two FlowNoise copies over staggered cycles, cross-faded (Valve's flow maps), each
-// restarting at a random offset while invisible. 'flatness' sets how gentle the slopes are.
+// restarting at a random offset while invisible. The noise is read at p - flow * t, so the
+// pattern travels along 'flow' (downstream, with the foam). 'flatness' sets how gentle the slopes are.
 // Must be called in uniform control flow (screen-space derivatives).
 Ripples FlowRipples(vec2 p, vec2 flow, float warp, float flatness, float t)
 {
     // Pixel footprint as an area (geometric mean): at grazing angles the depth axis is stretched
     // and its max would wipe out every octave, while the detail across the view still resolves
     vec2 fp = fwidth(p);
-    float footprint = sqrt(max(fp.x * fp.y, 1e-12));
+    float footprint = DetailFootprint(sqrt(max(fp.x * fp.y, 1e-12)));
     float t0 = fract(t), t1 = fract(t + 0.5);
     float lost0, lost1;
-    vec3 n0 = FlowNoise(p + CycleOffset(floor(t), 1.0), flow * (t0 - 0.5), warp, footprint, lost0);
-    vec3 n1 = FlowNoise(p + CycleOffset(floor(t + 0.5), 31.0), flow * (t1 - 0.5), warp, footprint, lost1);
+    vec3 n0 = FlowNoise(p + CycleOffset(floor(t), 1.0), flow * (0.5 - t0), warp, footprint, lost0);
+    vec3 n1 = FlowNoise(p + CycleOffset(floor(t + 0.5), 31.0), flow * (0.5 - t1), warp, footprint, lost1);
     float w = abs(t0 - 0.5) * 2.0; // Copy 0 is fully faded out when it restarts
     vec3 n = mix(n0, n1, w);
     Ripples r;
@@ -386,11 +399,16 @@ void main()
     float scale = material_waveScale > 0.0 ? material_waveScale : 1.0;
     float strength = material_normalStrength > 0.0 ? material_normalStrength : 0.35;
 
-    // Wind ripples: a steady breeze carries them slowly while the octaves churn against each other
+    // Wind ripples from the scene's wind (wind.glsl): they drift with it, the lake is glassy in a
+    // calm and choppy in a gale, and the gusts sweep across it as darker, rougher patches
+    // ("cat's paws"). The octaves churn against each other while the drift carries them.
     const float CYCLE = 3.0;                 // Seconds per advection cycle
     float freq = 0.55 * scale;               // Noise cells per metre (first octave)
-    vec2 wind = vec2(0.32, 0.19) * speed;    // m/s
-    Ripples r = FlowRipples(FragPos.xz * freq, wind * freq * CYCLE, 0.3, 0.8 / strength, time / CYCLE);
+    vec2 windDir = WindActive() ? windDirSpeed.xy : normalize(vec2(0.32, 0.19));
+    float windMs = WindActive() ? windDirSpeed.z * WindGust(FragPos.xz) : 4.0;
+    vec2 wind = windDir * (0.12 + 0.05 * windMs) * speed;          // Ripple drift (m/s)
+    float chop = strength * (mix(0.15, 1.3, smoothstep(0.0, 7.0, windMs)) + 0.5 * smoothstep(10.0, 20.0, windMs));
+    Ripples r = FlowRipples(FragPos.xz * freq, wind * freq * CYCLE, 0.3, 0.8 / max(chop, 0.02), time / CYCLE);
     // Large Gerstner swell from water.vert under the ripples
     vec3 geo = normalize(NormalWorld);
     vec3 N = normalize(r.normal + (geo - vec3(0.0, 1.0, 0.0)));
@@ -423,11 +441,12 @@ void main()
 
     // Uniform slow drift: the same offset everywhere, so the foam pattern is never sheared
     vec2 fp = fwidth(FragPos.xz);
-    float pattern = FoamPattern(FragPos.xz - vec2(0.12, 0.07) * time * speed, max(fp.x, fp.y));
+    float pattern = FoamPattern(FragPos.xz - vec2(0.12, 0.07) * time * speed, DetailFootprint(max(fp.x, fp.y)));
     WaterSample ws = ShadeWater(N, r.roughness, reflection, 0.0, pattern, 1.0);
 
     vec3 finalColor = ws.color;
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);
     finalColor += vec3(0.4, 0.3, 0.0) * selected;
-    colour = vec4(finalColor, ws.alpha);
+    // Where the lake runs up a river channel it fades out over the river: no line where they meet
+    colour = vec4(finalColor, ws.alpha * smoothstep(0.0, 1.0, LakeMouthFade));
 }

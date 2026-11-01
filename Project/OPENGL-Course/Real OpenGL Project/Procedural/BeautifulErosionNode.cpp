@@ -20,7 +20,7 @@ BeautifulErosionNode::BeautifulErosionNode(NodeGraph& graph)
 
 void BeautifulErosionNode::RenderContent(SceneManager* scene)
 {
-	ImGui::PushItemWidth(120.0f);
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 6.7f); // Relative to the font: scales with the node editor's zoom
 	ImGui::Text("Erosion Parameters");
 	ImGui::DragFloat("Scale", &erosionScale, 0.01f, 0.01f, 1.0f);
 	ImGui::DragFloat("Strength", &erosionStrength, 0.01f, 0.0f, 2.0f);

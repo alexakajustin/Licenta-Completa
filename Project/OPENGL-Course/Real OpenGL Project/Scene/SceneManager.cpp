@@ -470,6 +470,14 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			// only covers the way from the camera to the surface)
 			const GraphicsSettings* fogSettings = gs ? gs : graphicsSettings;
 			if (fogSettings && dLight) s->SetAnalyticFog(*fogSettings, *dLight);
+			GLint waterDetailLoc = glGetUniformLocation(s->GetShaderID(), "waterDetail");
+			if (waterDetailLoc != -1) glUniform1f(waterDetailLoc, fogSettings ? fogSettings->waterDetail : 1.0f);
+			GLint reflHeightLoc = glGetUniformLocation(s->GetShaderID(), "waterReflectionHeight");
+			if (reflHeightLoc != -1) {
+				glUniform1f(reflHeightLoc, reflectionPlaneHeight);
+				glUniform1i(glGetUniformLocation(s->GetShaderID(), "waterReflectionValid"),
+					(reflectionTexture != 0 && reflectionDepthTexture != 0) ? 1 : 0);
+			}
 			GLint reflDepthLoc = glGetUniformLocation(s->GetShaderID(), "fogReflectionDepth");
 			if (reflDepthLoc != -1) {
 				glActiveTexture(GL_TEXTURE21);
@@ -770,7 +778,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cachedRenderLocs.theTexture,
 						cachedRenderLocs.normalMap,
 						cameraPos, graphicsSettings, sid, targetShader->HasTessellation(),
-						projection[1][1] * (graphicsSettings ? graphicsSettings->lodBias : 1.0f)
+						sceneDepthTexture == 0 ? 0.5f : 1.0f // Secondary views (reflection) switch sooner
 					);
 
 					// Restore default/procedural skybox cube map
@@ -1176,6 +1184,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				if (profiler) profiler->EndObject();
 			}
 
+			// Lakes before rivers: at a river mouth the river stays just above the lake and fades
+			// out over it while the lake fades out up the channel (RiverNode): the lake must already
+			// be in the frame (and its depth) when the river is blended over it
+			std::stable_partition(waterObjects.begin(), waterObjects.end(), [](GameObject* obj) {
+				Material* m = obj->GetMaterial();
+				return !(m && m->GetShader() && m->GetShader()->GetVertexPath().find("river.vert") != std::string::npos);
+			});
 			glDepthMask(GL_TRUE);
 			RenderQueue(waterObjects);
 

@@ -220,7 +220,8 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 		InstancedGroup::CullPass pass;
 		pass.viewProj = viewProj;
 		pass.cameraPos = cameraPos;
-		pass.lodProjScale = 1.732f * (gs ? gs->lodBias : 1.0f); // 60 degree camera
+		pass.settings = gs;
+		pass.projScale = 1.732f; // 60 degree camera
 		pass.maxDrawDistance = WINDOW * 0.75f;
 		pass.lodMin = MAX_LOD_LEVELS - 1;
 		pass.minCasterSize = texel;

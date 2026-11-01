@@ -503,8 +503,10 @@ void Application::Run()
 			activeFrustum = nullptr; // Uses per-pass live frustum if null
 		}
 
-		// Tree impostors: bakes the missing ones (one per frame) before any pass draws them
+		// Tree impostors: bakes the missing ones (one per frame) before any pass draws them;
+		// plants learn how they move in the wind, and the wind advances one frame
 		sceneManager.UpdateImpostors(&graphicsSettings);
+		renderer.UpdateWind(&graphicsSettings, deltaTime);
 
 		// Shadow passes
 		float shadowFar = graphicsSettings.shadowDistance;
@@ -753,6 +755,7 @@ void Application::Run()
 
 		debugOverlay.BeginPass("Main Render");
 		sceneManager.SetReflectionDepthTexture(hasWater ? reflectionDepth : 0);
+		sceneManager.SetReflectionPlaneHeight(waterHeight);
 		renderer.RenderPass(projection, view, activeCameraPos, sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
@@ -1187,14 +1190,25 @@ void Application::LoadGraphicsSettings()
 		
 
 
-		if (j.contains("lodBias")) graphicsSettings.lodBias = j["lodBias"];
+		for (int i = 0; i < 3; i++) {
+			std::string n = std::to_string(i);
+			if (j.contains("lod" + n + "Enabled")) graphicsSettings.lodEnabled[i] = j["lod" + n + "Enabled"];
+			if (j.contains("lod" + n + "Distance")) graphicsSettings.lodDistance[i] = j["lod" + n + "Distance"];
+		}
 		if (j.contains("lodCrossfade")) graphicsSettings.lodCrossfade = j["lodCrossfade"];
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
 		if (j.contains("detailDistance")) graphicsSettings.detailDistance = j["detailDistance"];
 		if (j.contains("detailDensity")) graphicsSettings.detailDensity = j["detailDensity"];
 		if (j.contains("impostors")) graphicsSettings.impostors = j["impostors"];
 		if (j.contains("impostorResolution")) graphicsSettings.impostorResolution = j["impostorResolution"];
-		if (j.contains("impostorStartLod")) graphicsSettings.impostorStartLod = j["impostorStartLod"];
+		if (j.contains("waterDetail")) graphicsSettings.waterDetail = j["waterDetail"];
+		if (j.contains("windSpeed")) graphicsSettings.windSpeed = j["windSpeed"];
+		if (j.contains("windDirection")) graphicsSettings.windDirection = j["windDirection"];
+		if (j.contains("windGustiness")) graphicsSettings.windGustiness = j["windGustiness"];
+		if (j.contains("windTurbulence")) graphicsSettings.windTurbulence = j["windTurbulence"];
+		if (j.contains("windTreeSway")) graphicsSettings.windTreeSway = j["windTreeSway"];
+		if (j.contains("windLeafFlutter")) graphicsSettings.windLeafFlutter = j["windLeafFlutter"];
+		if (j.contains("windGrassBend")) graphicsSettings.windGrassBend = j["windGrassBend"];
 		if (j.contains("shadowDistance")) graphicsSettings.shadowDistance = j["shadowDistance"];
 		if (j.contains("shadowCascades")) graphicsSettings.shadowCascades = j["shadowCascades"];
 		if (j.contains("shadowResolution")) graphicsSettings.shadowResolution = j["shadowResolution"];
@@ -1261,14 +1275,25 @@ void Application::SaveGraphicsSettings()
 	
 
 
-	j["lodBias"] = graphicsSettings.lodBias;
+	for (int i = 0; i < 3; i++) {
+		std::string n = std::to_string(i);
+		j["lod" + n + "Enabled"] = graphicsSettings.lodEnabled[i];
+		j["lod" + n + "Distance"] = graphicsSettings.lodDistance[i];
+	}
 	j["lodCrossfade"] = graphicsSettings.lodCrossfade;
 	j["renderDistance"] = graphicsSettings.renderDistance;
 	j["detailDistance"] = graphicsSettings.detailDistance;
 	j["detailDensity"] = graphicsSettings.detailDensity;
 	j["impostors"] = graphicsSettings.impostors;
 	j["impostorResolution"] = graphicsSettings.impostorResolution;
-	j["impostorStartLod"] = graphicsSettings.impostorStartLod;
+	j["waterDetail"] = graphicsSettings.waterDetail;
+	j["windSpeed"] = graphicsSettings.windSpeed;
+	j["windDirection"] = graphicsSettings.windDirection;
+	j["windGustiness"] = graphicsSettings.windGustiness;
+	j["windTurbulence"] = graphicsSettings.windTurbulence;
+	j["windTreeSway"] = graphicsSettings.windTreeSway;
+	j["windLeafFlutter"] = graphicsSettings.windLeafFlutter;
+	j["windGrassBend"] = graphicsSettings.windGrassBend;
 	j["shadowDistance"] = graphicsSettings.shadowDistance;
 	j["shadowCascades"] = graphicsSettings.shadowCascades;
 	j["shadowResolution"] = graphicsSettings.shadowResolution;

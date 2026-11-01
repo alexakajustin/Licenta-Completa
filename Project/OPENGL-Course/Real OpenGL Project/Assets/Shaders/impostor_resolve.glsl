@@ -8,8 +8,9 @@ layout(local_size_x = 8, local_size_y = 8) in;
  * The baked views are premultiplied by coverage (empty texels are 0), so glGenerateMipmap gives
  * alpha-weighted averages of colour, normal and depth at every level; this divides the coverage
  * out. Texels with no coverage take the value of the coarser level, resolved just before
- * (push-pull), so bilinear filtering never pulls black into the edges of the leaves. Alpha stays
- * the plain average coverage: the cards dither against it.
+ * (push-pull), so bilinear filtering never pulls black into the edges of the leaves. Alpha is the
+ * average coverage times the level's alphaScale (impostor_coverage.glsl): the 0.5 alpha test of
+ * the cards keeps the coverage of level 0 at every distance.
  */
 
 layout(binding = 0) uniform sampler2D premultAlbedo; ///< Premultiplied pyramid (RGBA16F)
@@ -23,6 +24,7 @@ layout(rgba8, binding = 1) uniform writeonly image2D outData;
 layout(r8, binding = 2) uniform writeonly image2D outMaterial;
 
 uniform int level;
+uniform float alphaScale;
 uniform int hasCoarser;
 uniform ivec2 levelSize;
 
@@ -53,6 +55,7 @@ void main()
         outD = vec4(0.5, 1.0, 0.5, 0.5);
         outM = 1.0;
     }
+    outA.a = clamp(coverage * alphaScale, 0.0, 1.0);
     imageStore(outAlbedo, p, outA);
     imageStore(outData, p, outD);
     imageStore(outMaterial, p, vec4(clamp(outM, 0.0, 1.0)));

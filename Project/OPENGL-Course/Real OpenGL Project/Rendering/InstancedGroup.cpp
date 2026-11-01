@@ -26,8 +26,8 @@ namespace {
 		GLuint program = 0;
 		GLint frustumPlanes, useSphereCull, lightPos, totalInstances, instanceOffset, phase;
 		GLint instanceBoundRadius, meshBoundsCenter;
-		GLint cameraPos, lodProjScale, lodScreenSize, minScreenSize, crossfadeWidth, lodCount, lodMin;
-		GLint maxDrawDistance, minCasterSize, impostorMode, impostorLevel;
+		GLint cameraPos, stageCount, stageRep, stageEnd, lodMin, crossfadeWidth, projScale, minScreenSize;
+		GLint maxDrawDistance, minCasterSize, impostorMode;
 		GLint detailFoliage, detailRange, detailDensity;
 		GLint useHiZ, screenSize, nearPlane, farPlane, hizViewProj, hizMap;
 	};
@@ -47,16 +47,16 @@ namespace {
 		u.instanceBoundRadius = L("instanceBoundRadius");
 		u.meshBoundsCenter = L("meshBoundsCenter");
 		u.cameraPos = L("cameraPos");
-		u.lodProjScale = L("lodProjScale");
-		u.lodScreenSize = L("lodScreenSize");
+		u.stageCount = L("stageCount");
+		u.stageRep = L("stageRep");
+		u.stageEnd = L("stageEnd");
+		u.projScale = L("projScale");
 		u.minScreenSize = L("minScreenSize");
 		u.crossfadeWidth = L("crossfadeWidth");
-		u.lodCount = L("lodCount");
 		u.lodMin = L("lodMin");
 		u.maxDrawDistance = L("maxDrawDistance");
 		u.minCasterSize = L("minCasterSize");
 		u.impostorMode = L("impostorMode");
-		u.impostorLevel = L("impostorLevel");
 		u.detailFoliage = L("detailFoliage");
 		u.detailRange = L("detailRange");
 		u.detailDensity = L("detailDensity");
@@ -81,12 +81,14 @@ InstancedGroup::~InstancedGroup()
 }
 
 InstancedGroup::CullPass InstancedGroup::CameraPass(const glm::mat4& projection, const glm::mat4& view,
-	const glm::vec3& cameraPos, const GraphicsSettings* gs, float lodBias, float detailScale)
+	const glm::vec3& cameraPos, const GraphicsSettings* gs, float lodDistanceScale, float detailScale)
 {
 	CullPass pass;
 	pass.viewProj = projection * view;
 	pass.cameraPos = cameraPos;
-	pass.lodProjScale = projection[1][1] * (gs ? gs->lodBias : 1.0f) * lodBias;
+	pass.settings = gs;
+	pass.lodDistanceScale = lodDistanceScale;
+	pass.projScale = projection[1][1];
 	pass.maxDrawDistance = gs ? gs->renderDistance : 2000.0f;
 	pass.crossfade = (!gs || gs->lodCrossfade) ? LODPolicy::CROSSFADE_WIDTH : 0.0f;
 	pass.minScreenSize = LODPolicy::CULL_SCREEN_SIZE;
@@ -94,7 +96,6 @@ InstancedGroup::CullPass InstancedGroup::CameraPass(const glm::mat4& projection,
 	pass.detailRange = glm::vec2(detailEnd * 0.3f, detailEnd);
 	pass.detailDensity = gs ? gs->detailDensity : 1.0f;
 	pass.impostors = !gs || gs->impostors;
-	pass.impostorLevel = gs ? gs->impostorStartLod : 1;
 	// Depth range for the Hi-Z comparison: P[2][2] = -(f+n)/(f-n), P[3][2] = -2fn/(f-n)
 	float A = projection[2][2], B = projection[3][2];
 	pass.nearPlane = B / (A - 1.0f);
@@ -426,16 +427,19 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 	glUniform1f(u.instanceBoundRadius, cullRadius);
 	glUniform3fv(u.meshBoundsCenter, 1, glm::value_ptr(cullCenter));
 	glUniform3fv(u.cameraPos, 1, glm::value_ptr(pass.cameraPos));
-	glUniform1f(u.lodProjScale, pass.lodProjScale);
-	glUniform1fv(u.lodScreenSize, 2, LODPolicy::LOD_SCREEN_SIZE);
+	// The stages of this group in this pass; a tree's groups share the impostor stage whichever
+	// of them draws it, so they all switch at the same distances
+	LODPolicy::Stages stages = LODPolicy::Build(pass.settings, lodCount, impostorMode != 0, pass.lodDistanceScale);
+	glUniform1i(u.stageCount, stages.count);
+	glUniform1iv(u.stageRep, LODPolicy::MAX_STAGES, stages.rep);
+	glUniform1fv(u.stageEnd, LODPolicy::MAX_STAGES, stages.end);
+	glUniform1f(u.projScale, pass.projScale);
 	glUniform1f(u.minScreenSize, pass.minScreenSize);
 	glUniform1f(u.crossfadeWidth, pass.crossfade);
-	glUniform1i(u.lodCount, lodCount);
-	glUniform1i(u.lodMin, std::min(pass.lodMin, MAX_LOD_LEVELS - 1)); // The shader maps levels to meshes / the impostor
+	glUniform1i(u.lodMin, std::max(pass.lodMin, 0));
 	glUniform1f(u.maxDrawDistance, maxDist);
 	glUniform1f(u.minCasterSize, pass.minCasterSize);
 	glUniform1i(u.impostorMode, impostorMode);
-	glUniform1i(u.impostorLevel, glm::clamp(pass.impostorLevel, 1, 2));
 	glUniform1i(u.detailFoliage, detail ? 1 : 0);
 	glUniform2f(u.detailRange, std::min(pass.detailRange.x, pass.detailRange.y - 0.01f), pass.detailRange.y);
 	glUniform1f(u.detailDensity, pass.detailDensity);
@@ -509,7 +513,7 @@ void InstancedGroup::DrawImpostors(const CullPass& pass, const glm::mat4& viewPr
 	shader->UseShader();
 	GLuint sid = shader->GetShaderID();
 	// Small cards draw one view instead of blending three (pixels of one unit of radius at distance 1)
-	float pixelScale = pass.orthographic ? 0.0f : pass.lodProjScale * pass.screenSize.y * 0.5f;
+	float pixelScale = pass.orthographic ? 0.0f : pass.projScale * pass.screenSize.y * 0.5f;
 	impostor->Bind(sid, viewProj, pass.cameraPos, pass.lightDir, pass.orthographic, pixelScale);
 	if (!shadow) {
 		GLint debugLoc = glGetUniformLocation(sid, "debugLODColoring");
@@ -645,6 +649,16 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	GLint foliageRadiusLoc = glGetUniformLocation(shaderID, "foliageRadius");
 	if (foliageRadiusLoc != -1) glUniform1f(foliageRadiusLoc, doubleSided ? meshBoundRadius : 0.0f); // Crown occlusion scale
 
+	// Wind: the plant's mode, base and height (wind.glsl); 'time' is set with the scene state
+	{
+		GLint loc = glGetUniformLocation(shaderID, "windMode");
+		if (loc != -1) glUniform1i(loc, windMode);
+		loc = glGetUniformLocation(shaderID, "windPlantBase");
+		if (loc != -1) glUniform1f(loc, windBase);
+		loc = glGetUniformLocation(shaderID, "windPlantHeight");
+		if (loc != -1) glUniform1f(loc, windHeight);
+	}
+
 	GLint debugLoc = glGetUniformLocation(shaderID, "debugLODColoring");
 	GLint lodColorLoc = glGetUniformLocation(shaderID, "lodDebugColor");
 	if (debugLoc != -1) glUniform1i(debugLoc, (gs && gs->debugLODColoring) ? 1 : 0);
@@ -678,39 +692,19 @@ void InstancedGroup::DrawDepthLODs()
 }
 
 // =====================================================================
-// ApplyShadowWind — the instanced shadow shaders apply the same sway as
-// grass.vert. Groups whose material shader has no wind (trees, rocks) get
-// strength 0; the value must be set for every group because the shadow
-// program is shared and keeps the previous group's uniforms otherwise.
+// ApplyPlantWind — how this group moves in the scene's wind (wind.glsl):
+// mode, plant base and height. Programs are shared between groups, so it
+// is set for every group, still ones included.
 // =====================================================================
-void InstancedGroup::ApplyShadowWind(GLuint shadowShaderID, float time) const
+void InstancedGroup::ApplyPlantWind(GLuint programID, float time) const
 {
-	float strength = 0.0f;
-	float speed = 1.0f;
-
-	Shader* matShader = material ? material->GetShader() : nullptr;
-	if (matShader && matShader->GetShaderID() != 0) {
-		GLuint msid = matShader->GetShaderID();
-		GLint strengthLoc = glGetUniformLocation(msid, "windStrength");
-		if (strengthLoc != -1) {
-			// Start from the shader's own defaults (grass.vert initializers), then the material overrides
-			glGetUniformfv(msid, strengthLoc, &strength);
-			GLint speedLoc = glGetUniformLocation(msid, "windSpeed");
-			if (speedLoc != -1) glGetUniformfv(msid, speedLoc, &speed);
-
-			const auto& floats = material->GetFloats();
-			auto it = floats.find("windStrength");
-			if (it != floats.end()) strength = it->second;
-			it = floats.find("windSpeed");
-			if (it != floats.end()) speed = it->second;
-		}
-	}
-
-	GLint loc = glGetUniformLocation(shadowShaderID, "windStrength");
-	if (loc != -1) glUniform1f(loc, strength);
-	loc = glGetUniformLocation(shadowShaderID, "windSpeed");
-	if (loc != -1) glUniform1f(loc, speed);
-	loc = glGetUniformLocation(shadowShaderID, "time");
+	GLint loc = glGetUniformLocation(programID, "windMode");
+	if (loc != -1) glUniform1i(loc, windMode);
+	loc = glGetUniformLocation(programID, "windPlantBase");
+	if (loc != -1) glUniform1f(loc, windBase);
+	loc = glGetUniformLocation(programID, "windPlantHeight");
+	if (loc != -1) glUniform1f(loc, windHeight);
+	loc = glGetUniformLocation(programID, "time");
 	if (loc != -1) glUniform1f(loc, time);
 }
 
@@ -727,7 +721,7 @@ void InstancedGroup::CullAndDrawShadow(GLuint cullShaderID, Shader& shadowShader
 	shadowShader.UseShader();
 	GLuint sid = shadowShader.GetShaderID();
 	shadowShader.SetDirectionalLightTransform(lightViewProj);
-	ApplyShadowWind(sid, time);
+	ApplyPlantWind(sid, time);
 
 	// Material tiling/offset (default identity so TexCoord isn't zeroed out)
 	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);
@@ -766,7 +760,8 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 	pass.sphereCull = true;
 	pass.lightPos = lightPos;
 	pass.cameraPos = cameraPos;
-	pass.lodProjScale = 1.0f; // 90 degree cube faces
+	pass.settings = gs;
+	pass.projScale = 1.0f; // 90 degree cube faces
 	pass.maxDrawDistance = std::min(farPlane, gs ? gs->shadowDistance : 100.0f);
 	float detailEnd = std::max((gs ? gs->detailDistance : 150.0f), 1.0f);
 	pass.detailRange = glm::vec2(detailEnd * 0.3f, detailEnd);
@@ -783,7 +778,7 @@ void InstancedGroup::CullAndDrawShadowOmni(GLuint cullShaderID, Shader& shadowSh
 	GLint omniLightPosLoc = glGetUniformLocation(sid, "omniLightPos");
 	if (omniLightPosLoc != -1) glUniform3fv(omniLightPosLoc, 1, glm::value_ptr(lightPos));
 	glUniform1f(glGetUniformLocation(sid, "farPlane"), farPlane);
-	ApplyShadowWind(sid, time);
+	ApplyPlantWind(sid, time);
 
 	// Material tiling/offset (default to identity for shadows)
 	glUniform2f(glGetUniformLocation(sid, "material.tiling"), 1.0f, 1.0f);

@@ -238,7 +238,7 @@ public:
 		const GraphicsSettings* gs = nullptr,
 		GLuint shaderID = 0,
 		bool shaderSupportsTessellation = false,
-		float lodProjScale = 1.732f); // projection[1][1] of the camera x LOD bias (screen-size LOD)
+		float lodDistanceScale = 1.0f); // LOD stages by distance (LODPolicy); < 1 in secondary views
 
 	// Texture layers
 	

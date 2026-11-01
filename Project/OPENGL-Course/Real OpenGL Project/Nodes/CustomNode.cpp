@@ -126,7 +126,7 @@ void CustomNode::RenderContent(SceneManager* scene)
 
 	// Show a compact summary of operations
 	// We use a Child window to perfectly CLIP the hover highlights so they don't leak out
-	ImGui::BeginChild("OpsClip", ImVec2(220.0f, 0.0f), ImGuiChildFlags_AutoResizeY);
+	ImGui::BeginChild("OpsClip", ImVec2(ImGui::GetFontSize() * 12.2f, 0.0f), ImGuiChildFlags_AutoResizeY);
 	
 	for (int i = 0; i < (int)operationInstances.size(); i++)
 	{
@@ -140,7 +140,7 @@ void CustomNode::RenderContent(SceneManager* scene)
 
 		if (open)
 		{
-			ImGui::PushItemWidth(120.0f);
+			ImGui::PushItemWidth(ImGui::GetFontSize() * 6.7f);
 			op->RenderUI();
 			ImGui::PopItemWidth();
 			ImGui::TreePop();

@@ -607,8 +607,20 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 
-		// Calculate the true visual intersection with the offset lake
-		// (Removed visualLakeEntryIdx calculations since we let the river natively slope down now)
+		// River mouth: the last metres before the lake the river fades out over the lake surface,
+		// which reaches up the channel and fades the other way (lake mesh below): they cross-fade
+		// instead of meeting on a line. Distance along the path to the lake entry per point.
+		const float MOUTH_FADE_METRES = 20.0f;  // River opacity 1 -> 0 over this
+		const float MOUTH_RAISE_METRES = 45.0f; // Kept just above the lake surface over this (the lake is drawn first)
+		std::vector<float> toLake(riverData.path.size(), -1.0f);
+		if (lakeEntryIdx >= 0) {
+			float along = 0.0f;
+			for (int j = lakeEntryIdx; j >= 0; j--) {
+				if (j < lakeEntryIdx) along += glm::length(riverData.path[j + 1].pos - riverData.path[j].pos) * cellWorldSize;
+				toLake[j] = along;
+			}
+			for (size_t j = lakeEntryIdx; j < riverData.path.size(); j++) toLake[j] = 0.0f;
+		}
 
 		for (size_t i = 0; i < riverData.path.size(); i++)
 		{
@@ -633,6 +645,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 				// (depth-writing) lake hides it instead of the river ribbon lying on top of it.
 				if (lakeEntryIdx >= 0 && (int)k >= lakeEntryIdx)
 					h = std::min(h, lakeEntryLevel + lakeWaterOffset - rOffset - 0.4f);
+				// Before it, over the mouth, it stays 5 cm above the lake so it is drawn over the
+				// lake's end while fading out (it would otherwise dive under it on one segment)
+				else if (toLake[k] >= 0.0f && toLake[k] < MOUTH_RAISE_METRES)
+					h = std::max(h, lakeEntryLevel + lakeWaterOffset - rOffset + 0.05f);
 				return h;
 			};
 			posY = surfaceHeight(i);
@@ -701,7 +717,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			if (pL.y > terrainL - 0.1f) pL.y = terrainL - 0.1f;
 			if (pR.y > terrainR - 0.1f) pR.y = terrainR - 0.1f;
 
-			float vCoord = (float)i * 0.025f; // V texture coordinate for river flow direction
+			// UV: u = across the river (river.frag), v = -1 - opacity at a lake mouth (-2 = the open
+			// river, -1 = faded out at the lake entry; meshes without the marker keep v >= 0)
+			float mouthFade = toLake[i] >= 0.0f ? glm::clamp(toLake[i] / MOUTH_FADE_METRES, 0.0f, 1.0f) : 1.0f;
+			float vCoord = -1.0f - mouthFade;
 			const glm::vec3& n = surfaceNormal;
 			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
 			riverMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
@@ -746,6 +765,32 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 			}
 		}
 	}
+	// River mouths: the lake was grown over the terrain as it was before the rivers were carved,
+	// so it stopped on a grid edge across each river channel - a straight line over deep water,
+	// where the shoreline fade (water depth) cannot hide it. Grow it a little further up every
+	// channel whose carved bed is still below the water, ring by ring, and fade it out over those
+	// rings (vertex UV, water.vert): the river and the lake cross-fade instead of meeting on a line.
+	const float MOUTH_FADE_METRES = 24.0f;
+	const int mouthRings = std::max(2, (int)std::ceil(MOUTH_FADE_METRES / std::max(cellWorldSize, 0.01f)));
+	std::vector<int> lakeRing(totalVerts, 0); // Rings grown up a channel (0 = the lake itself)
+	for (int ring = 1; ring <= mouthRings; ring++) {
+		std::vector<int> currentPass = expandedPixels;
+		for (int idx : currentPass) {
+			for (int dz = -1; dz <= 1; dz++) {
+				for (int dx = -1; dx <= 1; dx++) {
+					int nx = (idx % gridRes) + dx; int nz = (idx / gridRes) + dz;
+					if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+					int nidx = nz * gridRes + nx;
+					if (isExpanded[nidx]) continue;
+					if (data.vertices[nidx * 14 + 1] >= lakeWaterLevel[idx] + lakeWaterOffset - 0.05f) continue; // Bed above the water
+					expandedPixels.push_back(nidx); isExpanded[nidx] = true;
+					lakeWaterLevel[nidx] = lakeWaterLevel[idx];
+					lakeRing[nidx] = ring;
+				}
+			}
+		}
+	}
+
 	// Shore skirt: two more rings regardless of terrain height, so the flat lake surface runs a
 	// little INTO the banks. The depth test then cuts it exactly along the terrain contour and the
 	// shader fades it over the first centimetres of depth. (Skipping every vertex above the water
@@ -761,6 +806,7 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 					if (isExpanded[nidx]) continue;
 					expandedPixels.push_back(nidx); isExpanded[nidx] = true;
 					if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = lakeWaterLevel[idx];
+					if (lakeRing[idx] > 0) lakeRing[nidx] = lakeRing[idx] + 1; // Past a channel: keeps fading
 				}
 			}
 		}
@@ -772,7 +818,10 @@ void RiverNode::Execute(SceneManager& scene, NodeProgressCallback progress)
 
 		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
 		float y_pos = wLevel + lakeWaterOffset;
-		lakeMesh.AddVertex(x_pos, y_pos, z_pos, 0.5f, 0.5f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
+		// UV: u = opacity at a river mouth (1 = the lake, 0 = its end up the channel), v = -1 marks
+		// a lake from this node for water.vert (other water meshes keep their own UVs)
+		float mouthFade = lakeRing[idx] > 0 ? glm::clamp(1.0f - (float)lakeRing[idx] / (float)mouthRings, 0.0f, 1.0f) : 1.0f;
+		lakeMesh.AddVertex(x_pos, y_pos, z_pos, mouthFade, -1.0f, 0, 1, 0, 1, 0, 0, 0, 0, 1);
 		terrainToWaterIdx[idx] = lakeMesh.GetVertexCount() - 1;
 	}
 	for (int idx : expandedPixels) {

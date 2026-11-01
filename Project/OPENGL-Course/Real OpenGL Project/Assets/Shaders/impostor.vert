@@ -22,6 +22,8 @@
 
 layout (location = 0) in vec3 pos; ///< Corner of the card, xy in [-1, 1]
 
+#include "wind.glsl"
+
 struct PackedInstance {
     vec4 posAndScale;     ///< xyz = position, w = uniform scale
     vec4 rotAndFlags;     ///< xyz = euler degrees, w = fade factor + 10 * selected
@@ -174,6 +176,11 @@ void main()
                                             : normalize(cornerLocal - Rt * (impostorViewPos - position) / scale);
     FrameUV01 = vec4(ProjectIntoFrame(cell, cornerLocal, rayDir), ProjectIntoFrame(cell1, cornerLocal, rayDir));
     FrameUV2 = ProjectIntoFrame(cell2, cornerLocal, rayDir);
+
+    // The card leans and sways on the tree's trunk like the meshes (wind.glsl, same base and
+    // height), after the views were placed: the image moves with the card
+    vec3 root = position + R * vec3(0.0, impostorBoundsMin.y, 0.0) * scale;
+    world = WindTrunk(world, root, (impostorBoundsMax.y - impostorBoundsMin.y) * scale);
 
     CardPos = world;
     InstanceRotation = R;

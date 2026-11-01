@@ -23,11 +23,11 @@ struct GraphicsSettings;
 //      instances are split into spatial chunks the CPU can skip whole.
 //   2. Every pass (camera, reflection, shadow cascade, omni face, water foam)
 //      describes itself with a CullPass and runs the same compute shader
-//      (compute_cull.glsl): frustum planes, Hi-Z occlusion, screen-size LOD
+//      (compute_cull.glsl): frustum planes, Hi-Z occlusion, LOD stages by distance
 //      (LODPolicy.h) with dithered cross-fades, detail-foliage thinning.
 //   3. One glDrawElementsIndirect per LOD level, zero CPU work per instance.
-//   4. Trees (Impostor.h): from the LOD2 distance on, one camera-facing card per tree baked from
-//      the full LOD0 instead of the last LOD mesh.
+//   4. Trees (Impostor.h): the last stage is one camera-facing card per tree baked from the
+//      full LOD0 instead of a LOD mesh.
 //
 // Usage:
 //   group->Setup(mesh, transforms, material, texture, normalMap);
@@ -55,10 +55,12 @@ public:
 	struct CullPass {
 		glm::mat4 viewProj = glm::mat4(1.0f);   // Frustum of the pass (camera, reflection, cascade...)
 		glm::vec3 cameraPos = glm::vec3(0.0f);
-		float lodProjScale = 1.732f;            // projection[1][1] of the camera x LOD bias
+		const GraphicsSettings* settings = nullptr; // LOD stages (null: the defaults)
+		float lodDistanceScale = 1.0f;          // Secondary views (reflection) switch sooner
+		float projScale = 1.732f;               // projection[1][1] of the camera (minimum screen size)
 		float maxDrawDistance = 2000.0f;        // Before DrawDistanceScale()
 		bool sizeScaledDistance = true;         // Big objects are drawn further away (DrawDistanceScale)
-		int lodMin = 0;                         // Most detailed LOD allowed (far shadow cascades: > 0)
+		int lodMin = 0;                         // LOD stages skipped (far shadow cascades: > 0)
 		float crossfade = 0.0f;                 // Relative width of the dithered LOD transitions
 		float minScreenSize = 0.0f;             // Instances smaller on screen are not drawn
 		float minCasterSize = 0.0f;             // Shadow cascades: diameter of one shadow texel
@@ -72,15 +74,14 @@ public:
 		glm::vec2 screenSize = glm::vec2(0.0f);
 		float nearPlane = 0.1f, farPlane = 20000.0f;
 		bool impostors = false;                 // Trees may draw their impostor card (camera passes, cascades)
-		int impostorLevel = 1;                  // First LOD level drawn as the impostor (1 or 2)
 		bool orthographic = false;              // Shadow cascades: the cards face lightDir
 		glm::vec3 lightDir = glm::vec3(0.0f, 1.0f, 0.0f); // Toward the light
 	};
 
-	// Pass of a camera (main view, reflection) from the graphics settings. lodBias < 1 switches
-	// to cheaper LODs sooner, detailScale shortens the detail-foliage distances.
+	// Pass of a camera (main view, reflection) from the graphics settings. lodDistanceScale < 1
+	// switches to the later LOD stages sooner, detailScale shortens the detail-foliage distances.
 	static CullPass CameraPass(const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos,
-		const GraphicsSettings* gs, float lodBias = 1.0f, float detailScale = 1.0f);
+		const GraphicsSettings* gs, float lodDistanceScale = 1.0f, float detailScale = 1.0f);
 
 	InstancedGroup(const std::string& name = "InstancedGroup");
 	~InstancedGroup();
@@ -121,6 +122,12 @@ public:
 	void SetImpostor(const ImpostorAtlas* atlas, bool drawsImpostor, const glm::vec3& boundsCenter, float boundsRadius);
 	void ClearImpostor();
 	const ImpostorAtlas* GetImpostor() const { return impostor; }
+
+	// How the group moves in the scene's wind (wind.glsl), assigned every frame by ImpostorSystem:
+	// 0 still, 1 grass, 2 plant (trunk + branches), 3 plant leaves (+ flutter). Base and height are
+	// the whole plant's (bark and leaves together, mesh space), so its parts move as one.
+	void SetPlantWind(int mode, float base, float height) { windMode = mode; windBase = base; windHeight = height; }
+	int GetWindMode() const { return windMode; }
 	bool DrawsImpostor() const { return impostor && drawsImpostor; }
 
 	// Instances drawn at a LOD by the last pass (GPU readback: stalls, debugging/statistics only);
@@ -133,7 +140,6 @@ public:
 	uint32_t GetTotalCount() const { return totalCount; }
 	uint32_t GetVisibleCount() const { return lastVisibleCount; }
 	float GetMeshBoundRadius() const { return meshBoundRadius; }
-	float GetCullRadius() const { return cullRadius; } // The LOD decisions use this (a tree's whole bounds)
 
 	// Camera draw distance multiplier: bigger objects stay visible further away, like a
 	// screen-size cull. Grass/ferns/rocks (radius <= 2 m) keep the global render distance,
@@ -171,8 +177,8 @@ public:
 private:
 	std::string name;
 
-	// Upload the wind uniforms of this group's material to an instanced shadow shader
-	void ApplyShadowWind(GLuint shadowShaderID, float time) const;
+	// The group's plant wind (mode, base, height) to whichever program draws it next
+	void ApplyPlantWind(GLuint programID, float time) const;
 
 	// GPU Buffers (main instance data)
 	GLuint instanceSSBO = 0;       // All instance transforms (input to compute shader)
@@ -190,6 +196,8 @@ private:
 	const ImpostorAtlas* impostor = nullptr;
 	bool drawsImpostor = false;
 	LODLevel impostorLevel;
+	int windMode = 0;
+	float windBase = 0.0f, windHeight = 0.0f;
 	glm::vec3 cullCenter = glm::vec3(0.0f); // = mesh bounds unless the group is part of a tree
 	float cullRadius = 1.0f;
 

@@ -10,16 +10,30 @@ enum class SkyboxType {
 };
 
 struct GraphicsSettings {
-	// Level of detail: chosen by the size on screen (Rendering/LODPolicy.h), like Unity's
-	// LODGroup — big objects keep their detail further away than small ones
-	float lodBias = 1.0f;           // > 1 keeps the detailed LODs longer, < 1 switches sooner
+	// Level of detail by distance to the camera (Rendering/LODPolicy.h): LOD0, LOD1, LOD2 each end
+	// at their distance, then the impostor (trees). A stage switched off is skipped: the next one
+	// starts where the previous ends (LOD2 off: LOD1, then the impostor). The last stage in use
+	// reaches the render distance.
+	bool lodEnabled[3] = { true, true, false };
+	float lodDistance[3] = { 100.0f, 200.0f, 400.0f }; // Where LOD0 / LOD1 / LOD2 end (m)
 	bool lodCrossfade = true;       // Dithered transitions between LODs instead of pops
 	float renderDistance = 2000.0f; // Object cut-off (big objects are drawn up to 10x further)
 	float detailDistance = 150.0f;  // Grass / detail foliage thins out to a quarter by this distance
 	float detailDensity = 1.0f;     // Fraction of the detail foliage drawn at all
-	bool impostors = true;          // Trees: from the LOD2 distance on, one card baked from the full tree (Impostor.h)
+	bool impostors = true;          // Last stage: trees as one card baked from the full tree (Impostor.h)
 	int impostorResolution = 2048;  // Atlas size per tree type (8 x 8 views)
-	int impostorStartLod = 1;       // 1: the impostor replaces LOD1 and LOD2, 2: only LOD2
+
+	// Wind (Rendering/Wind.h): grass, plants, trees, impostors, the lake, the fog and the clouds
+	float windSpeed = 4.0f;         // m/s (Beaufort: 4 = gentle breeze, 10 = fresh, 17 = gale)
+	float windDirection = 30.0f;    // Degrees in the xz plane the wind blows TOWARD (0 = +X, 90 = +Z)
+	float windGustiness = 0.5f;     // 0 = steady, 1 = strong gusts sweeping across the land
+	float windTurbulence = 0.4f;    // Small, fast swirls on top of the gusts
+	float windTreeSway = 1.0f;      // Response multipliers: trunks and branches
+	float windLeafFlutter = 1.0f;   //                       leaves
+	float windGrassBend = 1.0f;     //                       grass
+
+	// Water (water.frag, river.frag)
+	float waterDetail = 1.5f;       // How far the fine ripples / foam bubbles reach (1 = until they would shimmer)
 
 	// Shadows (cascaded shadow maps)
 	float shadowDistance = 150.0f;
