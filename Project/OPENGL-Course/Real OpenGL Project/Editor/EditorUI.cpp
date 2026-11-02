@@ -15,6 +15,7 @@
 #include "Nodes/NodeRegistry.h"
 #include "Scene/SceneSerializer.h"
 #include "Scene/UndoActions.h"
+#include "Editor/EditorUndo.h"
 #include "Scene/Planet.h"
 #include "Scene/Player.h"
 #include "External Libs/nlohmann/json.hpp"
@@ -485,6 +486,8 @@ void EditorUI::Render(SceneManager& scene, const glm::mat4& projection, const gl
 	RenderViewport(scene, projection, view, cameraPos, sceneTextureID, camera, inputHandler, gameTextureID, isPlaying);
 	RenderInspector(scene, bufferWidth, bufferHeight);
 
+	TrackSettingsHistory(scene);
+
 	// === Global Undo/Redo (works from ANY window) ===
 	if (!ImGui::GetIO().WantTextInput) { // Don't intercept when typing in text fields
 		if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z)) {
@@ -947,19 +950,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				scene.Paste();
 			}
 
-			// Undo/Redo
-			if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
-			{
-				scene.GetUndoManager().Undo();
-			}
-			if (ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z))
-			{
-				scene.GetUndoManager().Redo();
-			}
-			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
-			{
-				scene.GetUndoManager().Redo();
-			}
+			// Undo/Redo: the global shortcuts in Render() (repeating them here undid two steps at once)
 		}
 
 		// Box Selection Overlay
@@ -2003,6 +1994,28 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 // RenderViewport renamed to Render (which handles the Scene window)
 // RenderViewportDropTarget removed as it's now handled by the Scene window logic
+
+// Graphics settings edits become undo steps once the interaction ends (nothing held, no widget
+// active), one per drag or click
+void EditorUI::TrackSettingsHistory(SceneManager& scene)
+{
+	if (!graphicsSettingsPtr) return;
+	if (!settingsBaselineValid) {
+		std::memcpy(&settingsBaseline, graphicsSettingsPtr, sizeof(GraphicsSettings)); // Bytes, padding included: memcmp below
+		settingsBaselineValid = true;
+		return;
+	}
+	if (ImGui::IsAnyItemActive() || ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1)) return;
+	if (std::memcmp(&settingsBaseline, graphicsSettingsPtr, sizeof(GraphicsSettings)) == 0) return;
+	GraphicsSettings before = settingsBaseline;
+	std::memcpy(&settingsBaseline, graphicsSettingsPtr, sizeof(GraphicsSettings));
+	scene.GetUndoManager().PushAction(std::make_unique<SettingsEditAction>(
+		[this](const GraphicsSettings& s) {
+			if (!graphicsSettingsPtr) return;
+			std::memcpy(graphicsSettingsPtr, &s, sizeof(GraphicsSettings));
+			std::memcpy(&settingsBaseline, &s, sizeof(GraphicsSettings));
+		}, before, settingsBaseline, "Graphics settings"));
+}
 
 void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 {

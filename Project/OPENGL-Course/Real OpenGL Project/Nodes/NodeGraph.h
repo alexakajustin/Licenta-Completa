@@ -259,10 +259,14 @@ public:
 
 	static constexpr int FORMAT_VERSION = 2;
 
+	// Unique for the whole session (undo steps find their graph by it, not by address)
+	uint64_t GetUid() const { return uid; }
+
 	// Values are dropped after a run (they can be huge); tests and tools may keep them to inspect
 	bool keepValues = false;
 
 private:
+	uint64_t uid;
 	std::vector<GraphNode*> nodes;
 	std::vector<Link> links;
 	int nextId;

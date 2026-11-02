@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -42,6 +43,11 @@ public:
 	~NodeEditorUI();
 
 	NodeEditorAction Render(SceneManager& scene, Texture* defaultTex, Material* defaultMat, EditorUI::WindowState& uiState);
+
+	// Undo: the graphs' state changes when they run (seeds, what nodes own) without being an edit,
+	// and the history belongs to the scene that was loaded
+	void OnGraphsExecuted(SceneManager& scene);
+	void ResetHistory() { history.clear(); }
 
 	// Where a pin was drawn last frame (tools and tests)
 	bool GetPinScreenPos(int pinId, ImVec2& pos) const
@@ -105,6 +111,15 @@ private:
 	bool requestFrame = false;
 	bool requestArrange = false;
 	float requestZoom = 0.0f;   // Toolbar zoom buttons (factor), 0 = none
+
+	// Undo snapshots, per graph: the last one taken, and the one at its last run
+	// content: the snapshot without node positions (what a run depends on)
+	struct GraphHistory { std::string snapshot, content, executedContent; };
+	std::unordered_map<uint64_t, GraphHistory> history;
+	bool historyCheckPending = false;
+	SceneManager* historyScene = nullptr;
+	void TrackHistory(SceneManager& scene, NodeGraph& graph);
+	void RestoreGraph(uint64_t graphUid, const std::string& snapshot);
 
 	// Tab rename
 	char renameBuf[128] = "";

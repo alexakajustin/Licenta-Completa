@@ -5,6 +5,7 @@
 #include "Nodes/SceneInputNode.h"
 #include "Nodes/CustomNode.h"
 #include "Editor/NodeBuilderUI.h"
+#include "Editor/EditorUndo.h"
 #include "Scene/SceneManager.h"
 
 #include "imgui.h"
@@ -101,6 +102,124 @@ namespace {
 }
 
 NodeEditorUI::NodeEditorUI() {}
+
+namespace {
+	// The graph as an undo snapshot. Without the id counter: it only grows (restoring a snapshot
+	// hands out new ids), it is not an edit.
+	std::string GraphSnapshot(NodeGraph& graph)
+	{
+		json j = graph.Serialize();
+		j.erase("nextId");
+		return j.dump();
+	}
+
+	// What a run depends on: the snapshot without where the nodes sit
+	std::string GraphContent(const std::string& snapshot)
+	{
+		json j = json::parse(snapshot, nullptr, false);
+		if (j.is_discarded()) return snapshot;
+		if (j.contains("nodes")) for (auto& n : j["nodes"]) n.erase("editorPos");
+		return j.dump();
+	}
+
+	// "Add Scatter", "Delete 3 nodes", "Link", "Move nodes", "Edit Perlin Noise"...
+	std::string DescribeGraphChange(const std::string& beforeText, const std::string& afterText)
+	{
+		json a = json::parse(beforeText, nullptr, false), b = json::parse(afterText, nullptr, false);
+		if (a.is_discarded() || b.is_discarded() || !a.contains("nodes") || !b.contains("nodes")) return "Edit graph";
+		std::map<int, const json*> nodesA, nodesB;
+		for (const auto& n : a["nodes"]) nodesA[n.value("id", 0)] = &n;
+		for (const auto& n : b["nodes"]) nodesB[n.value("id", 0)] = &n;
+		auto title = [](const json* n) { return n->value("title", std::string("node")); };
+
+		std::vector<const json*> added, removed;
+		for (auto& [id, n] : nodesB) if (!nodesA.count(id)) added.push_back(n);
+		for (auto& [id, n] : nodesA) if (!nodesB.count(id)) removed.push_back(n);
+		if (!added.empty() && removed.empty()) return added.size() == 1 ? "Add " + title(added[0]) : "Add " + std::to_string(added.size()) + " nodes";
+		if (!removed.empty() && added.empty()) return removed.size() == 1 ? "Delete " + title(removed[0]) : "Delete " + std::to_string(removed.size()) + " nodes";
+		if (!added.empty()) return "Replace nodes";
+
+		size_t linksA = a.value("links", json::array()).size(), linksB = b.value("links", json::array()).size();
+		if (linksB > linksA) return "Link";
+		if (linksB < linksA) return "Unlink";
+		if (a.value("links", json::array()) != b.value("links", json::array())) return "Relink";
+
+		std::vector<const json*> moved, edited;
+		for (auto& [id, nb] : nodesB) {
+			const json* na = nodesA[id];
+			if (*na == *nb) continue;
+			json ca = *na, cb = *nb;
+			ca.erase("editorPos");
+			cb.erase("editorPos");
+			(ca == cb ? moved : edited).push_back(nb);
+		}
+		if (!edited.empty()) return edited.size() == 1 ? "Edit " + title(edited[0]) : "Edit " + std::to_string(edited.size()) + " nodes";
+		if (!moved.empty()) return moved.size() == 1 ? "Move " + title(moved[0]) : "Move " + std::to_string(moved.size()) + " nodes";
+		return "Edit graph";
+	}
+}
+
+// When an interaction has ended (nothing held, no widget active), a graph that differs from its
+// last snapshot becomes one undo step
+void NodeEditorUI::TrackHistory(SceneManager& scene, NodeGraph& graph)
+{
+	historyScene = &scene;
+	auto it = history.find(graph.GetUid());
+	if (it == history.end()) {
+		std::string snap = GraphSnapshot(graph);
+		std::string content = GraphContent(snap);
+		history[graph.GetUid()] = { snap, content, content };
+		historyCheckPending = false;
+		return;
+	}
+	bool idle = !ImGui::IsAnyItemActive() && drag == Drag::None &&
+		!ImGui::IsMouseDown(0) && !ImGui::IsMouseDown(1) && !ImGui::IsMouseDown(2);
+	if (!historyCheckPending || !idle) return;
+	historyCheckPending = false;
+
+	std::string snap = GraphSnapshot(graph);
+	if (snap == it->second.snapshot) return;
+	std::string before = std::move(it->second.snapshot);
+	it->second.snapshot = snap;
+	it->second.content = GraphContent(snap);
+	std::string tabName;
+	for (auto& t : scene.GetGraphTabs()) if (t.graph.get() == &graph) tabName = t.name;
+	std::string description = DescribeGraphChange(before, snap) + (tabName.empty() ? "" : " (" + tabName + ")");
+	scene.GetUndoManager().PushAction(std::make_unique<GraphEditAction>(
+		[this](uint64_t uid, const std::string& s) { RestoreGraph(uid, s); }, graph.GetUid(), std::move(before), std::move(snap), description));
+}
+
+void NodeEditorUI::RestoreGraph(uint64_t graphUid, const std::string& snapshot)
+{
+	if (!historyScene) return;
+	auto& tabs = historyScene->GetGraphTabs();
+	for (int i = 0; i < (int)tabs.size(); i++) {
+		NodeGraph& graph = *tabs[i].graph;
+		if (graph.GetUid() != graphUid) continue;
+		json j = json::parse(snapshot, nullptr, false);
+		if (j.is_discarded()) return;
+		graph.Deserialize(j, *historyScene);
+		GraphHistory& h = history[graphUid];
+		h.snapshot = snapshot;
+		h.content = GraphContent(snapshot);
+		historyCheckPending = false;
+		// Show where the change happened
+		historyScene->SetActiveTabIndex(i);
+		auto v = views.find(&graph);
+		if (v != views.end()) SyncView(graph, v->second);
+		return;
+	}
+}
+
+void NodeEditorUI::OnGraphsExecuted(SceneManager& scene)
+{
+	historyScene = &scene;
+	for (auto& t : scene.GetGraphTabs()) {
+		std::string snap = GraphSnapshot(*t.graph);
+		std::string content = GraphContent(snap);
+		history[t.graph->GetUid()] = { snap, content, content };
+	}
+}
 NodeEditorUI::~NodeEditorUI() {}
 
 ImVec2 NodeEditorUI::ToScreen(const GraphView& view, const ImVec2& grid) const
@@ -273,8 +392,24 @@ NodeEditorAction NodeEditorUI::Render(SceneManager& scene, Texture* defaultTex, 
 		if (ImGui::IsItemHovered()) ImGui::SetTooltip("Zoom (mouse wheel over the canvas). Click: 100%%");
 		ImGui::SameLine();
 		if (ImGui::Button("+##zoomIn")) requestZoom = 1.25f;
+		{
+			auto h = history.find(graph.GetUid());
+			if (h != history.end() && h->second.content != h->second.executedContent) {
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.35f, 1.0f), "* changed since the last run");
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Execute the tab to see the changes in the scene");
+			}
+		}
+
+		// An interaction may have changed the graph (a click, a key, typing)
+		ImGuiIO& hio = ImGui::GetIO();
+		for (int b = 0; b < 3; b++) if (ImGui::IsMouseReleased(b)) historyCheckPending = true;
+		if (hio.InputQueueCharacters.Size > 0) historyCheckPending = true;
+		for (int k = ImGuiKey_NamedKey_BEGIN; k < ImGuiKey_NamedKey_END && !historyCheckPending; k++)
+			if (ImGui::IsKeyReleased((ImGuiKey)k)) historyCheckPending = true;
 
 		RenderCanvas(graph, scene, view);
+		TrackHistory(scene, graph);
 
 		// Forget the views of tabs that are gone
 		std::set<NodeGraph*> live;
@@ -343,7 +478,12 @@ void NodeEditorUI::RenderCanvas(NodeGraph& graph, SceneManager& scene, GraphView
 	// A graph seen for the first time: once its nodes are measured, untangle them if they
 	// overlap (saved positions from before the sizes were known) and frame them
 	if (view.framesSeen == 2) {
-		if (NodesOverlap(graph, view)) ArrangeNodes(graph, view);
+		if (NodesOverlap(graph, view)) {
+			ArrangeNodes(graph, view);
+			// Laying out a graph seen for the first time is part of opening it, not an undo step
+			auto h = history.find(graph.GetUid());
+			if (h != history.end()) h->second.snapshot = GraphSnapshot(graph);
+		}
 		FrameNodes(graph, view, false);
 	}
 	if (requestArrange) { ArrangeNodes(graph, view); FrameNodes(graph, view, false); requestArrange = false; }

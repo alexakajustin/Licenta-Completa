@@ -2347,6 +2347,9 @@
     <ClInclude Include="Editor\NodeEditorUI.h">
       <Filter>Editor</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\EditorUndo.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
     <ClInclude Include="Procedural\PerlinNoiseNode.h">
       <Filter>Procedural</Filter>
     </ClInclude>

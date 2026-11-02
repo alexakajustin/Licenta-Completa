@@ -8,6 +8,7 @@
 #include "Rendering/Shader.h"
 #include "Rendering/Mesh.h"
 #include "Rendering/Texture.h"
+#include "GraphicsSettings.h"
 
 struct TransformSnapshot;
 struct GraphicsSettings;
@@ -116,6 +117,10 @@ private:
 	glm::vec2 viewportSize = glm::vec2(1.0f, 1.0f);
 	bool viewportHovered = false;
 	GraphicsSettings* graphicsSettingsPtr = nullptr;
+	// Undo for the graphics settings: compared with this when an interaction ends
+	GraphicsSettings settingsBaseline;
+	bool settingsBaselineValid = false;
+	void TrackSettingsHistory(class SceneManager& scene);
 	
 	// Speed Overlay logic
 	float speedOverlayTimer = 0.0f;

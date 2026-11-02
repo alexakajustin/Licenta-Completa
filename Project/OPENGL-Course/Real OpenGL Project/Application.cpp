@@ -917,6 +917,7 @@ void Application::Run()
 				SetupScene();
 			}
 			volumetricFog.InvalidateHistory();
+			if (sceneAction != EditorUI::SceneAction::Save) nodeEditorUI.ResetHistory(); // Graph undo belongs to the old scene
 			editorUI.ClearPendingSceneAction();
 		}
 
@@ -929,6 +930,8 @@ void Application::Run()
 			progressTitle = "Executing Active Tab...";
 			sceneManager.GetNodeGraph().Execute(sceneManager, &plainTexture, &plainMaterial, progressCallback);
 		}
+		// Running changes the graphs' state (seeds rolled, what nodes own): not an edit to undo
+		if (graphAction != NodeEditorAction::None) nodeEditorUI.OnGraphsExecuted(sceneManager);
 
 		// Handle pending Play/Stop actions
 		auto playAction = editorUI.GetPendingPlayAction();

@@ -393,9 +393,13 @@ void NodeContext::Info(const std::string& message)
 // NodeGraph
 // =====================================================================
 
-NodeGraph::NodeGraph() : nextId(1) {}
+namespace {
+	uint64_t NextGraphUid() { static uint64_t counter = 0; return ++counter; }
+}
 
-NodeGraph::NodeGraph(std::shared_ptr<int> sharedNextId) : nextId(1), m_sharedNextId(sharedNextId) {}
+NodeGraph::NodeGraph() : uid(NextGraphUid()), nextId(1) {}
+
+NodeGraph::NodeGraph(std::shared_ptr<int> sharedNextId) : uid(NextGraphUid()), nextId(1), m_sharedNextId(sharedNextId) {}
 
 NodeGraph::~NodeGraph()
 {

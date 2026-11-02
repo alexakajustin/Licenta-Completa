@@ -1090,6 +1090,7 @@
     <ClInclude Include="Procedural\SpawnInstancesNode.h" />
     <ClInclude Include="Nodes\NodeGraph.h" />
     <ClInclude Include="Editor\NodeEditorUI.h" />
+    <ClInclude Include="Editor\EditorUndo.h" />
     <ClInclude Include="Nodes\SceneInputNode.h" />
     <ClInclude Include="Procedural\ScatterNode.h" />
     <ClInclude Include="External Libs\imnodes\imnodes.h" />
