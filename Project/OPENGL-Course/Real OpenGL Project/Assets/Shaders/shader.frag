@@ -9,6 +9,7 @@ in vec4 vertex_color;
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
+in vec3 PrevFragPos; ///< Where this point was last frame (wind)
 
 // TBN vectors from vertex shader
 in vec3 TangentWorld;
@@ -20,7 +21,8 @@ in vec3 LocalPos;
 // Linear part of the model matrix (rotation * scale), for object-space triplanar mapping
 in mat3 ObjectBasis;
 
-out vec4 colour;	
+layout(location = 0) out vec4 colour;
+layout(location = 1) out vec4 velocityOut; ///< Motion vector (MotionVector)	
 in float vIsSelected;
 in float vFadeFactor;
 
@@ -101,6 +103,16 @@ uniform int spotLightCount; ///< Count of active spot lights.
 uniform DirectionalLight directionalLight; ///< Active directional light.
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 #include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
+
+// Motion vector (attachment 1 of the viewport; only plants moving in the wind enable it, see
+// InstancedGroup::DrawLODs): this frame's minus last frame's screen position (uv units), and the
+// view depth, so the TAA resolve can tell whether this surface is still the visible one.
+vec4 MotionVector(vec3 worldPos, vec3 prevWorldPos)
+{
+    vec4 cur = frameViewProj * vec4(worldPos, 1.0);
+    vec4 prev = framePrevViewProj * vec4(prevWorldPos, 1.0);
+    return vec4((cur.xy / cur.w - prev.xy / prev.w) * 0.5, cur.w, 1.0);
+}
 uniform PointLight pointLights[MAX_POINT_LIGHTS]; ///< Array of point lights.
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS]; ///< Array of spot lights.
 
@@ -931,4 +943,5 @@ void main()
 	}
 
 	colour = vec4(finalColor, material.baseColor.a);
+	velocityOut = MotionVector(FragPos, PrevFragPos);
 }

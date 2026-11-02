@@ -553,6 +553,8 @@ void InstancedGroup::DrawImpostors(const CullPass& pass, const glm::mat4& viewPr
 // =====================================================================
 // DrawLODs — Issue indirect draw calls for each LOD level (material shader)
 // =====================================================================
+GLuint InstancedGroup::velocityTarget = 0;
+
 void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	const glm::mat4& view, const glm::vec3& cameraPos, const GraphicsSettings* gs)
 {
@@ -688,6 +690,18 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 		glm::vec3(0.2f, 0.2f, 1.0f)   // BLUE = LOD2
 	};
 
+	// Plants moving in the wind write their motion into attachment 1 of the viewport (TemporalAA:
+	// the history follows the leaves instead of smearing them). Only into that framebuffer, and
+	// only with a shader that has the output (shader.frag, grass.frag: velocityOut).
+	static const GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	bool writeVelocity = false;
+	if (velocityTarget != 0 && windMode != 0) {
+		GLint drawFbo = 0;
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+		writeVelocity = (GLuint)drawFbo == velocityTarget && glGetFragDataLocation(shaderID, "velocityOut") == 1;
+	}
+	if (writeVelocity) glDrawBuffers(2, drawBuffers);
+
 	for (int lod = 0; lod < lodCount; lod++) {
 		if (gs && gs->debugLODColoring && lodColorLoc != -1) glUniform3fv(lodColorLoc, 1, glm::value_ptr(lodColors[lod]));
 
@@ -695,6 +709,7 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[lod].visibleSSBO);
 		GetLODMesh(lod)->RenderIndirect(lodLevels[lod].indirectBuffer, renderShader.HasTessellation());
 	}
+	if (writeVelocity) glDrawBuffers(1, drawBuffers);
 
 	if (foliageLoc != -1 && doubleSided) glUniform1i(foliageLoc, 0);
 	if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);

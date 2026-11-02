@@ -127,6 +127,9 @@ public:
 	// 0 still, 1 grass, 2 plant (trunk + branches), 3 plant leaves (+ flutter). Base and height are
 	// the whole plant's (bark and leaves together, mesh space), so its parts move as one.
 	void SetPlantWind(int mode, float base, float height) { windMode = mode; windBase = base; windHeight = height; }
+	// Framebuffer whose attachment 1 takes motion vectors this frame (TemporalAA; 0 = none):
+	// groups moving in the wind write theirs while drawing into it
+	static void SetVelocityTarget(GLuint fbo) { velocityTarget = fbo; }
 	int GetWindMode() const { return windMode; }
 	bool DrawsImpostor() const { return impostor && drawsImpostor; }
 
@@ -197,6 +200,7 @@ private:
 	bool drawsImpostor = false;
 	LODLevel impostorLevel;
 	int windMode = 0;
+	static GLuint velocityTarget;
 	float windBase = 0.0f, windHeight = 0.0f;
 	glm::vec3 cullCenter = glm::vec3(0.0f); // = mesh bounds unless the group is part of a tree
 	float cullRadius = 1.0f;

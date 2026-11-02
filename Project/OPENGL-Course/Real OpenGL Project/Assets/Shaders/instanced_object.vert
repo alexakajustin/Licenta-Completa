@@ -51,6 +51,7 @@ out vec4 vertex_color;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
+out vec3 PrevFragPos; // Last frame (wind): motion vectors (shader.frag)
 // DirectionalLightSpacePos removed (calculated in frag shader for CSM)
 out vec3 TangentWorld;
 out vec3 BitangentWorld;
@@ -102,9 +103,13 @@ void main()
     
     // Generic placement
     vec3 worldPos = rotatedPos + instancePos;
+    PrevFragPos = worldPos;
     if (windMode >= 2) {
         vec3 root = instancePos + rotMat * vec3(0.0, windPlantBase, 0.0) * instanceScale;
-        worldPos = WindPlant(worldPos, root, windPlantHeight * instanceScale, length(pos.xz) * instanceScale,
+        vec3 rest = worldPos;
+        worldPos = WindPlant(rest, root, windPlantHeight * instanceScale, length(pos.xz) * instanceScale,
+            pos, normalize(rotMat * norm), windMode == 3);
+        PrevFragPos = WindPlantP(WindPrev(), rest, root, windPlantHeight * instanceScale, length(pos.xz) * instanceScale,
             pos, normalize(rotMat * norm), windMode == 3);
     }
     

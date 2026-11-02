@@ -24,6 +24,8 @@
 #include "Rendering/VolumetricFog.h"
 #include "Rendering/CloudShadows.h"
 #include "Rendering/TemporalAA.h"
+#include "Rendering/PostProcess.h"
+#include "Rendering/AmbientOcclusion.h"
 #include <vector>
 #include <unordered_map>
 
@@ -147,6 +149,8 @@ private:
 	// Tileable 3D noise volumes for the clouds (generated once by cloud_noise.glsl)
 	GLuint cloudShapeNoiseTex = 0, cloudDetailNoiseTex = 0;
 	TemporalAA taa;              // Temporal anti-aliasing of the viewport
+	PostProcess postProcess;     // Exposure, tone mapping and sharpening of the HDR viewport
+	AmbientOcclusion ambientOcclusion; // GTAO, half resolution
 	CloudShadowMap cloudShadows; // The clouds' shadows on the scene (sampled by every lit shader)
 	void InitCloudNoise();
 	void SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm::mat4& invView, int jitterFrame);

@@ -11,6 +11,7 @@ out vec4 vertex_color;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
+out vec3 PrevFragPos; // Last frame (wind): motion vectors (shader.frag)
 
 // fragment relative to light
 // DirectionalLightSpacePos removed (calculated in frag shader for CSM)
@@ -69,12 +70,16 @@ void main()
 	vFadeFactor = 0.0; // Non-instanced objects are always fully visible
 
 	vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
+	PrevFragPos = worldPosition.xyz;
 	if (windMode >= 2) {
 		// Trunk axis = the mesh's vertical axis; the base of the whole plant is its root
 		float plantScale = length(modelMatrix[1].xyz);
 		vec3 root = (modelMatrix * vec4(0.0, windPlantBase, 0.0, 1.0)).xyz;
 		vec3 windNormal = normalize(mat3(modelMatrix) * norm);
-		worldPosition.xyz = WindPlant(worldPosition.xyz, root, windPlantHeight * plantScale,
+		vec3 rest = worldPosition.xyz;
+		worldPosition.xyz = WindPlant(rest, root, windPlantHeight * plantScale,
+			length(pos.xz) * plantScale, pos, windNormal, windMode == 3);
+		PrevFragPos = WindPlantP(WindPrev(), rest, root, windPlantHeight * plantScale,
 			length(pos.xz) * plantScale, pos, windNormal, windMode == 3);
 	}
 	gl_ClipDistance[0] = dot(worldPosition, clipPlane);

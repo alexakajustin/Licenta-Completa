@@ -37,7 +37,11 @@ private:
 		glm::vec4 phase;     // trunks, branches, leaves, grass (radians)
 		glm::vec4 response;  // tree sway, leaf flutter, grass bend, -
 		glm::vec4 clouds;    // xy cloud drift (sky units)
+		// Last frame's dirSpeed, gust, phase, response: where the plants were (motion vectors)
+		glm::vec4 prevDirSpeed, prevGust, prevPhase, prevResponse;
 	};
+	Block last{};            // The block uploaded last frame
+	bool hasLast = false;
 
 	GLuint ubo = 0;
 	glm::vec2 direction = glm::vec2(1.0f, 0.0f);

@@ -21,6 +21,7 @@ out vec4 vertex_color;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
+out vec3 PrevFragPos; // Terrain does not move (shader.frag motion vectors)
 out vec3 TangentWorld;
 out vec3 BitangentWorld;
 out vec3 NormalWorld;
@@ -67,5 +68,6 @@ void main()
 	// pass doesn't clip terrain below the water plane.
 	gl_ClipDistance[0] = dot(vec4(FragPos, 1.0), clipPlane);
 
+	PrevFragPos = FragPos;
 	gl_Position = projection * view * vec4(FragPos, 1.0);
 }

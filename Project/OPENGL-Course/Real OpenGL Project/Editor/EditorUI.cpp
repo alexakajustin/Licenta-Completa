@@ -2143,6 +2143,47 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			if (!g.taaEnabled) ImGui::EndDisabled();
 		}
 
+		if (ImGui::CollapsingHeader("Exposure & Tone Mapping", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			const char* tonemappers[] = { "Neutral (keeps the look)", "AgX (filmic)", "ACES (filmic)" };
+			ImGui::Combo("Tone Mapper", &g.tonemapper, tonemappers, 3);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Neutral: everything up to 0.75 as before, only the highlights roll off instead of clipping.\n"
+					"AgX / ACES: filmic curves with their own contrast and colour.");
+			ImGui::SliderFloat("Exposure (EV)", &g.exposureCompensation, -3.0f, 3.0f, "%+.2f");
+			ImGui::Checkbox("Auto Exposure", &g.autoExposure);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("The eye adapts: brighter in dark views, darker against a bright sky");
+			if (!g.autoExposure) ImGui::BeginDisabled();
+			ImGui::SliderFloat("Target Brightness", &g.exposureKey, 0.05f, 0.6f, "%.2f");
+			ImGui::SliderFloat("Adaptation", &g.exposureStrength, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("How much of the difference to the target the eye makes up (1 = all of it)");
+			ImGui::SliderFloat("Adaptation Range (EV)", &g.exposureRange, 0.0f, 4.0f, "%.1f");
+			ImGui::SliderFloat("Adaptation Speed", &g.exposureAdaptSpeed, 0.1f, 6.0f, "%.1f");
+			if (!g.autoExposure) ImGui::EndDisabled();
+			if (ImGui::Button("Reset Defaults##Exposure", ImVec2(-1, 0))) {
+				GraphicsSettings d;
+				g.tonemapper = d.tonemapper; g.autoExposure = d.autoExposure; g.exposureCompensation = d.exposureCompensation;
+				g.exposureKey = d.exposureKey; g.exposureStrength = d.exposureStrength; g.exposureRange = d.exposureRange;
+				g.exposureAdaptSpeed = d.exposureAdaptSpeed;
+			}
+		}
+
+		if (ImGui::CollapsingHeader("Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::Checkbox("GTAO", &g.aoEnabled);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Contact shadows in creases, under rocks and logs, where plants meet the ground.\nHalf resolution; TAA smooths its noise.");
+			if (!g.aoEnabled) ImGui::BeginDisabled();
+			ImGui::SliderFloat("Radius (m)", &g.aoRadius, 0.2f, 4.0f, "%.2f");
+			ImGui::SliderFloat("Strength##AO", &g.aoStrength, 0.0f, 1.0f, "%.2f");
+			if (!g.aoEnabled) ImGui::EndDisabled();
+			if (ImGui::Button("Reset Defaults##AO", ImVec2(-1, 0))) {
+				GraphicsSettings d;
+				g.aoEnabled = d.aoEnabled; g.aoRadius = d.aoRadius; g.aoStrength = d.aoStrength;
+			}
+		}
+
 		if (ImGui::CollapsingHeader("Level of Detail", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;

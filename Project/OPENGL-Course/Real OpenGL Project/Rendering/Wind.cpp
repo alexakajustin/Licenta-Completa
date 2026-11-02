@@ -47,6 +47,14 @@ void WindSystem::Update(const GraphicsSettings* gs, float deltaTime)
 	block.phase = glm::vec4((float)phases[0], (float)phases[1], (float)phases[2], (float)phases[3]);
 	block.response = glm::vec4(std::max(g.windTreeSway, 0.0f), std::max(g.windLeafFlutter, 0.0f), std::max(g.windGrassBend, 0.0f), 0.0f);
 	block.clouds = glm::vec4((float)cloudDrift[0], (float)cloudDrift[1], 0.0f, 0.0f);
+	// Last frame's wind (the first frame: this one, so nothing moves)
+	const Block& prev = hasLast ? last : block;
+	block.prevDirSpeed = prev.dirSpeed;
+	block.prevGust = prev.gust;
+	block.prevPhase = prev.phase;
+	block.prevResponse = prev.response;
+	last = block;
+	hasLast = true;
 
 	if (!ubo) {
 		glGenBuffers(1, &ubo);

@@ -106,6 +106,7 @@ layout (location = 5) in mat4 _unused_inst;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
+out vec3 PrevFragPos; // Last frame (wind): motion vectors (grass.frag)
 out float vIsSelected;
 // Redefined by header
 
@@ -147,9 +148,20 @@ layout(std140) uniform WindBlock {
     vec4 windPhase;     ///< Integrated phases (radians): x trunks, y branches, z leaves, w grass
     vec4 windResponse;  ///< x: tree sway, y: leaf flutter, z: grass bend (Graphics Settings)
     vec4 windClouds;    ///< xy: cloud drift (sky units)
+    // The same four for the previous frame: where a vertex was (motion vectors, TemporalAA.h)
+    vec4 windPrevDirSpeed;
+    vec4 windPrevGust;
+    vec4 windPrevPhase;
+    vec4 windPrevResponse;
 };
 
 const float WIND_TAU = 6.2831853;
+
+/// The wind of one frame: this one (WindNow) or the previous one (WindPrev). Every function
+/// below has a *P form taking it; the plain forms use this frame's.
+struct WindParams { vec4 dirSpeed; vec4 gust; vec4 phase; vec4 response; };
+WindParams WindNow()  { return WindParams(windDirSpeed, windGust, windPhase, windResponse); }
+WindParams WindPrev() { return WindParams(windPrevDirSpeed, windPrevGust, windPrevPhase, windPrevResponse); }
 
 /// The block has been written (a unit direction): false in tools that never update the wind
 bool WindActive() { return dot(windDirSpeed.xy, windDirSpeed.xy) > 0.5; }
@@ -178,28 +190,31 @@ float WindNoise(vec2 p)
 }
 
 /// Wind speed relative to a fresh breeze (10 m/s = 1)
-float WindStrength() { return windDirSpeed.z * 0.1; }
+float WindStrengthP(WindParams P) { return P.dirSpeed.z * 0.1; }
+float WindStrength() { return WindStrengthP(WindNow()); }
 
 /// Gusts at a world position: a coarse noise field drifting downwind, stretched across the wind
 /// so gust fronts are wide bands that sweep over a field or a forest. ~0.35 in a lull, ~1.7 in a
 /// gust at full gustiness; 1 everywhere when the wind is steady.
-float WindGust(vec2 xz)
+float WindGustP(WindParams P, vec2 xz)
 {
-    vec2 dir = windDirSpeed.xy;
-    vec2 p = xz - windGust.xy;
+    vec2 dir = P.dirSpeed.xy;
+    vec2 p = xz - P.gust.xy;
     vec2 q = vec2(dot(p, dir), dot(p, vec2(-dir.y, dir.x)));    // Along, across the wind
     float n = WindNoise(q * vec2(1.0 / 45.0, 1.0 / 110.0)) * 0.7
             + WindNoise(q * vec2(1.0 / 17.0, 1.0 / 40.0) + vec2(17.3, 5.1)) * 0.3;
     float gust = smoothstep(0.32, 0.78, n);
-    return mix(1.0, 0.35 + 1.35 * gust, windGust.z);
+    return mix(1.0, 0.35 + 1.35 * gust, P.gust.z);
 }
+float WindGust(vec2 xz) { return WindGustP(WindNow(), xz); }
 
 /// Turbulence: finer, faster swirls on top of the gusts (0.4 .. 1.6 at full turbulence)
-float WindTurbulence(vec2 xz)
+float WindTurbulenceP(WindParams P, vec2 xz)
 {
-    float n = WindNoise((xz - windGust.xy * 1.7) * (1.0 / 7.0) + vec2(31.7, 11.3));
-    return 1.0 + (n * 2.0 - 1.0) * 0.6 * windGust.w;
+    float n = WindNoise((xz - P.gust.xy * 1.7) * (1.0 / 7.0) + vec2(31.7, 11.3));
+    return 1.0 + (n * 2.0 - 1.0) * 0.6 * P.gust.w;
 }
+float WindTurbulence(vec2 xz) { return WindTurbulenceP(WindNow(), xz); }
 
 /// What every part of one plant shares, computed once per vertex: the wind at the plant
 /// (gust x turbulence at its root), its size class and its random seed
@@ -212,105 +227,115 @@ struct WindPlantState {
     float seed;     ///< Random in [0, 1) per plant
 };
 
-WindPlantState WindPlantSetup(vec3 root, float height)
+WindPlantState WindPlantSetupP(WindParams P, vec3 root, float height)
 {
     WindPlantState w;
-    w.dir = vec3(windDirSpeed.x, 0.0, windDirSpeed.y);
+    w.dir = vec3(P.dirSpeed.x, 0.0, P.dirSpeed.y);
     w.across = vec3(-w.dir.z, 0.0, w.dir.x);
-    w.s = WindStrength();
-    w.gust = WindGust(root.xz) * WindTurbulence(root.xz * 0.5);
+    w.s = WindStrengthP(P);
+    w.gust = WindGustP(P, root.xz) * WindTurbulenceP(P, root.xz * 0.5);
     w.size = clamp(height / 12.0, 0.25, 3.0);
     w.seed = WindRandom(root.xz);
     return w;
 }
+WindPlantState WindPlantSetup(vec3 root, float height) { return WindPlantSetupP(WindNow(), root, height); }
 
 /// Trunk: the whole plant leans downwind with the drag (~ speed^2, saturating in a storm) and
 /// sways around that lean, slower and stiffer when bigger, a little across the wind too;
 /// quadratic in the height above the base and renormalised, so the crown moves on an arc.
-vec3 WindTrunkWith(WindPlantState w, vec3 world, vec3 root, float height)
+vec3 WindTrunkWithP(WindParams P, WindPlantState w, vec3 world, vec3 root, float height)
 {
     vec3 fromRoot = world - root;
     float len = length(fromRoot);
     if (len < 1e-4) return world;
     float drag = w.s * w.s * w.gust * w.gust;
     float lean = 0.055 * drag / (1.0 + 0.3 * drag);                        // Radians at the top
-    float phase = windPhase.x / sqrt(w.size) + w.seed * WIND_TAU;
+    float phase = P.phase.x / sqrt(w.size) + w.seed * WIND_TAU;
     float swing = (0.012 + 0.032 * w.s * w.gust) / sqrt(w.size);
     float along = lean + swing * (sin(phase) + 0.35 * sin(phase * 2.17 + 1.1));
     float side = swing * 0.5 * sin(phase * 0.79 + 2.3);
     float rel = clamp(fromRoot.y / height, 0.0, 1.3);
-    vec3 offset = (w.dir * along + w.across * side) * height * rel * rel * windResponse.x;
+    vec3 offset = (w.dir * along + w.across * side) * height * rel * rel * P.response.x;
     return root + normalize(fromRoot + offset) * len;
 }
+vec3 WindTrunkWith(WindPlantState w, vec3 world, vec3 root, float height) { return WindTrunkWithP(WindNow(), w, world, root, height); }
 
 /// Branches: away from the trunk axis they bob and swing with their own rhythm, coherent along
 /// each branch (the phase is a coarse noise of the mesh position), more toward the tips.
 /// radial: distance from the trunk axis (world m); local: mesh-space position.
-vec3 WindBranchesWith(WindPlantState w, vec3 world, float radial, vec3 local)
+vec3 WindBranchesWithP(WindParams P, WindPlantState w, vec3 world, float radial, vec3 local)
 {
     float reach = max(radial - 0.25 * w.size, 0.0);                        // The trunk core stays put
-    float phase = windPhase.y / sqrt(w.size)
+    float phase = P.phase.y / sqrt(w.size)
                 + WindNoise(local.xz * 0.5 + vec2(local.y * 0.35, w.seed * 37.0)) * WIND_TAU * 1.5;
-    float amp = (0.010 + 0.040 * w.s * w.gust) * pow(reach, 1.25) * windResponse.x;
+    float amp = (0.010 + 0.040 * w.s * w.gust) * pow(reach, 1.25) * P.response.x;
     vec3 move = vec3(0.0, 0.75 * sin(phase), 0.0) + w.dir * (0.45 * w.gust * w.s + 0.35 * sin(phase * 0.83 + 2.1));
     return world + move * amp;
 }
+vec3 WindBranchesWith(WindPlantState w, vec3 world, float radial, vec3 local) { return WindBranchesWithP(WindNow(), w, world, radial, local); }
 
 /// Leaves: quick, small flutter along the card normal (world), leaf by leaf, more outside
-vec3 WindLeavesWith(WindPlantState w, vec3 world, float radial, vec3 local, vec3 normal)
+vec3 WindLeavesWithP(WindParams P, WindPlantState w, vec3 world, float radial, vec3 local, vec3 normal)
 {
-    float phase = windPhase.z + WindNoise(local.xz * 2.3 + vec2(local.y * 1.7, 0.0)) * WIND_TAU * 3.0;
-    float amp = (0.003 + 0.020 * w.s * w.gust) * clamp(0.4 + radial * 0.2, 0.4, 1.0) * windResponse.y;
+    float phase = P.phase.z + WindNoise(local.xz * 2.3 + vec2(local.y * 1.7, 0.0)) * WIND_TAU * 3.0;
+    float amp = (0.003 + 0.020 * w.s * w.gust) * clamp(0.4 + radial * 0.2, 0.4, 1.0) * P.response.y;
     return world + (normal * sin(phase) + w.dir * (0.2 + 0.3 * sin(phase * 1.31 + 0.7))) * amp;
 }
+vec3 WindLeavesWith(WindPlantState w, vec3 world, float radial, vec3 local, vec3 normal) { return WindLeavesWithP(WindNow(), w, world, radial, local, normal); }
 
 /// Trunk only (impostor cards: the whole tree as one card). world: the vertex after the
 /// instance transform; root: base of the trunk (world); height: the plant's height (world m).
-vec3 WindTrunk(vec3 world, vec3 root, float height)
+vec3 WindTrunkP(WindParams P, vec3 world, vec3 root, float height)
 {
-    if (windDirSpeed.w < 0.5 || height < 0.05) return world;
-    return WindTrunkWith(WindPlantSetup(root, height), world, root, height);
+    if (P.dirSpeed.w < 0.5 || height < 0.05) return world;
+    return WindTrunkWithP(P, WindPlantSetupP(P, root, height), world, root, height);
 }
+vec3 WindTrunk(vec3 world, vec3 root, float height) { return WindTrunkP(WindNow(), world, root, height); }
 
 /// A whole plant: trunk, branches and (leaves = true) leaf flutter
+vec3 WindPlantP(WindParams P, vec3 world, vec3 root, float height, float radial, vec3 local, vec3 normal, bool leaves)
+{
+    if (P.dirSpeed.w < 0.5 || height < 0.05) return world;
+    WindPlantState w = WindPlantSetupP(P, root, height);
+    vec3 p = WindTrunkWithP(P, w, world, root, height);
+    p = WindBranchesWithP(P, w, p, radial, local);
+    if (leaves) p = WindLeavesWithP(P, w, p, radial, local, normal);
+    return p;
+}
 vec3 WindPlant(vec3 world, vec3 root, float height, float radial, vec3 local, vec3 normal, bool leaves)
 {
-    if (windDirSpeed.w < 0.5 || height < 0.05) return world;
-    WindPlantState w = WindPlantSetup(root, height);
-    vec3 p = WindTrunkWith(w, world, root, height);
-    p = WindBranchesWith(w, p, radial, local);
-    if (leaves) p = WindLeavesWith(w, p, radial, local, normal);
-    return p;
+    return WindPlantP(WindNow(), world, root, height, radial, local, normal, leaves);
 }
 
 /// Grass blades bending with the gusts. root: the clump's origin (world), height: blade height
 /// (world m). Tilts 'normal' (world) with the bend, so the gusts show as waves of light.
-vec3 WindGrass(vec3 world, vec3 root, float height, inout vec3 normal)
+vec3 WindGrassP(WindParams P, vec3 world, vec3 root, float height, inout vec3 normal)
 {
     vec3 fromRoot = world - root;
     float len = length(fromRoot);
-    if (windDirSpeed.w < 0.5 || height < 0.01 || len < 1e-4) return world;
+    if (P.dirSpeed.w < 0.5 || height < 0.01 || len < 1e-4) return world;
 
-    vec3 dir = vec3(windDirSpeed.x, 0.0, windDirSpeed.y);
+    vec3 dir = vec3(P.dirSpeed.x, 0.0, P.dirSpeed.y);
     vec3 across = vec3(-dir.z, 0.0, dir.x);
-    float s = WindStrength() * windResponse.z;
-    float gust = WindGust(root.xz);
+    float s = WindStrengthP(P) * P.response.z;
+    float gust = WindGustP(P, root.xz);
     float seed = WindRandom(root.xz);
     // Turbulence per clump (a per-vertex noise for millions of blades would cost more than it shows)
-    float turb = 1.0 + (seed * 2.0 - 1.0) * 0.6 * windGust.w;
+    float turb = 1.0 + (seed * 2.0 - 1.0) * 0.6 * P.gust.w;
 
     // Drag ~ speed^2, saturating toward ~65 degrees; the blades flick around that pose, the
     // phase following the gust field so neighbours move together but never in lockstep
     float drag = s * s * gust * gust;
     float bend = 1.1 * (1.0 - exp(-1.8 * drag));
-    float flick = (0.05 + 0.22 * s * turb) * sin(windPhase.w + seed * WIND_TAU + gust * 2.5);
-    float side = (0.03 + 0.10 * s * turb) * sin(windPhase.w * 0.77 + seed * 8.2);
+    float flick = (0.05 + 0.22 * s * turb) * sin(P.phase.w + seed * WIND_TAU + gust * 2.5);
+    float side = (0.03 + 0.10 * s * turb) * sin(P.phase.w * 0.77 + seed * 8.2);
 
     float rel = clamp(fromRoot.y / height, 0.0, 1.2);
     vec3 offset = (dir * (bend + flick) + across * side) * height * rel * rel;
     normal = normalize(normal + dir * (bend + flick) * 0.7 * rel);
     return root + normalize(fromRoot + offset) * len;
 }
+vec3 WindGrass(vec3 world, vec3 root, float height, inout vec3 normal) { return WindGrassP(WindNow(), world, root, height, normal); }
 
 uniform float windPlantHeight; // Blade height (mesh space, set per instanced group; 0 = 1 m)
 
@@ -332,7 +357,10 @@ void main()
 	vec3 worldNormal = mat3(transpose(inverse(modelMatrix))) * norm;
 	// Blades bend from the clump's origin; the normal tilts with them (waves of light)
 	float bladeHeight = (windPlantHeight > 0.0 ? windPlantHeight : 1.0) * length(modelMatrix[1].xyz);
-	worldPos.xyz = WindGrass(worldPos.xyz, modelMatrix[3].xyz, bladeHeight, worldNormal);
+	vec3 rest = worldPos.xyz;
+	vec3 prevNormal = worldNormal;
+	worldPos.xyz = WindGrass(rest, modelMatrix[3].xyz, bladeHeight, worldNormal);
+	PrevFragPos = WindGrassP(WindPrev(), rest, modelMatrix[3].xyz, bladeHeight, prevNormal);
 	gl_ClipDistance[0] = dot(worldPos, clipPlane);
 	gl_Position = projection * view * worldPos;
 	TexCoord = tex;

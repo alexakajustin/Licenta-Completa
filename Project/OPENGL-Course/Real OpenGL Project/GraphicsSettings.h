@@ -19,6 +19,20 @@ struct GraphicsSettings {
 	bool lodCrossfade = true;       // Dithered transitions between LODs instead of pops
 	bool taaEnabled = true;         // Temporal anti-aliasing (Rendering/TemporalAA.h)
 	float taaSharpness = 0.5f;      // Contrast-adaptive sharpening of the TAA result (0-1)
+
+	// Ambient occlusion (Rendering/AmbientOcclusion.h)
+	bool aoEnabled = true;
+	float aoRadius = 1.0f;          // World radius of the occlusion (m)
+	float aoStrength = 0.6f;        // 0 = none, 1 = full
+
+	// Exposure and tone mapping (Rendering/PostProcess.h)
+	int tonemapper = 0;             // 0 neutral (keeps the look, rolls highlights off), 1 AgX, 2 ACES
+	bool autoExposure = true;       // The eye adapts to bright and dark views
+	float exposureCompensation = 0.0f; // Manual exposure (EV)
+	float exposureKey = 0.22f;      // Average brightness the eye adapts toward
+	float exposureStrength = 0.4f;  // How much of the difference it adapts (0-1)
+	float exposureRange = 1.5f;     // Max adaptation (EV, both ways)
+	float exposureAdaptSpeed = 1.5f; // 1 / seconds (into the light twice as fast)
 	float renderDistance = 2000.0f; // Object cut-off (big objects are drawn up to 10x further)
 	float detailDistance = 150.0f;  // Grass / detail foliage thins out to a quarter by this distance
 	float detailDensity = 1.0f;     // Fraction of the detail foliage drawn at all

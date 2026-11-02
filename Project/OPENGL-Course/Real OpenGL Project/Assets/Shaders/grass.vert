@@ -8,6 +8,7 @@ layout (location = 5) in mat4 instanceMatrix;
 out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
+out vec3 PrevFragPos; // Last frame (wind): motion vectors (grass.frag)
 out float vIsSelected;
 out float vFadeFactor;
 
@@ -36,7 +37,10 @@ void main()
 	vec3 worldNormal = mat3(transpose(inverse(modelMatrix))) * norm;
 	// Blades bend from the clump's origin; the normal tilts with them (waves of light)
 	float bladeHeight = (windPlantHeight > 0.0 ? windPlantHeight : 1.0) * length(modelMatrix[1].xyz);
-	worldPos.xyz = WindGrass(worldPos.xyz, modelMatrix[3].xyz, bladeHeight, worldNormal);
+	vec3 rest = worldPos.xyz;
+	vec3 prevNormal = worldNormal;
+	worldPos.xyz = WindGrass(rest, modelMatrix[3].xyz, bladeHeight, worldNormal);
+	PrevFragPos = WindGrassP(WindPrev(), rest, modelMatrix[3].xyz, bladeHeight, prevNormal);
 	gl_ClipDistance[0] = dot(worldPos, clipPlane);
 	gl_Position = projection * view * worldPos;
 	TexCoord = tex;

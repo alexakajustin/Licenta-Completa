@@ -484,7 +484,8 @@ void Application::Run()
 
 		// TAA: the scene pass draws with a sub-pixel jittered projection (the other passes, picking
 		// and the editor overlays keep the plain one)
-		glm::mat4 sceneProjection = taa.BeginFrame(projection, currentViewportWidth, currentViewportHeight, graphicsSettings.taaEnabled);
+		glm::mat4 sceneProjection = taa.BeginFrame(projection, view, currentViewportWidth, currentViewportHeight,
+			graphicsSettings.taaEnabled, viewportFBO);
 
 		// Main render pass — clear backbuffer (the part around the UI)
 		glViewport(0, 0, fbw, fbh);
@@ -768,6 +769,15 @@ void Application::Run()
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
 
+		// Ambient occlusion into the lit scene (before the fog: the air in front stays lit)
+		if (graphicsSettings.aoEnabled)
+		{
+			debugOverlay.BeginPass("Ambient Occlusion");
+			ambientOcclusion.Render(viewportFBO, viewportDepth, currentViewportWidth, currentViewportHeight,
+				projection, graphicsSettings, [this]() { RenderQuad(); });
+			debugOverlay.EndPass("Ambient Occlusion");
+		}
+
 		// Volumetric fog over the finished scene (before the screen-space god rays)
 		if (graphicsSettings.volumetricFogEnabled)
 		{
@@ -841,14 +851,20 @@ void Application::Run()
 			debugOverlay.EndPass("God Rays");
 		}
 
-		// Temporal anti-aliasing over the finished scene (before the icons and the editor overlays)
+		// Temporal anti-aliasing of the finished HDR scene, then exposure, tone mapping and
+		// sharpening into the viewport (before the icons and the editor overlays)
+		GLuint hdrImage = 0;
 		if (graphicsSettings.taaEnabled)
 		{
 			debugOverlay.BeginPass("TAA");
-			taa.Resolve(viewportFBO, viewportTexture, viewportDepth, currentViewportWidth, currentViewportHeight,
-				projection, view, graphicsSettings.taaSharpness, [this]() { RenderQuad(); });
+			hdrImage = taa.Resolve(viewportTexture, viewportDepth, currentViewportWidth, currentViewportHeight,
+				[this]() { RenderQuad(); });
 			debugOverlay.EndPass("TAA");
 		}
+		debugOverlay.BeginPass("Tone Mapping");
+		postProcess.Apply(hdrImage, viewportTexture, viewportFBO, currentViewportWidth, currentViewportHeight,
+			graphicsSettings, deltaTime, hdrImage ? graphicsSettings.taaSharpness : 0.0f, [this]() { RenderQuad(); });
+		debugOverlay.EndPass("Tone Mapping");
 
 		// Scene Selection (Move before depth clear so we can use scene depth)
 		if (activeTab == 0)
@@ -932,7 +948,7 @@ void Application::Run()
 				spotLightCount = 0;
 				SetupScene();
 			}
-			volumetricFog.InvalidateHistory(); taa.Invalidate();
+			volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate();
 			if (sceneAction != EditorUI::SceneAction::Save) nodeEditorUI.ResetHistory(); // Graph undo belongs to the old scene
 			editorUI.ClearPendingSceneAction();
 		}
@@ -983,7 +999,8 @@ void Application::InitViewportFBO()
 
 	glGenTextures(1, &viewportTexture);
 	glBindTexture(GL_TEXTURE_2D, viewportTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	// HDR: the lights above 1 survive until the tone mapping (PostProcess) instead of clipping
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_HALF_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, viewportTexture, 0);
@@ -1043,7 +1060,7 @@ void Application::InitRefractionFBO()
 	refractionWidth = 1920; 
 	refractionHeight = 1080;
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, refractionWidth, refractionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, refractionWidth, refractionHeight, 0, GL_RGBA, GL_HALF_FLOAT, NULL); // Copy of the HDR viewport
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1059,7 +1076,7 @@ void Application::ResizeRefractionFBO(int width, int height)
 	refractionHeight = height;
 
 	glBindTexture(GL_TEXTURE_2D, refractionTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, refractionWidth, refractionHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, refractionWidth, refractionHeight, 0, GL_RGBA, GL_HALF_FLOAT, NULL); // Copy of the HDR viewport
 }
 
 void Application::ResizeReflectionFBO(int width, int height)
@@ -1089,7 +1106,7 @@ void Application::ResizeViewportFBO(int width, int height)
 
 	// Update Texture
 	glBindTexture(GL_TEXTURE_2D, viewportTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_HALF_FLOAT, NULL);
 
 	// Update Depth Buffer Texture
 	glBindTexture(GL_TEXTURE_2D, viewportDepth);
@@ -1117,6 +1134,8 @@ void Application::InitPostEffects()
 	renderer.SetCloudNoise(cloudShapeNoiseTex, cloudDetailNoiseTex);
 	cloudShadows.Init();
 	taa.Init();
+	postProcess.Init();
+	ambientOcclusion.Init();
 }
 
 void Application::InitCloudNoise()
@@ -1225,6 +1244,16 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("lodCrossfade")) graphicsSettings.lodCrossfade = j["lodCrossfade"];
 		if (j.contains("taaEnabled")) graphicsSettings.taaEnabled = j["taaEnabled"];
 		if (j.contains("taaSharpness")) graphicsSettings.taaSharpness = j["taaSharpness"];
+		if (j.contains("aoEnabled")) graphicsSettings.aoEnabled = j["aoEnabled"];
+		if (j.contains("aoRadius")) graphicsSettings.aoRadius = j["aoRadius"];
+		if (j.contains("aoStrength")) graphicsSettings.aoStrength = j["aoStrength"];
+		if (j.contains("tonemapper")) graphicsSettings.tonemapper = j["tonemapper"];
+		if (j.contains("autoExposure")) graphicsSettings.autoExposure = j["autoExposure"];
+		if (j.contains("exposureCompensation")) graphicsSettings.exposureCompensation = j["exposureCompensation"];
+		if (j.contains("exposureKey")) graphicsSettings.exposureKey = j["exposureKey"];
+		if (j.contains("exposureStrength")) graphicsSettings.exposureStrength = j["exposureStrength"];
+		if (j.contains("exposureRange")) graphicsSettings.exposureRange = j["exposureRange"];
+		if (j.contains("exposureAdaptSpeed")) graphicsSettings.exposureAdaptSpeed = j["exposureAdaptSpeed"];
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
 		if (j.contains("detailDistance")) graphicsSettings.detailDistance = j["detailDistance"];
 		if (j.contains("detailDensity")) graphicsSettings.detailDensity = j["detailDensity"];
@@ -1314,6 +1343,16 @@ void Application::SaveGraphicsSettings()
 	j["lodCrossfade"] = graphicsSettings.lodCrossfade;
 	j["taaEnabled"] = graphicsSettings.taaEnabled;
 	j["taaSharpness"] = graphicsSettings.taaSharpness;
+	j["aoEnabled"] = graphicsSettings.aoEnabled;
+	j["aoRadius"] = graphicsSettings.aoRadius;
+	j["aoStrength"] = graphicsSettings.aoStrength;
+	j["tonemapper"] = graphicsSettings.tonemapper;
+	j["autoExposure"] = graphicsSettings.autoExposure;
+	j["exposureCompensation"] = graphicsSettings.exposureCompensation;
+	j["exposureKey"] = graphicsSettings.exposureKey;
+	j["exposureStrength"] = graphicsSettings.exposureStrength;
+	j["exposureRange"] = graphicsSettings.exposureRange;
+	j["exposureAdaptSpeed"] = graphicsSettings.exposureAdaptSpeed;
 	j["renderDistance"] = graphicsSettings.renderDistance;
 	j["detailDistance"] = graphicsSettings.detailDistance;
 	j["detailDensity"] = graphicsSettings.detailDensity;
@@ -1472,6 +1511,8 @@ void Application::Shutdown()
 	glDeleteTextures(2, skyHistoryTexture);
 	cloudShadows.Shutdown();
 	taa.Shutdown();
+	postProcess.Shutdown();
+	ambientOcclusion.Shutdown();
 	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
 	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
@@ -1543,7 +1584,7 @@ void Application::StartPlayMode()
 	printf("[Application] Entering Play Mode.\n");
 	playState = PlayState::PlayMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory(); taa.Invalidate(); // Camera cut: last frame's fog belongs to the editor camera
+	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); // Camera cut: last frame's fog belongs to the editor camera
 
 	// Backup all object transforms so we can restore them when stopping
 	transformBackups.clear();
@@ -1602,7 +1643,7 @@ void Application::StopPlayMode()
 	printf("[Application] Exiting Play Mode.\n");
 	playState = PlayState::EditMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory(); taa.Invalidate();
+	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate();
 
 	// Restore all object transforms to their pre-play state
 	for (auto& [obj, backup] : transformBackups)
