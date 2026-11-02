@@ -14,8 +14,8 @@ layout(local_size_x = 256) in;
  *    representation the camera sees (or a later stage in the far cascades).
  * 3. Dithered cross-fade: over the last 15% of a stage the instance is emitted to both stages
  *    with complementary 4x4 dither masks (the fragment shaders discard by vFadeFactor:
- *    > 0 fades out, < 0 fades in), and it fades out before the minimum screen size and the
- *    maximum draw distance — no popping.
+ *    > 0 fades out, < 0 fades in; foliage overlaps the two stages instead, see the end of
+ *    main), and it fades out before the minimum screen size and the maximum draw distance — no popping.
  * 4. Detail foliage (grass: thousands of cheap instances without LOD meshes) thins out with
  *    distance instead: each instance keeps a stable random rank, blades about to drop out shrink
  *    away first and the survivors grow so the field stays covered.
@@ -78,6 +78,7 @@ uniform float minScreenSize;       ///< Below: not drawn
 uniform float maxDrawDistance;     ///< Hard limit, faded out over its last 15%
 uniform float minCasterSize;       ///< Shadow cascades: casters thinner than a shadow texel are skipped
 uniform int   impostorMode;        ///< 1: this group draws the tree's impostor, 2: a sibling group does
+uniform int   overlapFade;         ///< 1: cross-fade by overlapping the two stages (foliage, trees)
 
 // --- Detail foliage ---
 uniform int   detailFoliage;
@@ -248,6 +249,15 @@ void main()
         Emit(rep, inst, fadeOut, selectedFlag);
     } else if (q >= 1.0) {
         Emit(nextRep, inst, 0.0, selectedFlag);
+    } else if (overlapFade == 1) {
+        // Foliage: each half of a complementary dither is half of a sparse crown (with holes in
+        // different places), so a tree in the band showed the sky through both. Instead the
+        // incoming stage fades in over the whole outgoing one, then the outgoing one fades out
+        // under the whole incoming one: there is always at least one complete crown.
+        float inShare = min(q * 2.0, 1.0);         // Share of the incoming stage drawn
+        float outRemoved = max(q * 2.0 - 1.0, 0.0); // Share of the outgoing stage removed
+        Emit(rep, inst, outRemoved, selectedFlag);
+        Emit(nextRep, inst, -inShare, selectedFlag);
     } else {
         Emit(rep, inst, q, selectedFlag);
         Emit(nextRep, inst, -q, selectedFlag);

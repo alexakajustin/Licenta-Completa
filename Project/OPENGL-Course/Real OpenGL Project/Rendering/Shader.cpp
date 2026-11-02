@@ -1,5 +1,6 @@
 #include "Rendering/Wind.h"
 #include "Rendering/Shader.h"
+#include "Rendering/CloudShadows.h"
 #include <algorithm>
 #include <unordered_map>
 #include <string>
@@ -318,6 +319,9 @@ void Shader::CompileProgram()
 	// The scene's wind (wind.glsl) is one uniform block shared by every program
 	GLuint windBlock = glGetUniformBlockIndex(shaderID, "WindBlock");
 	if (windBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, windBlock, WIND_UBO_BINDING);
+	// So are the cloud shadows (cloud_shadow.glsl)
+	GLuint cloudShadowBlock = glGetUniformBlockIndex(shaderID, "CloudShadowBlock");
+	if (cloudShadowBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, cloudShadowBlock, CLOUD_SHADOW_UBO_BINDING);
 
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformProjection = glGetUniformLocation(shaderID, "projection");

@@ -52,6 +52,10 @@ void LightTransformAction::Undo()
 	for (const auto& snap : beforeState) {
 		if (!snap.light) continue;
 		snap.light->SetPosition(snap.position);
+		if (snap.hasDirection) {
+			glm::vec3* dir = snap.light->GetDirectionPtr();
+			if (dir) *dir = snap.direction;
+		}
 	}
 }
 
@@ -60,6 +64,10 @@ void LightTransformAction::Redo()
 	for (const auto& snap : afterState) {
 		if (!snap.light) continue;
 		snap.light->SetPosition(snap.position);
+		if (snap.hasDirection) {
+			glm::vec3* dir = snap.light->GetDirectionPtr();
+			if (dir) *dir = snap.direction;
+		}
 	}
 }
 
@@ -85,6 +93,12 @@ void TransformInstancesAction::Undo()
 		snap.group->cpuInstances[snap.index].positionAndScale.x = snap.position.x;
 		snap.group->cpuInstances[snap.index].positionAndScale.y = snap.position.y;
 		snap.group->cpuInstances[snap.index].positionAndScale.z = snap.position.z;
+		if (snap.hasScaleRotation) {
+			snap.group->cpuInstances[snap.index].positionAndScale.w = snap.scale;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.x = snap.rotation.x;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.y = snap.rotation.y;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.z = snap.rotation.z;
+		}
 		dirtyGroups.insert(snap.group);
 	}
 	for (auto* group : dirtyGroups) {
@@ -100,6 +114,12 @@ void TransformInstancesAction::Redo()
 		snap.group->cpuInstances[snap.index].positionAndScale.x = snap.position.x;
 		snap.group->cpuInstances[snap.index].positionAndScale.y = snap.position.y;
 		snap.group->cpuInstances[snap.index].positionAndScale.z = snap.position.z;
+		if (snap.hasScaleRotation) {
+			snap.group->cpuInstances[snap.index].positionAndScale.w = snap.scale;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.x = snap.rotation.x;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.y = snap.rotation.y;
+			snap.group->cpuInstances[snap.index].rotationAndFlags.z = snap.rotation.z;
+		}
 		dirtyGroups.insert(snap.group);
 	}
 	for (auto* group : dirtyGroups) {

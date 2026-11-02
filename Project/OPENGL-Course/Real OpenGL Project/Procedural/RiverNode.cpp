@@ -707,11 +707,12 @@ void RiverNode::Execute(NodeContext& ctx)
 					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
 						int nidx = nz * gridRes + nx;
 						if (!isExpanded[nidx]) { 
-							float terrainH = originalHeights[nidx];
 							float waterLevel = lakeWaterLevel[idx];
-							// Correct Expansion: Only expand into terrain that is BELOW or at the water level
-							// This allows lakes to fill deep basins while preventing "Staircases" in the air
-							if (terrainH < waterLevel + 0.5f) {
+							// Into the banks only: terrain at or above the water hides the surface under it, so the
+							// shore follows the terrain's contour. Terrain BELOW the water that is not part of the lake
+							// lies past a rim (the basin's flood fill stopped there): water over it would float in the
+							// air, over a cliff or the next valley.
+							if (originalHeights[nidx] >= waterLevel) {
 								expandedPixels.push_back(nidx); isExpanded[nidx] = true; 
 								if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = waterLevel;
 							}
@@ -739,6 +740,10 @@ void RiverNode::Execute(NodeContext& ctx)
 					int nidx = nz * gridRes + nx;
 					if (isExpanded[nidx]) continue;
 					if (data.vertices[nidx * 14 + 1] >= lakeWaterLevel[idx] + lakeWaterOffset - 0.05f) continue; // Bed above the water
+					// A channel the river cut into a bank: the ground was at or above the water before it was
+					// dug. Ground that was already lower is outside the basin (an outflow running downhill, a
+					// slope past the rim): the lake must not follow it.
+					if (originalHeights[nidx] < lakeWaterLevel[idx] - 0.05f) continue;
 					expandedPixels.push_back(nidx); isExpanded[nidx] = true;
 					lakeWaterLevel[nidx] = lakeWaterLevel[idx];
 					lakeRing[nidx] = ring;
@@ -747,8 +752,7 @@ void RiverNode::Execute(NodeContext& ctx)
 		}
 	}
 
-	// Shore skirt: two more rings regardless of terrain height, so the flat lake surface runs a
-	// little INTO the banks. The depth test then cuts it exactly along the terrain contour and the
+	// Shore skirt: two more rings into the banks, so the flat lake surface runs a little INTO them. The depth test then cuts it exactly along the terrain contour and the
 	// shader fades it over the first centimetres of depth. (Skipping every vertex above the water
 	// level instead ended the lake on whole grid cells short of the shore -> visible staircase.)
 	for (int ring = 0; ring < 2; ring++) {
@@ -760,6 +764,9 @@ void RiverNode::Execute(NodeContext& ctx)
 					if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
 					int nidx = nz * gridRes + nx;
 					if (isExpanded[nidx]) continue;
+					// Into banks only (ground that stood at or above the water before the rivers were carved
+					// and smoothed), never onto lower ground past the basin's rim
+					if (originalHeights[nidx] < lakeWaterLevel[idx] - 0.05f) continue;
 					expandedPixels.push_back(nidx); isExpanded[nidx] = true;
 					if (lakeWaterLevel[nidx] < 0) lakeWaterLevel[nidx] = lakeWaterLevel[idx];
 					if (lakeRing[idx] > 0) lakeRing[nidx] = lakeRing[idx] + 1; // Past a channel: keeps fading
@@ -793,6 +800,12 @@ void RiverNode::Execute(NodeContext& ctx)
 
 	// 7. Sync Objects & Materials
 	auto syncWaterObject = [&](const std::string& name, MeshData& meshData, const std::string& matPath) {
+		// No water this run (no lake formed, no river long enough): the surface of an earlier run
+		// (or of the saved scene) must go, not stay floating over the new terrain
+		if (meshData.vertices.empty() || meshData.indices.empty()) {
+			ctx.scene.RemoveObject(name);
+			return;
+		}
 		// In the terrain's frame: at its position, unrotated and unscaled (the vertices have both)
 		GameObject* obj = ctx.Object(name);
 		obj->GetTransform().SetPosition(input.mesh.origin);
@@ -802,10 +815,8 @@ void RiverNode::Execute(NodeContext& ctx)
 			Material* mat = Material::LoadFromFile(matPath);
 			if (mat) obj->SetMaterial(mat);
 		}
-		if (!meshData.vertices.empty()) {
-			obj->SetMesh(meshData.ToMesh());
-			obj->SetCPUMeshData(meshData);
-		}
+		obj->SetMesh(meshData.ToMesh());
+		obj->SetCPUMeshData(meshData);
 	};
 
 	syncWaterObject("River_Water_" + std::to_string(id), riverMesh, "Assets/Materials/River.mat");

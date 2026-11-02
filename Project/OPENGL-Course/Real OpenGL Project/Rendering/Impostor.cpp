@@ -143,7 +143,8 @@ void ImpostorSystem::Release()
 
 bool ImpostorSystem::Init()
 {
-	std::string common = ReadText("Assets/Shaders/impostor_common.glsl");
+	// The cloud shadows join the common code (CreateFromString does not resolve #include)
+	std::string common = ReadText("Assets/Shaders/impostor_common.glsl") + "\n" + ReadText("Assets/Shaders/cloud_shadow.glsl");
 	std::string vert = ReadText("Assets/Shaders/impostor.vert");
 	std::string frag = ReadText("Assets/Shaders/impostor.frag");
 	std::string shadowFrag = ReadText("Assets/Shaders/impostor_shadow.frag");

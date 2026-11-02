@@ -524,6 +524,10 @@ void Application::Run()
 		}
 		debugOverlay.EndPass("Shadow Maps");
 
+		// Cloud shadows: before every lit pass (reflection, main, fog) samples them
+		cloudShadows.Update(activeCameraPos, -glm::normalize(*mainLight.GetDirectionPtr()), graphicsSettings,
+			cloudShapeNoiseTex, cloudDetailNoiseTex, (float)glfwGetTime(), [this]() { RenderQuad(); });
+
 		// 1. Reflection Pass (if there is water)
 		float waterHeight = -1000.0f; 
 		bool hasWater = false;
@@ -846,7 +850,6 @@ void Application::Run()
 			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
 			glClear(GL_DEPTH_BUFFER_BIT); // Always render gizmos/icons on top of the scene
 			sceneManager.RenderIcons(projection, view);
-			sceneManager.RenderGizmo(projection, view, camera.getCameraPosition());
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
@@ -1099,6 +1102,7 @@ void Application::InitPostEffects()
 	InitCloudNoise();
 	// The renderer's sky cubemap (water and material reflections) draws the same clouds
 	renderer.SetCloudNoise(cloudShapeNoiseTex, cloudDetailNoiseTex);
+	cloudShadows.Init();
 }
 
 void Application::InitCloudNoise()
@@ -1249,6 +1253,8 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("cloudsDensity")) graphicsSettings.cloudsDensity = j["cloudsDensity"];
 		if (j.contains("cloudsSpeed")) graphicsSettings.cloudsSpeed = j["cloudsSpeed"];
 		if (j.contains("cloudsSharpness")) graphicsSettings.cloudsSharpness = j["cloudsSharpness"];
+		if (j.contains("cloudShadowsEnabled")) graphicsSettings.cloudShadowsEnabled = j["cloudShadowsEnabled"];
+		if (j.contains("cloudShadowStrength")) graphicsSettings.cloudShadowStrength = j["cloudShadowStrength"];
 
 		if (j.contains("skyboxType")) graphicsSettings.skyboxType = (SkyboxType)j["skyboxType"];
 
@@ -1334,6 +1340,8 @@ void Application::SaveGraphicsSettings()
 	j["cloudsDensity"] = graphicsSettings.cloudsDensity;
 	j["cloudsSpeed"] = graphicsSettings.cloudsSpeed;
 	j["cloudsSharpness"] = graphicsSettings.cloudsSharpness;
+	j["cloudShadowsEnabled"] = graphicsSettings.cloudShadowsEnabled;
+	j["cloudShadowStrength"] = graphicsSettings.cloudShadowStrength;
 
 	j["skyboxType"] = (int)graphicsSettings.skyboxType;
 
@@ -1444,6 +1452,7 @@ void Application::Shutdown()
 	if (skyHalfTexture) glDeleteTextures(1, &skyHalfTexture);
 	glDeleteFramebuffers(2, skyHistoryFBO);
 	glDeleteTextures(2, skyHistoryTexture);
+	cloudShadows.Shutdown();
 	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
 	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);

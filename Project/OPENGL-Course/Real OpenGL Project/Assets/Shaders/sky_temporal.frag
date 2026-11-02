@@ -46,7 +46,7 @@ void main()
         if (all(greaterThanEqual(prevUV, vec2(0.0))) && all(lessThanEqual(prevUV, vec2(1.0))))
         {
             vec4 history = texture(historySky, prevUV);
-            history = clamp(history, m1 - 1.5 * sigma, m1 + 1.5 * sigma);
+            history = clamp(history, m1 - 2.0 * sigma, m1 + 2.0 * sigma);
             result = mix(current, history, weight);
         }
     }

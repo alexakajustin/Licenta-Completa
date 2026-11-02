@@ -70,6 +70,8 @@ struct GraphicsSettings {
 	float cloudsDensity = 0.5f;
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
+	bool cloudShadowsEnabled = true;   // The clouds shade the ground (Rendering/CloudShadows.h)
+	float cloudShadowStrength = 0.9f;  // How much sun a thick cloud takes away
 
 	// Day/Night transition colors
 	glm::vec3 zenithDay = glm::vec3(0.05f, 0.15f, 0.5f);

@@ -22,6 +22,7 @@
 #include "CommonValues.h"
 #include "Rendering/Shader.h"
 #include "Rendering/VolumetricFog.h"
+#include "Rendering/CloudShadows.h"
 #include <vector>
 #include <unordered_map>
 
@@ -144,6 +145,7 @@ private:
 	unsigned int skyFrameCounter = 0;
 	// Tileable 3D noise volumes for the clouds (generated once by cloud_noise.glsl)
 	GLuint cloudShapeNoiseTex = 0, cloudDetailNoiseTex = 0;
+	CloudShadowMap cloudShadows; // The clouds' shadows on the scene (sampled by every lit shader)
 	void InitCloudNoise();
 	void SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm::mat4& invView, int jitterFrame);
 	GLuint viewportTexture = 0;

@@ -41,6 +41,7 @@ uniform float noiseScale;                 // Noise repeats per metre
 uniform vec3 windOffset;                  // Metres the noise has drifted
 uniform vec3 albedo;
 uniform vec3 sunDir;                      // Towards the sun
+#include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 uniform vec3 sunRadiance;
 uniform vec3 ambientRadiance;
 uniform float anisotropy;                 // Henyey-Greenstein g
@@ -98,7 +99,8 @@ void main()
 
     // Light arriving at the point and scattered toward the camera
     vec3 toPoint = normalize(worldPos - cameraPos);
-    vec3 sun = sunRadiance * SunVisibility(worldPos, viewDepth) * Phase(dot(toPoint, sunDir), anisotropy);
+    // Under a cloud the air is not sunlit either: shafts of light between the clouds
+    vec3 sun = sunRadiance * SunVisibility(worldPos, viewDepth) * CloudShadow(worldPos) * Phase(dot(toPoint, sunDir), anisotropy);
     vec3 scattering = extinction * albedo * (sun + ambientRadiance);
     vec4 current = vec4(scattering, extinction);
 

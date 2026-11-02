@@ -214,6 +214,11 @@ private:
 	uint32_t totalCount = 0;
 	uint32_t lastVisibleCount = 0;
 	float meshBoundRadius = 1.0f;
+	// Picking: the shared mesh's triangles (mesh space), read back on the first raycast
+	std::vector<glm::vec3> pickTriangles;
+	Mesh* pickTrianglesMesh = nullptr;
+	glm::vec3 pickMin = glm::vec3(-1.0f), pickMax = glm::vec3(1.0f);
+	void EnsurePickTriangles();
 	glm::vec3 meshBoundsCenter = glm::vec3(0.0f); // Center of mesh AABB relative to origin
 	glm::vec3 groupBoundsMin = glm::vec3(0.0f);   // Overall group AABB min
 	glm::vec3 groupBoundsMax = glm::vec3(0.0f);   // Overall group AABB max

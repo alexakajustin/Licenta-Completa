@@ -819,6 +819,71 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 	}
 }
 
+namespace {
+	// Move / Rotate / Scale, Global / Local, Center / Pivot and snapping, top-left of the viewport.
+	// A child window: clicks on it never reach the viewport (picking, box select).
+	void GizmoToolbar(TransformGizmo& g, ImVec2 viewportPos)
+	{
+		using Mode = TransformGizmo::Mode;
+		ImGui::SetCursorScreenPos(ImVec2(viewportPos.x + 8.0f, viewportPos.y + 8.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.0f, 2.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(18, 18, 22, 205));
+		if (ImGui::BeginChild("##GizmoToolbar", ImVec2(0, 0),
+			ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding,
+			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings))
+		{
+			auto Toggle = [](const char* label, bool on, const char* tip) {
+				if (on) {
+					ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 60, 180, 255));
+					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(140, 80, 200, 255));
+				}
+				bool clicked = ImGui::Button(label);
+				if (on) ImGui::PopStyleColor(2);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
+				return clicked;
+			};
+			if (Toggle("Move", g.mode == Mode::Translate, "Move (W)\nDrag an arrow, a plane square or the center")) g.mode = Mode::Translate;
+			ImGui::SameLine();
+			if (Toggle("Rotate", g.mode == Mode::Rotate, "Rotate (E)\nDrag a ring; the outer ring turns around the view")) g.mode = Mode::Rotate;
+			ImGui::SameLine();
+			if (Toggle("Scale", g.mode == Mode::Scale, "Scale (R)\nDrag an axis, or the center for uniform scale")) g.mode = Mode::Scale;
+
+			ImGui::SameLine(0.0f, 10.0f);
+			bool local = g.space == TransformGizmo::Space::Local;
+			if (Toggle(local ? "Local" : "Global", local, "Handle orientation (X)\nGlobal: world axes. Local: the active object's axes.\nScale always uses local axes."))
+				g.space = local ? TransformGizmo::Space::World : TransformGizmo::Space::Local;
+			ImGui::SameLine();
+			bool origin = g.pivot == TransformGizmo::Pivot::Origin;
+			if (Toggle(origin ? "Pivot" : "Center", origin, "Gizmo position (Z)\nCenter: middle of the selection's bounds.\nPivot: the active object's origin."))
+				g.pivot = origin ? TransformGizmo::Pivot::Center : TransformGizmo::Pivot::Origin;
+
+			ImGui::SameLine(0.0f, 10.0f);
+			if (Toggle("Snap", g.snap, "Snapping\nHold Ctrl while dragging to invert it")) g.snap = !g.snap;
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("##GizmoSnapSettings", ImGuiDir_Down)) ImGui::OpenPopup("##GizmoSettings");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Snap steps and gizmo size");
+			if (ImGui::BeginPopup("##GizmoSettings")) {
+				ImGui::SetNextItemWidth(110.0f);
+				ImGui::DragFloat("Move step", &g.snapMove, 0.05f, 0.01f, 100.0f, "%.2f");
+				ImGui::SetNextItemWidth(110.0f);
+				ImGui::DragFloat("Rotate step", &g.snapAngle, 0.5f, 1.0f, 180.0f, "%.1f deg");
+				ImGui::SetNextItemWidth(110.0f);
+				ImGui::DragFloat("Scale step", &g.snapScale, 0.01f, 0.01f, 10.0f, "%.2f");
+				ImGui::Separator();
+				ImGui::SetNextItemWidth(110.0f);
+				ImGui::SliderFloat("Gizmo size", &g.size, 60.0f, 220.0f, "%.0f px");
+				ImGui::EndPopup();
+			}
+		}
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar(4);
+	}
+}
+
 void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, const glm::mat4& view, const glm::vec3& cameraPos, GLuint textureID, Camera* camera, const InputHandler* inputHandler, GLuint gameTextureID, bool isPlaying)
 {
 	ImVec2 displaySize = ImGui::GetIO().DisplaySize;
@@ -940,6 +1005,22 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 				}
 			}
 			
+			// Gizmo tools: W move, E rotate, R scale, X global / local, Z center / pivot (not while
+			// flying the camera with the right mouse button: WASD moves it then)
+			ImGuiIO& io = ImGui::GetIO();
+			TransformGizmo& gizmo = scene.GetGizmo();
+			// Free camera (cursor captured, Esc / right mouse): WASD flies, it must not pick a tool
+			bool freeCamera = glfwGetInputMode(glfwGetCurrentContext(), GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+			if (!freeCamera && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.WantTextInput && !gizmo.IsDragging() && !ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+				if (ImGui::IsKeyPressed(ImGuiKey_W, false)) gizmo.mode = TransformGizmo::Mode::Translate;
+				if (ImGui::IsKeyPressed(ImGuiKey_E, false)) gizmo.mode = TransformGizmo::Mode::Rotate;
+				if (ImGui::IsKeyPressed(ImGuiKey_R, false)) gizmo.mode = TransformGizmo::Mode::Scale;
+				if (ImGui::IsKeyPressed(ImGuiKey_X, false))
+					gizmo.space = gizmo.space == TransformGizmo::Space::World ? TransformGizmo::Space::Local : TransformGizmo::Space::World;
+				if (ImGui::IsKeyPressed(ImGuiKey_Z, false))
+					gizmo.pivot = gizmo.pivot == TransformGizmo::Pivot::Center ? TransformGizmo::Pivot::Origin : TransformGizmo::Pivot::Center;
+			}
+
 			// Copy/Paste
 			if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C))
 			{
@@ -969,6 +1050,15 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 			drawList->AddRectFilled(p1, p2, IM_COL32(120, 60, 180, 40));
 			// Solid purple border
 			drawList->AddRect(p1, p2, IM_COL32(120, 60, 180, 200), 0.0f, 0, 1.5f);
+		}
+
+		// Transform gizmo (drawn in screen space over the scene) and its toolbar
+		{
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			drawList->PushClipRect(screenPos, ImVec2(screenPos.x + viewportPanelSize.x, screenPos.y + viewportPanelSize.y), true);
+			scene.DrawGizmo(drawList, glm::vec2(screenPos.x, screenPos.y), view, projection, glm::vec2(viewportPanelSize.x, viewportPanelSize.y));
+			drawList->PopClipRect();
+			GizmoToolbar(scene.GetGizmo(), screenPos);
 		}
 
 		// --- Camera Speed Overlay ---
@@ -2236,12 +2326,19 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				ImGui::SliderFloat("Cloud Density", &graphicsSettingsPtr->cloudsDensity, 0.1f, 0.9f);
 				ImGui::SliderFloat("Cloud Speed", &graphicsSettingsPtr->cloudsSpeed, 0.0f, 0.5f);
 				ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
+				ImGui::Checkbox("Cloud Shadows", &graphicsSettingsPtr->cloudShadowsEnabled);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("The clouds shade the ground, the water and the fog under them, and the shadows drift with them");
+				if (!graphicsSettingsPtr->cloudShadowsEnabled) ImGui::BeginDisabled();
+				ImGui::SliderFloat("Cloud Shadow Strength", &graphicsSettingsPtr->cloudShadowStrength, 0.0f, 1.0f);
+				if (!graphicsSettingsPtr->cloudShadowsEnabled) ImGui::EndDisabled();
 
 				if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
 					GraphicsSettings defaults;
 					graphicsSettingsPtr->cloudsDensity = defaults.cloudsDensity;
 					graphicsSettingsPtr->cloudsSpeed = defaults.cloudsSpeed;
 					graphicsSettingsPtr->cloudsSharpness = defaults.cloudsSharpness;
+					graphicsSettingsPtr->cloudShadowsEnabled = defaults.cloudShadowsEnabled;
+					graphicsSettingsPtr->cloudShadowStrength = defaults.cloudShadowStrength;
 				}
 
 				if (!graphicsSettingsPtr->cloudsEnabled) {

@@ -52,6 +52,7 @@ uniform sampler2D theTexture;
 
 // Lighting Uniforms automatically passed by Renderer
 uniform DirectionalLight directionalLight;
+#include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform int pointLightCount;
@@ -245,6 +246,7 @@ void main()
     // Ambient is sky light: a blade in the shadow of a tree still receives it. Only the sun's
     // direct light is attenuated by the shadow map (not fully: blades scatter light into each other).
     float shadowFactor = CalcDirectionalShadowFactor(norm);
+    shadowFactor = 1.0 - (1.0 - shadowFactor) * CloudShadow(FragPos);
     vec3 sunDir = normalize(-directionalLight.direction);
     vec3 sunIn = directionalLight.base.colour * directionalLight.base.diffuseIntensity * (1.0 - shadowFactor * 0.8);
     // Sky fill is cooler than the sun (same as foliage in shader.frag)

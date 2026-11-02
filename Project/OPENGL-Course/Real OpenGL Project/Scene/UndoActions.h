@@ -45,6 +45,8 @@ private:
 struct LightTransformSnapshot {
 	LightObject* light;
 	glm::vec3 position;
+	bool hasDirection = false;              // Spot lights rotated by the gizmo
+	glm::vec3 direction = glm::vec3(0.0f);
 };
 
 // =====================================================================
@@ -74,6 +76,9 @@ struct InstanceTransformSnapshot {
 	InstancedGroup* group;
 	int index;
 	glm::vec3 position;
+	bool hasScaleRotation = false;          // Gizmo rotate / scale: the whole transform
+	float scale = 1.0f;
+	glm::vec3 rotation = glm::vec3(0.0f);   // Euler degrees (PackedInstance convention)
 };
 
 // =====================================================================

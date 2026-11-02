@@ -144,6 +144,12 @@
     <ClCompile Include="Editor\AssetBrowser.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Editor\TransformGizmo.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\CloudShadows.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Editor\DebugOverlay.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
@@ -2268,6 +2274,12 @@
     </ClInclude>
     <ClInclude Include="Editor\AssetBrowser.h">
       <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\TransformGizmo.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\CloudShadows.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Scene\AssetManager.h">
       <Filter>Scene</Filter>

@@ -99,6 +99,7 @@ uniform int pointLightCount; ///< Count of active point lights.
 uniform int spotLightCount; ///< Count of active spot lights.
 
 uniform DirectionalLight directionalLight; ///< Active directional light.
+#include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 uniform PointLight pointLights[MAX_POINT_LIGHTS]; ///< Array of point lights.
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS]; ///< Array of spot lights.
 
@@ -575,7 +576,9 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 
 vec3 CalcDirectionalLight(vec3 baseColor) 
 {
 	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
-	
+	// A cloud between the point and the sun takes its share of the direct light too
+	shadowFactor = 1.0 - (1.0 - shadowFactor) * CloudShadow(FragPos);
+
 	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, baseColor);
 }
 

@@ -19,6 +19,7 @@
 #include "Rendering/WaterFoamMap.h"
 #include "Rendering/Impostor.h"
 #include "Scene/UndoManager.h"
+#include "Editor/TransformGizmo.h"
 
 class Player;
 struct GraphicsSettings;
@@ -45,7 +46,7 @@ public:
 	void ClearSelection() { 
 		selectedObjectIndices.clear(); 
 		selectedLightIndices.clear(); 
-		activeDragAxis = 0; 
+		AbortGizmoDrag();
 		for (auto* group : instancedGroups) if (group) group->ClearSelection();
 	}
 	
@@ -69,7 +70,6 @@ public:
 		glm::vec4 clipPlane = glm::vec4(0, 0, 0, 1), glm::mat4 shadowTransform = glm::mat4(1.0f), const GraphicsSettings* gs = nullptr,
 		float customCullDistance = -1.0f);
 	void RenderIcons(glm::mat4 projection, glm::mat4 view);
-	void RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos);
 
 	// ========== GPU-Driven Instanced Groups ==========
 	void AddInstancedGroup(InstancedGroup* group);
@@ -93,9 +93,19 @@ public:
 	void InitIcons();
 	void InitGizmo();
 	int PickObject(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth, float viewportHeight);
-	int GetActiveDragAxis() const { return activeDragAxis; }
+	int GetActiveDragAxis() const { return activeDragAxis; } // Non-zero while a gizmo handle is dragged
 	void HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
-	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth = 0.0f, float viewportHeight = 0.0f);
+	// snapInvert: Ctrl held (snapping on when it is off, and off when on)
+	void HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth = 0.0f, float viewportHeight = 0.0f, bool snapInvert = false);
+
+	// Transform gizmo (Editor/TransformGizmo.h): mode, space, pivot and snapping live in it
+	TransformGizmo& GetGizmo() { return gizmo; }
+	// Camera and selection -> gizmo; once per frame before hover tests and drawing
+	void SyncGizmo(const glm::mat4& view, const glm::mat4& projection, glm::vec2 viewportSize);
+	void UpdateGizmoHover(float mouseX, float mouseY, bool inViewport);
+	void DrawGizmo(ImDrawList* drawList, glm::vec2 viewportScreenPos, const glm::mat4& view, const glm::mat4& projection, glm::vec2 viewportSize);
+	void CancelGizmoDrag(); // Esc / right click during a drag: everything back where it was
+	void AbortGizmoDrag();  // The selection changed under the drag: stop without touching anything
 	void BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool additive = false, GLuint depthFBO = 0);
 	void SetBoxSelecting(bool val) { isBoxSelecting = val; }
 	bool GetBoxSelecting() const { return isBoxSelecting; }
@@ -257,40 +267,29 @@ private:
 	Mesh* debugCubeMesh;
 	void CreateIconMesh();
 
-	// Gizmo resources
+	// Flat-color shader (bounds and culling debug draws)
 	Shader gizmoShader;
-	Model* gizmoArrowModel = nullptr;
-	Model* gizmoTorusModel = nullptr;
 
-	// Gizmo dragging state
+	// Transform gizmo and the selection's state when its drag started
+	TransformGizmo gizmo;
 	int activeDragAxis = 0;
 	bool isBoxSelecting = false;
-	
-	struct InitialState {
-		glm::vec3 worldPosition;
-		glm::vec3 localPosition;
-		glm::vec3 localRotation;
+	struct GizmoObjectStart {
+		GameObject* object;
+		glm::mat4 world;          // World matrix at the start
+		glm::mat4 parent;         // What the local transform is relative to (GameObject::GetWorldMatrix)
+		glm::vec3 position, rotation, scale; // Local
 	};
-	std::map<GameObject*, InitialState> dragInitialObjectStates;
-	std::map<LightObject*, glm::vec3> dragInitialLightPositions;
-
-	glm::vec3 dragInitialObjectPos;
-	glm::vec3 dragInitialObjectRot;
-	glm::vec2 dragInitialMousePos;
-	glm::vec3 dragInitialIntersectPos;
-	glm::vec3 dragPlaneNormal;
-	// Rotation-specific: ray-plane approach
-	glm::vec3 dragRotationCenter;
-	glm::vec3 dragInitialRotVec;  // Initial vector from center to plane intersection
-	glm::vec3 dragRotationAxis;   // The world-space rotation axis
-	
-	// Instance drag state (for gizmo manipulation of selected instances in-place)
-	struct InstanceDragEntry {
-		InstancedGroup* group;
-		int index;
-		glm::vec3 initialPosition;
-	};
-	std::vector<InstanceDragEntry> dragInitialInstanceStates;
+	struct GizmoLightStart { LightObject* light; glm::vec3 position; bool hasDirection; glm::vec3 direction; };
+	struct GizmoInstanceStart { InstancedGroup* group; int index; glm::vec4 positionAndScale; glm::vec4 rotationAndFlags; };
+	std::vector<GizmoObjectStart> gizmoObjects;
+	std::vector<GizmoLightStart> gizmoLights;
+	std::vector<GizmoInstanceStart> gizmoInstances;
+	bool gizmoChanged = false;
+	void BeginGizmoDrag();
+	void ApplyGizmoDrag();
+	void EndGizmoDrag();
+	void RestoreGizmoStart();
 	
 	// Clipboard
 	struct LightClipboardEntry {
@@ -308,10 +307,8 @@ private:
 	std::vector<LightClipboardEntry> clipboardLights;
 	void ClearClipboard();
 
-	// Helper: build rotation matrix from Euler angles (DRY — used by picking, gizmo, drag)
-	glm::mat4 GetSelectedRotationMatrix() const;
-	// Helper: get the gizmo position (from object or light)
-	bool GetGizmoPosition(glm::vec3& outPos) const;
+	// Helper: the gizmo's pivot and orientation for the current selection
+	bool GetGizmoTarget(glm::vec3& pivot, glm::mat3& orientation, bool& canRotate, bool& canScale);
 
 	float renderDistanceMultiplier = 1.0f;
 	float shadowDistanceMultiplier = 1.0f;

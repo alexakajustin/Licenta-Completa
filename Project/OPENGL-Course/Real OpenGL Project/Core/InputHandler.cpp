@@ -37,6 +37,9 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 {
 	if (!window.isCursorEnabled())
 	{
+		// Right mouse (fly camera) during a gizmo drag cancels it
+		scene.CancelGizmoDrag();
+		scene.UpdateGizmoHover(0, 0, false);
 		lastLMBState = window.getMouseButtons()[GLFW_MOUSE_BUTTON_LEFT];
 		boxSelecting = false;
 		boxDragStarted = false;
@@ -52,14 +55,20 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 	// Editor mode — handle picking and gizmo dragging
 	bool currentLMB = window.getMouseButtons()[GLFW_MOUSE_BUTTON_LEFT];
 
+	glm::mat4 view = camera.calculateViewMatrix();
+	scene.SyncGizmo(view, projection, vSize);
+
+	// Esc during a gizmo drag: everything goes back where it was
+	if (scene.GetActiveDragAxis() != 0 && glfwGetKey(window.getWindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		scene.CancelGizmoDrag();
+
 	// We only want to interact if we are hovering the viewport OR already dragging a gizmo/box
 	bool isDraggingGizmo = (scene.GetActiveDragAxis() != 0);
 	if (!vHovered && !isDraggingGizmo && !boxSelecting && !boxDragStarted) {
+		scene.UpdateGizmoHover(0, 0, false);
 		lastLMBState = currentLMB;
 		return;
 	}
-
-	glm::mat4 view = camera.calculateViewMatrix();
 
 	// Get raw mouse position from GLFW (in screen/window points — same space as ImGui)
 	double mouseX, mouseY;
@@ -75,6 +84,9 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 	// Offset by viewport position (both in screen points now)
 	float relativeX = screenX - vPos.x;
 	float relativeY = screenY - vPos.y;
+
+	// The handle under the mouse lights up (not while box selecting)
+	scene.UpdateGizmoHover(relativeX, relativeY, vHovered && !boxSelecting && !(currentLMB && lastLMBState && !isDraggingGizmo));
 
 	if (currentLMB && !lastLMBState)
 	{
@@ -147,8 +159,10 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 	// Update mouse drag for gizmo
 	if (scene.GetActiveDragAxis() != 0)
 	{
+		bool ctrl = glfwGetKey(window.getWindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+					glfwGetKey(window.getWindow(), GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
 		scene.HandleMouseMove(relativeX, relativeY,
-			projection, view, vSize.x, vSize.y);
+			projection, view, vSize.x, vSize.y, ctrl);
 	}
 
 	lastLMBState = currentLMB;

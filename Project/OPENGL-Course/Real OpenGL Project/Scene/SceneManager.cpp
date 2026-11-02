@@ -32,7 +32,7 @@
 SceneManager::SceneManager()
 	: pickingFBO(0), pickingTexture(0), pickingDepth(0),
 	  pickWidth(0), pickHeight(0), pickingInitialized(false),
-	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), debugCubeMesh(nullptr), gizmoArrowModel(nullptr), gizmoTorusModel(nullptr),
+	  lightIconTexture(nullptr), iconMesh(nullptr), debugSphereMesh(nullptr), debugCubeMesh(nullptr),
 	  sharedNextId(std::make_shared<int>(1))
 {
 	EnsureDefaultTab();
@@ -47,8 +47,6 @@ SceneManager::~SceneManager()
 	if (pickingTexture) glDeleteTextures(1, &pickingTexture);
 	if (pickingDepth) glDeleteRenderbuffers(1, &pickingDepth);
 
-	if (gizmoArrowModel) { gizmoArrowModel->ClearModel(); delete gizmoArrowModel; }
-	if (gizmoTorusModel) { gizmoTorusModel->ClearModel(); delete gizmoTorusModel; }
 	if (iconMesh) { iconMesh->Release(); iconMesh = nullptr; }
 	if (debugSphereMesh) { debugSphereMesh->Release(); debugSphereMesh = nullptr; }
 	if (debugCubeMesh) { debugCubeMesh->Release(); debugCubeMesh = nullptr; }
@@ -287,7 +285,7 @@ void SceneManager::DeleteGameObject(GameObject* obj)
 		}
 		selectedObjectIndices = newSelection;
 
-		if (selectedObjectIndices.empty()) activeDragAxis = 0;
+		if (selectedObjectIndices.empty()) AbortGizmoDrag();
 	}
 	else {
 		// Object not in scene list, just free it
@@ -1565,7 +1563,7 @@ void SceneManager::RemoveObjectRaw(int index)
 		else newSelection.push_back(selIdx);
 	}
 	selectedObjectIndices = newSelection;
-	if (selectedObjectIndices.empty()) activeDragAxis = 0;
+	if (selectedObjectIndices.empty()) AbortGizmoDrag();
 }
 
 // =====================================================================
@@ -1603,56 +1601,6 @@ void SceneManager::ClearInstancedGroups()
 // =====================================================================
 // DRY Helpers
 // =====================================================================
-
-glm::mat4 SceneManager::GetSelectedRotationMatrix() const
-{
-	glm::mat4 rot(1.0f);
-	int sel = GetSelectedIndex();
-	if (sel != -1) {
-		glm::vec3 r = objects[sel]->GetTransform().GetRotation();
-		rot = glm::rotate(rot, glm::radians(r.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		rot = glm::rotate(rot, glm::radians(r.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		rot = glm::rotate(rot, glm::radians(r.z), glm::vec3(0.0f, 0.0f, 1.0f));
-	}
-	return rot;
-}
-
-bool SceneManager::GetGizmoPosition(glm::vec3& outPos) const
-{
-	int selObj = GetSelectedIndex();
-	if (selObj != -1) {
-		glm::vec3 bMin, bMax;
-		objects[selObj]->GetWorldBounds(bMin, bMax);
-		outPos = (bMin + bMax) * 0.5f; // Center of the volume
-		return true;
-	}
-	
-	int selLight = GetSelectedLightIndex();
-	if (selLight != -1) {
-		glm::vec3* lightPos = lights[selLight]->GetPositionPtr();
-		if (lightPos) { outPos = *lightPos; return true; }
-	}
-
-	// Fallback: check for selected instances in InstancedGroups
-	glm::vec3 sum(0.0f);
-	int count = 0;
-	for (auto* group : instancedGroups) {
-		if (!group || group->selectedInstanceIndices.empty()) continue;
-		for (int idx : group->selectedInstanceIndices) {
-			if (idx >= 0 && idx < (int)group->cpuInstances.size()) {
-				const auto& inst = group->cpuInstances[idx];
-				sum += glm::vec3(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
-				count++;
-			}
-		}
-	}
-	if (count > 0) {
-		outPos = sum / (float)count;
-		return true;
-	}
-
-	return false;
-}
 
 std::string SceneManager::GetSelectedName() const
 {
@@ -1711,7 +1659,7 @@ void SceneManager::SetSelectedIndex(int index, bool multiSelect, bool rangeSelec
 	} else {
 		selectedObjectIndices.push_back(index);
 	}
-	activeDragAxis = 0;
+	AbortGizmoDrag();
 }
 
 int SceneManager::GetSelectedIndex() const 
@@ -1751,7 +1699,7 @@ void SceneManager::SetSelectedLightIndex(int index, bool multiSelect, bool range
 	} else {
 		selectedLightIndices.push_back(index);
 	}
-	activeDragAxis = 0;
+	AbortGizmoDrag();
 }
 
 int SceneManager::GetSelectedLightIndex() const 
@@ -1930,7 +1878,7 @@ void SceneManager::BoxSelect(glm::vec2 rectMin, glm::vec2 rectMax, const glm::ma
 		selectedLightIndices.clear();
 	}
 
-	activeDragAxis = 0;
+	AbortGizmoDrag();
 	
 	printf("[SceneManager] Box selected %d objects, %d lights, %d instances\n", 
 		(int)selectedObjectIndices.size(), (int)selectedLightIndices.size(), totalInstancesSelected);
@@ -2579,51 +2527,6 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 		}
 	}
 
-	// Gizmo picking - Clear depth AGAIN so gizmo is ALWAYS on top of icons
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glm::vec3 gizmoPos;
-	if (GetGizmoPosition(gizmoPos))
-	{
-		glm::mat4 objRot = GetSelectedRotationMatrix();
-		float dist = glm::length(gizmoPos - cameraPos);
-		glUniform1i(isBillboardLoc, 0);
-		glDisable(GL_CULL_FACE);
-
-		if (gizmoArrowModel) {
-			float arrowScale = dist * 0.1f;
-			struct { int id; glm::mat4 extraRot; } arrows[] = {
-				{ 20001, glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0,0,1)) },
-				{ 20002, glm::mat4(1.0f) },
-				{ 20003, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
-			};
-			for (auto& a : arrows) {
-				glm::vec3 color = EncodeID(a.id);
-				glUniform3f(colorLoc, color.r, color.g, color.b);
-				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * a.extraRot;
-				m = glm::scale(m, glm::vec3(arrowScale));
-				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-				gizmoArrowModel->RenderModel(-1, -1, -1, -1);
-			}
-		}
-
-		if (gizmoTorusModel) {
-			float torusScale = dist * 0.1f * 0.6f;
-			struct { int id; glm::mat4 extraRot; } tori[] = {
-				{ 20004, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0,0,1)) },
-				{ 20005, glm::mat4(1.0f) },
-				{ 20006, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)) }
-			};
-			for (auto& t : tori) {
-				glm::vec3 color = EncodeID(t.id);
-				glUniform3f(colorLoc, color.r, color.g, color.b);
-				glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * t.extraRot;
-				m = glm::scale(m, glm::vec3(torusScale));
-				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-				gizmoTorusModel->RenderModel(-1, -1, -1, -1);
-			}
-		}
-	}
-
 	glEnable(GL_CULL_FACE);
 	glFlush();
 	glFinish(); // Ensure AMD driver completes FBO rendering before final read
@@ -2650,12 +2553,6 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 	glDepthFunc(oldDepthFunc);
 	glCullFace(oldCullMode);
 	glPolygonMode(GL_FRONT_AND_BACK, oldPolygonMode[0]);
-
-	// UI PRIORITY: If we clicked a transformation handle, return immediately.
-	// Gizmos are UI and should never be occluded by world objects or scatter blades.
-	if (pickedID >= 20001 && pickedID <= 20006) {
-		return pickedID;
-	}
 
 	// Smart Instance Selection (Raycast) — select in-place, don't extract
 	bool instanceWon = false;
@@ -2699,7 +2596,9 @@ int SceneManager::PickObject(float mouseX, float mouseY, const glm::mat4& projec
 			float linWinDepth = GetLinearDepth(winDepth);
 			float linSceneDepth = GetLinearDepth(sceneDepth);
 
-			if (linWinDepth <= linSceneDepth + 1.5f) {
+			// The hit is on the instance's real triangles now: it only has to be in front of the
+			// scene's surface (a little slack for depth precision), not 1.5 m behind it
+			if (linWinDepth <= linSceneDepth * 1.002f + 0.05f) {
 				instanceWon = true;
 				// Select in-place on GPU instead of extracting to a costly GameObject.
 				// This keeps all instances in the fast instanced rendering pipeline.
@@ -2830,106 +2729,363 @@ void SceneManager::RenderIcons(glm::mat4 projection, glm::mat4 view)
 void SceneManager::InitGizmo()
 {
 	gizmoShader.CreateFromFiles("Shaders/gizmo.vert", "Shaders/gizmo.frag");
-	
-	if (gizmoShader.GetShaderID() == 0) {
-		printf("Gizmo shader failed to initialize!\n");
-		return;
-	}
-
-	gizmoArrowModel = new Model();
-	gizmoArrowModel->LoadModelCPU("Utils/arrow.obj");
-	gizmoArrowModel->LoadModelGPU();
-
-	gizmoTorusModel = new Model();
-	gizmoTorusModel->LoadModelCPU("Utils/torus.obj");
-	gizmoTorusModel->LoadModelGPU();
+	if (gizmoShader.GetShaderID() == 0) printf("Gizmo shader failed to initialize!\n");
 }
 
-void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 cameraPos)
+namespace {
+	// PackedInstance rotation, exactly as instanced_object.vert builds it (rz * ry * rx of its
+	// column-major matrices)
+	glm::mat3 InstanceRotation(const glm::vec3& eulerDeg)
+	{
+		glm::vec3 r = glm::radians(eulerDeg);
+		float cx = std::cos(r.x), sx = std::sin(r.x), cy = std::cos(r.y), sy = std::sin(r.y), cz = std::cos(r.z), sz = std::sin(r.z);
+		glm::mat3 rx(1, 0, 0, 0, cx, -sx, 0, sx, cx);
+		glm::mat3 ry(cy, 0, sy, 0, 1, 0, -sy, 0, cy);
+		glm::mat3 rz(cz, -sz, 0, sz, cz, 0, 0, 0, 1);
+		return rz * ry * rx;
+	}
+
+	// Inverse of InstanceRotation (that matrix is Rz(-z) * Ry(-y) * Rx(-x) in the usual sense)
+	glm::vec3 InstanceEuler(const glm::mat3& m)
+	{
+		float b = std::asin(glm::clamp(-m[0][2], -1.0f, 1.0f));
+		float a, c;
+		if (std::abs(m[0][2]) < 0.9999f) {
+			a = std::atan2(m[1][2], m[2][2]);
+			c = std::atan2(m[0][1], m[0][0]);
+		}
+		else { // Gimbal lock: put it all in one angle
+			a = 0.0f;
+			c = std::atan2(-m[1][0], m[1][1]);
+		}
+		return -glm::degrees(glm::vec3(a, b, c));
+	}
+
+	// What a child's local transform is relative to (mirrors GameObject::GetWorldMatrix)
+	glm::mat4 ParentFrame(GameObject* obj)
+	{
+		if (!obj->GetParent()) return glm::mat4(1.0f);
+		glm::mat4 p = obj->GetParent()->GetWorldMatrix();
+		if (!obj->GetInheritScale()) {
+			p[0] = glm::normalize(p[0]);
+			p[1] = glm::normalize(p[1]);
+			p[2] = glm::normalize(p[2]);
+		}
+		return p;
+	}
+
+	glm::mat3 Orthonormal(const glm::mat4& m)
+	{
+		glm::vec3 x = glm::vec3(m[0]), y = glm::vec3(m[1]), z = glm::vec3(m[2]);
+		float lx = glm::length(x), ly = glm::length(y), lz = glm::length(z);
+		if (lx < 1e-6f || ly < 1e-6f || lz < 1e-6f) return glm::mat3(1.0f);
+		return glm::mat3(x / lx, y / ly, z / lz);
+	}
+}
+
+// Pivot and orientation for the selection: objects first, then lights, then scattered instances
+// (one kind is dragged at a time, as the selection allows only one kind anyway)
+bool SceneManager::GetGizmoTarget(glm::vec3& pivot, glm::mat3& orientation, bool& canRotate, bool& canScale)
 {
-	if (isBoxSelecting) return; // Hide gizmo during box selection drag
-	glm::vec3 gizmoPos;
-	if (!GetGizmoPosition(gizmoPos)) return;
-	if (!gizmoArrowModel || gizmoShader.GetShaderID() == 0) return;
-
-	float dist = glm::length(gizmoPos - cameraPos);
-	float scaleFactor = dist * 0.1f; // Restored to 0.1f for better thickness
-	float torusScaleFactor = dist * 0.1f * 0.6f;
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	glDepthMask(GL_TRUE);
-	glDisable(GL_CULL_FACE);
-
-	// Clear depth buffer so the gizmo renders on top of EVERYTHING (including light icons)
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	gizmoShader.UseShader();
-	
-	GLint projLoc = gizmoShader.GetProjectionLocation();
-	GLint viewLoc = gizmoShader.GetViewLocation();
-	GLint modelLoc = gizmoShader.GetModelLocation();
-	GLint colorLoc = glGetUniformLocation(gizmoShader.GetShaderID(), "gizmoColor");
-
-	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-	glm::mat4 objRot = GetSelectedRotationMatrix();
-
-	// DRY: data-driven rendering for all 6 gizmo parts
-	struct GizmoPart {
-		Model* model;
-		int axisID;
-		glm::vec3 defaultColor;
-		glm::mat4 extraRot;
-		float scale;
-	};
-
-	// World-space translation arrows (ignore objRot)
-	GizmoPart translationParts[] = {
-		{ gizmoArrowModel, 20002, {0,1,0}, glm::mat4(1.0f), scaleFactor },
-		{ gizmoArrowModel, 20001, {1,0,0}, glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0,0,1)), scaleFactor },
-		{ gizmoArrowModel, 20003, {0,0,1}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)), scaleFactor }
-	};
-
-	// Local-space rotation tori (use objRot)
-	GizmoPart rotationParts[] = {
-		{ gizmoTorusModel, 20004, {1,0,0}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0,0,1)), torusScaleFactor },
-		{ gizmoTorusModel, 20005, {0,1,0}, glm::mat4(1.0f), torusScaleFactor },
-		{ gizmoTorusModel, 20006, {0,0,1}, glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1,0,0)), torusScaleFactor }
-	};
-
-	// Draw order: Arrows FIRST, Tori SECOND (so tori overlap)
-	for (auto& part : translationParts)
-	{
-		if (!part.model) continue;
-		glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * part.extraRot; // No objRot
-		m = glm::scale(m, glm::vec3(part.scale));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-
-		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
-		part.model->RenderModel(-1, -1, -1, -1);
+	bool center = gizmo.pivot == TransformGizmo::Pivot::Center;
+	orientation = glm::mat3(1.0f);
+	int active = GetSelectedIndex();
+	if (active != -1) {
+		glm::mat4 w = objects[active]->GetWorldMatrix();
+		orientation = Orthonormal(w);
+		if (center) {
+			glm::vec3 lo(FLT_MAX), hi(-FLT_MAX);
+			for (int idx : selectedObjectIndices) {
+				if (idx < 0 || idx >= (int)objects.size()) continue;
+				glm::vec3 bMin, bMax;
+				objects[idx]->GetWorldBounds(bMin, bMax);
+				lo = glm::min(lo, bMin);
+				hi = glm::max(hi, bMax);
+			}
+			pivot = (lo + hi) * 0.5f;
+		}
+		else {
+			pivot = glm::vec3(w[3]);
+		}
+		canRotate = canScale = true;
+		return true;
 	}
 
-	for (auto& part : rotationParts)
-	{
-		if (!part.model) continue;
-		glm::mat4 m = glm::translate(glm::mat4(1.0f), gizmoPos) * objRot * part.extraRot; // Uses objRot
-		m = glm::scale(m, glm::vec3(part.scale));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
-
-		if (activeDragAxis == part.axisID) glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);
-		else glUniform3f(colorLoc, part.defaultColor.r, part.defaultColor.g, part.defaultColor.b);
-		part.model->RenderModel(-1, -1, -1, -1);
+	int activeLight = GetSelectedLightIndex();
+	if (activeLight != -1) {
+		glm::vec3* lp = lights[activeLight]->GetPositionPtr();
+		if (!lp) return false; // Directional: nothing to move
+		glm::vec3 sum(0.0f);
+		int count = 0, withDirection = 0;
+		for (int idx : selectedLightIndices) {
+			if (idx < 0 || idx >= (int)lights.size()) continue;
+			glm::vec3* p = lights[idx]->GetPositionPtr();
+			if (!p) continue;
+			sum += *p;
+			count++;
+			if (lights[idx]->GetDirectionPtr()) withDirection++;
+		}
+		pivot = center && count > 0 ? sum / (float)count : *lp;
+		canRotate = withDirection > 0 || count > 1; // Spot lights turn; several lights orbit the pivot
+		canScale = count > 1;                        // Spreads a group of lights
+		return true;
 	}
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glUseProgram(0);
+	glm::vec3 sum(0.0f), last(0.0f);
+	int count = 0;
+	glm::vec3 lastRot(0.0f);
+	for (auto* group : instancedGroups) {
+		if (!group || group->selectedInstanceIndices.empty()) continue;
+		for (int idx : group->selectedInstanceIndices) {
+			if (idx < 0 || idx >= (int)group->cpuInstances.size()) continue;
+			const auto& inst = group->cpuInstances[idx];
+			last = glm::vec3(inst.positionAndScale);
+			lastRot = glm::vec3(inst.rotationAndFlags);
+			sum += last;
+			count++;
+		}
+	}
+	if (count == 0) return false;
+	pivot = center ? sum / (float)count : last;
+	orientation = InstanceRotation(lastRot);
+	canRotate = canScale = true;
+	return true;
 }
 
+void SceneManager::SyncGizmo(const glm::mat4& view, const glm::mat4& projection, glm::vec2 viewportSize)
+{
+	gizmo.SetView(view, projection, viewportSize);
+	if (gizmo.IsDragging()) return; // The drag keeps its own pivot
+	glm::vec3 pivot;
+	glm::mat3 orientation;
+	bool canRotate = false, canScale = false;
+	if (!isBoxSelecting && GetGizmoTarget(pivot, orientation, canRotate, canScale))
+		gizmo.SetTarget(pivot, orientation, canRotate, canScale);
+	else
+		gizmo.ClearTarget();
+}
 
+void SceneManager::UpdateGizmoHover(float mouseX, float mouseY, bool inViewport)
+{
+	if (gizmo.IsDragging()) return;
+	gizmo.SetHovered(inViewport ? gizmo.HitTest(glm::vec2(mouseX, mouseY)) : TransformGizmo::None);
+}
+
+void SceneManager::DrawGizmo(ImDrawList* drawList, glm::vec2 viewportScreenPos, const glm::mat4& view, const glm::mat4& projection, glm::vec2 viewportSize)
+{
+	SyncGizmo(view, projection, viewportSize);
+	if (!isBoxSelecting) gizmo.Draw(drawList, viewportScreenPos);
+}
+
+void SceneManager::BeginGizmoDrag()
+{
+	gizmoObjects.clear();
+	gizmoLights.clear();
+	gizmoInstances.clear();
+	gizmoChanged = false;
+
+	if (!selectedObjectIndices.empty()) {
+		std::set<GameObject*> selected;
+		for (int idx : selectedObjectIndices)
+			if (idx >= 0 && idx < (int)objects.size()) selected.insert(objects[idx]);
+		for (GameObject* obj : selected) {
+			// A child whose parent moves too follows it: transforming it as well would do it twice
+			bool ancestorSelected = false;
+			for (GameObject* p = obj->GetParent(); p; p = p->GetParent())
+				if (selected.count(p)) { ancestorSelected = true; break; }
+			if (ancestorSelected) continue;
+			Transform& t = obj->GetTransform();
+			gizmoObjects.push_back({ obj, obj->GetWorldMatrix(), ParentFrame(obj), t.GetPosition(), t.GetRotation(), t.GetScale() });
+		}
+	}
+	else if (!selectedLightIndices.empty()) {
+		for (int idx : selectedLightIndices) {
+			if (idx < 0 || idx >= (int)lights.size()) continue;
+			LightObject* lo = lights[idx];
+			glm::vec3* p = lo->GetPositionPtr();
+			if (!p) continue;
+			glm::vec3* d = lo->GetDirectionPtr();
+			gizmoLights.push_back({ lo, *p, d != nullptr, d ? *d : glm::vec3(0.0f) });
+		}
+	}
+	else {
+		for (auto* group : instancedGroups) {
+			if (!group || group->selectedInstanceIndices.empty()) continue;
+			for (int idx : group->selectedInstanceIndices) {
+				if (idx < 0 || idx >= (int)group->cpuInstances.size()) continue;
+				const auto& inst = group->cpuInstances[idx];
+				gizmoInstances.push_back({ group, idx, inst.positionAndScale, inst.rotationAndFlags });
+			}
+		}
+	}
+}
+
+// The drag's result applied to every start state (never accumulated: no drift)
+void SceneManager::ApplyGizmoDrag()
+{
+	TransformGizmo::Handle h = gizmo.GetActive();
+	const bool move = TransformGizmo::IsMove(h), rotate = TransformGizmo::IsRotate(h);
+	const glm::vec3 P = gizmo.GetDragPivot();
+	const glm::vec3 T = gizmo.GetTranslation();
+	const glm::quat Q = gizmo.GetRotation();
+	const glm::mat3 R = glm::mat3_cast(Q);
+	const glm::vec3 S = gizmo.GetScale();
+	const glm::mat3 B = gizmo.GetDragAxes();
+	const glm::mat3 Bt = glm::transpose(B);
+
+	auto NewPosition = [&](const glm::vec3& p0) {
+		if (move) return p0 + T;
+		if (rotate) return P + R * (p0 - P);
+		return P + B * (S * (Bt * (p0 - P)));
+	};
+
+	for (auto& st : gizmoObjects) {
+		Transform& t = st.object->GetTransform();
+		glm::mat4 invParent = glm::inverse(st.parent);
+		glm::vec3 worldPos = NewPosition(glm::vec3(st.world[3]));
+		if (rotate) {
+			glm::mat4 w(glm::mat3(R) * glm::mat3(st.world));
+			w[3] = glm::vec4(worldPos, 1.0f);
+			t.SetFromMatrix(invParent * w);
+			t.SetScale(st.scale); // Rotating never changes the scale (no rounding drift)
+		}
+		else {
+			t.SetPosition(glm::vec3(invParent * glm::vec4(worldPos, 1.0f)));
+			if (!move) {
+				// The object's own axes, weighted by how much each lies along each gizmo axis
+				glm::mat3 axes = Orthonormal(st.world);
+				glm::vec3 f;
+				for (int j = 0; j < 3; j++) {
+					glm::vec3 c = Bt * axes[j];
+					f[j] = c.x * c.x * S.x + c.y * c.y * S.y + c.z * c.z * S.z;
+				}
+				t.SetScale(st.scale * f);
+			}
+			else {
+				t.SetRotation(st.rotation);
+				t.SetScale(st.scale);
+			}
+		}
+		st.object->SetDirty();
+	}
+
+	for (auto& st : gizmoLights) {
+		st.light->SetPosition(NewPosition(st.position));
+		if (st.hasDirection) {
+			glm::vec3* d = st.light->GetDirectionPtr();
+			if (d) *d = rotate ? glm::normalize(R * st.direction) : st.direction;
+		}
+	}
+
+	if (!gizmoInstances.empty()) {
+		std::set<InstancedGroup*> dirty;
+		float uniform = std::cbrt(S.x * S.y * S.z);
+		for (auto& st : gizmoInstances) {
+			if (st.index < 0 || st.index >= (int)st.group->cpuInstances.size()) continue;
+			auto& inst = st.group->cpuInstances[st.index];
+			glm::vec3 pos = NewPosition(glm::vec3(st.positionAndScale));
+			inst.positionAndScale = glm::vec4(pos, st.positionAndScale.w * (move || rotate ? 1.0f : uniform));
+			glm::vec3 euler = rotate ? InstanceEuler(R * InstanceRotation(glm::vec3(st.rotationAndFlags))) : glm::vec3(st.rotationAndFlags);
+			inst.rotationAndFlags = glm::vec4(euler, st.rotationAndFlags.w);
+			dirty.insert(st.group);
+		}
+		for (auto* group : dirty) group->ReuploadGPU();
+	}
+	gizmoChanged = true;
+}
+
+void SceneManager::RestoreGizmoStart()
+{
+	for (auto& st : gizmoObjects) {
+		Transform& t = st.object->GetTransform();
+		t.SetPosition(st.position);
+		t.SetRotation(st.rotation);
+		t.SetScale(st.scale);
+		st.object->SetDirty();
+	}
+	for (auto& st : gizmoLights) {
+		st.light->SetPosition(st.position);
+		glm::vec3* d = st.light->GetDirectionPtr();
+		if (st.hasDirection && d) *d = st.direction;
+	}
+	std::set<InstancedGroup*> dirty;
+	for (auto& st : gizmoInstances) {
+		if (st.index < 0 || st.index >= (int)st.group->cpuInstances.size()) continue;
+		st.group->cpuInstances[st.index].positionAndScale = st.positionAndScale;
+		st.group->cpuInstances[st.index].rotationAndFlags = st.rotationAndFlags;
+		dirty.insert(st.group);
+	}
+	for (auto* group : dirty) group->ReuploadGPU();
+}
+
+// One undo step per drag, and none for a click that moved nothing
+void SceneManager::EndGizmoDrag()
+{
+	TransformGizmo::Handle h = gizmo.GetActive();
+	const char* verb = TransformGizmo::IsMove(h) ? "Move" : TransformGizmo::IsRotate(h) ? "Rotate" : "Scale";
+	auto Describe = [&](size_t n, const char* one, const char* many) {
+		return n == 1 ? std::string(verb) + " " + one : std::string(verb) + " " + std::to_string(n) + " " + many;
+	};
+
+	if (gizmoChanged && !gizmoObjects.empty()) {
+		std::vector<TransformSnapshot> before, after;
+		for (auto& st : gizmoObjects) {
+			Transform& t = st.object->GetTransform();
+			if (t.GetPosition() == st.position && t.GetRotation() == st.rotation && t.GetScale() == st.scale) continue;
+			before.push_back({ st.object, st.position, st.rotation, st.scale });
+			after.push_back({ st.object, t.GetPosition(), t.GetRotation(), t.GetScale() });
+		}
+		if (!before.empty()) undoManager.PushAction(std::make_unique<TransformAction>(Describe(before.size(), "Object", "Objects"), before, after));
+	}
+	if (gizmoChanged && !gizmoLights.empty()) {
+		std::vector<LightTransformSnapshot> before, after;
+		for (auto& st : gizmoLights) {
+			glm::vec3* p = st.light->GetPositionPtr();
+			glm::vec3* d = st.light->GetDirectionPtr();
+			glm::vec3 pos = p ? *p : st.position, dir = d ? *d : st.direction;
+			if (pos == st.position && (!st.hasDirection || dir == st.direction)) continue;
+			before.push_back({ st.light, st.position, st.hasDirection, st.direction });
+			after.push_back({ st.light, pos, st.hasDirection, dir });
+		}
+		if (!before.empty()) undoManager.PushAction(std::make_unique<LightTransformAction>(Describe(before.size(), "Light", "Lights"), before, after));
+	}
+	if (gizmoChanged && !gizmoInstances.empty()) {
+		std::vector<InstanceTransformSnapshot> before, after;
+		for (auto& st : gizmoInstances) {
+			if (st.index < 0 || st.index >= (int)st.group->cpuInstances.size()) continue;
+			const auto& inst = st.group->cpuInstances[st.index];
+			if (inst.positionAndScale == st.positionAndScale && inst.rotationAndFlags == st.rotationAndFlags) continue;
+			before.push_back({ st.group, st.index, glm::vec3(st.positionAndScale), true, st.positionAndScale.w, glm::vec3(st.rotationAndFlags) });
+			after.push_back({ st.group, st.index, glm::vec3(inst.positionAndScale), true, inst.positionAndScale.w, glm::vec3(inst.rotationAndFlags) });
+		}
+		if (!before.empty()) undoManager.PushAction(std::make_unique<TransformInstancesAction>(Describe(before.size(), "Instance", "Instances"), before, after));
+	}
+	gizmo.End();
+	activeDragAxis = 0;
+	gizmoObjects.clear();
+	gizmoLights.clear();
+	gizmoInstances.clear();
+}
+
+void SceneManager::CancelGizmoDrag()
+{
+	if (!gizmo.IsDragging()) return;
+	RestoreGizmoStart();
+	gizmo.End();
+	activeDragAxis = 0;
+	gizmoObjects.clear();
+	gizmoLights.clear();
+	gizmoInstances.clear();
+}
+
+void SceneManager::AbortGizmoDrag()
+{
+	gizmo.End();
+	activeDragAxis = 0;
+	gizmoObjects.clear();
+	gizmoLights.clear();
+	gizmoInstances.clear();
+}
 
 // =====================================================================
 // Mouse/Gizmo Interaction
@@ -2937,332 +3093,33 @@ void SceneManager::RenderGizmo(glm::mat4 projection, glm::mat4 view, glm::vec3 c
 
 void SceneManager::HandleMousePress(int button, int action, float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, glm::vec3 cameraPos, float viewportWidth, float viewportHeight)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-	{
+	if (button != GLFW_MOUSE_BUTTON_LEFT) return;
+	if (action == GLFW_PRESS) {
+		// A gizmo handle under the mouse wins over anything in the scene (tested in screen space,
+		// no picking render needed)
+		if (viewportWidth > 0 && viewportHeight > 0 && !isBoxSelecting) {
+			SyncGizmo(view, projection, glm::vec2(viewportWidth, viewportHeight));
+			if (gizmo.Begin(glm::vec2(mouseX, mouseY))) {
+				BeginGizmoDrag();
+				activeDragAxis = (int)gizmo.GetActive();
+				return;
+			}
+		}
+
 		// Hard re-sync picking FBO if window size changed (e.g. maximization or High DPI switch)
 		if (viewportWidth > 0 && viewportHeight > 0) InitPicking((int)viewportWidth, (int)viewportHeight);
-		
-		int pickedID = PickObject(mouseX, mouseY, projection, view, cameraPos, viewportWidth, viewportHeight);
-			printf("[SceneManager] Picked ID: %d (Active Selection: %s)\n", pickedID, GetSelectedName().c_str());
-			
-			glm::vec3 cameraForward = -glm::normalize(glm::vec3(glm::inverse(view)[2]));
-			glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
-			glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
-
-			if (pickedID >= 20001 && pickedID <= 20003) {
-				// === TRANSLATION ===
-				activeDragAxis = pickedID;
-				printf("Gizmo Drag START: Axis %d\n", activeDragAxis);
-				
-				// 1. Get Visual Gizmo Center for intersection
-				glm::vec3 gizmoCenter;
-				GetGizmoPosition(gizmoCenter);
-				dragRotationCenter = gizmoCenter; // Store as a consistent interaction center
-
-				// 2. Capture Initial States for ALL selected items
-				dragInitialObjectStates.clear();
-				dragInitialLightPositions.clear();
-
-				if (!selectedObjectIndices.empty()) {
-					for (int idx : selectedObjectIndices) {
-						if (idx >= 0 && idx < (int)objects.size()) {
-							GameObject* obj = objects[idx];
-							dragInitialObjectStates[obj] = { 
-								glm::vec3(obj->GetWorldMatrix()[3]), 
-								obj->GetTransform().GetPosition(), 
-								obj->GetTransform().GetRotation() 
-							};
-						}
-					}
-					// Anchor point for the main gizmo
-					int selObj = GetSelectedIndex();
-					dragInitialObjectPos = glm::vec3(objects[selObj]->GetWorldMatrix()[3]);
-				}
-				else if (!selectedLightIndices.empty()) {
-					for (int idx : selectedLightIndices) {
-						if (idx >= 0 && idx < (int)lights.size()) {
-							LightObject* lo = lights[idx];
-							if (lo->GetPositionPtr()) {
-								dragInitialLightPositions[lo] = *lo->GetPositionPtr();
-							}
-						}
-					}
-					// Anchor point for the main gizmo
-					int selLight = GetSelectedLightIndex();
-					glm::vec3* lp = lights[selLight]->GetPositionPtr();
-					if (lp) dragInitialObjectPos = *lp;
-				}
-				else {
-					// Check for selected instances in InstancedGroups
-					dragInitialInstanceStates.clear();
-					for (auto* group : instancedGroups) {
-						if (!group || group->selectedInstanceIndices.empty()) continue;
-						for (int idx : group->selectedInstanceIndices) {
-							if (idx >= 0 && idx < (int)group->cpuInstances.size()) {
-								const auto& inst = group->cpuInstances[idx];
-								glm::vec3 pos(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
-								dragInitialInstanceStates.push_back({ group, idx, pos });
-							}
-						}
-					}
-					dragInitialObjectPos = gizmoCenter;
-				}
-				
-				glm::vec3 axis(0.0f);
-				if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
-				else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
-				else axis = glm::vec3(0, 0, 1);
-
-				
-				glm::vec3 crossCamAxis = glm::cross(cameraForward, axis);
-				if (glm::length(crossCamAxis) < 1e-4f) {
-					glm::vec3 cameraUp = glm::normalize(glm::vec3(glm::inverse(view)[1]));
-					crossCamAxis = glm::cross(cameraUp, axis);
-				}
-				dragPlaneNormal = glm::normalize(glm::cross(axis, crossCamAxis));
-					
-				RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, dragInitialIntersectPos);
-			}
-			else if (pickedID >= 20004 && pickedID <= 20006) {
-				// === ROTATION ===
-				activeDragAxis = pickedID;
-				printf("Gizmo Rotation START: Axis %d\n", activeDragAxis);
-
-				GetGizmoPosition(dragRotationCenter); // Use visual center for rotation math
-				
-				// Capture Initial States for ALL selected objects (Lights don't rotate via gizmo yet)
-				dragInitialObjectStates.clear();
-				for (int idx : selectedObjectIndices) {
-					if (idx >= 0 && idx < (int)objects.size()) {
-						GameObject* obj = objects[idx];
-						dragInitialObjectStates[obj] = { 
-							glm::vec3(obj->GetWorldMatrix()[3]), 
-							obj->GetTransform().GetPosition(), 
-							obj->GetTransform().GetRotation() 
-						};
-					}
-				}
-
-				int selObj = GetSelectedIndex();
-				if (selObj != -1) {
-					dragInitialObjectRot = objects[selObj]->GetTransform().GetRotation();
-				} else {
-					dragInitialObjectRot = glm::vec3(0.0f);
-				}
-
-				// Rotation axis in world space
-				glm::mat4 objRot = GetSelectedRotationMatrix();
-				if (activeDragAxis == 20004) dragRotationAxis = glm::vec3(objRot * glm::vec4(1, 0, 0, 0));
-				else if (activeDragAxis == 20005) dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 1, 0, 0));
-				else if (activeDragAxis == 20006) dragRotationAxis = glm::vec3(objRot * glm::vec4(0, 0, 1, 0));
-				dragRotationAxis = glm::normalize(dragRotationAxis);
-
-				// Rotation plane: perpendicular to the rotation axis, through center
-				dragPlaneNormal = dragRotationAxis;
-
-				glm::vec3 hitPoint;
-				if (RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
-					dragInitialRotVec = glm::normalize(hitPoint - dragRotationCenter);
-				} else {
-					// Fallback: if ray is parallel to plane, use camera right
-					dragInitialRotVec = glm::normalize(glm::vec3(glm::inverse(view)[0]));
-				}
-
-				dragInitialMousePos = glm::vec2(mouseX, mouseY);
-			}
-		}
-		else if (action == GLFW_RELEASE) {
-			if (activeDragAxis != 0) {
-				printf("Gizmo Drag END\n");
-
-				// Record undo action for the completed drag
-				if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
-					// TRANSLATION — record transform undo for objects
-					if (!dragInitialObjectStates.empty()) {
-						std::vector<TransformSnapshot> before, after;
-						for (auto const& [obj, state] : dragInitialObjectStates) {
-							before.push_back({ obj, state.localPosition, state.localRotation, obj->GetTransform().GetScale() });
-							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
-						}
-						undoManager.PushAction(std::make_unique<TransformAction>("Move Object", before, after));
-					}
-					// TRANSLATION — record light position undo
-					if (!dragInitialLightPositions.empty()) {
-						std::vector<LightTransformSnapshot> before, after;
-						for (auto const& [light, initialPos] : dragInitialLightPositions) {
-							before.push_back({ light, initialPos });
-							glm::vec3* curPos = light->GetPositionPtr();
-							after.push_back({ light, curPos ? *curPos : initialPos });
-						}
-							undoManager.PushAction(std::make_unique<LightTransformAction>("Move Light", before, after));
-					}
-					// TRANSLATION — record instance position undo
-					if (!dragInitialInstanceStates.empty()) {
-						std::vector<InstanceTransformSnapshot> before, after;
-						for (auto& entry : dragInitialInstanceStates) {
-							if (entry.group && entry.index >= 0 && entry.index < (int)entry.group->cpuInstances.size()) {
-								before.push_back({ entry.group, entry.index, entry.initialPosition });
-								glm::vec3 curPos(
-									entry.group->cpuInstances[entry.index].positionAndScale.x,
-									entry.group->cpuInstances[entry.index].positionAndScale.y,
-									entry.group->cpuInstances[entry.index].positionAndScale.z
-								);
-								after.push_back({ entry.group, entry.index, curPos });
-							}
-						}
-						undoManager.PushAction(std::make_unique<TransformInstancesAction>("Move Instances", before, after));
-					}
-					// TRANSLATION — cleanup instance drag state
-					dragInitialInstanceStates.clear();
-				}
-				else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
-					// ROTATION — record transform undo
-					if (!dragInitialObjectStates.empty()) {
-						std::vector<TransformSnapshot> before, after;
-						for (auto const& [obj, state] : dragInitialObjectStates) {
-							before.push_back({ obj, state.localPosition, state.localRotation, obj->GetTransform().GetScale() });
-							after.push_back({ obj, obj->GetTransform().GetPosition(), obj->GetTransform().GetRotation(), obj->GetTransform().GetScale() });
-						}
-						undoManager.PushAction(std::make_unique<TransformAction>("Rotate Object", before, after));
-					}
-				}
-			}
-			activeDragAxis = 0;
-		}
+		PickObject(mouseX, mouseY, projection, view, cameraPos, viewportWidth, viewportHeight);
+	}
+	else if (action == GLFW_RELEASE) {
+		if (activeDragAxis != 0) EndGizmoDrag();
+	}
 }
-void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight)
+
+void SceneManager::HandleMouseMove(float mouseX, float mouseY, const glm::mat4& projection, const glm::mat4& view, float viewportWidth, float viewportHeight, bool snapInvert)
 {
-	if (activeDragAxis == 0) return;
-
-	// Use viewport dimensions for ray casting
-	glm::vec3 rayOrigin = glm::vec3(glm::inverse(view)[3]);
-	glm::vec3 rayDir = GetMouseRay(mouseX, mouseY, projection, view, viewportWidth, viewportHeight);
-	
-	if (activeDragAxis >= 20001 && activeDragAxis <= 20003) {
-		// === TRANSLATION ===
-		glm::vec3 currentIntersect;
-		// IMPORTANT: Must use the same dragRotationCenter (Gizmo Center) as when we started
-		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, currentIntersect))
-			return;
-
-		glm::vec3 delta = currentIntersect - dragInitialIntersectPos;
-		
-		// World-space translation arrows: ignore objRot
-		glm::vec3 axis(0.0f);
-		if (activeDragAxis == 20001) axis = glm::vec3(1, 0, 0);
-		else if (activeDragAxis == 20002) axis = glm::vec3(0, 1, 0);
-		else if (activeDragAxis == 20003) axis = glm::vec3(0, 0, 1);
-		
-		float movement = glm::dot(delta, axis);
-		glm::vec3 worldDelta = axis * movement;
-
-		// Move ALL selected objects
-		for (auto const& [obj, state] : dragInitialObjectStates) {
-			// Hierarchy Optimization: If the parent is also being moved, don't move the child directly
-			// otherwise it gets double-translated.
-			bool parentMoved = false;
-			GameObject* p = obj->GetParent();
-			while (p) {
-				if (dragInitialObjectStates.count(p)) { parentMoved = true; break; }
-				p = p->GetParent();
-			}
-			if (parentMoved) continue;
-
-			glm::vec3 newPos = state.worldPosition + worldDelta;
-
-			if (obj->GetParent()) {
-				glm::mat4 parentWorld = obj->GetParent()->GetWorldMatrix();
-				// Use unscaled parent matrix to avoid distortion if target doesn't inherit scale
-				if (!obj->GetInheritScale()) {
-					parentWorld[0] = glm::normalize(parentWorld[0]);
-					parentWorld[1] = glm::normalize(parentWorld[1]);
-					parentWorld[2] = glm::normalize(parentWorld[2]);
-				}
-				glm::mat4 invParent = glm::inverse(parentWorld);
-				glm::vec4 localPos = invParent * glm::vec4(newPos, 1.0f);
-				obj->GetTransform().SetPosition(glm::vec3(localPos));
-			} else {
-				obj->GetTransform().SetPosition(newPos);
-			}
-		}
-
-		// Move ALL selected lights
-		for (auto const& [light, initialPos] : dragInitialLightPositions) {
-			light->SetPosition(initialPos + worldDelta);
-		}
-
-		// Move ALL selected instances (in-place on GPU)
-		if (!dragInitialInstanceStates.empty()) {
-			std::set<InstancedGroup*> dirtyGroups;
-			for (auto& entry : dragInitialInstanceStates) {
-				if (entry.index >= 0 && entry.index < (int)entry.group->cpuInstances.size()) {
-					glm::vec3 newPos = entry.initialPosition + worldDelta;
-					entry.group->cpuInstances[entry.index].positionAndScale.x = newPos.x;
-					entry.group->cpuInstances[entry.index].positionAndScale.y = newPos.y;
-					entry.group->cpuInstances[entry.index].positionAndScale.z = newPos.z;
-					dirtyGroups.insert(entry.group);
-				}
-			}
-			// Single GPU re-upload per group for performance
-			for (auto* group : dirtyGroups) {
-				group->ReuploadGPU();
-			}
-		}
-	}
-	else if (activeDragAxis >= 20004 && activeDragAxis <= 20006) {
-		// === ROTATION ===
-		glm::vec3 hitPoint;
-		float deltaAngle = 0.0f;
-
-		if (!RayPlaneIntersect(rayOrigin, rayDir, dragRotationCenter, dragPlaneNormal, hitPoint)) {
-			// Fallback: use mouse delta for rotation when ray is parallel to plane
-			float dx = mouseX - dragInitialMousePos.x;
-			deltaAngle = dx * 0.5f; 
-		} else {
-			glm::vec3 currentVec = hitPoint - dragRotationCenter;
-			float len = glm::length(currentVec);
-			if (len > 1e-6f) {
-				currentVec /= len;
-				// Signed angle between initial and current vectors, relative to the rotation axis
-				float dotVal = glm::clamp(glm::dot(dragInitialRotVec, currentVec), -1.0f, 1.0f);
-				glm::vec3 crossVal = glm::cross(dragInitialRotVec, currentVec);
-				float sign = glm::dot(crossVal, dragRotationAxis);
-				float angleRad = atan2(glm::length(crossVal) * (sign >= 0 ? 1.0f : -1.0f), dotVal);
-				deltaAngle = glm::degrees(angleRad);
-			}
-		}
-
-		// Rotate ALL selected objects
-		for (auto const& [obj, state] : dragInitialObjectStates) {
-			// Like translation, avoid double-rotation if parent is also selected
-			bool parentRotated = false;
-			GameObject* p = obj->GetParent();
-			while (p) {
-				if (dragInitialObjectStates.count(p)) { parentRotated = true; break; }
-				p = p->GetParent();
-			}
-			if (parentRotated) continue;
-
-			// Reconstruct the initial local rotation matrix
-			glm::mat4 initialRotMat(1.0f);
-			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-			initialRotMat = glm::rotate(initialRotMat, glm::radians(state.localRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-			glm::vec3 localAxis;
-			if (activeDragAxis == 20004) localAxis = glm::vec3(1, 0, 0);
-			else if (activeDragAxis == 20005) localAxis = glm::vec3(0, 1, 0);
-			else if (activeDragAxis == 20006) localAxis = glm::vec3(0, 0, 1);
-
-			// Apply delta rotation around the local axis
-			glm::mat4 newRotMat = initialRotMat * glm::rotate(glm::mat4(1.0f), glm::radians(deltaAngle), localAxis);
-
-			// Recompose a full local matrix to extract Euler angles cleanly with T * R * S
-			glm::mat4 newTransform = glm::translate(glm::mat4(1.0f), state.localPosition) * newRotMat * glm::scale(glm::mat4(1.0f), obj->GetTransform().GetScale()); 
-			
-			obj->GetTransform().SetFromMatrix(newTransform);
-		}
-	}
+	if (activeDragAxis == 0 || !gizmo.IsDragging()) return;
+	if (viewportWidth > 0 && viewportHeight > 0) gizmo.SetView(view, projection, glm::vec2(viewportWidth, viewportHeight));
+	if (gizmo.Update(glm::vec2(mouseX, mouseY), snapInvert)) ApplyGizmoDrag();
 }
 
 // =====================================================================

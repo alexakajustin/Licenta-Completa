@@ -40,6 +40,7 @@ struct DirectionalLight { Light base; vec3 direction; };
 struct PointLight { Light base; vec3 position; float constant; float linear; float exponent; };
 
 uniform DirectionalLight directionalLight;
+#include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 uniform PointLight pointLights[3];
 uniform int pointLightCount;
 
@@ -300,7 +301,8 @@ WaterSample ShadeWater(vec3 N, float roughness, vec3 reflectionColor, float extr
     vec3 scatter = mix(shallowCol, deepCol, deepness);
     // In-scattered light is lit by the sun/sky like everything else
     vec3 sunDir = normalize(-directionalLight.direction);
-    float skyLight = directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity * max(sunDir.y, 0.0);
+    float cloudSun = CloudShadow(FragPos); // Under a cloud the water loses its sun glint and sunlit colour
+    float skyLight = directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity * max(sunDir.y, 0.0) * cloudSun;
     vec3 underwater = refracted * transmittance + scatter * directionalLight.base.colour * skyLight * (1.0 - transmittance);
 
     // --- Fresnel (Schlick, F0 = 0.02); rough water reflects a little less at grazing angles ---
@@ -310,7 +312,7 @@ WaterSample ShadeWater(vec3 N, float roughness, vec3 reflectionColor, float extr
 
     // --- GGX glint (3.0, the materials' value, is physically based) ---
     float glint = material_specularIntensityOverride > 0.0 ? material_specularIntensityOverride / 3.0 : 1.0;
-    color += directionalLight.base.colour * directionalLight.base.diffuseIntensity * Glint(N, viewDir, sunDir, roughness) * glint;
+    color += directionalLight.base.colour * directionalLight.base.diffuseIntensity * Glint(N, viewDir, sunDir, roughness) * glint * cloudSun;
     for (int i = 0; i < pointLightCount; i++) {
         vec3 toLight = pointLights[i].position - FragPos;
         float d = length(toLight);

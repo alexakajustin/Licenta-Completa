@@ -186,6 +186,8 @@
     <ClCompile Include="Scene\MeshCollider.cpp" />
     <ClCompile Include="Scene\CapsuleCollider.cpp" />
     <ClCompile Include="Editor\AssetBrowser.cpp" />
+    <ClCompile Include="Editor\TransformGizmo.cpp" />
+    <ClCompile Include="Rendering\CloudShadows.cpp" />
     <ClCompile Include="Procedural\BeautifulErosionNode.cpp" />
     <ClCompile Include="Core\Camera.cpp" />
     <ClCompile Include="Rendering\CascadedShadowMap.cpp" />
@@ -1039,6 +1041,8 @@
     <ClInclude Include="Scene\MeshCollider.h" />
     <ClInclude Include="Scene\CapsuleCollider.h" />
     <ClInclude Include="Editor\AssetBrowser.h" />
+    <ClInclude Include="Editor\TransformGizmo.h" />
+    <ClInclude Include="Rendering\CloudShadows.h" />
     <ClInclude Include="Editor\EditorUI.h" />
     <ClInclude Include="Core\Frustum.h" />
     <ClInclude Include="Scene\GameObject.h" />

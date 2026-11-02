@@ -38,7 +38,7 @@ namespace {
 		GLint frustumPlanes, useSphereCull, lightPos, totalInstances, instanceOffset, phase;
 		GLint instanceBoundRadius, meshBoundsCenter;
 		GLint cameraPos, stageCount, stageRep, stageEnd, lodMin, crossfadeWidth, projScale, minScreenSize;
-		GLint maxDrawDistance, minCasterSize, impostorMode;
+		GLint maxDrawDistance, minCasterSize, impostorMode, overlapFade;
 		GLint detailFoliage, detailRange, detailDensity;
 		GLint useHiZ, screenSize, nearPlane, farPlane, hizViewProj, hizMap;
 	};
@@ -64,6 +64,7 @@ namespace {
 		u.projScale = L("projScale");
 		u.minScreenSize = L("minScreenSize");
 		u.crossfadeWidth = L("crossfadeWidth");
+		u.overlapFade = L("overlapFade");
 		u.lodMin = L("lodMin");
 		u.maxDrawDistance = L("maxDrawDistance");
 		u.minCasterSize = L("minCasterSize");
@@ -132,6 +133,7 @@ void InstancedGroup::Setup(Mesh* mesh,
 	}
 
 	sharedMesh = mesh;
+	pickTrianglesMesh = nullptr; // A new mesh may reuse the old one's address
 
 	material = mat;
 	texture = tex;
@@ -451,6 +453,13 @@ bool InstancedGroup::Cull(GLuint cullShaderID, const CullPass& pass)
 	glUniform1f(u.maxDrawDistance, maxDist);
 	glUniform1f(u.minCasterSize, pass.minCasterSize);
 	glUniform1i(u.impostorMode, impostorMode);
+	// Foliage (and every part of a tree with an impostor) cross-fades by overlapping its two
+	// representations instead of splitting the pixels between them (compute_cull.glsl)
+	{
+		Texture* cutoutTex = texture ? texture : (!textureLayers.empty() ? textureLayers[0].texture : nullptr);
+		bool foliage = cutoutTex && cutoutTex->HasCutoutAlpha();
+		glUniform1i(u.overlapFade, (foliage || impostorMode != 0) ? 1 : 0);
+	}
 	glUniform1i(u.detailFoliage, detail ? 1 : 0);
 	glUniform2f(u.detailRange, std::min(pass.detailRange.x, pass.detailRange.y - 0.01f), pass.detailRange.y);
 	glUniform1f(u.detailDensity, pass.detailDensity);
@@ -826,6 +835,8 @@ void InstancedGroup::Release()
 	if (sharedMesh) {
 		sharedMesh->Release();
 		sharedMesh = nullptr;
+		pickTrianglesMesh = nullptr;
+		pickTriangles.clear();
 	}
 
 	totalCount = 0;
@@ -854,49 +865,112 @@ void InstancedGroup::ReleaseChunks()
 // =====================================================================
 // CPU Raycast: Finds the closest instance hit within this group
 // =====================================================================
+// Triangles of the shared mesh in mesh space, read back from the GPU once (picking only)
+void InstancedGroup::EnsurePickTriangles()
+{
+	if (pickTrianglesMesh == sharedMesh) return;
+	pickTrianglesMesh = sharedMesh;
+	pickTriangles.clear();
+	if (sharedMesh) sharedMesh->GetBounds(pickMin, pickMax);
+	if (!sharedMesh || !sharedMesh->GetVBO() || !sharedMesh->GetIBO()) return;
+	GLint vbSize = 0, ibSize = 0;
+	glGetNamedBufferParameteriv(sharedMesh->GetVBO(), GL_BUFFER_SIZE, &vbSize);
+	glGetNamedBufferParameteriv(sharedMesh->GetIBO(), GL_BUFFER_SIZE, &ibSize);
+	GLsizei indexCount = sharedMesh->GetIndexCount();
+	if (vbSize <= 0 || indexCount <= 0 || ibSize < indexCount * (GLint)sizeof(unsigned int)) return;
+	std::vector<float> vertices(vbSize / sizeof(float));
+	std::vector<unsigned int> indices(indexCount);
+	glGetNamedBufferSubData(sharedMesh->GetVBO(), 0, vbSize, vertices.data());
+	glGetNamedBufferSubData(sharedMesh->GetIBO(), 0, indexCount * sizeof(unsigned int), indices.data());
+	size_t vertexCount = vertices.size() / 14;
+	pickTriangles.reserve(indices.size());
+	for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+		if (indices[i] >= vertexCount || indices[i + 1] >= vertexCount || indices[i + 2] >= vertexCount) continue;
+		for (int k = 0; k < 3; k++) {
+			const float* v = &vertices[(size_t)indices[i + k] * 14];
+			pickTriangles.push_back(glm::vec3(v[0], v[1], v[2]));
+		}
+	}
+	// The bounds the triangles really span (a mesh's stored bounds can be stale or the default)
+	if (!pickTriangles.empty()) {
+		pickMin = glm::vec3(FLT_MAX);
+		pickMax = glm::vec3(-FLT_MAX);
+		for (const glm::vec3& v : pickTriangles) { pickMin = glm::min(pickMin, v); pickMax = glm::max(pickMax, v); }
+	}
+}
+
+// The instance under the ray, against its real triangles (a bounding sphere at the base of a
+// tree covered the ground around it: clicks next to it picked the tree, clicks on grass missed)
 bool InstancedGroup::Raycast(glm::vec3 rayOrigin, glm::vec3 rayDir, int& outIndex, float& outDist)
 {
-	if (cpuInstances.empty()) return false;
+	if (cpuInstances.empty() || !sharedMesh) return false;
+	EnsurePickTriangles();
+
+	const glm::vec3 bMin = pickMin, bMax = pickMax;
+	const float reach = glm::length(glm::max(glm::abs(bMin), glm::abs(bMax))); // Around the origin, any rotation
 
 	int bestIndex = -1;
 	float bestDist = FLT_MAX;
-
-	// Simple CPU intersection over instances 
-	// For 1M instances this takes ~1ms, completely fine for mouse clicks
 	for (size_t i = 0; i < cpuInstances.size(); i++) {
 		const auto& inst = cpuInstances[i];
-		glm::vec3 center(inst.positionAndScale.x, inst.positionAndScale.y, inst.positionAndScale.z);
-		
-		// Tighten the radius to 35% because grass meshes are thin/tall.
-		// A full sphere would capture clicks meant for the terrain far off to the side.
-		float radius = meshBoundRadius * inst.positionAndScale.w * 0.35f;
+		const glm::vec3 pos(inst.positionAndScale);
+		const float s = inst.positionAndScale.w;
+		if (s <= 0.0f) continue;
 
-		// Ray-sphere intersection
-		glm::vec3 m = rayOrigin - center;
+		// 1. Sphere around the instance (no rotation needed)
+		glm::vec3 m = rayOrigin - pos;
 		float b = glm::dot(m, rayDir);
-		float c = glm::dot(m, m) - radius * radius;
-
-		// Stop if origin is outside sphere and ray points away
+		float r = reach * s;
+		float c = glm::dot(m, m) - r * r;
 		if (c > 0.0f && b > 0.0f) continue;
 		float discr = b * b - c;
-		
-		if (discr >= 0.0f) {
-			float dist = -b - sqrt(discr);
-			if (dist < 0.0f) dist = 0.0f; // ray originated inside sphere
-			
-			if (dist < bestDist) {
-				bestDist = dist;
-				bestIndex = (int)i;
-			}
+		if (discr < 0.0f || -b - std::sqrt(discr) > bestDist) continue;
+
+		// 2. The ray in mesh space (world = rot * (p * s) + pos, as instanced_object.vert);
+		//    the direction keeps the 1/s, so a parameter t is the same distance in both spaces
+		glm::vec3 e = glm::radians(glm::vec3(inst.rotationAndFlags));
+		float cx = std::cos(e.x), sx = std::sin(e.x), cy = std::cos(e.y), sy = std::sin(e.y), cz = std::cos(e.z), sz = std::sin(e.z);
+		glm::mat3 rot = glm::mat3(cz, -sz, 0, sz, cz, 0, 0, 0, 1) * glm::mat3(cy, 0, sy, 0, 1, 0, -sy, 0, cy) * glm::mat3(1, 0, 0, 0, cx, -sx, 0, sx, cx);
+		glm::mat3 inv = glm::transpose(rot);
+		glm::vec3 lo = inv * m / s, ld = inv * rayDir / s;
+
+		// 3. Mesh bounds
+		float tEnter = 0.0f, tExit = bestDist;
+		bool miss = false;
+		for (int a = 0; a < 3 && !miss; a++) {
+			if (std::abs(ld[a]) < 1e-12f) { miss = lo[a] < bMin[a] || lo[a] > bMax[a]; continue; }
+			float t0 = (bMin[a] - lo[a]) / ld[a], t1 = (bMax[a] - lo[a]) / ld[a];
+			if (t0 > t1) std::swap(t0, t1);
+			tEnter = std::max(tEnter, t0);
+			tExit = std::min(tExit, t1);
+			miss = tEnter > tExit;
+		}
+		if (miss) continue;
+
+		// 4. Triangles (both sides: leaves and blades are single-sided cards)
+		if (pickTriangles.empty()) { bestDist = tEnter; bestIndex = (int)i; continue; }
+		for (size_t t = 0; t + 2 < pickTriangles.size(); t += 3) {
+			const glm::vec3& v0 = pickTriangles[t];
+			glm::vec3 e1 = pickTriangles[t + 1] - v0, e2 = pickTriangles[t + 2] - v0;
+			glm::vec3 p = glm::cross(ld, e2);
+			float det = glm::dot(e1, p);
+			if (std::abs(det) < 1e-12f) continue;
+			float invDet = 1.0f / det;
+			glm::vec3 tv = lo - v0;
+			float u = glm::dot(tv, p) * invDet;
+			if (u < 0.0f || u > 1.0f) continue;
+			glm::vec3 q = glm::cross(tv, e1);
+			float v = glm::dot(ld, q) * invDet;
+			if (v < 0.0f || u + v > 1.0f) continue;
+			float dist = glm::dot(e2, q) * invDet;
+			if (dist > 0.0f && dist < bestDist) { bestDist = dist; bestIndex = (int)i; }
 		}
 	}
 
-	if (bestIndex != -1) {
-		outIndex = bestIndex;
-		outDist = bestDist;
-		return true;
-	}
-	return false;
+	if (bestIndex == -1) return false;
+	outIndex = bestIndex;
+	outDist = bestDist;
+	return true;
 }
 
 // =====================================================================

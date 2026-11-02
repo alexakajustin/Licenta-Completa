@@ -150,6 +150,7 @@ void main()
 
     // Foliage lighting of shader.frag: wrapped diffuse, sky fill, light through the leaves near the sun
     float shadowFactor = DirectionalShadow(fragPos, N);
+    shadowFactor = 1.0 - (1.0 - shadowFactor) * CloudShadow(fragPos); // cloud_shadow.glsl (ImpostorSystem::Init)
     vec3 ambientColour = directionalLight.base.colour * directionalLight.base.ambientIntensity;
     float wrapped = max((dot(N, L) + 0.5) / 1.5, 0.0);
     float backLit = pow(max(dot(V, -L), 0.0), 10.0);
