@@ -17,6 +17,8 @@ struct GraphicsSettings {
 	bool lodEnabled[3] = { true, true, false };
 	float lodDistance[3] = { 100.0f, 200.0f, 400.0f }; // Where LOD0 / LOD1 / LOD2 end (m)
 	bool lodCrossfade = true;       // Dithered transitions between LODs instead of pops
+	bool taaEnabled = true;         // Temporal anti-aliasing (Rendering/TemporalAA.h)
+	float taaSharpness = 0.5f;      // Contrast-adaptive sharpening of the TAA result (0-1)
 	float renderDistance = 2000.0f; // Object cut-off (big objects are drawn up to 10x further)
 	float detailDistance = 150.0f;  // Grass / detail foliage thins out to a quarter by this distance
 	float detailDensity = 1.0f;     // Fraction of the detail foliage drawn at all

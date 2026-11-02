@@ -150,6 +150,9 @@
     <ClCompile Include="Rendering\CloudShadows.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\TemporalAA.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Editor\DebugOverlay.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
@@ -2279,6 +2282,9 @@
       <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\CloudShadows.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\TemporalAA.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Scene\AssetManager.h">

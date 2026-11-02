@@ -53,6 +53,7 @@ uniform sampler2D theTexture;
 // Lighting Uniforms automatically passed by Renderer
 uniform DirectionalLight directionalLight;
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
+#include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform int pointLightCount;
@@ -221,7 +222,7 @@ void main()
              3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
             15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
         );
-        float threshold = bayerMatrix[y * 4 + x];
+        float threshold = DitherThreshold(bayerMatrix[y * 4 + x]); // Moves every frame with TAA
         if (vFadeFactor > 0.0 ? vFadeFactor > threshold : threshold >= -vFadeFactor) discard;
     }
 

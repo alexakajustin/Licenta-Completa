@@ -482,6 +482,10 @@ void Application::Run()
 			activeCameraPos = gameCamera.getCameraPosition();
 		}
 
+		// TAA: the scene pass draws with a sub-pixel jittered projection (the other passes, picking
+		// and the editor overlays keep the plain one)
+		glm::mat4 sceneProjection = taa.BeginFrame(projection, currentViewportWidth, currentViewportHeight, graphicsSettings.taaEnabled);
+
 		// Main render pass — clear backbuffer (the part around the UI)
 		glViewport(0, 0, fbw, fbh);
 		glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
@@ -760,7 +764,7 @@ void Application::Run()
 		debugOverlay.BeginPass("Main Render");
 		sceneManager.SetReflectionDepthTexture(hasWater ? reflectionDepth : 0);
 		sceneManager.SetReflectionPlaneHeight(waterHeight);
-		renderer.RenderPass(projection, view, activeCameraPos, sceneManager,
+		renderer.RenderPass(sceneProjection, view, activeCameraPos, sceneManager,
 			mainLight, pointLights, pointLightCount, spotLights, spotLightCount, currentViewportWidth, currentViewportHeight, viewportDepth, reflectionTexture, refractionTexture, activeFrustum, &graphicsSettings);
 		debugOverlay.EndPass("Main Render");
 
@@ -835,6 +839,15 @@ void Application::Run()
 			glEnable(GL_DEPTH_TEST);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			debugOverlay.EndPass("God Rays");
+		}
+
+		// Temporal anti-aliasing over the finished scene (before the icons and the editor overlays)
+		if (graphicsSettings.taaEnabled)
+		{
+			debugOverlay.BeginPass("TAA");
+			taa.Resolve(viewportFBO, viewportTexture, viewportDepth, currentViewportWidth, currentViewportHeight,
+				projection, view, graphicsSettings.taaSharpness, [this]() { RenderQuad(); });
+			debugOverlay.EndPass("TAA");
 		}
 
 		// Scene Selection (Move before depth clear so we can use scene depth)
@@ -919,7 +932,7 @@ void Application::Run()
 				spotLightCount = 0;
 				SetupScene();
 			}
-			volumetricFog.InvalidateHistory();
+			volumetricFog.InvalidateHistory(); taa.Invalidate();
 			if (sceneAction != EditorUI::SceneAction::Save) nodeEditorUI.ResetHistory(); // Graph undo belongs to the old scene
 			editorUI.ClearPendingSceneAction();
 		}
@@ -1103,6 +1116,7 @@ void Application::InitPostEffects()
 	// The renderer's sky cubemap (water and material reflections) draws the same clouds
 	renderer.SetCloudNoise(cloudShapeNoiseTex, cloudDetailNoiseTex);
 	cloudShadows.Init();
+	taa.Init();
 }
 
 void Application::InitCloudNoise()
@@ -1209,6 +1223,8 @@ void Application::LoadGraphicsSettings()
 			if (j.contains("lod" + n + "Distance")) graphicsSettings.lodDistance[i] = j["lod" + n + "Distance"];
 		}
 		if (j.contains("lodCrossfade")) graphicsSettings.lodCrossfade = j["lodCrossfade"];
+		if (j.contains("taaEnabled")) graphicsSettings.taaEnabled = j["taaEnabled"];
+		if (j.contains("taaSharpness")) graphicsSettings.taaSharpness = j["taaSharpness"];
 		if (j.contains("renderDistance")) graphicsSettings.renderDistance = j["renderDistance"];
 		if (j.contains("detailDistance")) graphicsSettings.detailDistance = j["detailDistance"];
 		if (j.contains("detailDensity")) graphicsSettings.detailDensity = j["detailDensity"];
@@ -1296,6 +1312,8 @@ void Application::SaveGraphicsSettings()
 		j["lod" + n + "Distance"] = graphicsSettings.lodDistance[i];
 	}
 	j["lodCrossfade"] = graphicsSettings.lodCrossfade;
+	j["taaEnabled"] = graphicsSettings.taaEnabled;
+	j["taaSharpness"] = graphicsSettings.taaSharpness;
 	j["renderDistance"] = graphicsSettings.renderDistance;
 	j["detailDistance"] = graphicsSettings.detailDistance;
 	j["detailDensity"] = graphicsSettings.detailDensity;
@@ -1453,6 +1471,7 @@ void Application::Shutdown()
 	glDeleteFramebuffers(2, skyHistoryFBO);
 	glDeleteTextures(2, skyHistoryTexture);
 	cloudShadows.Shutdown();
+	taa.Shutdown();
 	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
 	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
@@ -1524,7 +1543,7 @@ void Application::StartPlayMode()
 	printf("[Application] Entering Play Mode.\n");
 	playState = PlayState::PlayMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory(); // Camera cut: last frame's fog belongs to the editor camera
+	volumetricFog.InvalidateHistory(); taa.Invalidate(); // Camera cut: last frame's fog belongs to the editor camera
 
 	// Backup all object transforms so we can restore them when stopping
 	transformBackups.clear();
@@ -1583,7 +1602,7 @@ void Application::StopPlayMode()
 	printf("[Application] Exiting Play Mode.\n");
 	playState = PlayState::EditMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory();
+	volumetricFog.InvalidateHistory(); taa.Invalidate();
 
 	// Restore all object transforms to their pre-play state
 	for (auto& [obj, backup] : transformBackups)

@@ -19,6 +19,7 @@ flat in vec3 ToViewer;
 flat in float vFadeFactor;
 flat in float vIsSelected;
 
+#include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
 uniform sampler2D impostorAlbedo; ///< rgb albedo, a coverage (coverage-preserving mips)
 uniform sampler2D impostorData;   ///< rgb mesh-space normal * 0.5 + 0.5, a depth toward the viewer
 uniform sampler2D impostorMaterial; ///< r: 1 leaves, 0 bark
@@ -46,7 +47,7 @@ bool DitherDiscard(float fade) {
          3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
         15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
     );
-    float threshold = bayerMatrix[y * 4 + x];
+    float threshold = DitherThreshold(bayerMatrix[y * 4 + x]); // Moves every frame with TAA
     return fade > 0.0 ? fade > threshold : threshold >= -fade;
 }
 

@@ -41,6 +41,7 @@ struct PointLight { Light base; vec3 position; float constant; float linear; flo
 
 uniform DirectionalLight directionalLight;
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
+#include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
 uniform PointLight pointLights[3];
 uniform int pointLightCount;
 
@@ -432,7 +433,7 @@ void main()
 {
     if (vFadeFactor > 0.001) {
         float bayer[16] = float[16](0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125);
-        if (vFadeFactor > bayer[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))]) discard;
+        if (vFadeFactor > DitherThreshold(bayer[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))])) discard;
     }
 
     float dist = length(eyePosition - FragPos);

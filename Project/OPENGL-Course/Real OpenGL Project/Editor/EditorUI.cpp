@@ -2130,6 +2130,19 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 		}
 		ImGui::Separator();
 
+		if (ImGui::CollapsingHeader("Anti-Aliasing", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::Checkbox("Temporal Anti-Aliasing (TAA)", &g.taaEnabled);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Smooths edges, leaves, needles and the dithered LOD fades by accumulating\n"
+					"jittered frames. One full-screen pass: far cheaper than MSAA.");
+			if (!g.taaEnabled) ImGui::BeginDisabled();
+			ImGui::SliderFloat("Sharpening", &g.taaSharpness, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Contrast-adaptive sharpening (AMD CAS) of the TAA result");
+			if (!g.taaEnabled) ImGui::EndDisabled();
+		}
+
 		if (ImGui::CollapsingHeader("Level of Detail", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;

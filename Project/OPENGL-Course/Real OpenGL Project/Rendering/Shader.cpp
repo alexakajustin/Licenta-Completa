@@ -1,6 +1,7 @@
 #include "Rendering/Wind.h"
 #include "Rendering/Shader.h"
 #include "Rendering/CloudShadows.h"
+#include "Rendering/TemporalAA.h"
 #include <algorithm>
 #include <unordered_map>
 #include <string>
@@ -322,6 +323,9 @@ void Shader::CompileProgram()
 	// So are the cloud shadows (cloud_shadow.glsl)
 	GLuint cloudShadowBlock = glGetUniformBlockIndex(shaderID, "CloudShadowBlock");
 	if (cloudShadowBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, cloudShadowBlock, CLOUD_SHADOW_UBO_BINDING);
+	// And the frame's jitter / dither offset (frame.glsl)
+	GLuint frameBlock = glGetUniformBlockIndex(shaderID, "FrameBlock");
+	if (frameBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, frameBlock, FRAME_UBO_BINDING);
 
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformProjection = glGetUniformLocation(shaderID, "projection");

@@ -188,6 +188,7 @@
     <ClCompile Include="Editor\AssetBrowser.cpp" />
     <ClCompile Include="Editor\TransformGizmo.cpp" />
     <ClCompile Include="Rendering\CloudShadows.cpp" />
+    <ClCompile Include="Rendering\TemporalAA.cpp" />
     <ClCompile Include="Procedural\BeautifulErosionNode.cpp" />
     <ClCompile Include="Core\Camera.cpp" />
     <ClCompile Include="Rendering\CascadedShadowMap.cpp" />
@@ -1043,6 +1044,7 @@
     <ClInclude Include="Editor\AssetBrowser.h" />
     <ClInclude Include="Editor\TransformGizmo.h" />
     <ClInclude Include="Rendering\CloudShadows.h" />
+    <ClInclude Include="Rendering\TemporalAA.h" />
     <ClInclude Include="Editor\EditorUI.h" />
     <ClInclude Include="Core\Frustum.h" />
     <ClInclude Include="Scene\GameObject.h" />
