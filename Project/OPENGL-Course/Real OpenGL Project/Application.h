@@ -26,6 +26,7 @@
 #include "Rendering/TemporalAA.h"
 #include "Rendering/PostProcess.h"
 #include "Rendering/AmbientOcclusion.h"
+#include "Rendering/Reflections.h"
 #include <vector>
 #include <unordered_map>
 
@@ -151,6 +152,10 @@ private:
 	TemporalAA taa;              // Temporal anti-aliasing of the viewport
 	PostProcess postProcess;     // Exposure, tone mapping and sharpening of the HDR viewport
 	AmbientOcclusion ambientOcclusion; // GTAO, half resolution
+	Reflections reflections;     // SSR over the reflection probes
+	GLuint prevSceneColor = 0;   // Last frame's HDR scene (TAA history or the post scratch): SSR reads it
+	glm::mat4 prevSceneViewProj = glm::mat4(1.0f);
+	int prevSceneWidth = 0, prevSceneHeight = 0;
 	CloudShadowMap cloudShadows; // The clouds' shadows on the scene (sampled by every lit shader)
 	void InitCloudNoise();
 	void SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm::mat4& invView, int jitterFrame);

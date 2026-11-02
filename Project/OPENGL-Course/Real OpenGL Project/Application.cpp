@@ -486,6 +486,8 @@ void Application::Run()
 		// and the editor overlays keep the plain one)
 		glm::mat4 sceneProjection = taa.BeginFrame(projection, view, currentViewportWidth, currentViewportHeight,
 			graphicsSettings.taaEnabled, viewportFBO);
+		// Reflective objects hand their reflection to the SSR pass (attachments 2-4 of the viewport)
+		reflections.BeginFrame(viewportFBO, currentViewportWidth, currentViewportHeight, graphicsSettings.ssrEnabled);
 
 		// Main render pass — clear backbuffer (the part around the UI)
 		glViewport(0, 0, fbw, fbh);
@@ -778,6 +780,16 @@ void Application::Run()
 			debugOverlay.EndPass("Ambient Occlusion");
 		}
 
+		// Screen-space reflections over the probes, added onto the reflective surfaces
+		if (graphicsSettings.ssrEnabled)
+		{
+			debugOverlay.BeginPass("Reflections");
+			bool prevValid = prevSceneColor != 0 && prevSceneWidth == currentViewportWidth && prevSceneHeight == currentViewportHeight;
+			reflections.Render(viewportFBO, viewportDepth, currentViewportWidth, currentViewportHeight, projection, view,
+				activeCameraPos, prevValid ? prevSceneColor : 0, prevSceneViewProj, graphicsSettings, [this]() { RenderQuad(); });
+			debugOverlay.EndPass("Reflections");
+		}
+
 		// Volumetric fog over the finished scene (before the screen-space god rays)
 		if (graphicsSettings.volumetricFogEnabled)
 		{
@@ -865,6 +877,11 @@ void Application::Run()
 		postProcess.Apply(hdrImage, viewportTexture, viewportFBO, currentViewportWidth, currentViewportHeight,
 			graphicsSettings, deltaTime, hdrImage ? graphicsSettings.taaSharpness : 0.0f, [this]() { RenderQuad(); });
 		debugOverlay.EndPass("Tone Mapping");
+		// This frame's HDR scene: what next frame's reflections see
+		prevSceneColor = hdrImage ? hdrImage : postProcess.GetScratch();
+		prevSceneViewProj = projection * view;
+		prevSceneWidth = currentViewportWidth;
+		prevSceneHeight = currentViewportHeight;
 
 		// Scene Selection (Move before depth clear so we can use scene depth)
 		if (activeTab == 0)
@@ -948,7 +965,7 @@ void Application::Run()
 				spotLightCount = 0;
 				SetupScene();
 			}
-			volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate();
+			volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); prevSceneColor = 0;
 			if (sceneAction != EditorUI::SceneAction::Save) nodeEditorUI.ResetHistory(); // Graph undo belongs to the old scene
 			editorUI.ClearPendingSceneAction();
 		}
@@ -1136,6 +1153,7 @@ void Application::InitPostEffects()
 	taa.Init();
 	postProcess.Init();
 	ambientOcclusion.Init();
+	reflections.Init();
 }
 
 void Application::InitCloudNoise()
@@ -1245,6 +1263,9 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("taaEnabled")) graphicsSettings.taaEnabled = j["taaEnabled"];
 		if (j.contains("taaSharpness")) graphicsSettings.taaSharpness = j["taaSharpness"];
 		if (j.contains("aoEnabled")) graphicsSettings.aoEnabled = j["aoEnabled"];
+		if (j.contains("ssrEnabled")) graphicsSettings.ssrEnabled = j["ssrEnabled"];
+		if (j.contains("ssrMaxDistance")) graphicsSettings.ssrMaxDistance = j["ssrMaxDistance"];
+		if (j.contains("probeFacesPerFrame")) graphicsSettings.probeFacesPerFrame = j["probeFacesPerFrame"];
 		if (j.contains("aoRadius")) graphicsSettings.aoRadius = j["aoRadius"];
 		if (j.contains("aoStrength")) graphicsSettings.aoStrength = j["aoStrength"];
 		if (j.contains("tonemapper")) graphicsSettings.tonemapper = j["tonemapper"];
@@ -1344,6 +1365,9 @@ void Application::SaveGraphicsSettings()
 	j["taaEnabled"] = graphicsSettings.taaEnabled;
 	j["taaSharpness"] = graphicsSettings.taaSharpness;
 	j["aoEnabled"] = graphicsSettings.aoEnabled;
+	j["ssrEnabled"] = graphicsSettings.ssrEnabled;
+	j["ssrMaxDistance"] = graphicsSettings.ssrMaxDistance;
+	j["probeFacesPerFrame"] = graphicsSettings.probeFacesPerFrame;
 	j["aoRadius"] = graphicsSettings.aoRadius;
 	j["aoStrength"] = graphicsSettings.aoStrength;
 	j["tonemapper"] = graphicsSettings.tonemapper;
@@ -1513,6 +1537,7 @@ void Application::Shutdown()
 	taa.Shutdown();
 	postProcess.Shutdown();
 	ambientOcclusion.Shutdown();
+	reflections.Shutdown();
 	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
 	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
@@ -1584,7 +1609,7 @@ void Application::StartPlayMode()
 	printf("[Application] Entering Play Mode.\n");
 	playState = PlayState::PlayMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); // Camera cut: last frame's fog belongs to the editor camera
+	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); prevSceneColor = 0; // Camera cut: last frame's fog belongs to the editor camera
 
 	// Backup all object transforms so we can restore them when stopping
 	transformBackups.clear();
@@ -1643,7 +1668,7 @@ void Application::StopPlayMode()
 	printf("[Application] Exiting Play Mode.\n");
 	playState = PlayState::EditMode;
 	lastActiveViewportTab = -1; // Reset tab tracking
-	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate();
+	volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); prevSceneColor = 0;
 
 	// Restore all object transforms to their pre-play state
 	for (auto& [obj, backup] : transformBackups)

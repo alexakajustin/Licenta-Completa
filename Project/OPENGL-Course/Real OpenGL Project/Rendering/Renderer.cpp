@@ -4,10 +4,14 @@
 #include "Core/Window.h"
 #include "Core/Frustum.h"
 #include "Rendering/InstancedGroup.h"
+#include "Rendering/Material.h"
 #include "Rendering/LODPolicy.h"
 #include "Editor/DebugOverlay.h"
 #include <GLFW/glfw3.h>
 #include <cstring>
+#include <algorithm>
+#include <cmath>
+#include <cfloat>
 #include <fstream>
 #include <sstream>
 #include "Rendering/CascadedShadowMap.h"
@@ -266,17 +270,10 @@ void Renderer::RenderPass(const glm::mat4& projection, const glm::mat4& view,
 	UpdateProceduralSkybox(mainLight, gs, (float)glfwGetTime());
 	if (profiler) profiler->EndObject();
 
-	// Render dynamic cubemaps for each visible, reflective object from its own position.
-	// This ensures perspective and parallax are mathematically correct.
-	for (auto* obj : scene.GetObjects()) {
-		if (obj && obj->GetVisible() && obj->GetMaterial() && obj->GetMaterial()->GetReflectivity() > 0.0f) {
-			if (profiler) profiler->BeginObject("[Reflective object cubemaps]", 0);
-			RenderSceneCubemapPass(obj, cameraPos, scene, mainLight,
-			                       pointLights, pointLightCount,
-			                       spotLights, spotLightCount, gs);
-			if (profiler) profiler->EndObject();
-		}
-	}
+	// Reflection probes of the reflective objects: captured once, then a few faces per frame
+	if (profiler) profiler->BeginObject("[Reflection probes]", 0);
+	UpdateReflectionProbes(cameraPos, scene, mainLight, pointLights, pointLightCount, spotLights, spotLightCount, gs);
+	if (profiler) profiler->EndObject();
 
 	if (gs && gs->showWireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -608,29 +605,152 @@ Shader* Renderer::GetInstancedShader(Shader* original)
 	return hybrid;
 }
 
-void Renderer::RenderSceneCubemapPass(
-	GameObject* obj, const glm::vec3& cameraPos, SceneManager& scene,
-	DirectionalLight& mainLight,
-	PointLight* pointLights, unsigned int pointLightCount,
-	SpotLight* spotLights, unsigned int spotLightCount,
-	const GraphicsSettings* gs)
+// =====================================================================
+// Reflection probes: one cubemap per reflective object
+// =====================================================================
+
+bool Renderer::GetReflectionProbe(const GameObject* obj, glm::vec3& position, glm::vec3& boxMin, glm::vec3& boxMax) const
+{
+	auto it = probes.find(obj);
+	if (it == probes.end() || it->second.facesCaptured == 0) return false;
+	position = it->second.position;
+	boxMin = it->second.boxMin;
+	boxMax = it->second.boxMax;
+	return true;
+}
+
+void Renderer::UpdateReflectionProbes(const glm::vec3& cameraPos, SceneManager& scene,
+	DirectionalLight& mainLight, PointLight* pointLights, unsigned int pointLightCount,
+	SpotLight* spotLights, unsigned int spotLightCount, const GraphicsSettings* gs)
+{
+	// The reflective objects, and the box everything visible fits in (the proxy the reflections
+	// are parallax-corrected against: the floor reflects the walls where they are)
+	std::vector<GameObject*> reflective;
+	glm::vec3 sceneMin(FLT_MAX), sceneMax(-FLT_MAX);
+	// What the probes show, as a hash: the lights and where every object is. While it stays the
+	// same nothing is re-captured (a still scene costs nothing); when it changes, every face is
+	// refreshed again at the per-frame budget.
+	uint64_t signature = 1469598103934665603ull;
+	auto Mix = [&](const float* v, int n) {
+		for (int i = 0; i < n; i++) {
+			uint32_t bits;
+			std::memcpy(&bits, &v[i], 4);
+			signature = (signature ^ bits) * 1099511628211ull;
+		}
+	};
+	Mix(&(*mainLight.GetDirectionPtr())[0], 3);
+	Mix(&(*mainLight.GetColourPtr())[0], 3);
+	Mix(mainLight.GetAmbientIntensityPtr(), 1);
+	Mix(mainLight.GetDiffuseIntensityPtr(), 1);
+	for (unsigned int i = 0; i < pointLightCount; i++) {
+		Mix(&(*pointLights[i].GetPositionPtr())[0], 3);
+		Mix(&(*pointLights[i].GetColourPtr())[0], 3);
+	}
+	for (unsigned int i = 0; i < spotLightCount; i++) {
+		Mix(&(*spotLights[i].GetPositionPtr())[0], 3);
+		Mix(&(*spotLights[i].GetColourPtr())[0], 3);
+	}
+	for (auto* obj : scene.GetObjects()) {
+		if (!obj || !obj->GetVisible()) continue;
+		glm::vec3 bmin, bmax;
+		obj->GetWorldBounds(bmin, bmax);
+		Mix(&bmin[0], 3);
+		Mix(&bmax[0], 3);
+		if (bmin.x <= bmax.x && std::isfinite(bmin.x) && std::isfinite(bmax.x)) {
+			sceneMin = glm::min(sceneMin, bmin);
+			sceneMax = glm::max(sceneMax, bmax);
+		}
+		if (obj->GetMaterial() && obj->GetMaterial()->GetReflectivity() > 0.0f) reflective.push_back(obj);
+	}
+	for (auto& [o, p] : probes) p.seen = false;
+
+	// Where a probe captures from: the object's centre; a flat one (floor, mirror) from just in
+	// front of it, on the camera's side. Its proxy box: the scene around it, at most 400 m away.
+	auto Place = [&](GameObject* obj, ReflectionProbe& p) {
+		glm::vec3 bmin, bmax;
+		obj->GetWorldBounds(bmin, bmax);
+		glm::vec3 center = (bmin + bmax) * 0.5f, size = bmax - bmin;
+		int thin = 0;
+		for (int a = 1; a < 3; a++) if (size[a] < size[thin]) thin = a;
+		float largest = std::max(size.x, std::max(size.y, size.z));
+		glm::vec3 pos = center;
+		if (size[thin] < largest * 0.15f) {
+			float side = cameraPos[thin] >= center[thin] ? 1.0f : -1.0f;
+			pos[thin] = (side > 0.0f ? bmax[thin] : bmin[thin]) + side * std::clamp(largest * 0.05f, 0.5f, 2.0f);
+		}
+		p.position = pos;
+		glm::vec3 lo = sceneMin.x <= sceneMax.x ? sceneMin : pos - 400.0f;
+		glm::vec3 hi = sceneMin.x <= sceneMax.x ? sceneMax : pos + 400.0f;
+		p.boxMin = glm::min(glm::max(lo, pos - 400.0f), pos - 0.5f) - 0.05f;
+		p.boxMax = glm::max(glm::min(hi, pos + 400.0f), pos + 0.5f) + 0.05f;
+	};
+	auto Mips = [&](GameObject* obj) {
+		glBindTexture(GL_TEXTURE_CUBE_MAP, obj->GetCustomCubemapID());
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	};
+
+	// A new probe: all six faces at once (it appears with the scene, while loading)
+	std::vector<GameObject*> fresh;
+	for (auto* obj : reflective) {
+		ReflectionProbe& p = probes[obj];
+		p.seen = true;
+		if (obj->GetCustomCubemapID() != 0 && p.facesCaptured > 0) continue;
+		Place(obj, p);
+		for (int face = 0; face < 6; face++)
+			CaptureProbeFace(obj, p.position, face, scene, mainLight, pointLights, pointLightCount, spotLights, spotLightCount, gs);
+		Mips(obj);
+		p.facesCaptured = 6;
+		p.dirtyFaces = 0;
+		fresh.push_back(obj);
+	}
+	for (auto it = probes.begin(); it != probes.end();) {
+		if (it->second.seen) ++it; else it = probes.erase(it); // Its object is gone or hidden
+	}
+
+	// The scene changed (a light, an object moved): every face shows an older state now
+	if (signature != probeSceneSignature) {
+		probeSceneSignature = signature;
+		for (auto* obj : reflective)
+			if (std::find(fresh.begin(), fresh.end(), obj) == fresh.end()) probes[obj].dirtyFaces = 0x3F;
+	}
+
+	// Then a few out-of-date faces per frame, round-robin: changes show up in the reflections
+	// within a fraction of a second, for the cost of 1-2 small views (and none in a still scene)
+	int budget = gs ? std::max(gs->probeFacesPerFrame, 0) : 2;
+	int total = (int)reflective.size() * 6;
+	std::vector<GameObject*> touched;
+	for (int tries = 0; budget > 0 && tries < total; tries++) {
+		int index = (int)(probeCursor++ % (uint32_t)total);
+		GameObject* obj = reflective[index / 6];
+		int face = index % 6;
+		ReflectionProbe& p = probes[obj];
+		if (!(p.dirtyFaces & (1 << face))) continue;
+		if (p.dirtyFaces == 0x3F) Place(obj, p); // A new round: from where the object is now
+		CaptureProbeFace(obj, p.position, face, scene, mainLight, pointLights, pointLightCount, spotLights, spotLightCount, gs);
+		p.dirtyFaces &= ~(1 << face);
+		budget--;
+		if (std::find(touched.begin(), touched.end(), obj) == touched.end()) touched.push_back(obj);
+	}
+	for (auto* obj : touched) Mips(obj);
+}
+
+void Renderer::CaptureProbeFace(GameObject* obj, const glm::vec3& capturePos, int face, SceneManager& scene,
+	DirectionalLight& mainLight, PointLight* pointLights, unsigned int pointLightCount,
+	SpotLight* spotLights, unsigned int spotLightCount, const GraphicsSettings* gs)
 {
 	if (!obj) return;
-	isRenderingCubemap = true;
-	const int CUBEMAP_SIZE = 512;
-
 	GLuint cubemapId = obj->GetCustomCubemapID();
 	GLuint cubemapFBO = obj->GetCustomCubemapFBO();
 	GLuint cubemapDepthRBO = obj->GetCustomCubemapDepthRBO();
 
-	// ---- Lazy init: create cubemap + FBO once per object ----
+	// Lazy init: HDR cubemap with mips (rough reflections read the blurred levels)
 	if (cubemapId == 0) {
+		int levels = 1 + (int)std::floor(std::log2((float)PROBE_SIZE));
 		glGenTextures(1, &cubemapId);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapId);
-		for (int i = 0; i < 6; ++i)
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
-			             CUBEMAP_SIZE, CUBEMAP_SIZE, 0, GL_RGB, GL_FLOAT, nullptr);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexStorage2D(GL_TEXTURE_CUBE_MAP, levels, GL_RGBA16F, PROBE_SIZE, PROBE_SIZE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -639,141 +759,62 @@ void Renderer::RenderSceneCubemapPass(
 
 		glGenFramebuffers(1, &cubemapFBO);
 		glGenRenderbuffers(1, &cubemapDepthRBO);
-		glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
 		glBindRenderbuffer(GL_RENDERBUFFER, cubemapDepthRBO);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, CUBEMAP_SIZE, CUBEMAP_SIZE);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, PROBE_SIZE, PROBE_SIZE);
+		GLint oldFbo = 0;
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, cubemapDepthRBO);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)oldFbo);
 
 		obj->SetCustomCubemapID(cubemapId);
 		obj->SetCustomCubemapFBO(cubemapFBO);
 		obj->SetCustomCubemapDepthRBO(cubemapDepthRBO);
 	}
 
-	// ---- Save GL state ----
-	GLint oldFBO = 0;
+	static const glm::vec3 dirs[6] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+	static const glm::vec3 ups[6] = { {0, -1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}, {0, -1, 0} };
+	const glm::mat4 captureProj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+	const glm::mat4 captureView = glm::lookAt(capturePos, capturePos + dirs[face], ups[face]);
+
+	GLint oldFBO = 0, oldViewport[4];
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
-	GLint oldViewport[4];
 	glGetIntegerv(GL_VIEWPORT, oldViewport);
-
-	// ---- World Position of the Object / Optimal capture position for flat planes ----
-	glm::vec3 capturePos = glm::vec3(obj->GetWorldMatrix()[3]);
-
-	// Clean OOP/Geometry Check: detect if the object is flat along any axis in local space.
-	// If it is, project the player camera onto the plane's surface to minimize parallax distortion.
-	glm::vec3 localMin(0.0f), localMax(0.0f);
-	bool hasBounds = false;
-	if (obj->GetMesh()) {
-		obj->GetMesh()->GetBounds(localMin, localMax);
-		hasBounds = true;
-	} else if (obj->GetModel()) {
-		localMin = obj->GetModel()->GetMinBound();
-		localMax = obj->GetModel()->GetMaxBound();
-		hasBounds = true;
-	}
-
-	if (hasBounds) {
-		glm::vec3 localSize = localMax - localMin;
-		int flatAxis = 0;
-		float minDim = localSize[0];
-		float maxDim = localSize[0];
-		
-		for (int i = 1; i < 3; ++i) {
-			if (localSize[i] < minDim) {
-				minDim = localSize[i];
-				flatAxis = i;
-			}
-			if (localSize[i] > maxDim) {
-				maxDim = localSize[i];
-			}
-		}
-
-		// A surface is near-flat if its thickness (smallest dimension) is less than 15% of its width/length
-		// and it is relatively thin overall in local space (e.g. less than 1.0 units).
-		bool isNearFlat = (minDim < maxDim * 0.15f) && (minDim < 1.0f);
-		if (minDim < 0.1f) {
-			isNearFlat = true; // Always count ultra-thin surfaces
-		}
-
-		if (isNearFlat) {
-			glm::mat4 invWorld = glm::inverse(obj->GetWorldMatrix());
-			glm::vec3 localCam = glm::vec3(invWorld * glm::vec4(cameraPos, 1.0f));
-
-			glm::vec3 localCapture = localCam;
-			float planeLocalPos = (localMin[flatAxis] + localMax[flatAxis]) * 0.5f;
-			localCapture[flatAxis] = 2.0f * planeLocalPos - localCam[flatAxis];
-
-			// Clamp local coordinates to the bounding limits of the flat surface
-			for (int i = 0; i < 3; ++i) {
-				if (i != flatAxis) {
-					localCapture[i] = glm::clamp(localCapture[i], localMin[i], localMax[i]);
-				}
-			}
-
-			capturePos = glm::vec3(obj->GetWorldMatrix() * glm::vec4(localCapture, 1.0f));
-		}
-	}
-
-	// ---- Six face view matrices ----
-	const glm::mat4 captureProj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 500.0f);
-	const glm::mat4 captureViews[6] = {
-		glm::lookAt(capturePos, capturePos + glm::vec3( 1, 0, 0), glm::vec3(0,-1, 0)),
-		glm::lookAt(capturePos, capturePos + glm::vec3(-1, 0, 0), glm::vec3(0,-1, 0)),
-		glm::lookAt(capturePos, capturePos + glm::vec3( 0, 1, 0), glm::vec3(0, 0, 1)),
-		glm::lookAt(capturePos, capturePos + glm::vec3( 0,-1, 0), glm::vec3(0, 0,-1)),
-		glm::lookAt(capturePos, capturePos + glm::vec3( 0, 0, 1), glm::vec3(0,-1, 0)),
-		glm::lookAt(capturePos, capturePos + glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0)),
-	};
+	isRenderingCubemap = true;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
-	glViewport(0, 0, CUBEMAP_SIZE, CUBEMAP_SIZE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, cubemapId, 0);
+	glViewport(0, 0, PROBE_SIZE, PROBE_SIZE);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
+
+	// The sky behind everything
 	glDisable(GL_BLEND);
+	glDisable(GL_CULL_FACE);
+	if (!gs || !gs->volumetricSkyEnabled) skybox.DrawSkybox(captureView, captureProj);
+	else skybox.DrawSkyboxFromCubemap(proceduralSkyTextureId, captureView, captureProj);
 	glEnable(GL_CULL_FACE);
 
-	// Exclude the object itself so it doesn't render inside its own cubemap reflection!
+	// The scene without the object itself (no shadow re-render, no water)
 	scene.SetExcludeObject(obj);
-
-	for (int face = 0; face < 6; ++face) {
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		                       GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, cubemapId, 0);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Draw skybox face first so background is visible in reflections
-		if (!gs || !gs->volumetricSkyEnabled) {
-			glDisable(GL_CULL_FACE);
-			skybox.DrawSkybox(captureViews[face], captureProj);
-			glEnable(GL_CULL_FACE);
-		} else {
-			// Use the procedural sky cubemap as background
-			glDisable(GL_CULL_FACE);
-			skybox.DrawSkyboxFromCubemap(proceduralSkyTextureId, captureViews[face], captureProj);
-			glEnable(GL_CULL_FACE);
-		}
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		// Render scene — no override shader, no shadow re-render, no water
-		scene.RenderAll(
-			captureProj, captureViews[face], capturePos,
-			&mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
-			(float)glfwGetTime(), nullptr, nullptr,
-			(float)CUBEMAP_SIZE, (float)CUBEMAP_SIZE,
-			this, 0, 0, 0,
-			glm::vec4(0, 0, 0, 1), glm::mat4(1.0f), gs);
-
-		glDisable(GL_BLEND);
-	}
-
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	Frustum faceFrustum = Frustum::CreateFrustumFromMatrix(captureProj * captureView);
+	scene.RenderAll(
+		captureProj, captureView, capturePos,
+		&mainLight, pointLights, pointLightCount, spotLights, spotLightCount,
+		(float)glfwGetTime(), &faceFrustum, nullptr,
+		(float)PROBE_SIZE, (float)PROBE_SIZE,
+		this, 0, 0, 0,
+		glm::vec4(0, 0, 0, 1), glm::mat4(1.0f), gs);
+	glDisable(GL_BLEND);
 	scene.SetExcludeObject(nullptr);
 
-	// ---- Restore GL state ----
-	glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+	isRenderingCubemap = false;
+	glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)oldFBO);
 	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	isRenderingCubemap = false;
 }
 
 void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const GraphicsSettings* gs, float time)

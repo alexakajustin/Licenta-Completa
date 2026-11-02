@@ -700,7 +700,10 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
 		writeVelocity = (GLuint)drawFbo == velocityTarget && glGetFragDataLocation(shaderID, "velocityOut") == 1;
 	}
-	if (writeVelocity) glDrawBuffers(2, drawBuffers);
+	if (writeVelocity) {
+		glDrawBuffers(2, drawBuffers);
+		glDisablei(GL_BLEND, 1); // A motion vector is data, not a colour to blend
+	}
 
 	for (int lod = 0; lod < lodCount; lod++) {
 		if (gs && gs->debugLODColoring && lodColorLoc != -1) glUniform3fv(lodColorLoc, 1, glm::value_ptr(lodColors[lod]));
@@ -709,7 +712,10 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[lod].visibleSSBO);
 		GetLODMesh(lod)->RenderIndirect(lodLevels[lod].indirectBuffer, renderShader.HasTessellation());
 	}
-	if (writeVelocity) glDrawBuffers(1, drawBuffers);
+	if (writeVelocity) {
+		glDrawBuffers(1, drawBuffers);
+		if (glIsEnabledi(GL_BLEND, 0)) glEnablei(GL_BLEND, 1);
+	}
 
 	if (foliageLoc != -1 && doubleSided) glUniform1i(foliageLoc, 0);
 	if (doubleSided && cullWasEnabled) glEnable(GL_CULL_FACE);

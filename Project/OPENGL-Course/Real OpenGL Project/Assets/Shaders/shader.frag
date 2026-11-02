@@ -22,7 +22,11 @@ in vec3 LocalPos;
 in mat3 ObjectBasis;
 
 layout(location = 0) out vec4 colour;
-layout(location = 1) out vec4 velocityOut; ///< Motion vector (MotionVector)	
+layout(location = 1) out vec4 velocityOut; ///< Motion vector (MotionVector)
+// Reflection for the SSR pass (written when the draw enables attachments 2-4: reflectionDeferred)
+layout(location = 2) out vec4 reflNormalOut; ///< World normal, view depth (< 0: no reflection here)
+layout(location = 3) out vec4 reflWeightOut; ///< Reflection weight (tint x Fresnel), roughness
+layout(location = 4) out vec4 reflProbeOut;  ///< The probe's reflection here (fallback of the SSR)	
 in float vIsSelected;
 in float vFadeFactor;
 
@@ -133,7 +137,12 @@ uniform float shadowCascadeDepthRange[4]; ///< Depth span of each cascade's proj
 uniform mat4 viewMatrix; ///< View matrix to determine view-space camera depth.
 
 uniform Material material;
-uniform samplerCube skybox; ///< Reflection cubemap. Bind the skybox OR a scene cubemap per-object from C++.
+uniform samplerCube skybox; ///< Reflection cubemap: the object's reflection probe, or the sky
+uniform int probeParallax;      ///< 1: skybox is a probe captured at probePosition, with a proxy box
+uniform vec3 probePosition;
+uniform vec3 probeBoxMin;
+uniform vec3 probeBoxMax;
+uniform int reflectionDeferred; ///< 1: write the reflection to attachments 2-4 instead of adding it (SSR)
 // camera position
 uniform vec3 eyePosition; ///< Camera position coordinate.
 uniform int isFoliage; ///< 1 while drawing alpha-tested foliage cards (leaves, ferns): wrapped + translucent lighting.
@@ -912,22 +921,47 @@ void main()
 	// 3. Final output
 	vec3 finalColor = finalLight;
 
-	// Environment Map Reflections with smooth distance-based fade to prevent far-away parallax warping
+	// Reflections. The object's reflection probe (its cubemap, Renderer::UpdateReflectionProbes),
+	// looked up where the reflected ray meets the probe's proxy box (parallax correction: the floor
+	// reflects the walls where they are, not at infinity), blurred by roughness (the probe's mips).
+	// In the main view the reflection is not added here: the SSR pass (Rendering/Reflections.h)
+	// traces it on screen and falls back to this probe value (attachments 2-4).
+	reflNormalOut = vec4(0.0, 0.0, 0.0, -1.0);
+	reflWeightOut = vec4(0.0);
+	reflProbeOut = vec4(0.0);
 	if (material.reflectivity > 0.0) {
-		float distToCam = distance(eyePosition, FragPos);
-		float fadeFactor = 1.0 - smoothstep(50.0, 150.0, distToCam);
-		float activeReflectivity = material.reflectivity * fadeFactor;
-		
-		if (activeReflectivity > 0.001) {
-			vec3 viewDir = normalize(eyePosition - FragPos);
-			vec3 reflectDir = reflect(-viewDir, normalize(GetEffectiveNormal()));
-			vec3 reflectionColor = texture(skybox, reflectDir).rgb;
-			
-			// Ensure black/dark materials still show neutral reflections (min 30% intensity)
-			vec3 reflectionTint = max(baseColor, vec3(0.3));
-			
-			// Add the reflection on top of the lighting (tinted and modulated)
-			finalColor += reflectionColor * reflectionTint * activeReflectivity;
+		vec3 N = normalize(GetEffectiveNormal());
+		vec3 viewDir = normalize(eyePosition - FragPos);
+		float NoV = clamp(dot(N, viewDir), 0.0, 1.0);
+		// Reflection roughness from the specular exponent: half the Phong-equivalent GGX roughness
+		// (reflective materials were tuned as mirrors: shininess 32 stays a slightly glossy chrome)
+		float roughness = clamp(0.5 * sqrt(2.0 / (material.shininess + 2.0)), 0.01, 1.0);
+		// Fresnel (Schlick): the material's reflectivity head-on, rising toward grazing angles
+		// (less so when rough). Dark materials still reflect a neutral 30%.
+		float fresnel = pow(1.0 - NoV, 5.0) * (1.0 - roughness);
+		float reflectance = clamp(material.reflectivity + (1.0 - material.reflectivity) * fresnel, 0.0, 1.0);
+		vec3 reflectionWeight = max(baseColor, vec3(0.3)) * reflectance;
+
+		vec3 reflectDir = reflect(-viewDir, N);
+		vec3 lookup = reflectDir;
+		float probeFade = 1.0;
+		if (probeParallax == 1) {
+			vec3 safeDir = reflectDir + vec3(equal(reflectDir, vec3(0.0))) * 1e-5;
+			vec3 far = max((probeBoxMax - FragPos) / safeDir, (probeBoxMin - FragPos) / safeDir);
+			float dist = min(min(far.x, far.y), far.z);
+			lookup = FragPos + reflectDir * dist - probePosition;
+		} else {
+			// Without a proxy box the cubemap is "at infinity": fade it out where that shows
+			probeFade = 1.0 - smoothstep(50.0, 150.0, distance(eyePosition, FragPos));
+		}
+		vec3 probe = textureLod(skybox, lookup, roughness * 7.0).rgb * probeFade;
+
+		if (reflectionDeferred == 1) {
+			reflNormalOut = vec4(N, 1.0 / gl_FragCoord.w); // View depth of this fragment (clip w)
+			reflWeightOut = vec4(reflectionWeight, roughness);
+			reflProbeOut = vec4(probe, 1.0);
+		} else {
+			finalColor += probe * reflectionWeight;
 		}
 	}
 

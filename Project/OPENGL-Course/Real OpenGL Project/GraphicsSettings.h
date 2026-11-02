@@ -20,6 +20,11 @@ struct GraphicsSettings {
 	bool taaEnabled = true;         // Temporal anti-aliasing (Rendering/TemporalAA.h)
 	float taaSharpness = 0.5f;      // Contrast-adaptive sharpening of the TAA result (0-1)
 
+	// Reflections (Rendering/Reflections.h)
+	bool ssrEnabled = true;         // Screen-space reflections over the reflection probes
+	float ssrMaxDistance = 60.0f;   // Longest reflected ray (m)
+	int probeFacesPerFrame = 2;     // Reflection probe faces refreshed per frame (0 = captured once)
+
 	// Ambient occlusion (Rendering/AmbientOcclusion.h)
 	bool aoEnabled = true;
 	float aoRadius = 1.0f;          // World radius of the occlusion (m)

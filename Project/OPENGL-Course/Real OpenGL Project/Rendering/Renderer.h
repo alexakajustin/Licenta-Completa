@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
+#include <cstdint>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -163,12 +165,9 @@ public:
 	 * @param spotLightCount Active spot light count.
 	 * @param gs          Graphics settings.
 	 */
-	void RenderSceneCubemapPass(
-		class GameObject* obj, const glm::vec3& cameraPos, SceneManager& scene,
-		DirectionalLight& mainLight,
-		PointLight* pointLights, unsigned int pointLightCount,
-		SpotLight* spotLights, unsigned int spotLightCount,
-		const GraphicsSettings* gs);
+	// Reflection probe of a reflective object: where its cubemap was captured and the proxy box
+	// its reflections are parallax-corrected against (shader.frag). False: none yet.
+	bool GetReflectionProbe(const class GameObject* obj, glm::vec3& position, glm::vec3& boxMin, glm::vec3& boxMax) const;
 
 	/// Returns the scene environment cubemap rendered this frame.
 	GLuint GetSceneCubemapID() const { return sceneCubemapId; }
@@ -191,6 +190,25 @@ private:
 	Skybox skybox;
 
 	bool isRenderingCubemap = false;
+
+	// Reflection probes (Reflections.h): one HDR cubemap per reflective object, captured whole on
+	// first sight, then refreshed a few faces per frame round-robin
+	static constexpr int PROBE_SIZE = 256;
+	struct ReflectionProbe {
+		glm::vec3 position = glm::vec3(0.0f), boxMin = glm::vec3(0.0f), boxMax = glm::vec3(0.0f);
+		int facesCaptured = 0;
+		int dirtyFaces = 0;   // Bit per face still showing an older state of the scene
+		bool seen = false;
+	};
+	uint64_t probeSceneSignature = 0; // What the probes show: lights and object placements
+	std::unordered_map<const class GameObject*, ReflectionProbe> probes;
+	uint32_t probeCursor = 0;
+	void UpdateReflectionProbes(const glm::vec3& cameraPos, SceneManager& scene, DirectionalLight& mainLight,
+		PointLight* pointLights, unsigned int pointLightCount, SpotLight* spotLights, unsigned int spotLightCount,
+		const GraphicsSettings* gs);
+	void CaptureProbeFace(class GameObject* obj, const glm::vec3& capturePos, int face, SceneManager& scene,
+		DirectionalLight& mainLight, PointLight* pointLights, unsigned int pointLightCount,
+		SpotLight* spotLights, unsigned int spotLightCount, const GraphicsSettings* gs);
 
 	GLuint proceduralSkyTextureId = 0;
 	GLuint skyboxFBO = 0;

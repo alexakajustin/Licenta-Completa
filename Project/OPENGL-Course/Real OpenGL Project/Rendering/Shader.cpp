@@ -477,6 +477,8 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 		n_lower.find("foliage") != std::string::npos ||   // Set per draw (isFoliage, foliageRadius)
 		n_lower.find("lod") != std::string::npos ||       // LOD debug colouring, set per draw
 		n_lower.find("fog") != std::string::npos ||       // Analytic fog (SetAnalyticFog), reflection depth
+		n_lower.find("probe") != std::string::npos ||     // Reflection probe of the object, set per draw
+		n == "reflectionDeferred" ||                      // SSR: set per draw (SceneManager)
 		n == "model" || n == "projection" || n == "view" || n == "eyePosition" || n == "time" ||
 		n == "theTexture" || n == "normalMap" || n == "farPlane" ||
 		n == "useDiffuseTexture" || n == "useInstancing" || n == "useNormalMap" ||

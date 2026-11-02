@@ -189,6 +189,7 @@
     <ClCompile Include="Editor\TransformGizmo.cpp" />
     <ClCompile Include="Rendering\CloudShadows.cpp" />
     <ClCompile Include="Rendering\TemporalAA.cpp" />
+    <ClCompile Include="Rendering\Reflections.cpp" />
     <ClCompile Include="Rendering\AmbientOcclusion.cpp" />
     <ClCompile Include="Rendering\PostProcess.cpp" />
     <ClCompile Include="Procedural\BeautifulErosionNode.cpp" />
@@ -1047,6 +1048,7 @@
     <ClInclude Include="Editor\TransformGizmo.h" />
     <ClInclude Include="Rendering\CloudShadows.h" />
     <ClInclude Include="Rendering\TemporalAA.h" />
+    <ClInclude Include="Rendering\Reflections.h" />
     <ClInclude Include="Rendering\AmbientOcclusion.h" />
     <ClInclude Include="Rendering\PostProcess.h" />
     <ClInclude Include="Editor\EditorUI.h" />

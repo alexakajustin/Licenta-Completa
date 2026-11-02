@@ -20,6 +20,7 @@
 #include "Rendering/InstancedGroup.h"
 #include "Rendering/Renderer.h"
 #include "Scene/UndoActions.h"
+#include "Rendering/Reflections.h"
 #include "GraphicsSettings.h"
 #include "Scene/Planet.h"
 #include "Scene/Player.h"
@@ -618,6 +619,13 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 				}
 			}
 
+			// Reflection probe faces (90 degrees): only what the face sees
+			if (!isCulled && frustum && renderer && renderer->IsRenderingCubemap()) {
+				glm::vec3 fmin, fmax;
+				obj->GetWorldBounds(fmin, fmax);
+				if (!frustum->IsBoxVisible(fmin, fmax)) isCulled = true;
+			}
+
 			if (debugShowCulling) debugCullingList.push_back({ obj, isCulled });
 			
 			// If culled, skip the normal rendering paths.
@@ -744,6 +752,7 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 					static struct CachedLocs {
 						GLuint shaderID = 0;
 						GLint baseColor, useNormalMap, useDiffuseTexture, theTexture, normalMap;
+						GLint probeParallax, probePosition, probeBoxMin, probeBoxMax, reflectionDeferred;
 					} cachedRenderLocs;
 					
 					GLuint sid = targetShader->GetShaderID();
@@ -754,6 +763,11 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cachedRenderLocs.useDiffuseTexture = glGetUniformLocation(sid, "useDiffuseTexture");
 						cachedRenderLocs.theTexture = glGetUniformLocation(sid, "theTexture");
 						cachedRenderLocs.normalMap = glGetUniformLocation(sid, "normalMap");
+						cachedRenderLocs.probeParallax = glGetUniformLocation(sid, "probeParallax");
+						cachedRenderLocs.probePosition = glGetUniformLocation(sid, "probePosition");
+						cachedRenderLocs.probeBoxMin = glGetUniformLocation(sid, "probeBoxMin");
+						cachedRenderLocs.probeBoxMax = glGetUniformLocation(sid, "probeBoxMax");
+						cachedRenderLocs.reflectionDeferred = glGetUniformLocation(sid, "reflectionDeferred");
 					}
 
 					// Bind the object's custom local cubemap if it exists
@@ -764,6 +778,34 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 							glActiveTexture(GL_TEXTURE2);
 							glBindTexture(GL_TEXTURE_CUBE_MAP, customCubemap);
 							boundCustomCubemap = true;
+						}
+					}
+
+					// The object's reflection probe: parallax-corrected lookups against its proxy box
+					bool deferReflection = false;
+					if (cachedRenderLocs.probeParallax != -1) {
+						glm::vec3 probePos, probeMin, probeMax;
+						bool parallax = boundCustomCubemap && renderer->GetReflectionProbe(obj, probePos, probeMin, probeMax);
+						glUniform1i(cachedRenderLocs.probeParallax, parallax ? 1 : 0);
+						if (parallax) {
+							glUniform3fv(cachedRenderLocs.probePosition, 1, glm::value_ptr(probePos));
+							glUniform3fv(cachedRenderLocs.probeBoxMin, 1, glm::value_ptr(probeMin));
+							glUniform3fv(cachedRenderLocs.probeBoxMax, 1, glm::value_ptr(probeMax));
+						}
+						// Main view with SSR: the reflection goes to attachments 2-4 for the SSR pass
+						Material* reflMat = obj->GetMaterial();
+						if (reflMat && reflMat->GetReflectivity() > 0.0f && Reflections::GetTarget() != 0 && cachedRenderLocs.reflectionDeferred != -1) {
+							GLint drawFbo = 0;
+							glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+							deferReflection = (GLuint)drawFbo == Reflections::GetTarget();
+						}
+						if (cachedRenderLocs.reflectionDeferred != -1) glUniform1i(cachedRenderLocs.reflectionDeferred, deferReflection ? 1 : 0);
+						if (deferReflection) {
+							static const GLenum buffers[5] = { GL_COLOR_ATTACHMENT0, GL_NONE, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
+							glDrawBuffers(5, buffers);
+							// The data targets are written as is: the transparency blending of the
+							// colour would mix them (their alpha is not an opacity)
+							for (GLuint i = 2; i < 5; i++) glDisablei(GL_BLEND, i);
 						}
 					}
 
@@ -778,6 +820,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 						cameraPos, graphicsSettings, sid, targetShader->HasTessellation(),
 						sceneDepthTexture == 0 ? 0.5f : 1.0f // Secondary views (reflection) switch sooner
 					);
+
+					if (deferReflection) {
+						glDrawBuffer(GL_COLOR_ATTACHMENT0);
+						glUniform1i(cachedRenderLocs.reflectionDeferred, 0);
+						if (glIsEnabledi(GL_BLEND, 0)) for (GLuint i = 2; i < 5; i++) glEnablei(GL_BLEND, i);
+					}
 
 					// Restore default/procedural skybox cube map
 					if (boundCustomCubemap) {

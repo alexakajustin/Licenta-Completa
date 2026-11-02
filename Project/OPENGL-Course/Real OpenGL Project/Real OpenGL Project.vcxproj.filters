@@ -153,6 +153,9 @@
     <ClCompile Include="Rendering\TemporalAA.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Reflections.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\PostProcess.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -2291,6 +2294,9 @@
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\TemporalAA.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Reflections.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\PostProcess.h">

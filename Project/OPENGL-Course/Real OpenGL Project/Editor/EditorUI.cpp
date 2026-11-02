@@ -2169,6 +2169,26 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			}
 		}
 
+		if (ImGui::CollapsingHeader("Reflections", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::Checkbox("Screen-Space Reflections", &g.ssrEnabled);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Reflective materials trace their reflection on screen (one glossy ray per pixel,\n"
+					"smoothed by TAA) and fall back to their reflection probe off screen.");
+			if (!g.ssrEnabled) ImGui::BeginDisabled();
+			ImGui::SliderFloat("Max Ray Distance (m)", &g.ssrMaxDistance, 5.0f, 300.0f, "%.0f");
+			if (!g.ssrEnabled) ImGui::EndDisabled();
+			ImGui::SliderInt("Probe Faces / Frame", &g.probeFacesPerFrame, 0, 6);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Cubemap faces of the reflection probes refreshed each frame (round-robin).\n"
+					"0: captured once. Each face is one small view of the scene.");
+			if (ImGui::Button("Reset Defaults##Reflections", ImVec2(-1, 0))) {
+				GraphicsSettings d;
+				g.ssrEnabled = d.ssrEnabled; g.ssrMaxDistance = d.ssrMaxDistance; g.probeFacesPerFrame = d.probeFacesPerFrame;
+			}
+		}
+
 		if (ImGui::CollapsingHeader("Ambient Occlusion", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;

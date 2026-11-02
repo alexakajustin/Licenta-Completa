@@ -29,6 +29,8 @@ public:
 
 	// Scene load, camera cut: the eye adapts at once to the next frame
 	void Invalidate() { adaptValid = false; }
+	// The HDR copy of the viewport made when there was no TAA image (0: none)
+	GLuint GetScratch() const { return scratch; }
 
 private:
 	Shader luminanceShader, adaptShader, tonemapShader;
