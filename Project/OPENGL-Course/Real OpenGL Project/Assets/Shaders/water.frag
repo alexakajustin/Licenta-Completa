@@ -373,6 +373,15 @@ float FogOpticalDepth(vec3 start, vec3 dir, float len)
 }
 
 // A reflection after crossing len metres of fog from the water surface along dir
+// How bright the sky is for this scene's light: the sky shaders draw it at full strength, the
+// rest of the scene is lit by the sun's ambient + diffuse. Under a dimmed sun (dusk, a moody
+// scene) the mirrored sky dims with everything else instead of glowing; at or above the default
+// light (0.4 + 0.6) it stays as drawn.
+float SkyReflectionLevel()
+{
+    return clamp(directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity, 0.0, 1.0);
+}
+
 vec3 FogReflection(vec3 reflected, vec3 start, vec3 dir, float len)
 {
     if (fogEnabled == 0 || len <= 0.0) return reflected;
@@ -428,6 +437,7 @@ void main()
         float fogLength = skyFog;
         if (fogReflectionDepthValid == 1) {
             float mirroredDepth = texture(fogReflectionDepth, reflUV).r;
+            if (mirroredDepth >= 1.0) planar *= SkyReflectionLevel(); // The sky part
             if (mirroredDepth < 1.0) {
                 // The mirrored camera sees the object at this view depth; the same pixel turns view
                 // depth into distance the same way, and its first 'dist' metres end at the water
@@ -438,7 +448,7 @@ void main()
         reflection = FogReflection(planar, FragPos, reflect(-viewDir, vec3(0.0, 1.0, 0.0)), fogLength);
     } else {
         vec3 skyDir = reflect(-viewDir, N);
-        reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb, FragPos, skyDir, skyFog);
+        reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb * SkyReflectionLevel(), FragPos, skyDir, skyFog);
     }
 
     // Uniform slow drift: the same offset everywhere, so the foam pattern is never sheared

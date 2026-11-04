@@ -377,6 +377,15 @@ float FogOpticalDepth(vec3 start, vec3 dir, float len)
 }
 
 // A reflection after crossing len metres of fog from the water surface along dir
+// How bright the sky is for this scene's light: the sky shaders draw it at full strength, the
+// rest of the scene is lit by the sun's ambient + diffuse. Under a dimmed sun (dusk, a moody
+// scene) the mirrored sky dims with everything else instead of glowing; at or above the default
+// light (0.4 + 0.6) it stays as drawn.
+float SkyReflectionLevel()
+{
+    return clamp(directionalLight.base.ambientIntensity + directionalLight.base.diffuseIntensity, 0.0, 1.0);
+}
+
 vec3 FogReflection(vec3 reflected, vec3 start, vec3 dir, float len)
 {
     if (fogEnabled == 0 || len <= 0.0) return reflected;
@@ -463,7 +472,7 @@ void main()
     vec3 viewDir = normalize(eyePosition - FragPos);
     vec3 skyDir = reflect(-viewDir, N);
     float skyFog = max(fogRange - dist, 0.0);
-    vec3 reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb, FragPos, skyDir, skyFog);
+    vec3 reflection = FogReflection(textureLod(skybox, skyDir, 1.5 + r.roughness * 6.0).rgb * SkyReflectionLevel(), FragPos, skyDir, skyFog);
 
     // Where the river runs at (or a little above) the lake's height the planar reflection rendered
     // for the lake holds for it too - a few metres of height shift the mirrored scene by less than
@@ -477,6 +486,7 @@ void main()
             float fogLength = skyFog;
             if (fogReflectionDepthValid == 1) {
                 float mirroredDepth = textureLod(fogReflectionDepth, reflUV, 0.0).r;
+                if (mirroredDepth >= 1.0) planar *= SkyReflectionLevel(); // The sky part
                 if (mirroredDepth < 1.0) {
                     float rayScale = dist / max(LinearDepth(gl_FragCoord.z), 1e-3);
                     fogLength = min(max(LinearDepth(mirroredDepth) * rayScale - dist, 0.0), skyFog);
