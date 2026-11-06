@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.04360317438840866,
-            0.026176949962973595,
-            0.9987059235572815
+            0.3335878849029541,
+            -0.22069743275642395,
+            0.9165216088294983
         ],
-        "pitch": 1.5,
+        "pitch": -12.75,
         "position": [
-            50.03046417236328,
-            269.9141845703125,
-            -403.8451843261719
+            20.679508209228516,
+            288.2933349609375,
+            -456.9672546386719
         ],
-        "yaw": -2072.5
+        "yaw": -2090.0
     },
     "instancedGroups": [
         {
@@ -120,7 +120,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 18200,
+        "nextId": 18843,
         "tabs": [
             {
                 "graph": {
@@ -146,7 +146,7 @@
                             "start": 8378
                         }
                     ],
-                    "nextId": 18200,
+                    "nextId": 18843,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -486,7 +486,7 @@
                             "start": 8511
                         }
                     ],
-                    "nextId": 18200,
+                    "nextId": 18843,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1424,7 +1424,7 @@
                             "start": 8841
                         }
                     ],
-                    "nextId": 18200,
+                    "nextId": 18843,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -2836,7 +2836,7 @@
                             "start": 9067
                         }
                     ],
-                    "nextId": 18200,
+                    "nextId": 18843,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3674,7 +3674,7 @@
                             "start": 9142
                         }
                     ],
-                    "nextId": 18200,
+                    "nextId": 18843,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -4193,9 +4193,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    63.9735107421875,
-                    279.5292053222656,
-                    -447.697509765625
+                    50.23517990112305,
+                    269.765625,
+                    -389.5962219238281
                 ],
                 "rotation": [
                     -0.0,
@@ -5753,7 +5753,9 @@
                 "material.tiling": [
                     1.0,
                     1.0
-                ]
+                ],
+                "shader_frag": "Assets/Shaders/shader.frag",
+                "shader_vert": "Assets/Shaders/shader.vert"
             },
             "modelPath": "Assets\\Models\\TTT\\source\\tung tung tung sahur.fbx",
             "name": "tung tung tung sahur 32",
@@ -5781,7 +5783,7 @@
             "transform": {
                 "position": [
                     53.090091705322266,
-                    267.23956298828125,
+                    268.13958740234375,
                     -382.0152282714844
                 ],
                 "rotation": [
