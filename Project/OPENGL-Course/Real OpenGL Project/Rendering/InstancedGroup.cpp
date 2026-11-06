@@ -150,6 +150,7 @@ void InstancedGroup::Setup(Mesh* mesh,
 	glm::vec3 extents = (maxB - minB) * 0.5f;
 	meshBoundRadius = glm::length(extents);
 	meshBoundsCenter = (minB + maxB) * 0.5f; // Center of AABB relative to mesh origin
+	meshBoundsExtents = glm::max(extents, glm::vec3(1e-3f));
 
 	// Culling bounds: the mesh's own, or those of the whole tree (kept across re-uploads)
 	if (!impostor) {
@@ -671,6 +672,14 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	if (foliageLoc != -1) glUniform1i(foliageLoc, doubleSided ? 1 : 0); // Thin translucent leaves (shader.frag)
 	GLint foliageRadiusLoc = glGetUniformLocation(shaderID, "foliageRadius");
 	if (foliageRadiusLoc != -1) glUniform1f(foliageRadiusLoc, doubleSided ? meshBoundRadius : 0.0f); // Crown occlusion scale
+	// Every instance its own shade (shader.frag); the program draws only instanced groups
+	GLint variationLoc = glGetUniformLocation(shaderID, "instanceVariation");
+	if (variationLoc != -1) glUniform1i(variationLoc, 1);
+	// The crown's box in mesh space (shader.frag: crown normals, depth inside the crown)
+	GLint foliageCentreLoc = glGetUniformLocation(shaderID, "foliageCentre");
+	if (foliageCentreLoc != -1) glUniform3fv(foliageCentreLoc, 1, glm::value_ptr(meshBoundsCenter));
+	GLint foliageExtentLoc = glGetUniformLocation(shaderID, "foliageExtent");
+	if (foliageExtentLoc != -1) glUniform3fv(foliageExtentLoc, 1, glm::value_ptr(meshBoundsExtents));
 
 	// Wind: the plant's mode, base and height (wind.glsl); 'time' is set with the scene state
 	{

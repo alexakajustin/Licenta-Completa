@@ -222,6 +222,7 @@ private:
 	uint32_t totalCount = 0;
 	uint32_t lastVisibleCount = 0;
 	float meshBoundRadius = 1.0f;
+	glm::vec3 meshBoundsExtents = glm::vec3(1.0f); // Half size of the mesh's box (a leaves mesh: its crown)
 	// Picking: the shared mesh's triangles (mesh space), read back on the first raycast
 	std::vector<glm::vec3> pickTriangles;
 	Mesh* pickTrianglesMesh = nullptr;

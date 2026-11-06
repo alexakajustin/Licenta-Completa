@@ -152,6 +152,9 @@ uniform vec3 eyePosition; ///< Camera position coordinate.
 uniform int depthPrepass; ///< 1: depth pre-pass of alpha-tested foliage (InstancedGroup::DrawLODs): coverage only, no lighting
 uniform int isFoliage; ///< 1 while drawing alpha-tested foliage cards (leaves, ferns): wrapped + translucent lighting.
 uniform float foliageRadius; ///< Bounding radius of the foliage mesh (instanced draws), 0 = unknown: no crown occlusion.
+uniform vec3 foliageCentre;  ///< Centre of the foliage mesh's box (mesh space): the crown's centre
+uniform int instanceVariation; ///< 1 for instanced groups: every instance its own shade (InstanceShade)
+uniform vec3 foliageExtent;  ///< Half size of that box: the crown's shape
 
 // Selection highlight (0.0 = not selected, > 0 = selected)
 uniform float selectionTint; ///< Selection outline tint multiplier.
@@ -495,6 +498,60 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 	return shadow;
 }
 
+// How much stands between this point and the sun (m), from the sun's shadow map: the depth the
+// sunlight travels through a crown to reach a leaf (0 on its sunlit shell). Four taps.
+float SunOccluderThickness()
+{
+	if (shadowCascadeCount <= 0) return 0.0;
+	float depth = abs((viewMatrix * vec4(FragPos, 1.0)).z);
+	int layer = shadowCascadeCount - 1;
+	for (int i = 0; i < shadowCascadeCount; i++) if (depth < cascadeSplits[i]) { layer = i; break; }
+	vec4 ls = directionalLightTransform[layer] * vec4(FragPos, 1.0);
+	vec3 p = ls.xyz / ls.w * 0.5 + 0.5;
+	if (any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 0.0;
+	vec2 texel = 1.0 / vec2(textureSize(directionalShadowMap, 0).xy);
+	float thickness = 0.0;
+	for (int k = 0; k < 4; k++) {
+		vec2 o = (vec2(float(k & 1), float(k >> 1)) - 0.5) * texel * 1.5;
+		float occluder = texture(directionalShadowMap, vec3(p.xy + o, float(layer))).r;
+		thickness += max(p.z - occluder, 0.0) * shadowCascadeDepthRange[layer];
+	}
+	return thickness * 0.25;
+}
+
+// Every scattered instance its own shade: a forest of clones reads as fake at a glance. The
+// instance is told apart by its basis (each has its own random rotation and scale: no extra data
+// per instance). Leaves: brightness and saturation per tree, and patches tens of metres across
+// where the foliage is drier (olive, yellowed) or lusher - the way stands of trees differ in age,
+// soil and water. Bark, rocks, logs: brightness and a warmer or cooler cast.
+float ShadeHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float ShadeNoise(vec2 p)
+{
+	vec2 i = floor(p), f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(ShadeHash(vec3(i, 0.0)), ShadeHash(vec3(i + vec2(1, 0), 0.0)), f.x),
+	           mix(ShadeHash(vec3(i + vec2(0, 1), 0.0)), ShadeHash(vec3(i + vec2(1, 1), 0.0)), f.x), f.y);
+}
+vec3 InstanceShade(vec3 colour)
+{
+	vec3 key = ObjectBasis[0] * 3.1 + ObjectBasis[2] * 1.7 + ObjectBasis[1] * 0.9;
+	float a = ShadeHash(key), b = ShadeHash(key + 17.3), c = ShadeHash(key + 41.9);
+	float lum = dot(colour, vec3(0.2126, 0.7152, 0.0722));
+	if (isFoliage == 1) {
+		float patches = ShadeNoise(FragPos.xz / 45.0) * 0.7 + ShadeNoise(FragPos.xz / 13.0 + 5.3) * 0.3;
+		float dry = clamp(smoothstep(0.45, 0.85, patches) * 0.8 + (a - 0.5) * 0.5, 0.0, 1.0);
+		vec3 dried = lum * vec3(1.25, 1.05, 0.55);                 // Olive / yellowed
+		colour = mix(colour, dried, dry * 0.55);
+		float saturation = 0.8 + 0.4 * b;
+		colour = mix(vec3(dot(colour, vec3(0.2126, 0.7152, 0.0722))), colour, saturation);
+		colour *= 0.82 + 0.36 * c;
+	} else {
+		colour *= 0.86 + 0.28 * a;
+		colour *= mix(vec3(1.04, 1.0, 0.95), vec3(0.96, 1.0, 1.05), b); // Warmer or cooler
+	}
+	return colour;
+}
+
 float CalcOmniShadowFactor(PointLight light, int shadowIndex, float currentDepth)
 {
 	// get fragment to light ( depth ) POSITION
@@ -566,36 +623,50 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 
 
 	if (isFoliage == 1)
 	{
-		// Leaves are thin and their card normals are noisy, so Lambert alone turns every crown
-		// seen against the light into a black silhouette. Wrapped diffuse keeps the shaded side
-		// lit, and light transmitted through the leaves gives the back-lit glow, but only close
-		// to the sun's direction (a uniform glow turned whole forests into flat lime blobs).
+		// Leaves: lit as the volume of the crown, light passing through it.
+		//  - Crown normals: each leaf card's own normal is noise at a distance (every crown a
+		//    speckle of light and dark cards); the leaves of a crown face out from its centre, so
+		//    the crown is shaded like the soft volume it reads as (the card normal keeps a share).
+		//  - Depth in the crown: leaves deep inside see little sky, those on the shell and on top
+		//    see it all (crown's box in mesh space, foliageCentre / foliageExtent).
+		//  - Translucency: sunlight passes through a few layers of leaves, losing itself with the
+		//    depth of crown it crosses (the shadow map tells how much stands between leaf and sun),
+		//    scattered mostly forward: a crown against the sun glows at its rim, dark inside.
 		vec3 L = normalize(-direction);
 		vec3 V = normalize(eyePosition - FragPos);
-
-		// Crown self-occlusion. Beyond the shadow distance nothing darkens the inner leaves,
-		// so approximate it from the mesh-space position: leaves near the trunk axis and low in
-		// the crown sit inside the canopy; the outer shell and the top are exposed.
+		vec3 N = effectiveNormal;
 		float occlusion = 1.0;
+		float crownDepth = 0.0; // 0 on the crown's shell, 1 at its centre
 		if (foliageRadius > 0.0) {
-			float radial = length(LocalPos.xz) / (foliageRadius * 0.45);
-			float height = LocalPos.y / (foliageRadius * 1.6);
-			float exposure = max(smoothstep(0.1, 0.75, radial), smoothstep(0.7, 0.95, height));
-			occlusion = mix(0.35, 1.0, exposure) * mix(0.7, 1.0, smoothstep(0.0, 0.6, height));
+			vec3 local = (LocalPos - foliageCentre) / max(foliageExtent, vec3(1e-3));
+			float r = length(local);
+			crownDepth = 1.0 - smoothstep(0.35, 1.0, r);
+			vec3 crownNormal = normalize(ObjectBasis * (local / max(foliageExtent, vec3(1e-3))));
+			N = normalize(mix(effectiveNormal, crownNormal, 0.65));
+			// Sky light reaching the leaf: less deep inside, less on the underside
+			occlusion = mix(0.3, 1.0, 1.0 - crownDepth) * mix(0.6, 1.0, crownNormal.y * 0.5 + 0.5);
 		}
 		// Slow brightness variation across the canopy so a crown is not one flat colour
 		vec3 q = FragPos * 0.35;
-		occlusion *= 0.85 + 0.15 * sin(q.x + 1.7 * sin(q.z)) * sin(q.z * 1.3 + q.y * 0.7);
+		occlusion *= 0.88 + 0.12 * sin(q.x + 1.7 * sin(q.z)) * sin(q.z * 1.3 + q.y * 0.7);
 
-		float wrapped = max((dot(effectiveNormal, L) + 0.5) / 1.5, 0.0);
-		float backLit = pow(max(dot(V, -L), 0.0), 10.0);
-		float transmission = (0.06 * max(-dot(effectiveNormal, L), 0.0) + 0.5 * backLit) * occlusion;
-		vec3 transmitColor = baseColor * vec3(0.8, 1.6, 0.6); // Chlorophyll passes mostly green
-		vec3 lightIn = light.colour * light.diffuseIntensity * (1.0 - shadowFactor * 0.8);
-		vec3 skyAmbient = ambientColour * vec3(0.85, 1.0, 1.15); // Fill from the sky dome is cooler than the sun
-		diffuseAmbient = baseColor * (skyAmbient * mix(0.6, 1.0, occlusion) + lightIn * wrapped * occlusion)
-		               + transmitColor * lightIn * transmission;
-		finalSpecular *= 0.3; // Matte leaves: no plastic highlights
+		vec3 sun = light.colour * light.diffuseIntensity;
+		// Front: wrapped diffuse on the crown normal, in the shadows as the rest of the scene
+		float wrapped = max((dot(N, L) + 0.4) / 1.4, 0.0);
+		vec3 front = sun * wrapped * (1.0 - shadowFactor) * mix(0.75, 1.0, 1.0 - crownDepth);
+		// Through: Beer-Lambert over the crown crossed (about 1.5 m of leaves halves it), a
+		// diffuse share plus a forward lobe toward the sun; clouds dim it too
+		float crossed = SunOccluderThickness();
+		float through = exp(-crossed / 1.5);
+		float VdotL = max(dot(V, -L), 0.0);
+		float phase = 0.25 + 1.6 * pow(VdotL, 6.0);
+		vec3 transmitColor = baseColor * vec3(0.9, 1.5, 0.55); // Chlorophyll passes mostly green and yellow
+		vec3 transmitted = transmitColor * sun * through * phase * CloudShadow(FragPos) * 0.55;
+
+		vec3 skyAmbient = ambientColour * vec3(0.9, 1.0, 1.1);
+		diffuseAmbient = baseColor * (skyAmbient * occlusion + front) + transmitted;
+		// The waxy cuticle: a soft sheen, dulled inside the crown
+		finalSpecular *= 0.35 * (1.0 - crownDepth * 0.8);
 	}
 
 	return diffuseAmbient + finalSpecular;
@@ -913,6 +984,7 @@ void main()
 		
 		baseColor = material.baseColor.rgb * texColor.rgb;
 	}
+	if (instanceVariation == 1) baseColor = InstanceShade(baseColor);
 
 	// Depth pre-pass of alpha-tested foliage: only which pixels it covers (the fades and the alpha
 	// test above), so the lit pass that follows shades each pixel once instead of every layer
