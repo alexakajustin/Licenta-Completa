@@ -494,6 +494,7 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 		n_lower.find("layer") != std::string::npos ||
 		n_lower == "depthprepass" || // Foliage depth pre-pass (InstancedGroup::DrawLODs)
 		n_lower == "instancevariation" || // Per-instance shades (InstancedGroup::DrawLODs)
+		n_lower.find("layermask") != std::string::npos || // Layer masks (GameObject::SetLayerMask)
 		n_lower.find("light") != std::string::npos ||
 		n_lower.find("shadow") != std::string::npos ||
 		n_lower.find("transform") != std::string::npos ||

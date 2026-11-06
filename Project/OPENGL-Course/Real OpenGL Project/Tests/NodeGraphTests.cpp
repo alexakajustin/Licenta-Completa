@@ -207,6 +207,95 @@ TEST_CASE("Node graph: links and values")
 	}
 }
 
+TEST_CASE("Node graph: proximity filter")
+{
+	// Dense points kept by their distance to a few other points
+	Fixture f;
+	GraphNode* ground = f.Ground();
+	GraphNode* near = f.Add("scatter");
+	near->SetParamValue("count", 4);
+	GraphNode* dense = f.Add("scatter");
+	dense->SetParamValue("count", 4000);
+	f.Link(ground, "mesh", near, "surface");
+	f.Link(ground, "mesh", dense, "surface");
+	GraphNode* close = f.Add("proximity_filter");
+	GraphNode* away = f.Add("proximity_filter");
+	for (GraphNode* n : { close, away }) {
+		CHECK(f.Link(dense, "points", n, "points"));
+		CHECK(f.Link(near, "points", n, "near"));
+		n->SetParamValue("inner", 1.0);
+		n->SetParamValue("radius", 3.0);
+		n->SetParamValue("ignoreBelow", 0.0);
+	}
+	away->SetParamValue("mode", 1);
+	f.Run();
+
+	const TransformList& sources = near->outputs[0].value.Points();
+	auto Nearest = [&](const TransformData& p) {
+		float best = 1e9f;
+		for (const auto& s : sources) best = std::min(best, glm::length(glm::vec2(p.position.x - s.position.x, p.position.z - s.position.z)));
+		return best;
+	};
+	const TransformList& kept = close->outputs[0].value.Points();
+	const TransformList& dropped = close->outputs[1].value.Points();
+	REQUIRE(sources.size() == 4);
+	CHECK(kept.size() + dropped.size() == 4000);
+	CHECK(!kept.empty());
+	bool keptNear = true, innerKept = true;
+	for (const auto& p : kept) keptNear = keptNear && Nearest(p) <= 3.0f + 1e-3f;
+	for (const auto& p : dropped) innerKept = innerKept && Nearest(p) > 1.0f - 1e-3f;
+	CHECK(keptNear);   // Nothing beyond the radius
+	CHECK(innerKept);  // Everything within Inner kept
+
+	const TransformList& open = away->outputs[0].value.Points();
+	bool farOnly = true;
+	for (const auto& p : open) farOnly = farOnly && Nearest(p) >= 1.0f - 1e-3f;
+	CHECK(farOnly);
+	CHECK(open.size() > kept.size()); // Most of the ground is far from 4 points
+
+	// The same points pass on every run
+	size_t first = kept.size();
+	f.Run();
+	CHECK(close->outputs[0].value.Points().size() == first);
+}
+
+TEST_CASE("Node graph: terrain layer mask")
+{
+	// A layer of the ground shown around a few points, nowhere else
+	Fixture f;
+	GraphNode* ground = f.Ground();
+	GraphNode* near = f.Add("scatter");
+	near->SetParamValue("count", 3);
+	f.Link(ground, "mesh", near, "surface");
+	GraphNode* mask = f.Add("terrain_layer_mask");
+	CHECK(f.Link(near, "points", mask, "near"));
+	mask->SetParamObjects("target", { "TestGround" });
+	mask->SetParamValue("layer", 2);
+	mask->SetParamValue("inner", 1.0);
+	mask->SetParamValue("radius", 3.0);
+	mask->SetParamValue("breakup", 0.0);
+	mask->SetParamValue("resolution", 128);
+	f.Run();
+
+	GameObject* g = f.scene.FindObject("TestGround");
+	REQUIRE(g);
+	CHECK(!g->HasLayerMask(0));
+	REQUIRE(g->HasLayerMask(1));
+	const TransformList& sources = near->outputs[0].value.Points();
+	REQUIRE(sources.size() == 3);
+	const glm::vec3 s = sources[0].position;
+	CHECK(g->SampleLayerMask(1, s.x, s.z) > 0.95f);          // On an object: full
+	// A spot far from all three: nothing
+	float bestDist = 0.0f; glm::vec2 far(0.0f);
+	for (float x = -9.0f; x <= 9.0f; x += 1.0f) for (float z = -9.0f; z <= 9.0f; z += 1.0f) {
+		float d = 1e9f;
+		for (const auto& p : sources) d = std::min(d, glm::length(glm::vec2(x - p.position.x, z - p.position.z)));
+		if (d > bestDist) { bestDist = d; far = glm::vec2(x, z); }
+	}
+	REQUIRE(bestDist > 3.5f);
+	CHECK(g->SampleLayerMask(1, far.x, far.y) < 0.05f);
+}
+
 TEST_CASE("Node graph: saving and loading")
 {
 	Fixture f;

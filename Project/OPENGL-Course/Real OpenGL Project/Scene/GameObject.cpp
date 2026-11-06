@@ -1,4 +1,5 @@
 #include "Scene/GameObject.h"
+#include <algorithm>
 #include "Rendering/LODPolicy.h"
 #include "Scene/BoxCollider.h"
 #include "Scene/CapsuleCollider.h"
@@ -100,8 +101,61 @@ GameObject* GameObject::Clone(const std::string& newName)
 	return clone;
 }
 
+// ---- Texture layer masks (Terrain Layer Mask node) ----
+void GameObject::SetLayerMask(int layer, const std::vector<float>& values, int resolution, const glm::vec3& boundsMin, float boundsSize)
+{
+	if (layer < 0 || layer >= MAX_TEXTURE_LAYERS || resolution <= 1 || (int)values.size() != resolution * resolution) return;
+	glm::vec4 bounds(boundsMin.x, boundsMin.z, boundsSize, (float)resolution);
+	// All the layers' masks share one grid: another grid replaces the others
+	if (resolution != layerMaskResolution || bounds != layerMaskBounds) layerMasks.clear();
+	layerMaskResolution = resolution;
+	layerMaskBounds = bounds;
+	if ((int)layerMasks.size() < MAX_TEXTURE_LAYERS) layerMasks.resize(MAX_TEXTURE_LAYERS);
+	layerMasks[layer] = values;
+	layerMaskDirty = true;
+}
+
+void GameObject::ClearLayerMasks()
+{
+	layerMasks.clear();
+	layerMaskResolution = 0;
+	layerMaskDirty = true;
+}
+
+float GameObject::SampleLayerMask(int layer, float x, float z) const
+{
+	if (!HasLayerMask(layer)) return 1.0f;
+	int res = layerMaskResolution;
+	float u = (x - layerMaskBounds.x) / layerMaskBounds.z * (float)(res - 1);
+	float v = (z - layerMaskBounds.y) / layerMaskBounds.z * (float)(res - 1);
+	int i = std::clamp((int)std::round(u), 0, res - 1), k = std::clamp((int)std::round(v), 0, res - 1);
+	return layerMasks[layer][(size_t)k * res + i];
+}
+
+// One uint per texel: 6 bits per layer (layer i in bits 6i..6i+5)
+void GameObject::UploadLayerMasks()
+{
+	layerMaskDirty = false;
+	if (layerMaskResolution <= 1) return;
+	size_t texels = (size_t)layerMaskResolution * layerMaskResolution;
+	std::vector<uint32_t> packed(texels, 0u);
+	for (int l = 0; l < (int)layerMasks.size(); l++) {
+		if (layerMasks[l].empty()) continue;
+		for (size_t t = 0; t < texels; t++) {
+			uint32_t q = (uint32_t)std::lround(std::clamp(layerMasks[l][t], 0.0f, 1.0f) * 63.0f);
+			packed[t] |= q << (6 * l);
+		}
+	}
+	if (!layerMaskSSBO) glGenBuffers(1, &layerMaskSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, layerMaskSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, packed.size() * sizeof(uint32_t), packed.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
 GameObject::~GameObject()
 {
+	if (layerMaskSSBO) glDeleteBuffers(1, &layerMaskSSBO);
+	layerMaskSSBO = 0;
 	if (parent) {
 		parent->RemoveChild(this);
 	}
@@ -435,6 +489,20 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 				if (textureLayers[li].texture) count = li + 1; else break;
 			}
 			glUniform1i(uLayerCount, count);
+
+			// The layers' masks (Terrain Layer Mask): shader storage 11, which layers have one
+			{
+				if (layerMaskDirty) UploadLayerMasks();
+				int bits = 0;
+				for (int l = 0; l < count && l < (int)layerMasks.size(); l++) if (!layerMasks[l].empty()) bits |= 1 << l;
+				if (!layerMaskSSBO) bits = 0;
+				GLint bitsLoc = glGetUniformLocation(shaderID, "layerMaskBits");
+				if (bitsLoc != -1) glUniform1i(bitsLoc, bits);
+				if (bits != 0) {
+					glUniform4fv(glGetUniformLocation(shaderID, "layerMaskInfo"), 1, glm::value_ptr(layerMaskBounds));
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, layerMaskSSBO);
+				}
+			}
 
 			// Texture unit scheme: diffuse, normal, displacement per layer (shared with InstancedGroup)
 			const int* diffuseUnits = LAYER_DIFFUSE_UNITS;

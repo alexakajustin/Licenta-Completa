@@ -615,6 +615,8 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	// to stop at 4 while telling the shader there were more), on the same conflict-free units
 	// as GameObject — the old 18+i displacement units collided with the shadow colour maps.
 	int layerCount = std::min((int)textureLayers.size(), MAX_TEXTURE_LAYERS);
+	GLint layerMaskLoc = glGetUniformLocation(shaderID, "layerMaskBits");
+	if (layerMaskLoc != -1) glUniform1i(layerMaskLoc, 0);
 	GLint layerCountLoc = glGetUniformLocation(shaderID, "textureLayerCount");
 	if (layerCountLoc != -1) glUniform1i(layerCountLoc, layerCount);
 

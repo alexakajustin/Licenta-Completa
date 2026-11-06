@@ -664,6 +664,8 @@
     <ClInclude Include="Procedural\ThermalErosion.h" />
     <ClInclude Include="Procedural\Noise3D.h" />
     <ClInclude Include="Nodes\Math\ObjectIntersectionFilterNode.h" />
+    <ClInclude Include="Nodes\Math\ProximityFilterNode.h" />
+    <ClInclude Include="Procedural\TerrainLayerMaskNode.h" />
     <ClInclude Include="Scene\Planet.h" />
     <ClInclude Include="Procedural\RiverNode.h" />
     <ClInclude Include="Scene\UndoManager.h" />

@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.3335878849029541,
-            -0.22069743275642395,
-            0.9165216088294983
+            0.5656400322914124,
+            -0.2503800094127655,
+            -0.7857233285903931
         ],
-        "pitch": -12.75,
+        "pitch": -14.5,
         "position": [
-            20.679508209228516,
-            288.2933349609375,
-            -456.9672546386719
+            -563.029541015625,
+            311.6842041015625,
+            -263.0564270019531
         ],
-        "yaw": -2090.0
+        "yaw": -414.25
     },
     "instancedGroups": [
         {
@@ -45,19 +45,9 @@
             "sourceObjectName": "Cedar C"
         },
         {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8915_Fern_A_Mesh.inst",
-            "name": "Scatter_Instanced_8915_Fern A_Mesh",
-            "sourceObjectName": "Fern A"
-        },
-        {
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8922_Fern_B_Mesh.inst",
             "name": "Scatter_Instanced_8922_Fern B_Mesh",
             "sourceObjectName": "Fern B"
-        },
-        {
-            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8929_Dry_Branches_Mesh.inst",
-            "name": "Scatter_Instanced_8929_Dry Branches_Mesh",
-            "sourceObjectName": "Dry Branches"
         },
         {
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8936_Stump_A_Mesh.inst",
@@ -73,6 +63,16 @@
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8950_Fallen_Log_Mesh.inst",
             "name": "Scatter_Instanced_8950_Fallen Log_Mesh",
             "sourceObjectName": "Fallen Log"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8915_Fern_A_Mesh.inst",
+            "name": "Scatter_Instanced_8915_Fern A_Mesh",
+            "sourceObjectName": "Fern A"
+        },
+        {
+            "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_8929_Dry_Branches_Mesh.inst",
+            "name": "Scatter_Instanced_8929_Dry Branches_Mesh",
+            "sourceObjectName": "Dry Branches"
         },
         {
             "instanceDataPath": "Ultimate_Scene_Scatter_Instanced_9109_Boulder_Mesh.inst",
@@ -102,17 +102,17 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 1.0,
+            "ambientIntensity": 0.2029999941587448,
             "color": [
                 1.0,
-                0.6426820755004883,
-                0.19801980257034302
+                1.0,
+                1.0
             ],
             "diffuseIntensity": 2.0,
             "direction": [
-                0.46768513321876526,
+                0.26622143387794495,
                 -0.08715573698282242,
-                -0.879587709903717
+                -0.9599635601043701
             ],
             "name": "Sun",
             "type": "Directional"
@@ -120,7 +120,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 18843,
+        "nextId": 20964,
         "tabs": [
             {
                 "graph": {
@@ -146,7 +146,7 @@
                             "start": 8378
                         }
                     ],
-                    "nextId": 18843,
+                    "nextId": 20964,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -209,8 +209,8 @@
                                 },
                                 {
                                     "blendMode": 1,
-                                    "heightMax": 245.0,
-                                    "heightMin": 205.0,
+                                    "heightMax": -9999.0,
+                                    "heightMin": -10000.0,
                                     "invert": false,
                                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                                     "opacity": 1.0,
@@ -296,7 +296,7 @@
                         },
                         {
                             "baseDepth": 1.0,
-                            "baseWidth": 15.0,
+                            "baseWidth": 5.0,
                             "editorPos": [
                                 857.0,
                                 -188.39999389648438
@@ -486,7 +486,7 @@
                             "start": 8511
                         }
                     ],
-                    "nextId": 18843,
+                    "nextId": 20964,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -549,8 +549,8 @@
                                 },
                                 {
                                     "blendMode": 1,
-                                    "heightMax": 245.0,
-                                    "heightMin": 205.0,
+                                    "heightMax": -9999.0,
+                                    "heightMin": -10000.0,
                                     "invert": false,
                                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                                     "opacity": 1.0,
@@ -1364,11 +1364,6 @@
                             "start": 8863
                         },
                         {
-                            "end": 8916,
-                            "id": 8920,
-                            "start": 8628
-                        },
-                        {
                             "end": 8917,
                             "id": 8921,
                             "start": 8596
@@ -1382,11 +1377,6 @@
                             "end": 8924,
                             "id": 8928,
                             "start": 8645
-                        },
-                        {
-                            "end": 8930,
-                            "id": 8934,
-                            "start": 8726
                         },
                         {
                             "end": 8931,
@@ -1422,9 +1412,29 @@
                             "end": 8952,
                             "id": 8956,
                             "start": 8841
+                        },
+                        {
+                            "end": 20130,
+                            "id": 20140,
+                            "start": 8726
+                        },
+                        {
+                            "end": 8930,
+                            "id": 20141,
+                            "start": 20138
+                        },
+                        {
+                            "end": 20143,
+                            "id": 20153,
+                            "start": 8628
+                        },
+                        {
+                            "end": 8916,
+                            "id": 20154,
+                            "start": 20151
                         }
                     ],
-                    "nextId": 18843,
+                    "nextId": 20964,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1487,8 +1497,8 @@
                                 },
                                 {
                                     "blendMode": 1,
-                                    "heightMax": 245.0,
-                                    "heightMin": 205.0,
+                                    "heightMax": -9999.0,
+                                    "heightMin": -10000.0,
                                     "invert": false,
                                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                                     "opacity": 1.0,
@@ -1592,7 +1602,7 @@
                             "type": "scene_object"
                         },
                         {
-                            "count": 26000,
+                            "count": 40000,
                             "editorPos": [
                                 254.0,
                                 -989.4000244140625
@@ -1932,7 +1942,7 @@
                             "type": "scene_object"
                         },
                         {
-                            "count": 3500,
+                            "count": 14000,
                             "editorPos": [
                                 254.0,
                                 -317.800048828125
@@ -2726,6 +2736,106 @@
                             "seed": 752981,
                             "title": "Spawn Instances",
                             "type": "spawn_instances"
+                        },
+                        {
+                            "editorPos": [
+                                1459.0,
+                                -129.800048828125
+                            ],
+                            "falloff": 1.600000023841858,
+                            "id": 20129,
+                            "ignoreBelow": 0.6000000238418579,
+                            "in": {
+                                "falloff": 20136,
+                                "ignoreBelow": 20137,
+                                "inner": 20134,
+                                "near": 20131,
+                                "points": 20130,
+                                "radius": 20135,
+                                "targets": 20132
+                            },
+                            "inner": 1.2000000476837158,
+                            "mode": 0,
+                            "out": {
+                                "passed": 20138,
+                                "rejected": 20139
+                            },
+                            "radius": 7.0,
+                            "targets": [
+                                "Cedar A",
+                                "Cedar B",
+                                "Cedar C"
+                            ],
+                            "title": "Proximity Filter",
+                            "type": "proximity_filter"
+                        },
+                        {
+                            "editorPos": [
+                                1459.0,
+                                -885.4000244140625
+                            ],
+                            "falloff": 0.800000011920929,
+                            "id": 20142,
+                            "ignoreBelow": 0.800000011920929,
+                            "in": {
+                                "falloff": 20149,
+                                "ignoreBelow": 20150,
+                                "inner": 20147,
+                                "near": 20144,
+                                "points": 20143,
+                                "radius": 20148,
+                                "targets": 20145
+                            },
+                            "inner": 3.0,
+                            "mode": 0,
+                            "out": {
+                                "passed": 20151,
+                                "rejected": 20152
+                            },
+                            "radius": 16.0,
+                            "targets": [
+                                "Cedar A",
+                                "Cedar B",
+                                "Cedar C"
+                            ],
+                            "title": "Proximity Filter",
+                            "type": "proximity_filter"
+                        },
+                        {
+                            "breakup": 0.44999998807907104,
+                            "breakupScale": 5.0,
+                            "editorPos": [
+                                254.0,
+                                1250.0
+                            ],
+                            "falloff": 1.100000023841858,
+                            "id": 20155,
+                            "in": {
+                                "breakup": 20164,
+                                "breakupScale": 20165,
+                                "falloff": 20163,
+                                "inner": 20161,
+                                "layer": 20158,
+                                "near": 20156,
+                                "nearObjects": 20159,
+                                "radius": 20162,
+                                "resolution": 20166,
+                                "target": 20157
+                            },
+                            "inner": 2.5,
+                            "layer": 3,
+                            "mode": 0,
+                            "nearObjects": [
+                                "Cedar A",
+                                "Cedar B",
+                                "Cedar C"
+                            ],
+                            "out": {},
+                            "radius": 9.0,
+                            "resolution": 1024,
+                            "target": "Plane",
+                            "title": "Terrain Layer Mask",
+                            "type": "terrain_layer_mask"
                         }
                     ],
                     "version": 2
@@ -2836,7 +2946,7 @@
                             "start": 9067
                         }
                     ],
-                    "nextId": 18843,
+                    "nextId": 20964,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -2899,8 +3009,8 @@
                                 },
                                 {
                                     "blendMode": 1,
-                                    "heightMax": 245.0,
-                                    "heightMin": 205.0,
+                                    "heightMax": -9999.0,
+                                    "heightMin": -10000.0,
                                     "invert": false,
                                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                                     "opacity": 1.0,
@@ -3664,17 +3774,22 @@
                             "start": 9178
                         },
                         {
-                            "end": 9192,
-                            "id": 9196,
-                            "start": 9154
-                        },
-                        {
                             "end": 9193,
                             "id": 9197,
                             "start": 9142
+                        },
+                        {
+                            "end": 20168,
+                            "id": 20178,
+                            "start": 9154
+                        },
+                        {
+                            "end": 9192,
+                            "id": 20179,
+                            "start": 20176
                         }
                     ],
-                    "nextId": 18843,
+                    "nextId": 20964,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3737,8 +3852,8 @@
                                 },
                                 {
                                     "blendMode": 1,
-                                    "heightMax": 245.0,
-                                    "heightMin": 205.0,
+                                    "heightMax": -9999.0,
+                                    "heightMin": -10000.0,
                                     "invert": false,
                                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                                     "opacity": 1.0,
@@ -4006,6 +4121,38 @@
                             "seed": 572760,
                             "title": "Spawn Instances",
                             "type": "spawn_instances"
+                        },
+                        {
+                            "editorPos": [
+                                1459.0,
+                                59.253570556640625
+                            ],
+                            "falloff": 1.0,
+                            "id": 20167,
+                            "ignoreBelow": 0.0,
+                            "in": {
+                                "falloff": 20174,
+                                "ignoreBelow": 20175,
+                                "inner": 20172,
+                                "near": 20169,
+                                "points": 20168,
+                                "radius": 20173,
+                                "targets": 20170
+                            },
+                            "inner": 0.800000011920929,
+                            "mode": 1,
+                            "out": {
+                                "passed": 20176,
+                                "rejected": 20177
+                            },
+                            "radius": 4.5,
+                            "targets": [
+                                "Cedar A",
+                                "Cedar B",
+                                "Cedar C"
+                            ],
+                            "title": "Proximity Filter",
+                            "type": "proximity_filter"
                         }
                     ],
                     "version": 2
@@ -4100,8 +4247,8 @@
                     "blendMode": 1,
                     "displacementMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_disp_4k.jpg",
                     "displacementScale": 0.05000000074505806,
-                    "heightMax": 245.0,
-                    "heightMin": 205.0,
+                    "heightMax": -9999.0,
+                    "heightMin": -10000.0,
                     "invert": false,
                     "normalMapPath": "Assets\\Textures\\Ultimate_Scene\\forest_leaves_04\\forest_leaves_04_nor_gl_4k.jpg",
                     "opacity": 1.0,
@@ -4193,9 +4340,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    50.23517990112305,
-                    269.765625,
-                    -389.5962219238281
+                    221.28662109375,
+                    279.6641845703125,
+                    -89.82039642333984
                 ],
                 "rotation": [
                     -0.0,

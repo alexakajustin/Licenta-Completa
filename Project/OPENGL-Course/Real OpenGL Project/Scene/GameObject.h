@@ -246,6 +246,14 @@ public:
 	 * @brief Gets the list of texture layers.
 	 */
 	std::vector<TextureLayer>& GetTextureLayers() { return textureLayers; }
+
+	// Where each texture layer may show, baked by the node graph (Terrain Layer Mask): a grid of
+	// values 0..1 over the world box 'bounds' (x, z of its corner, its size), resolution^2 texels.
+	// A layer with a mask shows only as much as the mask allows (on top of its height / slope rules).
+	void SetLayerMask(int layer, const std::vector<float>& values, int resolution, const glm::vec3& boundsMin, float boundsSize);
+	void ClearLayerMasks();
+	bool HasLayerMask(int layer) const { return layer >= 0 && layer < (int)layerMasks.size() && !layerMasks[layer].empty(); }
+	float SampleLayerMask(int layer, float x, float z) const; // CPU lookup (tools, tests)
 	const std::vector<TextureLayer>& GetTextureLayers() const { return textureLayers; }
 	
 	/**
@@ -392,6 +400,12 @@ private:
 	Texture* normalMap;
 	Material* material;
 	std::vector<TextureLayer> textureLayers;
+	std::vector<std::vector<float>> layerMasks;  // Per layer; empty = no mask
+	int layerMaskResolution = 0;
+	glm::vec4 layerMaskBounds = glm::vec4(0.0f); // x, z of the corner, size, resolution
+	GLuint layerMaskSSBO = 0;
+	bool layerMaskDirty = false;
+	void UploadLayerMasks();
 
 	// Persistent mesh data for procedural generation
 	std::shared_ptr<MeshData> cpuMeshData;

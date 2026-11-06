@@ -12,10 +12,12 @@
 #include "Nodes/Math/ForEachNode.h"
 #include "Nodes/Math/FilterTransformListNode.h"
 #include "Nodes/Math/ObjectIntersectionFilterNode.h"
+#include "Nodes/Math/ProximityFilterNode.h"
 #include "Procedural/PerlinNoiseNode.h"
 #include "Procedural/HydraulicErosionNode.h"
 #include "Procedural/BeautifulErosionNode.h"
 #include "Procedural/RiverNode.h"
+#include "Procedural/TerrainLayerMaskNode.h"
 #include "Procedural/ScatterNode.h"
 #include "Procedural/SpawnInstancesNode.h"
 #include "Procedural/CityGridNode.h"
@@ -58,11 +60,13 @@ const std::vector<NodeTypeInfo>& NodeRegistry::Types()
 		Type<HydraulicErosionNode>("hydraulic_erosion", "Hydraulic Erosion", "Terrain", "Rain droplets carving gullies, thermal slides settling the slopes", { "Hydraulic Erosion" }),
 		Type<BeautifulErosionNode>("beautiful_erosion", "Beautiful Erosion", "Terrain", "Fast procedural erosion look (noise-based, no simulation)", { "Beautiful Erosion" }),
 		Type<RiverNode>("river", "River", "Terrain", "Carves rivers and lakes into a terrain; their water surfaces become objects", { "River" }),
+		Type<TerrainLayerMaskNode>("terrain_layer_mask", "Terrain Layer Mask", "Terrain", "Shows a texture layer of a terrain near (or away from) objects and their instances: litter under trees, gravel by rocks"),
 
 		// Points: where things go
 		Type<ScatterNode>("scatter", "Scatter", "Points", "Random points on a surface", { "Scatter" }),
 		Type<FilterTransformListNode>("filter_points", "Filter Points", "Points", "Keeps points by height and slope", { "Filter Transforms" }),
 		Type<ObjectIntersectionFilterNode>("object_filter", "Object Filter", "Points", "Keeps points away from (or only on) other objects", { "Object Filter" }),
+		Type<ProximityFilterNode>("proximity_filter", "Proximity Filter", "Points", "Keeps points near (or away from) objects and their instances: branches by trunks, flowers in clearings"),
 
 		// Output: what the graph makes
 		Type<SpawnInstancesNode>("spawn_instances", "Spawn Instances", "Output", "Places objects on points as GPU instances (forests, rocks, grass)"),

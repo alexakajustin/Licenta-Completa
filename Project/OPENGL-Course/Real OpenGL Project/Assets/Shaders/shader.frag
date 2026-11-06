@@ -154,6 +154,28 @@ uniform int isFoliage; ///< 1 while drawing alpha-tested foliage cards (leaves, 
 uniform float foliageRadius; ///< Bounding radius of the foliage mesh (instanced draws), 0 = unknown: no crown occlusion.
 uniform vec3 foliageCentre;  ///< Centre of the foliage mesh's box (mesh space): the crown's centre
 uniform int instanceVariation; ///< 1 for instanced groups: every instance its own shade (InstanceShade)
+// Masks of the texture layers baked by the node graph (Terrain Layer Mask, GameObject::SetLayerMask):
+// one uint per texel of a grid over the world box layerMaskInfo (x, z of its corner, size,
+// resolution), 6 bits per layer. layerMaskBits: which layers have one
+layout(std430, binding = 11) readonly buffer LayerMasks { uint layerMaskData[]; };
+uniform int layerMaskBits;
+uniform vec4 layerMaskInfo;
+
+float LayerMaskTexel(int layer, ivec2 c, int res)
+{
+	c = clamp(c, ivec2(0), ivec2(res - 1));
+	return float((layerMaskData[c.y * res + c.x] >> uint(6 * layer)) & 63u) / 63.0;
+}
+
+float LayerMask(int layer)
+{
+	int res = int(layerMaskInfo.w);
+	vec2 g = (FragPos.xz - layerMaskInfo.xy) / layerMaskInfo.z * float(res - 1);
+	ivec2 i = ivec2(floor(g));
+	vec2 f = g - vec2(i);
+	return mix(mix(LayerMaskTexel(layer, i, res), LayerMaskTexel(layer, i + ivec2(1, 0), res), f.x),
+	           mix(LayerMaskTexel(layer, i + ivec2(0, 1), res), LayerMaskTexel(layer, i + ivec2(1, 1), res), f.x), f.y);
+}
 uniform vec3 foliageExtent;  ///< Half size of that box: the crown's shape
 
 // Selection highlight (0.0 = not selected, > 0 = selected)
@@ -916,6 +938,7 @@ void CalcLayeredSurface(out vec3 outColor)
 			weight = 1.0 - weight;
 		}
 
+		if ((layerMaskBits & (1 << i)) != 0) weight *= LayerMask(i); // Where the node graph lets it show
 		weight *= layerData[i].opacity; // Removed layerSample.a dependency for triplanar simplicity
 		weight = clamp(weight, 0.0, 1.0);
 
