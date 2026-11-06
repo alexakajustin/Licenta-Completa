@@ -150,6 +150,7 @@ public:
 	const WindSystem& GetWind() const { return wind; }
 
 	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
+	GLuint GetCullShaderID() const { return instancedCullShader.GetShaderID(); }
 	// Cloud noise volumes of the main sky (Application), so the sky cubemap has the same clouds
 	void SetCloudNoise(GLuint shape, GLuint detail) { cloudShapeNoise = shape; cloudDetailNoise = detail; }
 

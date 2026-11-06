@@ -578,8 +578,9 @@ void GameObject::RenderSingle(GLint uniformModel, GLint uniformSpecularIntensity
 		if (doubleSided) glDisable(GL_CULL_FACE);
 		if (doubleSided) SetFoliageUniform(true);
 
-		// Render
-		if (useTessellation) {
+		// Render. A program with tessellation stages only draws patches (GL_TRIANGLES would be
+		// rejected): rivers are tessellated by their shader (river.tcs), not by the object flag
+		if (useTessellation || shaderSupportsTessellation) {
 			meshToRender->RenderMeshTessellated(shaderSupportsTessellation);
 		} else {
 			meshToRender->RenderMesh();

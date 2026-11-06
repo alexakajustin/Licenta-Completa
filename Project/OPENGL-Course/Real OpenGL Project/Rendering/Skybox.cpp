@@ -38,6 +38,9 @@ Skybox::Skybox(std::vector<std::string> faceLocations)
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Blurred levels for the global illumination's sky light (through its own sampler); the skybox
+	// itself keeps sampling level 0 (GL_LINEAR above)
+	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
 	// Mesh Setup Code
 	unsigned int skyboxIndices[] = {

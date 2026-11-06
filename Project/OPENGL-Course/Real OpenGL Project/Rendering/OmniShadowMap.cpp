@@ -57,6 +57,10 @@ bool OmniShadowMap::Init(GLuint width, GLuint height)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// Nothing drawn yet: no occluders (the global illumination reads the map of lights out of view too)
+	const float farDepth = 1.0f;
+	glClearTexImage(shadowMap, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &farDepth);
+
 	return true;
 }
 

@@ -48,6 +48,7 @@ uniform float anisotropy;                 // Henyey-Greenstein g
 
 uniform mat4 cascadeMatrices[4];
 uniform float cascadeSplits[4];
+uniform float cascadeDepthRanges[4];        // Depth span of each cascade's projection (m): world bias to depth units
 uniform int cascadeCount;
 
 const float PI = 3.14159265;
@@ -73,7 +74,9 @@ float SunVisibility(vec3 worldPos, float viewDepth)
     vec3 p = ls.xyz / ls.w * 0.5 + 0.5;
     if (any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 1.0;
     float occluder = texture(directionalShadowMap, vec3(p.xy, float(layer))).r;
-    return (p.z - 0.0005 > occluder) ? 0.0 : 1.0;
+    // 10 cm along the light: a fixed depth bias (0.0005) was ~2 m in these +-2 km deep cascades,
+    // so fog up to 2 m under a roof or a canopy stayed sunlit
+    return (p.z - 0.1 / cascadeDepthRanges[layer] > occluder) ? 0.0 : 1.0;
 }
 
 void main()

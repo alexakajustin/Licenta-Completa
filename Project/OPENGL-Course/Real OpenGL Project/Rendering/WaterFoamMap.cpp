@@ -1,6 +1,7 @@
 #include "Rendering/WaterFoamMap.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <algorithm>
 
 #include "Core/AssetManager.h"
 #include "Core/ServiceLocator.h"
@@ -17,6 +18,12 @@ static const int UNIT_SURFACE = 36;
 static const int UNIT_FOAM_MAP = 37;
 static const int UNIT_PATTERN = 38;
 static const int UNIT_PROXIMITY = 39;
+static const int UNIT_SIM_VELOCITY = 42;
+static const int UNIT_SIM_WAVE = 43;
+static const int UNIT_SIM_FOAM = 44;
+static const int UNIT_RIPPLE = 45;
+static const int RIPPLE_SIZE = 512;
+static const int PRESSURE_ITERATIONS = 24;
 static const int PATTERN_SIZE = 512;
 
 // Top-down orthographic window: world x -> clip x, world z -> clip y, and the higher a point
@@ -74,8 +81,10 @@ bool WaterFoamMap::Init()
 	obstacleInstancedShader.CreateFromFiles(am->GetShaderPath("water_foam_obstacle_instanced.vert").c_str(), am->GetShaderPath("water_foam_obstacle.frag").c_str());
 	maskShader.CreateComputeShader(am->GetShaderPath("water_foam_mask.glsl").c_str());
 	patternShader.CreateComputeShader(am->GetShaderPath("water_foam_pattern.glsl").c_str());
+	simShader.CreateComputeShader(am->GetShaderPath("water_sim.glsl").c_str());
+	rippleShader.CreateComputeShader(am->GetShaderPath("water_ripple_normal.glsl").c_str());
 	if (!surfaceShader.GetShaderID() || !obstacleShader.GetShaderID() || !obstacleInstancedShader.GetShaderID() ||
-		!maskShader.GetShaderID() || !patternShader.GetShaderID()) {
+		!maskShader.GetShaderID() || !patternShader.GetShaderID() || !simShader.GetShaderID() || !rippleShader.GetShaderID()) {
 		printf("[WaterFoamMap] Shader creation failed, obstacle foam disabled\n");
 		failed = true;
 		return false;
@@ -99,6 +108,29 @@ bool WaterFoamMap::Init()
 	proximityTex = CreateTexture(GL_R16F, GL_LINEAR, RESOLUTION);
 	foamTex = CreateTexture(GL_R16F, GL_LINEAR, RESOLUTION);
 
+	// Water simulation: the ground's top height (highest wins: depth test), then the fields
+	groundTex = CreateTexture(GL_R32F, GL_NEAREST, RESOLUTION);
+	glGenRenderbuffers(1, &groundDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, groundDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, RESOLUTION, RESOLUTION);
+	glGenFramebuffers(1, &groundFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, groundFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, groundTex, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, groundDepth);
+	domainTex = CreateTexture(GL_RGBA16F, GL_NEAREST, RESOLUTION);
+	velTmpTex = CreateTexture(GL_RG16F, GL_NEAREST, RESOLUTION);
+	curlTex = CreateTexture(GL_R16F, GL_LINEAR, RESOLUTION);
+	divTex = CreateTexture(GL_R16F, GL_NEAREST, RESOLUTION);
+	const float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (int i = 0; i < 2; i++) {
+		velTex[i] = CreateTexture(GL_RG16F, GL_LINEAR, RESOLUTION);
+		pressureTex[i] = CreateTexture(GL_R16F, GL_NEAREST, RESOLUTION);
+		waveTex[i] = CreateTexture(GL_RG16F, GL_LINEAR, RESOLUTION);
+		simFoamTex[i] = CreateTexture(GL_R16F, GL_LINEAR, RESOLUTION);
+		GLuint fields[] = { velTex[i], pressureTex[i], waveTex[i], simFoamTex[i] };
+		for (GLuint t : fields) glClearTexImage(t, 0, GL_RGBA, GL_FLOAT, zero);
+	}
+
 	// Lacy foam pattern, generated once (tileable, mipmapped)
 	glGenTextures(1, &patternTex);
 	glBindTexture(GL_TEXTURE_2D, patternTex);
@@ -115,6 +147,22 @@ bool WaterFoamMap::Init()
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
+	// Ripple slopes, generated once (tileable, mipmapped: far away they average out)
+	glGenTextures(1, &rippleTex);
+	glBindTexture(GL_TEXTURE_2D, rippleTex);
+	glTexStorage2D(GL_TEXTURE_2D, 10, GL_RG16F, RIPPLE_SIZE, RIPPLE_SIZE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	if (GLEW_EXT_texture_filter_anisotropic) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0f);
+	rippleShader.UseShader();
+	glUniform1i(glGetUniformLocation(rippleShader.GetShaderID(), "size"), RIPPLE_SIZE);
+	glBindImageTexture(0, rippleTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16F);
+	glDispatchCompute(RIPPLE_SIZE / 8, RIPPLE_SIZE / 8, 1);
+	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
@@ -126,13 +174,21 @@ void WaterFoamMap::Release()
 	if (surfaceFBO) glDeleteFramebuffers(1, &surfaceFBO);
 	if (obstacleFBO) glDeleteFramebuffers(1, &obstacleFBO);
 	if (surfaceDepth) glDeleteRenderbuffers(1, &surfaceDepth);
-	GLuint textures[] = { surfaceTex, obstacleTex, proximityTex, foamTex, patternTex };
+	GLuint textures[] = { surfaceTex, obstacleTex, proximityTex, foamTex, patternTex, rippleTex };
 	for (GLuint t : textures) if (t) glDeleteTextures(1, &t);
 	surfaceFBO = obstacleFBO = surfaceDepth = 0;
-	surfaceTex = obstacleTex = proximityTex = foamTex = patternTex = 0;
+	surfaceTex = obstacleTex = proximityTex = foamTex = patternTex = rippleTex = 0;
+	if (groundFBO) glDeleteFramebuffers(1, &groundFBO);
+	if (groundDepth) glDeleteRenderbuffers(1, &groundDepth);
+	GLuint sim[] = { groundTex, domainTex, velTmpTex, curlTex, divTex, velTex[0], velTex[1], pressureTex[0], pressureTex[1],
+		waveTex[0], waveTex[1], simFoamTex[0], simFoamTex[1] };
+	for (GLuint t : sim) if (t) glDeleteTextures(1, &t);
+	groundFBO = groundDepth = groundTex = domainTex = velTmpTex = curlTex = divTex = 0;
+	for (int i = 0; i < 2; i++) velTex[i] = pressureTex[i] = waveTex[i] = simFoamTex[i] = 0;
 }
 
 void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const std::vector<GameObject*>& obstacleObjects,
+	const std::vector<GameObject*>& groundObjects,
 	const std::vector<InstancedGroup*>& groups, GLuint cullShaderID,
 	const glm::vec3& cameraPos, const GraphicsSettings* gs, float time)
 {
@@ -178,10 +234,30 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glUniformMatrix4fv(glGetUniformLocation(sid, "foamViewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
 	GLint modelLoc = glGetUniformLocation(sid, "model");
 	GLint riverLoc = glGetUniformLocation(sid, "isRiver");
+	GLint speedLoc = glGetUniformLocation(sid, "speedScale");
 	for (GameObject* obj : waterObjects) {
 		glm::mat4 model = obj->GetWorldMatrix();
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniform1i(riverLoc, IsRiverMaterial(obj) ? 1 : 0);
+		float speedScale = 1.0f;
+		if (Material* m = obj->GetMaterial()) {
+			auto it = m->GetFloats().find("material_waveSpeed");
+			if (it != m->GetFloats().end() && it->second > 0.0f) speedScale = it->second;
+		}
+		glUniform1f(speedLoc, speedScale);
+		DrawGeometry(obj);
+	}
+
+	// 1b. The ground under the water (terrains), highest point per texel: banks and dry land
+	// are walls of the simulation, the depth below the surface stills its waves
+	glBindFramebuffer(GL_FRAMEBUFFER, groundFBO);
+	glClearColor(-1.0e6f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glUniform1i(riverLoc, 0);
+	for (GameObject* obj : groundObjects) {
+		glm::mat4 model = obj->GetWorldMatrix();
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		DrawGeometry(obj);
 	}
 
@@ -260,6 +336,12 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 
+	// 4. The water simulation, one step of the frame's time
+	float dt = lastTime < 0.0f ? 0.0f : std::clamp(time - lastTime, 0.0f, 1.0f / 20.0f);
+	if (lastTime >= 0.0f && (time - lastTime > 0.5f || time < lastTime)) simHistory = false; // A pause / a jump
+	lastTime = time;
+	Simulate(dt);
+
 	// Restore
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDrawFBO);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, prevReadFBO);
@@ -273,6 +355,79 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glClearColor(clearWas[0], clearWas[1], clearWas[2], clearWas[3]);
 	glUseProgram(prevProgram);
 	valid = true;
+}
+
+void WaterFoamMap::Simulate(float dt)
+{
+	const float texel = WINDOW / RESOLUTION;
+	// Last frame's window moved by more than half its size: nothing carries over
+	if (glm::length(origin - prevOrigin) > WINDOW * 0.5f) simHistory = false;
+	int prev = cur, next = 1 - cur;
+
+	simShader.UseShader();
+	GLuint id = simShader.GetShaderID();
+	auto U = [&](const char* n) { return glGetUniformLocation(id, n); };
+	glUniform1i(U("size"), RESOLUTION);
+	glUniform1f(U("dx"), texel);
+	glUniform1f(U("dt"), dt);
+	glUniform1f(U("time"), lastTime);
+	glUniform2fv(U("origin"), 1, glm::value_ptr(origin));
+	glUniform2fv(U("prevOrigin"), 1, glm::value_ptr(simHistory ? prevOrigin : origin));
+	glUniform1i(U("reset"), simHistory ? 0 : 1);
+	GLint modeLoc = U("mode");
+	GLuint groups = (RESOLUTION + 7) / 8;
+	auto Bind = [&](int unit, GLuint tex) { glActiveTexture(GL_TEXTURE0 + unit); glBindTexture(GL_TEXTURE_2D, tex); };
+	auto Run = [&](int mode, GLuint out, GLenum format, int imageUnit) {
+		glUniform1i(modeLoc, mode);
+		glBindImageTexture(imageUnit, out, 0, GL_FALSE, 0, GL_WRITE_ONLY, format);
+		glDispatchCompute(groups, groups, 1);
+		glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	};
+
+	// 0. Domain: water / walls, the river's current, the depth
+	Bind(0, surfaceTex); Bind(1, groundTex); Bind(2, obstacleTex);
+	Run(0, domainTex, GL_RGBA16F, 0);
+	// 1. Curl of last frame's current
+	Bind(0, velTex[prev]);
+	Run(1, curlTex, GL_R16F, 2);
+	// 2. The current carried along itself, driven by the river, eddies kept
+	Bind(0, velTex[prev]); Bind(1, domainTex); Bind(2, curlTex);
+	Run(2, velTmpTex, GL_RG16F, 1);
+	// 3-5. Made divergence-free around the walls (pressure: Jacobi, warm-started)
+	Bind(0, velTmpTex);
+	Run(3, divTex, GL_R16F, 2);
+	Bind(2, divTex);
+	int p = 0;
+	for (int i = 0; i < PRESSURE_ITERATIONS; i++) {
+		Bind(0, pressureTex[p]);
+		Run(4, pressureTex[1 - p], GL_R16F, 2);
+		p = 1 - p;
+	}
+	if (p != 0) std::swap(pressureTex[0], pressureTex[1]); // The solution stays in [0] for next frame
+	Bind(0, velTmpTex); Bind(2, pressureTex[0]);
+	Run(5, velTex[next], GL_RG16F, 1);
+	// 6. The surface, in two half steps (the second carries the first's result, from this
+	//    frame's window)
+	Bind(0, waveTex[prev]); Bind(1, domainTex); Bind(2, velTex[next]); Bind(4, curlTex);
+	glUniform1f(U("dt"), dt * 0.5f);
+	Run(6, waveTex[next], GL_RG16F, 1);
+	glUniform2fv(U("prevOrigin"), 1, glm::value_ptr(origin));
+	glUniform1i(U("reset"), 0);
+	Bind(0, waveTex[next]);
+	Run(6, waveTex[prev], GL_RG16F, 1);
+	std::swap(waveTex[prev], waveTex[next]); // waveTex[next] holds the result
+	glUniform1f(U("dt"), dt);
+	glUniform2fv(U("prevOrigin"), 1, glm::value_ptr(simHistory ? prevOrigin : origin));
+	glUniform1i(U("reset"), simHistory ? 0 : 1);
+	// 7. Foam carried by the current
+	Bind(0, simFoamTex[prev]); Bind(2, velTex[next]); Bind(3, waveTex[next]); Bind(4, curlTex);
+	Run(7, simFoamTex[next], GL_R16F, 2);
+
+	for (int u = 0; u < 5; u++) Bind(u, 0);
+	glActiveTexture(GL_TEXTURE0);
+	cur = next;
+	prevOrigin = origin;
+	simHistory = true;
 }
 
 void WaterFoamMap::Bind(GLuint shaderID) const
@@ -292,6 +447,31 @@ void WaterFoamMap::Bind(GLuint shaderID) const
 		glActiveTexture(GL_TEXTURE0 + UNIT_PROXIMITY);
 		glBindTexture(GL_TEXTURE_2D, proximityTex);
 		glUniform1i(proximityLoc, UNIT_PROXIMITY);
+	}
+	GLint rippleLoc = glGetUniformLocation(shaderID, "waterRipples");
+	if (rippleLoc != -1 && rippleTex) {
+		glActiveTexture(GL_TEXTURE0 + UNIT_RIPPLE);
+		glBindTexture(GL_TEXTURE_2D, rippleTex);
+		glUniform1i(rippleLoc, UNIT_RIPPLE);
+	}
+	// The simulated water: current, surface, foam
+	GLint simLoc = glGetUniformLocation(shaderID, "waterSimVelocity");
+	if (simLoc != -1) {
+		glActiveTexture(GL_TEXTURE0 + UNIT_SIM_VELOCITY);
+		glBindTexture(GL_TEXTURE_2D, velTex[cur]);
+		glUniform1i(simLoc, UNIT_SIM_VELOCITY);
+	}
+	GLint waveLoc = glGetUniformLocation(shaderID, "waterSimWave");
+	if (waveLoc != -1) {
+		glActiveTexture(GL_TEXTURE0 + UNIT_SIM_WAVE);
+		glBindTexture(GL_TEXTURE_2D, waveTex[cur]);
+		glUniform1i(waveLoc, UNIT_SIM_WAVE);
+	}
+	GLint simFoamLoc = glGetUniformLocation(shaderID, "waterSimFoam");
+	if (simFoamLoc != -1) {
+		glActiveTexture(GL_TEXTURE0 + UNIT_SIM_FOAM);
+		glBindTexture(GL_TEXTURE_2D, simFoamTex[cur]);
+		glUniform1i(simFoamLoc, UNIT_SIM_FOAM);
 	}
 	glUniform2fv(glGetUniformLocation(shaderID, "waterFoamOrigin"), 1, glm::value_ptr(origin));
 	glUniform1f(glGetUniformLocation(shaderID, "waterFoamSize"), valid ? WINDOW : 0.0f);

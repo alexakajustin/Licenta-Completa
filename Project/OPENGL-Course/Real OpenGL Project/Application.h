@@ -27,6 +27,7 @@
 #include "Rendering/PostProcess.h"
 #include "Rendering/AmbientOcclusion.h"
 #include "Rendering/Reflections.h"
+#include "Rendering/GlobalIllumination.h"
 #include <vector>
 #include <unordered_map>
 
@@ -153,6 +154,7 @@ private:
 	PostProcess postProcess;     // Exposure, tone mapping and sharpening of the HDR viewport
 	AmbientOcclusion ambientOcclusion; // GTAO, half resolution
 	Reflections reflections;     // SSR over the reflection probes
+	GlobalIllumination globalIllumination; // Voxel-traced probes: the ambient light
 	GLuint prevSceneColor = 0;   // Last frame's HDR scene (TAA history or the post scratch): SSR reads it
 	glm::mat4 prevSceneViewProj = glm::mat4(1.0f);
 	int prevSceneWidth = 0, prevSceneHeight = 0;

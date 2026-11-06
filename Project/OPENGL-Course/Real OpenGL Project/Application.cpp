@@ -535,6 +535,14 @@ void Application::Run()
 		cloudShadows.Update(activeCameraPos, -glm::normalize(*mainLight.GetDirectionPtr()), graphicsSettings,
 			cloudShapeNoiseTex, cloudDetailNoiseTex, (float)glfwGetTime(), [this]() { RenderQuad(); });
 
+		// Global illumination: voxels lit with this frame's shadows, probes traced through them
+		// (before every lit pass reads the probes)
+		debugOverlay.BeginPass("Global Illumination");
+		globalIllumination.Update(sceneManager, activeCameraPos, view, mainLight, pointLights, pointLightCount,
+			spotLights, spotLightCount, graphicsSettings, renderer.GetCullShaderID(),
+			graphicsSettings.volumetricSkyEnabled ? renderer.GetProceduralSkyTextureID() : renderer.GetSkybox().GetTextureID());
+		debugOverlay.EndPass("Global Illumination");
+
 		// 1. Reflection Pass (if there is water)
 		float waterHeight = -1000.0f; 
 		bool hasWater = false;
@@ -965,6 +973,7 @@ void Application::Run()
 				spotLightCount = 0;
 				SetupScene();
 			}
+			globalIllumination.Invalidate();
 			volumetricFog.InvalidateHistory(); taa.Invalidate(); postProcess.Invalidate(); prevSceneColor = 0;
 			if (sceneAction != EditorUI::SceneAction::Save) nodeEditorUI.ResetHistory(); // Graph undo belongs to the old scene
 			editorUI.ClearPendingSceneAction();
@@ -1154,6 +1163,7 @@ void Application::InitPostEffects()
 	postProcess.Init();
 	ambientOcclusion.Init();
 	reflections.Init();
+	globalIllumination.Init();
 }
 
 void Application::InitCloudNoise()
@@ -1264,6 +1274,11 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("taaSharpness")) graphicsSettings.taaSharpness = j["taaSharpness"];
 		if (j.contains("aoEnabled")) graphicsSettings.aoEnabled = j["aoEnabled"];
 		if (j.contains("ssrEnabled")) graphicsSettings.ssrEnabled = j["ssrEnabled"];
+		if (j.contains("giEnabled")) graphicsSettings.giEnabled = j["giEnabled"];
+		if (j.contains("giQuality")) graphicsSettings.giQuality = j["giQuality"];
+		if (j.contains("giIntensity")) graphicsSettings.giIntensity = j["giIntensity"];
+		if (j.contains("giBounce")) graphicsSettings.giBounce = j["giBounce"];
+		if (j.contains("giSkyColour")) graphicsSettings.giSkyColour = j["giSkyColour"];
 		if (j.contains("ssrMaxDistance")) graphicsSettings.ssrMaxDistance = j["ssrMaxDistance"];
 		if (j.contains("probeFacesPerFrame")) graphicsSettings.probeFacesPerFrame = j["probeFacesPerFrame"];
 		if (j.contains("aoRadius")) graphicsSettings.aoRadius = j["aoRadius"];
@@ -1366,6 +1381,11 @@ void Application::SaveGraphicsSettings()
 	j["taaSharpness"] = graphicsSettings.taaSharpness;
 	j["aoEnabled"] = graphicsSettings.aoEnabled;
 	j["ssrEnabled"] = graphicsSettings.ssrEnabled;
+	j["giEnabled"] = graphicsSettings.giEnabled;
+	j["giQuality"] = graphicsSettings.giQuality;
+	j["giIntensity"] = graphicsSettings.giIntensity;
+	j["giBounce"] = graphicsSettings.giBounce;
+	j["giSkyColour"] = graphicsSettings.giSkyColour;
 	j["ssrMaxDistance"] = graphicsSettings.ssrMaxDistance;
 	j["probeFacesPerFrame"] = graphicsSettings.probeFacesPerFrame;
 	j["aoRadius"] = graphicsSettings.aoRadius;
@@ -1538,6 +1558,7 @@ void Application::Shutdown()
 	postProcess.Shutdown();
 	ambientOcclusion.Shutdown();
 	reflections.Shutdown();
+	globalIllumination.Shutdown();
 	if (cloudShapeNoiseTex) glDeleteTextures(1, &cloudShapeNoiseTex);
 	if (cloudDetailNoiseTex) glDeleteTextures(1, &cloudDetailNoiseTex);
 	if (quadVAO) glDeleteVertexArrays(1, &quadVAO);

@@ -189,6 +189,8 @@
     <ClCompile Include="Editor\TransformGizmo.cpp" />
     <ClCompile Include="Rendering\CloudShadows.cpp" />
     <ClCompile Include="Rendering\TemporalAA.cpp" />
+    <ClCompile Include="Rendering\GlobalIllumination.cpp" />
+    <ClCompile Include="Tests\GISceneTest_tmp.cpp" />
     <ClCompile Include="Rendering\Reflections.cpp" />
     <ClCompile Include="Rendering\AmbientOcclusion.cpp" />
     <ClCompile Include="Rendering\PostProcess.cpp" />
@@ -1048,6 +1050,7 @@
     <ClInclude Include="Editor\TransformGizmo.h" />
     <ClInclude Include="Rendering\CloudShadows.h" />
     <ClInclude Include="Rendering\TemporalAA.h" />
+    <ClInclude Include="Rendering\GlobalIllumination.h" />
     <ClInclude Include="Rendering\Reflections.h" />
     <ClInclude Include="Rendering\AmbientOcclusion.h" />
     <ClInclude Include="Rendering\PostProcess.h" />

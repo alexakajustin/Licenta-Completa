@@ -1,0 +1,175 @@
+#version 400 core
+
+/**
+ * @file river.tes
+ * @brief The river surface's real shape (river.tcs splits the ribbon; river.frag shades it).
+ *
+ * The ripples are a normal map; the shape of running water is not, so it is displaced here:
+ *  - the simulated surface (water_sim.glsl, around the camera): water piling up against rocks,
+ *    the waves they shed bent into a V by the current, waves bouncing off rocks and banks and
+ *    running up the shore,
+ *  - boils: turbulence welling up mid-stream, low swells carried by the current (finer than the
+ *    simulation's cells),
+ *  - nothing far away (sub-pixel there: the ripples' normals carry it).
+ * The slope of that shape goes to river.frag (WaveSlope): it tilts the ripples' normal and puts
+ * foam on the steep crests.
+ */
+
+layout(triangles, equal_spacing, ccw) in;
+
+in vec4 vertex_color_TC[];
+in vec2 TexCoord_TC[];
+in vec3 Normal_TC[];
+in vec3 FragPos_TC[];
+in vec3 TangentWorld_TC[];
+in vec3 BitangentWorld_TC[];
+in vec3 NormalWorld_TC[];
+in vec3 LocalPos_TC[];
+in float vIsSelected_TC[];
+in float vFadeFactor_TC[];
+in float vObjectScale_TC[];
+in vec2 RiverCoord_TC[];
+
+out vec4 vertex_color;
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 FragPos;
+out vec3 TangentWorld;
+out vec3 BitangentWorld;
+out vec3 NormalWorld;
+out vec3 LocalPos;
+out float vIsSelected;
+out float vFadeFactor;
+out vec4 clipSpaceCoords;
+out float vObjectScale;
+out vec2 RiverCoord;
+out vec2 WaveSlope;        // d(height)/dx, d(height)/dz of the displaced surface
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform vec4 clipPlane;
+uniform vec3 eyePosition;
+uniform float time;
+
+struct Material {
+    float specularIntensity;
+    float shininess;
+    vec4 baseColor;
+    vec2 tiling;
+    vec2 offset;
+    float reflectivity;
+};
+uniform Material material;
+uniform float material_waveSpeed;
+uniform float material_waveStrength;     // River.mat: 0 = flat surface (only the ripples)
+
+uniform sampler2D waterSimWave;          // Simulated surface: height, rate (water_sim.glsl)
+uniform vec2  waterFoamOrigin;
+uniform float waterFoamSize;
+
+float Hash(vec2 p)
+{
+    p = fract(p * vec2(0.1031, 0.1030));
+    p += dot(p, p.yx + 33.33);
+    return fract((p.x + p.y) * p.x);
+}
+
+float Noise(vec2 p)
+{
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(Hash(i), Hash(i + vec2(1.0, 0.0)), u.x), mix(Hash(i + vec2(0.0, 1.0)), Hash(i + vec2(1.0, 1.0)), u.x), u.y) * 2.0 - 1.0;
+}
+
+// Boils: low swells welling up mid-stream and drifting with the current, two copies cross-faded
+// so they never stretch (the simulation, coarser, carries the rest: waves at obstacles and banks)
+float Boils(vec2 xz, vec2 dir, float across, float steepness)
+{
+    float speedScale = material_waveSpeed > 0.0 ? material_waveSpeed : 1.0;
+    float strength = material_waveStrength > 0.0 ? clamp(material_waveStrength / 5.0, 0.0, 2.0) : 1.0;
+    float profile = 1.0 - pow(abs(across * 2.0 - 1.0), 3.0);
+    float v = 1.4 * speedScale * mix(0.2, 1.0, profile) * (1.0 + steepness * 8.0);
+    float bankFade = smoothstep(0.0, 0.18, across) * smoothstep(1.0, 0.82, across);
+    const float CYCLE = 6.0;
+    float c0 = fract(time / CYCLE), c1 = fract(time / CYCLE + 0.5);
+    vec2 drift = dir * v * CYCLE;
+    float b0 = Noise((xz - drift * c0) * 0.45 + floor(time / CYCLE) * 17.1);
+    float b1 = Noise((xz - drift * c1) * 0.45 + floor(time / CYCLE + 0.5) * 17.1 + 5.0);
+    return mix(b1, b0, 1.0 - abs(1.0 - 2.0 * c0)) * 0.03 * v * bankFade * strength;
+}
+
+// The simulated surface (water_sim.glsl): height and slope, fading out at the window's edge
+vec3 SimulatedSurface(vec2 xz)
+{
+    if (waterFoamSize <= 0.0) return vec3(0.0);
+    vec2 uv = (xz - waterFoamOrigin) / waterFoamSize;
+    float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    if (edge <= 0.0) return vec3(0.0);
+    float strength = material_waveStrength > 0.0 ? clamp(material_waveStrength / 5.0, 0.0, 2.0) : 1.0;
+    float texel = 1.0 / float(textureSize(waterSimWave, 0).x);
+    float cell = waterFoamSize * texel;
+    float h = textureLod(waterSimWave, uv, 0.0).x;
+    float hx = textureLod(waterSimWave, uv + vec2(texel, 0.0), 0.0).x - textureLod(waterSimWave, uv - vec2(texel, 0.0), 0.0).x;
+    float hz = textureLod(waterSimWave, uv + vec2(0.0, texel), 0.0).x - textureLod(waterSimWave, uv - vec2(0.0, texel), 0.0).x;
+    return vec3(h, vec2(hx, hz) / (2.0 * cell)) * smoothstep(0.0, 0.08, edge) * strength;
+}
+
+void main()
+{
+    vec3 b = gl_TessCoord;
+    #define LERP(a) (a[0] * b.x + a[1] * b.y + a[2] * b.z)
+
+    vec3 worldPos = LERP(FragPos_TC);
+    vec3 normalW = normalize(LERP(NormalWorld_TC));
+    vec3 bitangentW = LERP(BitangentWorld_TC);
+    vec2 riverCoord = LERP(RiverCoord_TC);
+
+    vec2 dir = bitangentW.xz;
+    dir = dot(dir, dir) > 1e-6 ? normalize(dir) : vec2(0.0, 1.0);
+    float steepness = clamp(1.0 - normalW.y, 0.0, 1.0);
+
+    // Far away the waves are smaller than a pixel and, seen at a grazing angle, their crests would
+    // only hide the troughs behind them (water shaded twice): flat beyond ~120 m, where the ripples'
+    // normals carry the detail
+    float viewDist = length(worldPos - eyePosition);
+    float distanceFade = 1.0 - smoothstep(40.0, 120.0, viewDist);
+    // One pixel's length on the surface along the view (60 degree field, ~1000 px): stretched at
+    // grazing angles, where waves pack together on screen
+    float grazing = max(abs(eyePosition.y - worldPos.y) / max(viewDist, 1e-3), 0.02);
+    float footprint = viewDist * 0.0012 / grazing;
+    vec3 shape = vec3(0.0);
+    if (distanceFade > 0.0) {
+        // Boils: their slope from the height a few centimetres over (forward differences)
+        const float E = 0.15;
+        // (none where the river fades into a lake: the lake has no boils, the two must match)
+        float mouth = riverCoord.y <= -0.5 ? clamp(-riverCoord.y - 1.0, 0.0, 1.0) : 1.0;
+        float b = Boils(worldPos.xz, dir, riverCoord.x, steepness) * mouth;
+        float bx = Boils(worldPos.xz + vec2(E, 0.0), dir, riverCoord.x, steepness) * mouth;
+        float bz = Boils(worldPos.xz + vec2(0.0, E), dir, riverCoord.x, steepness) * mouth;
+        // Detail finer than ~4 pixels would only alias (grazing angles pack it together)
+        float resolved = smoothstep(1.0, 4.0, 2.2 / max(footprint, 1e-3));
+        // Nothing at the banks: the ribbon's edges run under them and must stay there
+        float banks = smoothstep(0.0, 0.15, riverCoord.x) * smoothstep(1.0, 0.85, riverCoord.x);
+        shape = (vec3(b, (bx - b) / E, (bz - b) / E) * resolved + SimulatedSurface(worldPos.xz) * banks) * distanceFade;
+    }
+    WaveSlope = shape.yz;
+    worldPos.y += shape.x;
+
+    vertex_color = LERP(vertex_color_TC);
+    TexCoord = LERP(TexCoord_TC);
+    Normal = normalize(LERP(Normal_TC));
+    FragPos = worldPos;
+    TangentWorld = LERP(TangentWorld_TC);
+    BitangentWorld = bitangentW;
+    NormalWorld = normalW;
+    LocalPos = LERP(LocalPos_TC);
+    vIsSelected = vIsSelected_TC[0];
+    vFadeFactor = vFadeFactor_TC[0];
+    vObjectScale = vObjectScale_TC[0];
+    RiverCoord = riverCoord;
+
+    vec4 clip = projection * view * vec4(worldPos, 1.0);
+    clipSpaceCoords = clip;
+    gl_ClipDistance[0] = dot(vec4(worldPos, 1.0), clipPlane);
+    gl_Position = clip;
+}

@@ -1,4 +1,4 @@
-#version 400 core				
+#version 430 core
 
 /**
  * @file shader.frag
@@ -107,6 +107,10 @@ uniform int spotLightCount; ///< Count of active spot lights.
 uniform DirectionalLight directionalLight; ///< Active directional light.
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 #include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
+#include "gi.glsl"               // Ambient light from the global illumination probes
+// The sun's ambient term from the GI probes (set in main), used by the directional light only
+vec3 gSkyAmbient = vec3(0.0);
+bool gSkyLightCall = false;
 
 // Motion vector (attachment 1 of the viewport; only plants moving in the wind enable it, see
 // InstancedGroup::DrawLODs): this frame's minus last frame's screen position (uv units), and the
@@ -145,6 +149,7 @@ uniform vec3 probeBoxMax;
 uniform int reflectionDeferred; ///< 1: write the reflection to attachments 2-4 instead of adding it (SSR)
 // camera position
 uniform vec3 eyePosition; ///< Camera position coordinate.
+uniform int depthPrepass; ///< 1: depth pre-pass of alpha-tested foliage (InstancedGroup::DrawLODs): coverage only, no lighting
 uniform int isFoliage; ///< 1 while drawing alpha-tested foliage cards (leaves, ferns): wrapped + translucent lighting.
 uniform float foliageRadius; ///< Bounding radius of the foliage mesh (instanced draws), 0 = unknown: no crown occlusion.
 
@@ -528,7 +533,8 @@ vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 
 {
 	vec3 effectiveNormal = GetEffectiveNormal();
 
-	vec3 ambientColour = light.colour * light.ambientIntensity;
+	// The point / spot lights' flat ambient stood in for their bounced light: the GI probes carry it now
+	vec3 ambientColour = gSkyLightCall ? gSkyAmbient : (giSpacing.w > 0.5 ? vec3(0.0) : light.colour * light.ambientIntensity);
 
     // We assume 'direction' is light -> fragment.
     // For diffuse, we need fragment -> light, so we use -direction.
@@ -601,7 +607,10 @@ vec3 CalcDirectionalLight(vec3 baseColor)
 	// A cloud between the point and the sun takes its share of the direct light too
 	shadowFactor = 1.0 - (1.0 - shadowFactor) * CloudShadow(FragPos);
 
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, baseColor);
+	gSkyLightCall = true; // Its ambient term is the GI probes' light
+	vec3 lit = CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, baseColor);
+	gSkyLightCall = false;
+	return lit;
 }
 
 vec3 CalcPointLight(PointLight pLight, int shadowIndex, vec3 baseColor) 
@@ -905,6 +914,10 @@ void main()
 		baseColor = material.baseColor.rgb * texColor.rgb;
 	}
 
+	// Depth pre-pass of alpha-tested foliage: only which pixels it covers (the fades and the alpha
+	// test above), so the lit pass that follows shades each pixel once instead of every layer
+	if (depthPrepass == 1) return;
+
 	// Resolve the shading normal once: every light (and the reflection) would otherwise
 	// re-sample the normal map and rebuild the TBN per call.
 	gBlendedNormal = GetEffectiveNormal();
@@ -912,6 +925,15 @@ void main()
 	// Closed meshes never rasterize back faces while culling is on, so they are unaffected.
 	if (!gl_FrontFacing) gBlendedNormal = -gBlendedNormal;
 	gUseBlendedNormal = true;
+
+	// The sky light and the bounced light that reach this point (gi.glsl); the flat ambient
+	// where there are no probes. While TAA averages the frames, probes picked at random stand in
+	// for some of the eight (the far cascade; leaf cards, layers deep, in both)
+	vec3 skyNormal = normalize(gBlendedNormal), skyView = normalize(eyePosition - FragPos);
+	vec3 flatAmbient = directionalLight.base.colour * directionalLight.base.ambientIntensity;
+	gSkyAmbient = frameJitter.w > 0.5
+		? GIAmbientTemporal(FragPos, skyNormal, skyView, flatAmbient, GINoise(gl_FragCoord.xy, frameJitter.z), isFoliage == 1)
+		: GIAmbient(FragPos, skyNormal, skyView, flatAmbient);
 
 	// 2. Compute lighting (uses gBlendedNormal if layers set it)
 	vec3 finalLight = CalcDirectionalLight(baseColor);

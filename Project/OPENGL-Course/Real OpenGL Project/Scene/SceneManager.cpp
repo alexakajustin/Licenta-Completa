@@ -1173,13 +1173,14 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 	// 1.6 Water foam map: foam where objects cross the water surface + their wakes downstream.
 	// Main view only (the reflection pass clips the scene and does not draw the water).
 	if (!overrideShader && renderer && !renderer->IsRenderingCubemap() && clipPlane == glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)) {
-		std::vector<GameObject*> waterObjs, obstacleObjs;
+		std::vector<GameObject*> waterObjs, obstacleObjs, groundObjs;
 		for (GameObject* obj : transparentObjects) if (IsWaterObject(obj)) waterObjs.push_back(obj);
 		if (!waterObjs.empty()) {
 			// Terrains (texture layers) are not obstacles: the shoreline foam comes from the water depth
 			for (GameObject* obj : opaqueObjects) if (obj->GetTextureLayers().empty()) obstacleObjs.push_back(obj);
+			for (GameObject* obj : opaqueObjects) if (!obj->GetTextureLayers().empty()) groundObjs.push_back(obj);
 			if (profiler) profiler->BeginObject("[Water foam map]", 0);
-			waterFoam.Update(waterObjs, obstacleObjs, instancedGroups, cullShader ? cullShader->GetShaderID() : 0,
+			waterFoam.Update(waterObjs, obstacleObjs, groundObjs, instancedGroups, cullShader ? cullShader->GetShaderID() : 0,
 				cameraPos, gs ? gs : graphicsSettings, time);
 			if (profiler) profiler->EndObject();
 			lastShaderID = 0;

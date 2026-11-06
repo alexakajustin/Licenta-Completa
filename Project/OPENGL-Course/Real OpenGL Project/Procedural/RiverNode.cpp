@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <numeric>
 #include <queue>
 #include <thread>
 #include <glm/gtc/matrix_transform.hpp>
@@ -25,7 +26,7 @@ RiverNode::RiverNode(NodeGraph& graph) : GraphNode(graph)
 	smoothPasses = 8;
 	lakeDepth = 4.0f;
 
-	AddInt("springCount", "Springs", &springCount, 0.2f, 1, 50).Tip("Rivers start at the highest points, this many of them");
+	AddInt("springCount", "Springs", &springCount, 0.2f, 1, 50).Tip("Rivers start at the heads of the highest valleys (where enough water gathers), this many of them");
 	AddInt("maxSteps", "Max length", &maxSteps, 10.0f, 10, 4000);
 	AddFloat("baseDepth", "Base depth", &baseDepth, 0.1f, 0.0f, 50.0f, "%.2f");
 	AddFloat("baseWidth", "Base width", &baseWidth, 0.1f, 0.1f, 100.0f, "%.1f");
@@ -58,24 +59,84 @@ void RiverNode::Execute(NodeContext& ctx)
 	// The terrain's size: its scale is baked into the vertices (Scene Object)
 	glm::vec3 terrainScale = input.mesh.scale;
 
-	// 1. Identify "Springs"
-	struct Spring { int x, z; float height; };
-	std::vector<Spring> allVerts;
-	for (int z = 0; z < gridRes; z++)
+	// World size of one grid cell (the terrain's scale is baked into the vertices)
+	const float cellMetres = std::max(std::abs(data.vertices[14] - data.vertices[0]), 1e-4f);
+	auto H = [&](int i) { return data.vertices[i * 14 + 1]; };
+
+	// 1. Drainage: where the water of the whole terrain flows and how much of it gathers in each
+	// cell. Flow directions (D8: toward the steepest lower neighbour) over the terrain with its
+	// hollows filled (priority flood, Barnes et al. 2014: every cell drains to the map's edge),
+	// then the flow accumulation (cells of terrain draining through each cell).
+	std::vector<float> filled(totalVerts);
+	std::vector<int> receiver(totalVerts, -1);
+	std::vector<float> accumulation(totalVerts, 1.0f);
 	{
-		for (int x = 0; x < gridRes; x++)
-		{
-			allVerts.push_back({ x, z, data.vertices[(z * gridRes + x) * 14 + 1] });
+		std::vector<char> closed(totalVerts, 0);
+		using Item = std::pair<float, int>;
+		std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
+		for (int i = 0; i < totalVerts; i++) {
+			int x = i % gridRes, z = i / gridRes;
+			if (x == 0 || z == 0 || x == gridRes - 1 || z == gridRes - 1) { filled[i] = H(i); closed[i] = 1; open.push({ filled[i], i }); }
 		}
+		while (!open.empty()) {
+			auto [h, c] = open.top(); open.pop();
+			int cx = c % gridRes, cz = c / gridRes;
+			for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+				if (dx == 0 && dz == 0) continue;
+				int nx = cx + dx, nz = cz + dz;
+				if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+				int n = nz * gridRes + nx;
+				if (closed[n]) continue;
+				closed[n] = 1;
+				filled[n] = std::max(H(n), h + 1e-3f); // A slight slope across filled flats: they drain too
+				open.push({ filled[n], n });
+			}
+		}
+		for (int c = 0; c < totalVerts; c++) {
+			int cx = c % gridRes, cz = c / gridRes;
+			float best = 0.0f;
+			for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+				if (dx == 0 && dz == 0) continue;
+				int nx = cx + dx, nz = cz + dz;
+				if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+				int n = nz * gridRes + nx;
+				float drop = (filled[c] - filled[n]) / ((dx != 0 && dz != 0) ? 1.41421356f : 1.0f);
+				if (drop > best) { best = drop; receiver[c] = n; }
+			}
+		}
+		std::vector<int> order(totalVerts);
+		std::iota(order.begin(), order.end(), 0);
+		std::sort(order.begin(), order.end(), [&](int a, int b) { return filled[a] > filled[b]; });
+		for (int c : order) if (receiver[c] >= 0) accumulation[receiver[c]] += accumulation[c];
 	}
 
-	std::sort(allVerts.begin(), allVerts.end(), [](const Spring& a, const Spring& b) {
-		return a.height > b.height;
-	});
+	// 2. Springs: the heads of the channel network - cells gathering at least HEAD cells of terrain
+	// while no cell draining into them does - at the top of valleys, not on peaks (a river traced
+	// from a peak runs down a ridge, with the ground falling away on both sides of its water).
+	// Highest first, spread apart, away from the map's edge (where the water leaves the map) and
+	// out of the hollows that hold water (lake basins).
+	const float HEAD = std::max(48.0f, (float)totalVerts / 3000.0f);
+	struct Spring { int x, z; float height; };
+	std::vector<Spring> candidates;
+	{
+		std::vector<char> bigDonor(totalVerts, 0);
+		for (int c = 0; c < totalVerts; c++) if (receiver[c] >= 0 && accumulation[c] >= HEAD) bigDonor[receiver[c]] = 1;
+		int margin = std::max(2, gridRes / 12);
+		for (int c = 0; c < totalVerts; c++) {
+			if (accumulation[c] < HEAD || bigDonor[c]) continue;
+			int x = c % gridRes, z = c / gridRes;
+			if (x < margin || z < margin || x >= gridRes - margin || z >= gridRes - margin) continue;
+			if (filled[c] > H(c) + 0.05f) continue;
+			candidates.push_back({ x, z, H(c) });
+		}
+		if (candidates.empty()) // No valleys at all (a flat or tilted plane): the highest points
+			for (int c = 0; c < totalVerts; c++) candidates.push_back({ c % gridRes, c / gridRes, H(c) });
+	}
+	std::sort(candidates.begin(), candidates.end(), [](const Spring& a, const Spring& b) { return a.height > b.height; });
 
 	std::vector<Spring> springs;
 	float minDist = (float)gridRes / 10.0f;
-	for (const auto& s : allVerts)
+	for (const auto& s : candidates)
 	{
 		bool farEnough = true;
 		for (const auto& existing : springs)
@@ -330,7 +391,11 @@ void RiverNode::Execute(NodeContext& ctx)
 		}
 	}
 
-	struct SplinePoint { glm::vec2 pos; float volume; float lakeLevel; float height; };
+	// height: the top of the channel's banks; the water stands half the channel's depth below it,
+	// the bed a full depth. width: half the channel's width (m)
+	struct SplinePoint { glm::vec2 pos; float volume; float lakeLevel; float height; float width = 0.0f; float depth = 0.0f; };
+	// The flow accumulation (cells) at which a river has its base width and depth
+	const float FULL_FLOW = HEAD * 60.0f;
 	struct RiverData { std::vector<SplinePoint> path; bool isMerged; };
 	std::vector<RiverData> fineRivers;
 
@@ -390,22 +455,66 @@ void RiverNode::Execute(NodeContext& ctx)
 			fp.height = glm::mix(glm::mix(getOriginalH(x0, z0), getOriginalH(x1, z0), tx), glm::mix(getOriginalH(x0, z1), getOriginalH(x1, z1), tx), tz);
 		}
 
-		for (int s = 0; s < 50; s++) {
-			for (size_t i = 1; i < finePath.size() - 1; i++) {
-				finePath[i].height = (finePath[i - 1].height + finePath[i].height + finePath[i + 1].height) / 3.0f;
+		// Size, from the water gathered upstream: a trickle at the spring, wider and deeper as the
+		// valley's water joins (width ~ Q^0.5, depth ~ Q^0.4: hydraulic geometry, Leopold & Maddock
+		// 1953), never narrower downstream, smoothed along the river
+		{
+			float grown = 0.0f;
+			for (auto& fp : finePath) {
+				int gx = clampGrid((int)std::round(fp.pos.x)), gz = clampGrid((int)std::round(fp.pos.y));
+				float a = 0.0f;
+				for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++)
+					a = std::max(a, accumulation[clampGrid(gz + dz) * gridRes + clampGrid(gx + dx)]);
+				grown = std::max(grown, a);
+				float q = grown / FULL_FLOW;
+				fp.width = baseWidth * glm::clamp(std::sqrt(q), 0.05f, 1.6f);
+				fp.depth = baseDepth * glm::clamp(std::pow(q, 0.4f), 0.12f, 1.5f);
+			}
+			for (int pass = 0; pass < 6; pass++) {
+				for (size_t i = 1; i + 1 < finePath.size(); i++) {
+					finePath[i].width = (finePath[i - 1].width + 2.0f * finePath[i].width + finePath[i + 1].width) * 0.25f;
+					finePath[i].depth = (finePath[i - 1].depth + 2.0f * finePath[i].depth + finePath[i + 1].depth) * 0.25f;
+				}
+			}
+			// The spring: the brook comes out of the ground at a point and opens over its first metres
+			float along = 0.0f;
+			for (size_t i = 0; i < finePath.size(); i++) {
+				if (i > 0) along += glm::length(finePath[i].pos - finePath[i - 1].pos) * cellMetres;
+				float t = glm::clamp(along / 15.0f, 0.0f, 1.0f);
+				t = t * t * (3.0f - 2.0f * t);
+				finePath[i].width *= t;
+				finePath[i].depth *= glm::mix(0.3f, 1.0f, t);
 			}
 		}
 
-		// --- EXTREME SOURCE SINK ---
-		// Sink the first point 25 meters deep to guarantee it starts INSIDE the mountain.
-		float lastH = finePath[0].height - 25.0f; 
-		finePath[0].height = lastH;
-
-		for (size_t i = 1; i < finePath.size(); i++) {
-			if (finePath[i].height > lastH) {
-				finePath[i].height = lastH;
+		// The water's surface: never above the lowest ground across the river (its centre and both
+		// banks, a little past the water's edge: higher, it would spill over the lower bank or stand
+		// over a dip in the air) and never rising downstream. Then the channel's banks above it.
+		{
+			auto groundAt = [&](glm::vec2 g) {
+				g = glm::clamp(g, glm::vec2(0.0f), glm::vec2((float)(gridRes - 1)));
+				int x0 = clampGrid((int)std::floor(g.x)), z0 = clampGrid((int)std::floor(g.y));
+				float tx = g.x - (float)x0, tz = g.y - (float)z0;
+				return glm::mix(glm::mix(getOriginalH(x0, z0), getOriginalH(x0 + 1, z0), tx),
+					glm::mix(getOriginalH(x0, z0 + 1), getOriginalH(x0 + 1, z0 + 1), tx), tz);
+			};
+			std::vector<float> surface(finePath.size());
+			for (size_t i = 0; i < finePath.size(); i++) {
+				glm::vec2 d = finePath[std::min(i + 1, finePath.size() - 1)].pos - finePath[i > 0 ? i - 1 : 0].pos;
+				glm::vec2 across = glm::length(d) > 1e-5f ? glm::vec2(-d.y, d.x) / glm::length(d) : glm::vec2(1.0f, 0.0f);
+				float reach = (finePath[i].width * 1.3f + 0.5f) / cellMetres; // Cells
+				float low = finePath[i].height; // The ground at the centre
+				for (float f : { -1.0f, -0.5f, 0.5f, 1.0f }) low = std::min(low, groundAt(finePath[i].pos + across * (reach * f)));
+				surface[i] = low - 0.03f;
+				if (i > 0) surface[i] = std::min(surface[i], surface[i - 1]);
 			}
-			lastH = finePath[i].height;
+			// Smoothed by lowering only (it stays under the banks): no steps, no bumps
+			for (int pass = 0; pass < 24; pass++) {
+				for (size_t i = 1; i + 1 < surface.size(); i++)
+					surface[i] = std::min(surface[i], (surface[i - 1] + surface[i] + surface[i + 1]) / 3.0f);
+			}
+			for (size_t i = 1; i < surface.size(); i++) surface[i] = std::min(surface[i], surface[i - 1]);
+			for (size_t i = 0; i < finePath.size(); i++) finePath[i].height = surface[i] + 0.5f * finePath[i].depth;
 		}
 
 		bool isMerged = false;
@@ -440,85 +549,122 @@ void RiverNode::Execute(NodeContext& ctx)
 		currentPathID++;
 	}
 
+	// Carving: the channel - its bed a full depth under its banks, rising to them at its edge -
+	// then, where the river runs below the ground beside it (a notch in a slope, a gap through a
+	// rim), the valley walls at their angle of repose (24-40 degrees, varying along the river)
+	// instead of vertical cuts, their crest rounded into the untouched ground (smooth minimum).
+	// Only ever lowers the terrain. carved: the cells lowered.
+	std::vector<char> carved(totalVerts, 0);
+	std::vector<char> inChannel(totalVerts, 0);       // Under some river's water
+	std::vector<float> nearestDist(totalVerts, 1e9f); // Metres to the nearest river point
+	std::vector<float> nearestWater(totalVerts, 0.0f); // That point's water level
+	auto Hash1 = [](float x) { float f = std::sin(x * 127.1f) * 43758.5453f; return f - std::floor(f); };
+	auto SmoothNoise1 = [&](float x) {
+		float i0 = std::floor(x), f = x - i0;
+		f = f * f * (3.0f - 2.0f * f);
+		return glm::mix(Hash1(i0), Hash1(i0 + 1.0f), f);
+	};
+	int riverIndex = 0;
 	for (const auto& riverData : fineRivers) {
-		for (const auto& pt : riverData.path) {
-
-			float volume = pt.volume;
-			float currentDepth = baseDepth * std::pow(volume, 0.35f);
-			float currentWidth = baseWidth * std::pow(volume, 0.35f);
-
-			int cx = (int)pt.pos.x;
-			int cz = (int)pt.pos.y;
-			
-			float stepSize = terrainScale.x / (float)gridRes;
-			int gridRadius = 0;
-			if (stepSize > 1e-5f) {
-				gridRadius = (int)std::ceil(currentWidth / stepSize);
-			}
-			// Safety cap to prevent massive/infinite loops if scale is invalid or extremely small
-			if (gridRadius > gridRes / 4) {
-				gridRadius = gridRes / 4;
-			}
+		float along = 0.0f;
+		for (size_t pi = 0; pi < riverData.path.size(); pi++) {
+			const auto& pt = riverData.path[pi];
+			if (pi > 0) along += glm::length(pt.pos - riverData.path[pi - 1].pos) * cellMetres;
+			if (pt.width <= 0.01f) continue;
+			float bank = pt.height, bed = pt.height - pt.depth;
+			float slope = std::tan(glm::radians(glm::mix(24.0f, 40.0f, SmoothNoise1(along / 60.0f + riverIndex * 17.0f))));
+			int cx = clampGrid((int)std::round(pt.pos.x)), cz = clampGrid((int)std::round(pt.pos.y));
+			float cut = std::max(originalHeights[cz * gridRes + cx] - bank, 0.0f);
+			float crest = glm::clamp(cut * 0.3f, 0.15f, 3.0f); // A shallow river keeps sharp banks
+			int gridRadius = (int)std::ceil((pt.width + cut / slope + crest * 2.0f) / cellMetres) + 1;
+			gridRadius = std::min(gridRadius, gridRes / 4);
 
 			for (int rz = -gridRadius; rz <= gridRadius; rz++) {
 				for (int rx = -gridRadius; rx <= gridRadius; rx++) {
-					int nx = cx + rx;
-					int nz = cz + rz;
-					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) {
-						bool isSubmerged = false;
-						if (lakeMask[nz * gridRes + nx]) {
-							float visualLakeWater = lakeWaterLevel[nz * gridRes + nx] + lakeWaterOffset;
-							float preRiverHeight = std::min(originalHeights[nz * gridRes + nx], lakeWaterLevel[nz * gridRes + nx] - baseDepth);
-							if (preRiverHeight < visualLakeWater) {
-								isSubmerged = true;
-							}
-						}
-						
-						if (!isSubmerged) {
-							float dx = (float)nx - pt.pos.x;
-							float dz = (float)nz - pt.pos.y;
-							float dist = std::sqrt(dx * dx + dz * dz);
-							float worldDist = dist * (terrainScale.x / gridRes);
-
-							if (worldDist <= currentWidth) {
-								float t = glm::clamp(worldDist / currentWidth, 0.0f, 1.0f);
-								t = t * t * (3.0f - 2.0f * t);
-								
-								float bankHeight = originalHeights[nz * gridRes + nx];
-								float riverBedHeight = pt.height - currentDepth;
-								float targetHeight = glm::mix(riverBedHeight, bankHeight, t);
-								
-								if (targetHeight < data.vertices[(nz * gridRes + nx) * 14 + 1]) {
-									data.vertices[(nz * gridRes + nx) * 14 + 1] = targetHeight;
-								}
-							}
-						}
+					int nx = cx + rx, nz = cz + rz;
+					if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+					int nidx = nz * gridRes + nx;
+					if (lakeMask[nidx]) {
+						float visualLakeWater = lakeWaterLevel[nidx] + lakeWaterOffset;
+						float preRiverHeight = std::min(originalHeights[nidx], lakeWaterLevel[nidx] - baseDepth);
+						if (preRiverHeight < visualLakeWater) continue; // Under the lake already
 					}
+					float dist = glm::length(glm::vec2((float)nx, (float)nz) - pt.pos) * cellMetres;
+					if (dist <= pt.width) inChannel[nidx] = 1;
+					if (dist < nearestDist[nidx]) { nearestDist[nidx] = dist; nearestWater[nidx] = pt.height - 0.5f * pt.depth; }
+					float target;
+					if (dist <= pt.width) {
+						float t = dist / pt.width;
+						t = t * t * (3.0f - 2.0f * t);
+						target = glm::mix(bed, bank, t);
+					} else {
+						target = bank + (dist - pt.width) * slope;
+					}
+					float ground = originalHeights[nidx];
+					float h = glm::clamp(0.5f + 0.5f * (ground - target) / crest, 0.0f, 1.0f);
+					float smoothed = glm::mix(ground, target, h) - crest * h * (1.0f - h);
+					float& terrainH = data.vertices[nidx * 14 + 1];
+					if (smoothed < terrainH - 0.01f) { terrainH = smoothed; carved[nidx] = 1; }
+				}
+			}
+		}
+		riverIndex++;
+	}
+
+	// Smoothing of what the rivers carved and a ring around it (no step or facet is left), and of
+	// the lake beds; a lake's banks are left alone unless a river cut them (lowered under the water
+	// they would let the lake spill over them)
+	if (smoothPasses > 0) {
+		std::vector<char> nearLake(totalVerts, 0), smoothMask(totalVerts, 0);
+		for (int z = 0; z < gridRes; z++) {
+			for (int x = 0; x < gridRes; x++) {
+				if (!lakeMask[z * gridRes + x]) continue;
+				for (int dz = -4; dz <= 4; dz++) for (int dx = -4; dx <= 4; dx++) {
+					int nx = x + dx, nz = z + dz;
+					if (nx >= 0 && nx < gridRes && nz >= 0 && nz < gridRes) nearLake[nz * gridRes + nx] = 1;
+				}
+			}
+		}
+		for (int z = 0; z < gridRes; z++) {
+			for (int x = 0; x < gridRes; x++) {
+				int idx = z * gridRes + x;
+				if (!(carved[idx] || lakeMask[idx])) continue;
+				for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+					int nx = x + dx, nz = z + dz;
+					if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes) continue;
+					int nidx = nz * gridRes + nx;
+					if (nearLake[nidx] && !lakeMask[nidx] && !carved[nidx]) continue;
+					smoothMask[nidx] = 1;
+				}
+			}
+		}
+		std::vector<float> heightBuffer(totalVerts);
+		for (int p = 0; p < smoothPasses; p++) {
+			for (int i = 0; i < totalVerts; i++) heightBuffer[i] = data.vertices[i * 14 + 1];
+			for (int z = 1; z < gridRes - 1; z++) {
+				for (int x = 1; x < gridRes - 1; x++) {
+					int idx = z * gridRes + x;
+					if (!smoothMask[idx]) continue;
+					// 3x3 average (weights 4 / 2 / 1), round with no direction preferred; a channel or
+					// a lake bed is never raised (they keep their depth)
+					float sum = heightBuffer[idx] * 4.0f
+						+ (heightBuffer[idx - 1] + heightBuffer[idx + 1] + heightBuffer[idx - gridRes] + heightBuffer[idx + gridRes]) * 2.0f
+						+ heightBuffer[idx - gridRes - 1] + heightBuffer[idx - gridRes + 1] + heightBuffer[idx + gridRes - 1] + heightBuffer[idx + gridRes + 1];
+					float avg = sum / 16.0f;
+					data.vertices[idx * 14 + 1] = (carved[idx] || lakeMask[idx]) ? std::min(avg, heightBuffer[idx]) : avg;
 				}
 			}
 		}
 	}
 
-	if (smoothPasses > 0)
-	{
-		std::vector<float> heightBuffer(totalVerts);
-		for (int p = 0; p < smoothPasses; p++)
-		{
-			for (int i = 0; i < totalVerts; i++) heightBuffer[i] = data.vertices[i * 14 + 1];
-			for (int z = 1; z < gridRes - 1; z++)
-			{
-				for (int x = 1; x < gridRes - 1; x++)
-				{
-					int idx = z * gridRes + x;
-					if (flowVolume[idx] > 0 || lakeMask[idx])
-					{
-						float avg = (heightBuffer[idx] + heightBuffer[idx - 1] + heightBuffer[idx + 1] +
-							heightBuffer[idx - gridRes] + heightBuffer[idx + gridRes]) / 5.0f;
-						data.vertices[idx * 14 + 1] = avg;
-					}
-				}
-			}
-		}
+	// The banks stay above the water: ground beside a river (not under its water) that the
+	// smoothing pulled toward the channel is held a few centimetres above the nearest water level
+	// (never above where it stood), so the river never spills over a bank nor ends in a wall of water
+	for (int i = 0; i < totalVerts; i++) {
+		if (inChannel[i] || nearestDist[i] > 40.0f || lakeMask[i]) continue;
+		float floorH = std::min(nearestWater[i] + 0.08f, originalHeights[i]);
+		float& terrainH = data.vertices[i * 14 + 1];
+		if (terrainH < floorH) terrainH = floorH;
 	}
 	RecomputeNormals(data, gridRes);
 
@@ -595,8 +741,7 @@ void RiverNode::Execute(NodeContext& ctx)
 			posZ = glm::mix(data.vertices[(z0 * gridRes + x0) * 14 + 2], data.vertices[(z1 * gridRes + x0) * 14 + 2], tz);
 
 			auto surfaceHeight = [&](size_t k) {
-				float depth = baseDepth * std::pow(riverData.path[k].volume, 0.35f);
-				float h = riverData.path[k].height - depth * 0.5f;
+				float h = riverData.path[k].height - riverData.path[k].depth * 0.5f;
 				// Once the river has entered the lake it dives under the lake surface, so the
 				// (depth-writing) lake hides it instead of the river ribbon lying on top of it.
 				if (lakeEntryIdx >= 0 && (int)k >= lakeEntryIdx)
@@ -641,52 +786,43 @@ void RiverNode::Execute(NodeContext& ctx)
 				}
 			}
 			
-			// --- TERRAIN-AWARE MESH BURIAL ---
-			// Push segments backward horizontally.
-			// This ensures the buried part of the mesh starts inside the mountain behind the source.
-			if (i < 8 && riverData.path.size() >= 2) {
-				float pushDist = 20.0f * (1.0f - (float)i / 8.0f);
-				center -= dir * pushDist;
-			}
+			// Its width, opening from a point at the spring (riverData.path: the channel's)
+			float currentWidth = riverData.path[i].width;
 
-			float volume = riverData.path[i].volume;
-			float currentWidth = baseWidth * std::pow(volume, 0.35f);
-			
-			if (i < 8) {
-				float t = (float)i / 8.0f;
-				float smoothT = t * t * (3.0f - 2.0f * t);
-				currentWidth *= smoothT;
-			}
-			
 			if (riverData.isMerged && i > riverData.path.size() - 6) {
 				float t = (float)(riverData.path.size() - 1 - i) / 5.0f;
 				currentWidth *= t;
 			}
 			
 			float localWidth = currentWidth * waterMeshWidthMultiplier;
-			glm::vec3 pL = center - right * localWidth;
-			glm::vec3 pR = center + right * localWidth;
-
-			// Clamp left/right vertices below the carved terrain to prevent bank clipping
-			float terrainL = sampleCarvedTerrainAtWorld(pL.x, pL.z);
-			float terrainR = sampleCarvedTerrainAtWorld(pR.x, pR.z);
-			if (pL.y > terrainL - 0.1f) pL.y = terrainL - 0.1f;
-			if (pR.y > terrainR - 0.1f) pR.y = terrainR - 0.1f;
 
 			// UV: u = across the river (river.frag), v = -1 - opacity at a lake mouth (-2 = the open
 			// river, -1 = faded out at the lake entry; meshes without the marker keep v >= 0)
 			float mouthFade = toLake[i] >= 0.0f ? glm::clamp(toLake[i] / MOUTH_FADE_METRES, 0.0f, 1.0f) : 1.0f;
 			float vCoord = -1.0f - mouthFade;
 			const glm::vec3& n = surfaceNormal;
-			riverMesh.AddVertex(pL.x, pL.y, pL.z, 0, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
-			riverMesh.AddVertex(pR.x, pR.y, pR.z, 1, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			// A row of vertices across the river: the surface stays flat at the water's height
+			// (two vertices tilted it whenever one edge had to sink) and only the outermost ones
+			// sink, 40 cm under the banks: the depth test cuts the water along the terrain's
+			// contour, and the waves (river.tes) cannot lift an edge out of a bank
+			const int COLUMNS = 9;
+			for (int c = 0; c < COLUMNS; c++) {
+				float u = (float)c / (float)(COLUMNS - 1);
+				glm::vec3 p = center + right * (localWidth * (u * 2.0f - 1.0f));
+				if (c == 0 || c == COLUMNS - 1) {
+					float ground = sampleCarvedTerrainAtWorld(p.x, p.z);
+					if (p.y > ground - 0.4f) p.y = ground - 0.4f;
+				}
+				riverMesh.AddVertex(p.x, p.y, p.z, u, vCoord, n.x, n.y, n.z, right.x, right.y, right.z, dir.x, dir.y, dir.z);
+			}
 
 			if (emittedVerts > 0)
 			{
-				int currL = baseIdx + emittedVerts * 2; int currR = baseIdx + emittedVerts * 2 + 1;
-				int prevL = baseIdx + (emittedVerts - 1) * 2; int prevR = baseIdx + (emittedVerts - 1) * 2 + 1;
-				riverMesh.AddTriangle(prevL, currR, currL);
-				riverMesh.AddTriangle(prevL, prevR, currR);
+				int curr = baseIdx + emittedVerts * COLUMNS, prev = curr - COLUMNS;
+				for (int c = 0; c + 1 < COLUMNS; c++) {
+					riverMesh.AddTriangle(prev + c, curr + c + 1, curr + c);
+					riverMesh.AddTriangle(prev + c, prev + c + 1, curr + c + 1);
+				}
 			}
 			emittedVerts++;
 		}
@@ -781,6 +917,17 @@ void RiverNode::Execute(NodeContext& ctx)
 
 		float x_pos = data.vertices[idx * 14]; float z_pos = data.vertices[idx * 14 + 2];
 		float y_pos = wLevel + lakeWaterOffset;
+		// The lake's outermost vertices sink 40 cm under the ground: wherever the carved and
+		// smoothed banks ended up lower than the water, the surface still runs into them instead of
+		// ending in the open on a grid line (a straight cut)
+		bool border = false;
+		for (int dz = -1; dz <= 1 && !border; dz++) {
+			for (int dx = -1; dx <= 1 && !border; dx++) {
+				int nx = (idx % gridRes) + dx, nz = (idx / gridRes) + dz;
+				if (nx < 0 || nx >= gridRes || nz < 0 || nz >= gridRes || !isExpanded[nz * gridRes + nx]) border = true;
+			}
+		}
+		if (border) y_pos = std::min(y_pos, data.vertices[idx * 14 + 1] - 0.4f);
 		// UV: u = opacity at a river mouth (1 = the lake, 0 = its end up the channel), v = -1 marks
 		// a lake from this node for water.vert (other water meshes keep their own UVs)
 		float mouthFade = lakeRing[idx] > 0 ? glm::clamp(1.0f - (float)lakeRing[idx] / (float)mouthRings, 0.0f, 1.0f) : 1.0f;

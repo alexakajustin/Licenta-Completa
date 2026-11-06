@@ -130,6 +130,10 @@ public:
 	// Framebuffer whose attachment 1 takes motion vectors this frame (TemporalAA; 0 = none):
 	// groups moving in the wind write theirs while drawing into it
 	static void SetVelocityTarget(GLuint fbo) { velocityTarget = fbo; }
+	// Alpha-tested foliage (leaves, grass) is drawn twice in camera passes: depth only (the same
+	// program, alpha test and fades, nothing lit), then lit with GL_EQUAL and no depth writes, so
+	// the expensive shading runs once per pixel instead of once per overlapping layer of cards
+	static bool foliageDepthPrepass;
 	int GetWindMode() const { return windMode; }
 	bool DrawsImpostor() const { return impostor && drawsImpostor; }
 

@@ -20,6 +20,13 @@ struct GraphicsSettings {
 	bool taaEnabled = true;         // Temporal anti-aliasing (Rendering/TemporalAA.h)
 	float taaSharpness = 0.5f;      // Contrast-adaptive sharpening of the TAA result (0-1)
 
+	// Global illumination (Rendering/GlobalIllumination.h)
+	bool giEnabled = true;          // Software ray-traced ambient light: shade, bounces, colour bleeding
+	int giQuality = 1;              // 0 low (integrated GPUs), 1 medium, 2 high
+	float giIntensity = 1.0f;       // Of the ambient light from the probes
+	float giBounce = 0.8f;          // How much light keeps bouncing (0 = one bounce of sky light only)
+	float giSkyColour = 0.35f;      // Colour of the sky light: 0 = the sun's ambient colour, 1 = the sky's own colours
+
 	// Reflections (Rendering/Reflections.h)
 	bool ssrEnabled = true;         // Screen-space reflections over the reflection probes
 	float ssrMaxDistance = 60.0f;   // Longest reflected ray (m)

@@ -2169,6 +2169,35 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			}
 		}
 
+		if (ImGui::CollapsingHeader("Global Illumination", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			GraphicsSettings& g = *graphicsSettingsPtr;
+			ImGui::Checkbox("Global Illumination (ray traced)", &g.giEnabled);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Software ray tracing through a voxel copy of the scene (no RT hardware needed):\n"
+					"shade under trees and indoors, light bounced off lit surfaces, colour bleeding.\n"
+					"Replaces the sun's flat ambient light.");
+			if (!g.giEnabled) ImGui::BeginDisabled();
+			const char* qualities[] = { "Low (integrated GPUs)", "Medium", "High" };
+			ImGui::Combo("Quality##GI", &g.giQuality, qualities, 3);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Voxel detail, probe density and rays per probe.\nLow: 64^3 voxels x 3 levels, 4k probes, 32 rays.\nHigh: 128^3 x 4, 32k probes, 64 rays.");
+			ImGui::SliderFloat("Intensity##GI", &g.giIntensity, 0.0f, 2.0f, "%.2f");
+			ImGui::SliderFloat("Bounce", &g.giBounce, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("How much light keeps bouncing between surfaces");
+			ImGui::SliderFloat("Sky Colour", &g.giSkyColour, 0.0f, 1.0f, "%.2f");
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Colour of the light from the sky (the shade):\n"
+					"0 = the sun's ambient colour, as without global illumination\n"
+					"1 = the sky's own colours (blue shade by day, purple at dusk)");
+			if (!g.giEnabled) ImGui::EndDisabled();
+			if (ImGui::Button("Reset Defaults##GI", ImVec2(-1, 0))) {
+				GraphicsSettings d;
+				g.giEnabled = d.giEnabled; g.giQuality = d.giQuality; g.giIntensity = d.giIntensity; g.giBounce = d.giBounce;
+				g.giSkyColour = d.giSkyColour;
+			}
+		}
+
 		if (ImGui::CollapsingHeader("Reflections", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			GraphicsSettings& g = *graphicsSettingsPtr;

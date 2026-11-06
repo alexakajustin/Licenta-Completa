@@ -92,7 +92,7 @@ public:
 
 	void UseShader();
 	void ClearShader();
-	GLuint GetShaderID() { return shaderID; }
+	GLuint GetShaderID() const { return shaderID; }
 
 	const std::map<std::string, UniformProperty>& GetUniformProperties() const { return uniformProperties; }
 
@@ -100,6 +100,8 @@ public:
 	// foliage flags...): never material properties, so a material must not snapshot or
 	// re-upload them
 	static bool IsEngineManagedUniform(const std::string& name);
+	// Binds the engine's shared uniform blocks (wind, cloud shadows, frame, GI) of a linked program
+	static void BindSharedBlocks(GLuint program);
 
 	const std::string& GetVertexPath() const { return vertexPath; }
 	const std::string& GetFragmentPath() const { return fragmentPath; }

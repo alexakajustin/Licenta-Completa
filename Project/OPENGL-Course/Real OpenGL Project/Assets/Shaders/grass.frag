@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 
 in vec2 TexCoord;
 in vec3 Normal;
@@ -56,6 +56,7 @@ uniform sampler2D theTexture;
 uniform DirectionalLight directionalLight;
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
 #include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
+#include "gi.glsl"               // Ambient light from the global illumination probes
 
 // Motion vector (attachment 1 of the viewport; only plants moving in the wind enable it, see
 // InstancedGroup::DrawLODs): this frame's minus last frame's screen position (uv units), and the
@@ -103,13 +104,14 @@ vec2 poissonDisk[16] = vec2[](
 
 uniform vec3 eyePosition;
 uniform float selectionTint;
+uniform int depthPrepass; // 1: depth pre-pass (InstancedGroup::DrawLODs): coverage only, no lighting
 
 // --- Specialized Grass Lighting Model ---
 // Applies wrapped diffuse and subsurface scattering for any light source.
 vec3 CalcGrassLightByDirection(Light base, vec3 direction, vec3 normal, vec3 viewDir)
 {
     // 1. Ambient Lighting
-    vec3 ambient = base.colour * base.ambientIntensity;
+    vec3 ambient = giSpacing.w > 0.5 ? vec3(0.0) : base.colour * base.ambientIntensity; // GI on: the probes carry the bounced light
     
     // 2. Wrapped Diffuse
     vec3 lightDir = normalize(-direction);
@@ -248,6 +250,7 @@ void main()
     // Thin blades stay visible with distance: cutout textures get coverage-preserving mips
     // (Texture.cpp), so no per-pixel alpha boost is needed here.
     if (texColor.a < 0.5) discard; // Same cutoff as the shadow passes
+    if (depthPrepass == 1) return;  // Depth pre-pass: coverage only (the lit pass shades each pixel once)
 
     vec3 norm = normalize(Normal);
     // Blades are drawn double-sided (culling off): light the back face with the flipped
@@ -263,7 +266,14 @@ void main()
     vec3 sunDir = normalize(-directionalLight.direction);
     vec3 sunIn = directionalLight.base.colour * directionalLight.base.diffuseIntensity * (1.0 - shadowFactor * 0.8);
     // Sky fill is cooler than the sun (same as foliage in shader.frag)
-    vec3 totalLight = directionalLight.base.colour * directionalLight.base.ambientIntensity * vec3(1.0, 1.2, 1.35)
+    // The sky light that reaches the blade (GI probes), for a normal leaning up like the clump
+    // One probe picked at random while TAA averages the frames (the blades overdraw a lot)
+    vec3 skyNormal = normalize(norm + vec3(0.0, 1.0, 0.0));
+    vec3 flatAmbient = directionalLight.base.colour * directionalLight.base.ambientIntensity;
+    vec3 skyLight = frameJitter.w > 0.5
+        ? GIAmbientTemporal(FragPos, skyNormal, viewDir, flatAmbient, GINoise(gl_FragCoord.xy, frameJitter.z), true)
+        : GIAmbient(FragPos, skyNormal, viewDir, flatAmbient);
+    vec3 totalLight = skyLight * vec3(1.0, 1.2, 1.35)
                     + sunIn * max(0.0, (dot(norm, sunDir) + 0.5) / 1.5);
     
     for(int i = 0; i < pointLightCount; i++) {

@@ -198,12 +198,15 @@ void VolumetricFog::Render(const glm::mat4& projection, const glm::mat4& view, c
 
 	const auto& matrices = sun.GetCascadedLightMatrices();
 	const auto& splits = sun.GetCascadeSplitDistances();
-	int cascades = (int)std::min<size_t>(std::min(matrices.size(), splits.size()), 4);
+	const auto& ranges = sun.GetCascadeDepthRanges();
+	int cascades = (int)std::min<size_t>(std::min(std::min(matrices.size(), splits.size()), ranges.size()), 4);
 	for (int i = 0; i < cascades; i++) {
 		std::string m = "cascadeMatrices[" + std::to_string(i) + "]";
 		std::string s = "cascadeSplits[" + std::to_string(i) + "]";
 		glUniformMatrix4fv(U(m.c_str()), 1, GL_FALSE, glm::value_ptr(matrices[i]));
 		glUniform1f(U(s.c_str()), splits[i]);
+		std::string r = "cascadeDepthRanges[" + std::to_string(i) + "]";
+		glUniform1f(U(r.c_str()), std::max(ranges[i], 1.0f));
 	}
 	glUniform1i(U("cascadeCount"), sun.GetShadowMap() ? cascades : 0);
 

@@ -2,7 +2,9 @@
 #include "Rendering/Shader.h"
 #include "Rendering/CloudShadows.h"
 #include "Rendering/TemporalAA.h"
+#include "Rendering/GlobalIllumination.h"
 #include <algorithm>
+#include <fstream>
 #include <unordered_map>
 #include <string>
 #include "Core/AssetManager.h"
@@ -89,6 +91,19 @@ void Shader::CreateFromString(const char* vertexCode, const char* tcsCode, const
 
 void Shader::CreateFromFiles(const char* vertexLocation, const char* fragmentLocation)
 {
+	// Rivers are tessellated (river.tcs / river.tes give the surface its shape), whichever
+	// material or saved scene names only their vertex and fragment shaders
+	{
+		std::string v = vertexLocation;
+		size_t at = v.rfind("river.vert");
+		if (at != std::string::npos && at + 10 == v.size()) {
+			std::string tcs = v.substr(0, at) + "river.tcs", tes = v.substr(0, at) + "river.tes";
+			if (std::ifstream(tcs).good() && std::ifstream(tes).good()) {
+				CreateFromFiles(vertexLocation, tcs.c_str(), tes.c_str(), fragmentLocation);
+				return;
+			}
+		}
+	}
 	vertexPath = vertexLocation;
 	fragmentPath = fragmentLocation;
 	geometryPath = "";
@@ -169,6 +184,7 @@ void Shader::CreateComputeShader(const char* computePath)
 	GLchar errorLog[1024] = { 0 };
 
 	glLinkProgram(shaderID);
+	BindSharedBlocks(shaderID); // Compute programs bypass CompileProgram
 	glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
 	if (!result) {
 		glGetProgramInfoLog(shaderID, sizeof(errorLog), NULL, errorLog);
@@ -292,6 +308,23 @@ void Shader::Validate()
 
 
 
+// The uniform blocks every program shares, each on its own binding point: the scene's wind
+// (wind.glsl), the cloud shadows (cloud_shadow.glsl), the frame's jitter (frame.glsl) and the
+// global illumination probes (gi_block.glsl)
+void Shader::BindSharedBlocks(GLuint program)
+{
+	const struct { const char* name; GLuint binding; } blocks[] = {
+		{ "WindBlock", WIND_UBO_BINDING },
+		{ "CloudShadowBlock", CLOUD_SHADOW_UBO_BINDING },
+		{ "FrameBlock", FRAME_UBO_BINDING },
+		{ "GIBlock", GI_UBO_BINDING },
+	};
+	for (const auto& b : blocks) {
+		GLuint index = glGetUniformBlockIndex(program, b.name);
+		if (index != GL_INVALID_INDEX) glUniformBlockBinding(program, index, b.binding);
+	}
+}
+
 void Shader::CompileProgram()
 {
 	GLint result = 0;
@@ -317,15 +350,7 @@ void Shader::CompileProgram()
 	ServiceLocator::GetAssetManager()->RegisterShader(shaderID, name);
 	printf("[ShaderRegistry] ID %u -> %s\n", shaderID, name.c_str());
 
-	// The scene's wind (wind.glsl) is one uniform block shared by every program
-	GLuint windBlock = glGetUniformBlockIndex(shaderID, "WindBlock");
-	if (windBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, windBlock, WIND_UBO_BINDING);
-	// So are the cloud shadows (cloud_shadow.glsl)
-	GLuint cloudShadowBlock = glGetUniformBlockIndex(shaderID, "CloudShadowBlock");
-	if (cloudShadowBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, cloudShadowBlock, CLOUD_SHADOW_UBO_BINDING);
-	// And the frame's jitter / dither offset (frame.glsl)
-	GLuint frameBlock = glGetUniformBlockIndex(shaderID, "FrameBlock");
-	if (frameBlock != GL_INVALID_INDEX) glUniformBlockBinding(shaderID, frameBlock, FRAME_UBO_BINDING);
+	BindSharedBlocks(shaderID);
 
 	uniformModel = glGetUniformLocation(shaderID, "model");
 	uniformProjection = glGetUniformLocation(shaderID, "projection");
@@ -467,6 +492,7 @@ bool Shader::IsEngineManagedUniform(const std::string& n)
 
 	return n.find("[") != std::string::npos || // Array members
 		n_lower.find("layer") != std::string::npos ||
+		n_lower == "depthprepass" || // Foliage depth pre-pass (InstancedGroup::DrawLODs)
 		n_lower.find("light") != std::string::npos ||
 		n_lower.find("shadow") != std::string::npos ||
 		n_lower.find("transform") != std::string::npos ||
@@ -518,8 +544,8 @@ void Shader::DiscoverUniforms()
 		default:            prop.type = UniformType::Unknown; break;
 		}
 
-		// Filter out internal engine uniforms
-		if (IsEngineManagedUniform(prop.name))
+		// Filter out internal engine uniforms, and members of uniform blocks (no location)
+		if (IsEngineManagedUniform(prop.name) || prop.location == -1)
 			continue;
 
 		if (prop.type == UniformType::Unknown || prop.type == UniformType::Mat4 || prop.type == UniformType::Sampler2D) 

@@ -27,6 +27,7 @@ struct DirectionalLight {
 };
 
 uniform DirectionalLight directionalLight;
+#include "gi.glsl"               // Ambient light from the global illumination probes
 uniform sampler2DArray directionalShadowMap;
 uniform sampler2DArray directionalShadowColorMap;
 uniform mat4 directionalLightTransform[4];
@@ -151,7 +152,11 @@ void main()
     // Foliage lighting of shader.frag: wrapped diffuse, sky fill, light through the leaves near the sun
     float shadowFactor = DirectionalShadow(fragPos, N);
     shadowFactor = 1.0 - (1.0 - shadowFactor) * CloudShadow(fragPos); // cloud_shadow.glsl (ImpostorSystem::Init)
-    vec3 ambientColour = directionalLight.base.colour * directionalLight.base.ambientIntensity;
+    // One probe picked at random while TAA averages the frames (distant crowns overdraw a lot)
+    vec3 flatAmbient = directionalLight.base.colour * directionalLight.base.ambientIntensity;
+    vec3 ambientColour = frameJitter.w > 0.5
+        ? GIAmbientTemporal(fragPos, N, V, flatAmbient, GINoise(gl_FragCoord.xy, frameJitter.z), true)
+        : GIAmbient(fragPos, N, V, flatAmbient);
     float wrapped = max((dot(N, L) + 0.5) / 1.5, 0.0);
     float backLit = pow(max(dot(V, -L), 0.0), 10.0);
     float transmission = (0.06 * max(-dot(N, L), 0.0) + 0.5 * backLit) * occlusion;

@@ -1,0 +1,101 @@
+#version 400 core
+
+/**
+ * @file river.tcs
+ * @brief River surface tessellation (river.vert -> river.tcs -> river.tes -> river.frag).
+ *
+ * The river mesh (RiverNode) is a ribbon two vertices wide: flat across, one row per terrain cell.
+ * Near the camera each triangle is split down to about 0.3 m so river.tes can give the surface its
+ * real shape (standing waves, boils, the water piling up against rocks); the spacing grows with
+ * the distance, and patches outside the view are dropped.
+ */
+
+layout(vertices = 3) out;
+
+in vec4 vertex_color[];
+in vec2 TexCoord[];
+in vec3 Normal[];
+in vec3 FragPos[];
+in vec3 TangentWorld[];
+in vec3 BitangentWorld[];
+in vec3 NormalWorld[];
+in vec3 LocalPos[];
+in float vIsSelected[];
+in float vFadeFactor[];
+in float vObjectScale[];
+in vec2 RiverCoord[];
+
+out vec4 vertex_color_TC[];
+out vec2 TexCoord_TC[];
+out vec3 Normal_TC[];
+out vec3 FragPos_TC[];
+out vec3 TangentWorld_TC[];
+out vec3 BitangentWorld_TC[];
+out vec3 NormalWorld_TC[];
+out vec3 LocalPos_TC[];
+out float vIsSelected_TC[];
+out float vFadeFactor_TC[];
+out float vObjectScale_TC[];
+out vec2 RiverCoord_TC[];
+
+uniform vec3 eyePosition;
+uniform mat4 projection;
+uniform mat4 view;
+
+bool OutsideView(vec3 center, float radius)
+{
+    mat4 vp = projection * view;
+    for (int i = 0; i < 6; i++) {
+        int row = i / 2;
+        float s = (i % 2 == 0) ? 1.0 : -1.0;
+        vec4 plane = vec4(vp[0][3] + s * vp[0][row], vp[1][3] + s * vp[1][row], vp[2][3] + s * vp[2][row], vp[3][3] + s * vp[3][row]);
+        plane /= max(length(plane.xyz), 1e-6);
+        if (dot(plane.xyz, center) + plane.w < -radius) return true;
+    }
+    return false;
+}
+
+// Segments for an edge: about 0.7 m apart close by, 6 % of the distance further away (shorter
+// waves fade out there: river.tes), none past the waves' reach
+float EdgeLevel(vec3 a, vec3 b)
+{
+    // Closest point of the edge: a long edge passing near the camera is split as near
+    vec3 ab = b - a;
+    float t = clamp(dot(eyePosition - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+    float dist = length(a + ab * t - eyePosition);
+    if (dist > 130.0) return 1.0; // river.tes displaces nothing beyond 120 m
+    float spacing = clamp(dist * 0.06, 0.7, 16.0);
+    return clamp(length(ab) / spacing, 1.0, 64.0);
+}
+
+void main()
+{
+    vertex_color_TC[gl_InvocationID] = vertex_color[gl_InvocationID];
+    TexCoord_TC[gl_InvocationID] = TexCoord[gl_InvocationID];
+    Normal_TC[gl_InvocationID] = Normal[gl_InvocationID];
+    FragPos_TC[gl_InvocationID] = FragPos[gl_InvocationID];
+    TangentWorld_TC[gl_InvocationID] = TangentWorld[gl_InvocationID];
+    BitangentWorld_TC[gl_InvocationID] = BitangentWorld[gl_InvocationID];
+    NormalWorld_TC[gl_InvocationID] = NormalWorld[gl_InvocationID];
+    LocalPos_TC[gl_InvocationID] = LocalPos[gl_InvocationID];
+    vIsSelected_TC[gl_InvocationID] = vIsSelected[gl_InvocationID];
+    vFadeFactor_TC[gl_InvocationID] = vFadeFactor[gl_InvocationID];
+    vObjectScale_TC[gl_InvocationID] = vObjectScale[gl_InvocationID];
+    RiverCoord_TC[gl_InvocationID] = RiverCoord[gl_InvocationID];
+
+    if (gl_InvocationID == 0) {
+        vec3 p0 = FragPos[0], p1 = FragPos[1], p2 = FragPos[2];
+        vec3 center = (p0 + p1 + p2) / 3.0;
+        float radius = max(max(length(p0 - center), length(p1 - center)), length(p2 - center)) + 1.0; // + the waves
+        if (OutsideView(center, radius)) {
+            gl_TessLevelOuter[0] = 0.0; gl_TessLevelOuter[1] = 0.0; gl_TessLevelOuter[2] = 0.0;
+            gl_TessLevelInner[0] = 0.0;
+        } else {
+            // Outer level i is the edge opposite vertex i (shared edges match their neighbours)
+            gl_TessLevelOuter[0] = EdgeLevel(p1, p2);
+            gl_TessLevelOuter[1] = EdgeLevel(p2, p0);
+            gl_TessLevelOuter[2] = EdgeLevel(p0, p1);
+            gl_TessLevelInner[0] = max(max(gl_TessLevelOuter[0], gl_TessLevelOuter[1]), gl_TessLevelOuter[2]);
+        }
+    }
+}

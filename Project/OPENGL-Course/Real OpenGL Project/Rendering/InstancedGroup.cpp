@@ -554,6 +554,7 @@ void InstancedGroup::DrawImpostors(const CullPass& pass, const glm::mat4& viewPr
 // DrawLODs — Issue indirect draw calls for each LOD level (material shader)
 // =====================================================================
 GLuint InstancedGroup::velocityTarget = 0;
+bool InstancedGroup::foliageDepthPrepass = true;
 
 void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	const glm::mat4& view, const glm::vec3& cameraPos, const GraphicsSettings* gs)
@@ -690,6 +691,32 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 		glm::vec3(0.2f, 0.2f, 1.0f)   // BLUE = LOD2
 	};
 
+	// Foliage depth pre-pass (see foliageDepthPrepass): same program, same instances, so the
+	// depths match exactly and the lit pass can test GL_EQUAL. Shaders without the switch (or
+	// with tessellation) are drawn once as before.
+	GLint prepassLoc = glGetUniformLocation(shaderID, "depthPrepass");
+	bool prepass = foliageDepthPrepass && doubleSided && prepassLoc != -1 && !renderShader.HasTessellation()
+		&& glIsEnabled(GL_DEPTH_TEST);
+	GLint oldDepthFunc = GL_LESS;
+	GLboolean oldDepthMask = GL_TRUE;
+	if (prepass) {
+		GLboolean colorMask[4];
+		glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
+		glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+		glGetBooleanv(GL_DEPTH_WRITEMASK, &oldDepthMask);
+		glUniform1i(prepassLoc, 1);
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glDepthMask(GL_TRUE);
+		for (int lod = 0; lod < lodCount; lod++) {
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lodLevels[lod].visibleSSBO);
+			GetLODMesh(lod)->RenderIndirect(lodLevels[lod].indirectBuffer, false);
+		}
+		glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+		glUniform1i(prepassLoc, 0);
+		glDepthFunc(GL_EQUAL);
+		glDepthMask(GL_FALSE);
+	}
+
 	// Plants moving in the wind write their motion into attachment 1 of the viewport (TemporalAA:
 	// the history follows the leaves instead of smearing them). Only into that framebuffer, and
 	// only with a shader that has the output (shader.frag, grass.frag: velocityOut).
@@ -715,6 +742,11 @@ void InstancedGroup::DrawLODs(Shader& renderShader, const glm::mat4& projection,
 	if (writeVelocity) {
 		glDrawBuffers(1, drawBuffers);
 		if (glIsEnabledi(GL_BLEND, 0)) glEnablei(GL_BLEND, 1);
+	}
+
+	if (prepass) {
+		glDepthFunc(oldDepthFunc);
+		glDepthMask(oldDepthMask);
 	}
 
 	if (foliageLoc != -1 && doubleSided) glUniform1i(foliageLoc, 0);
