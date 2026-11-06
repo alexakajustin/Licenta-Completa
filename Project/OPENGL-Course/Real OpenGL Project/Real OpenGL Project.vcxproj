@@ -190,7 +190,6 @@
     <ClCompile Include="Rendering\CloudShadows.cpp" />
     <ClCompile Include="Rendering\TemporalAA.cpp" />
     <ClCompile Include="Rendering\GlobalIllumination.cpp" />
-    <ClCompile Include="Tests\GISceneTest_tmp.cpp" />
     <ClCompile Include="Rendering\Reflections.cpp" />
     <ClCompile Include="Rendering\AmbientOcclusion.cpp" />
     <ClCompile Include="Rendering\PostProcess.cpp" />

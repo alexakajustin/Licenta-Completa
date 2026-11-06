@@ -477,6 +477,10 @@ void RiverNode::Execute(NodeContext& ctx)
 					finePath[i].depth = (finePath[i - 1].depth + 2.0f * finePath[i].depth + finePath[i + 1].depth) * 0.25f;
 				}
 			}
+			// Never narrower than the terrain can hold: a channel under ~1.6 grid cells across has no
+			// vertex inside it, so the ground can't dip under the water (it stood level with it, or
+			// above: the brook hidden under its own banks and the grass)
+			for (auto& fp : finePath) fp.width = std::max(fp.width, 0.8f * cellMetres);
 			// The spring: the brook comes out of the ground at a point and opens over its first metres
 			float along = 0.0f;
 			for (size_t i = 0; i < finePath.size(); i++) {
@@ -651,12 +655,14 @@ void RiverNode::Execute(NodeContext& ctx)
 					if (dist < nearestDist[nidx]) { nearestDist[nidx] = dist; nearestWater[nidx] = pt.height - 0.5f * pt.depth; }
 					float target;
 					if (dist <= pt.width) {
+						// A parabolic bed meeting the water at the water's edge (rising to the bank
+						// level inside the river, it crossed the surface halfway out: half the water
+						// was under ground)
 						float t = dist / pt.width;
-						t = t * t * (3.0f - 2.0f * t);
-						target = glm::mix(bed, bank, t);
+						target = glm::mix(bed, water + 0.02f, t * t);
 						if (pt.lakeLevel < 0.0f) channelFill[nidx] = std::min(channelFill[nidx], glm::mix(bed, water - 0.05f, t));
 					} else {
-						target = bank + (dist - pt.width) * slope;
+						target = std::max(water + 0.15f, bank - pt.depth * 0.35f) + (dist - pt.width) * slope; // Low banks: a few cm to tens of cm over the water
 						if (pt.lakeLevel < 0.0f) bankFill[nidx] = std::max(bankFill[nidx], water + 0.1f - (dist - pt.width) * slope);
 					}
 					float ground = originalHeights[nidx];
