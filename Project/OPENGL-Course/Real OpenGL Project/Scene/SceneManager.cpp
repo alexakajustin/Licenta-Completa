@@ -553,6 +553,12 @@ void SceneManager::RenderAll(const glm::mat4& projection, const glm::mat4& view,
 			Texture* norm = obj->GetNormalMap();
 
 			if (!msh && !mdl) continue;
+			// Water casts no shadow (it is translucent; its ribbons and skirts run under the banks and
+			// would print dark slabs on the ground beside them)
+			if (overrideShader && mat && mat->GetShader()) {
+				const std::string& wv = mat->GetShader()->GetVertexPath();
+				if (wv.find("water.vert") != std::string::npos || wv.find("river.vert") != std::string::npos) continue;
+			}
 
 			// ===== MULTI-LAYER CULLING PIPELINE =====
 			bool isCulled = false;

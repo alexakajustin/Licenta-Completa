@@ -212,8 +212,10 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glGetIntegerv(GL_POLYGON_MODE, polygonModeWas);
 
 	const float texel = WINDOW / RESOLUTION;
-	// Snap to whole texels so the map does not shimmer as the camera moves
-	glm::vec2 centre = glm::floor(glm::vec2(cameraPos.x, cameraPos.z) / texel) * texel;
+	// Snapped to 8 m steps (whole texels): the map does not shimmer, and the top-down passes are
+	// redrawn only when the window steps (the simulation carries its fields across the step)
+	const float WINDOW_STEP = 8.0f;
+	glm::vec2 centre = glm::floor(glm::vec2(cameraPos.x, cameraPos.z) / WINDOW_STEP) * WINDOW_STEP;
 	origin = centre - glm::vec2(WINDOW * 0.5f);
 	glm::mat4 viewProj = TopDownMatrix(centre, WINDOW * 0.5f);
 
@@ -222,6 +224,18 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+	// The top-down passes only when something can have changed: the window moved, the scene's
+	// object lists changed, or every REBUILD_INTERVAL seconds (objects moved in the editor)
+	size_t signature = waterObjects.size() * 73856093u ^ obstacleObjects.size() * 19349663u ^ groundObjects.size() * 83492791u ^ groups.size() * 2654435761u;
+	for (InstancedGroup* g : groups) if (g) signature = signature * 31u + g->GetTotalCount();
+	bool rebuild = !passesValid || origin != passesOrigin || signature != passesSignature
+		|| time < passesTime || time - passesTime > REBUILD_INTERVAL;
+	if (rebuild) {
+	passesValid = true;
+	passesOrigin = origin;
+	passesSignature = signature;
+	passesTime = time;
 
 	// 1. Water surfaces: height + flow direction
 	glBindFramebuffer(GL_FRAMEBUFFER, surfaceFBO);
@@ -300,13 +314,16 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 		pass.projScale = 1.732f; // 60 degree camera
 		pass.maxDrawDistance = WINDOW * 0.75f;
 		pass.lodMin = MAX_LOD_LEVELS - 1;
-		pass.minCasterSize = texel;
+		pass.minCasterSize = texel * 2.0f; // Twigs thinner than half a metre do not part a river
 		for (InstancedGroup* group : groups) {
 			if (!group) continue;
 			// Grass is filtered out of the water by the scatter filters and is by far the
 			// largest group: not worth a top-down pass every frame
 			Material* m = group->GetMaterial();
 			if (m && m->GetShader() && m->GetShader()->GetVertexPath().find("grass") != std::string::npos) continue;
+			// Leaves, ferns, reeds (alpha-tested cards) do not stop the current: only solid objects
+			Texture* gt = group->GetTexture();
+			if (gt && gt->HasCutoutAlpha()) continue;
 			group->CullAndDrawShadow(cullShaderID, obstacleInstancedShader, pass, viewProj, time);
 		}
 		glDisable(GL_CULL_FACE); // CullAndDrawShadow re-enables it
@@ -335,6 +352,8 @@ void WaterFoamMap::Update(const std::vector<GameObject*>& waterObjects, const st
 	glDispatchCompute(groupsXY, groupsXY, 1);
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	glActiveTexture(GL_TEXTURE0);
+
+	} // rebuild
 
 	// 4. The water simulation, one step of the frame's time
 	float dt = lastTime < 0.0f ? 0.0f : std::clamp(time - lastTime, 0.0f, 1.0f / 20.0f);

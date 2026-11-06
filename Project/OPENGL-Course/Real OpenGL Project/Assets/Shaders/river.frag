@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 
 /**
  * @file river.frag
@@ -41,6 +41,7 @@ struct PointLight { Light base; vec3 position; float constant; float linear; flo
 
 uniform DirectionalLight directionalLight;
 #include "cloud_shadow.glsl"     // Shadows of the volumetric clouds (Rendering/CloudShadows.h)
+#include "gi.glsl"               // Light reaching the foam (Rendering/GlobalIllumination.h)
 #include "frame.glsl"            // Per-frame jitter / dither offset (Rendering/TemporalAA.h)
 #include "wind.glsl"             // The scene's wind: ripples drift with it where the water is slow
 uniform PointLight pointLights[3];
@@ -217,9 +218,9 @@ float SampleFoamMap(vec3 p)
 // the share of the surface the froth covers instead of speckling or vanishing.
 float FoamCoverage(float mask, float pattern, float blur)
 {
-    float t = mix(1.0, 0.4, mask); // Even dense froth stays lacy (a solid sheet looks painted on)
-    float w = mix(0.08, 0.45, blur);
-    return smoothstep(t - w, t + w, pattern) * smoothstep(0.0, 0.15, mask);
+    float t = mix(1.0, 0.5, mask); // Even dense froth stays lacy (a solid sheet looks painted on)
+    float w = mix(0.16, 0.5, blur); // Soft-edged bubbles, never cut-out blobs
+    return smoothstep(t - w, t + w, pattern) * smoothstep(0.0, 0.3, mask);
 }
 
 float FoamBlur(float footprint)
@@ -330,20 +331,26 @@ WaterSample ShadeWater(vec3 N, float roughness, vec3 reflectionColor, float extr
     float sincePassed = fract(shorePhase - RUN_IN * (1.0 - clamp(s, 0.0, 1.0))) * SWASH_PERIOD; // Seconds
     float trail = exp(-sincePassed / 1.4) * 0.75;
     float shoreMask = max(frontLine, trail) * (1.0 - smoothstep(0.6, 1.0, s)) * shoreWaves;
-    float mask = max(shoreMask, max(SampleFoamMap(FragPos), extraFoam)) * wet;
+    // Weak sources (a little turbulence) only cloud the water; froth needs real churning
+    float mask = smoothstep(0.06, 1.0, max(shoreMask, max(SampleFoamMap(FragPos), extraFoam))) * wet;
     vec2 fpw = fwidth(FragPos.xz);
     float foam = FoamCoverage(mask, pattern, FoamBlur(sqrt(max(fpw.x * fpw.y, 1e-12))));
     vec3 foamCol = material_foamColor.rgb == vec3(0.0) ? vec3(1.0) : material_foamColor.rgb;
-    // Froth is a rough diffuse layer (albedo ~0.8): lit by the sun on its bumps where the sun
-    // reaches it, and by the sky
+    // Froth is a rough diffuse layer (albedo ~0.75), lit like everything around it: the sky and
+    // bounced light that actually reach it (GI probes: dim under trees, in a gorge) and the sun
+    // where it reaches it (its shadows, the clouds). Lit by the flat ambient it glowed in the shade.
     vec3 foamN = normalize(vec3(N.x * 3.0, 1.0, N.z * 3.0));
-    float foamLight = directionalLight.base.ambientIntensity
-                    + directionalLight.base.diffuseIntensity * (0.35 + 0.65 * max(dot(foamN, sunDir), 0.0)) * max(sunDir.y + 0.1, 0.0) * cloudSun;
-    color = mix(color, foamCol * 0.8 * foamLight * (0.85 + 0.15 * pattern), foam * 0.85);
+    vec3 foamAmbient = GIAmbient(FragPos, vec3(0.0, 1.0, 0.0), viewDir, directionalLight.base.colour * directionalLight.base.ambientIntensity);
+    vec3 foamSun = directionalLight.base.colour * directionalLight.base.diffuseIntensity
+                 * (0.3 + 0.7 * max(dot(foamN, sunDir), 0.0)) * max(sunDir.y, 0.0) * cloudSun;
+    vec3 foamLit = foamCol * 0.75 * (foamAmbient + foamSun);
+    // Aerated water: air bubbles under the froth whiten the water itself (milky white water)
+    color = mix(color, foamLit * 0.8, mask * 0.3);
+    color = mix(color, foamLit * (0.85 + 0.15 * pattern), foam * 0.8);
 
     // --- Soft shoreline: the surface fades into the terrain over the first few cm of depth ---
     // (foam floats on top, so it keeps the surface visible right up to the contact line)
-    ws.alpha = max(smoothstep(0.0, 0.12, depthBelow), foam * 0.75);
+    ws.alpha = max(smoothstep(0.0, 0.12, depthBelow), foam * 0.7);
     ws.color = color;
     return ws;
 }
@@ -726,9 +733,9 @@ void main()
 
     // Churned water froths: rapids, and standing waves breaking white on their steep crests.
     // Rivers get only weak shoreline wave fronts (no breakers), the lake's at the mouth
-    float rapids = smoothstep(0.03, 0.15, steepness);
+    float rapids = smoothstep(0.08, 0.3, steepness) * 0.8; // Real rapids, not every gentle slope
     float crest = smoothstep(0.35, 0.7, length(WaveSlope)) * smoothstep(1.5, 3.0, speed);
-    WaterSample ws = ShadeWater(N, r.roughness, reflection, max(rapids * 0.85, crest * 0.65), pattern, mix(1.0, 0.35, mouthFade));
+    WaterSample ws = ShadeWater(N, r.roughness, reflection, max(rapids, crest * 0.65), pattern, mix(1.0, 0.35, mouthFade));
 
     vec3 finalColor = ws.color;
     float selected = max(selectionTint, vIsSelected > 0.5 ? 1.0 : 0.0);

@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            0.5656400322914124,
-            -0.2503800094127655,
-            -0.7857233285903931
+            -0.621865451335907,
+            -0.2714404761791229,
+            0.7345770597457886
         ],
-        "pitch": -14.5,
+        "pitch": -15.75,
         "position": [
-            -563.029541015625,
-            311.6842041015625,
-            -263.0564270019531
+            -55.39999771118164,
+            265.15631103515625,
+            -145.07028198242188
         ],
-        "yaw": -414.25
+        "yaw": -229.75
     },
     "instancedGroups": [
         {
@@ -102,17 +102,17 @@
     ],
     "lights": [
         {
-            "ambientIntensity": 0.2029999941587448,
+            "ambientIntensity": 0.5040000081062317,
             "color": [
                 1.0,
-                1.0,
-                1.0
+                0.6375519037246704,
+                0.3795379400253296
             ],
             "diffuseIntensity": 2.0,
             "direction": [
-                0.26622143387794495,
-                -0.08715573698282242,
-                -0.9599635601043701
+                0.47454485297203064,
+                -0.10452846437692642,
+                -0.8740029335021973
             ],
             "name": "Sun",
             "type": "Directional"
@@ -120,7 +120,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 20964,
+        "nextId": 21691,
         "tabs": [
             {
                 "graph": {
@@ -146,7 +146,7 @@
                             "start": 8378
                         }
                     ],
-                    "nextId": 20964,
+                    "nextId": 21691,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -247,7 +247,7 @@
                             "cachedTexturePath": "",
                             "editorPos": [
                                 0.0,
-                                -90.9000015258789
+                                -90.8499984741211
                             ],
                             "forceOriginalPrimitive": true,
                             "hasCachedMaterial": true,
@@ -265,7 +265,7 @@
                             "amplitude": 400.0,
                             "editorPos": [
                                 254.0,
-                                -190.39999389648438
+                                -190.09999084472656
                             ],
                             "frequency": 0.5,
                             "id": 464,
@@ -295,11 +295,11 @@
                             "useNormalDisplacement": false
                         },
                         {
-                            "baseDepth": 1.0,
+                            "baseDepth": 5.0,
                             "baseWidth": 5.0,
                             "editorPos": [
                                 857.0,
-                                -188.39999389648438
+                                -188.09999084472656
                             ],
                             "id": 467,
                             "in": {
@@ -339,7 +339,7 @@
                             "edgeFadeCells": 40.0,
                             "editorPos": [
                                 535.0,
-                                -238.39999389648438
+                                -238.09999084472656
                             ],
                             "erodeSpeed": 0.4000000059604645,
                             "evaporation": 0.009999999776482582,
@@ -373,8 +373,8 @@
                         },
                         {
                             "editorPos": [
-                                1161.0,
-                                -78.4000015258789
+                                1267.0,
+                                -78.0999984741211
                             ],
                             "id": 473,
                             "in": {
@@ -486,7 +486,7 @@
                             "start": 8511
                         }
                     ],
-                    "nextId": 20964,
+                    "nextId": 21691,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1434,7 +1434,7 @@
                             "start": 20151
                         }
                     ],
-                    "nextId": 20964,
+                    "nextId": 21691,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -2946,7 +2946,7 @@
                             "start": 9067
                         }
                     ],
-                    "nextId": 20964,
+                    "nextId": 21691,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3789,7 +3789,7 @@
                             "start": 20176
                         }
                     ],
-                    "nextId": 20964,
+                    "nextId": 21691,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -4340,9 +4340,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    221.28662109375,
-                    279.6641845703125,
-                    -89.82039642333984
+                    -61.14317321777344,
+                    263.00616455078125,
+                    -148.84690856933594
                 ],
                 "rotation": [
                     -0.0,
@@ -5736,8 +5736,8 @@
                     1.0
                 ],
                 "material_foamDistance": 0.30000001192092896,
-                "material_fresnelPower": 4.0,
-                "material_normalStrength": 0.44999998807907104,
+                "material_fresnelPower": 10.0,
+                "material_normalStrength": 0.05000000074505806,
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
@@ -5820,8 +5820,8 @@
                     1.0
                 ],
                 "material_foamDistance": 0.30000001192092896,
-                "material_fresnelPower": 4.0,
-                "material_normalStrength": 0.3499999940395355,
+                "material_fresnelPower": 10.0,
+                "material_normalStrength": 0.05000000074505806,
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [

@@ -91,6 +91,14 @@ private:
 	GLuint domainTex = 0, velTmpTex = 0, curlTex = 0, divTex = 0;
 	GLuint velTex[2] = {}, pressureTex[2] = {}, waveTex[2] = {}, simFoamTex[2] = {};
 	int cur = 0;                             // This frame's fields
+	// The top-down passes (surfaces, ground, obstacles, rings) are redrawn only when the window
+	// moves or every REBUILD_INTERVAL seconds (objects moved in the editor); the simulation steps
+	// every frame on them
+	static constexpr float REBUILD_INTERVAL = 0.5f;
+	bool passesValid = false;
+	glm::vec2 passesOrigin = glm::vec2(1e9f);
+	float passesTime = -1e9f;
+	size_t passesSignature = 0;
 	bool simHistory = false;                 // Last frame's fields hold a simulation
 	float lastTime = -1.0f;
 	glm::vec2 prevOrigin = glm::vec2(0.0f);

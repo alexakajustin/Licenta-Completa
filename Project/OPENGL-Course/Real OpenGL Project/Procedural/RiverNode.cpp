@@ -6,6 +6,7 @@
 #include "Rendering/Material.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <map>
 #include <numeric>
 #include <queue>
@@ -487,33 +488,35 @@ void RiverNode::Execute(NodeContext& ctx)
 			}
 		}
 
-		// The water's surface: never above the lowest ground across the river (its centre and both
-		// banks, a little past the water's edge: higher, it would spill over the lower bank or stand
-		// over a dip in the air) and never rising downstream. Then the channel's banks above it.
+		// The water's surface: the terrain with its hollows filled (the level water stands at in
+		// them: it fills a dip up to its rim, then runs on), never rising downstream. Following the
+		// lowest ground instead, the river dropped into every dip and then had to cut a gorge through
+		// the rim after it - a valley tens of metres wide for a brook. Where the ground beside it or
+		// under it is lower than the water, the carving raises it (what the river deposits: a bank,
+		// a filled-in dip) instead of lowering everything around to the lowest point.
 		{
-			auto groundAt = [&](glm::vec2 g) {
+			auto filledAt = [&](glm::vec2 g) {
 				g = glm::clamp(g, glm::vec2(0.0f), glm::vec2((float)(gridRes - 1)));
 				int x0 = clampGrid((int)std::floor(g.x)), z0 = clampGrid((int)std::floor(g.y));
+				int x1 = clampGrid(x0 + 1), z1 = clampGrid(z0 + 1);
 				float tx = g.x - (float)x0, tz = g.y - (float)z0;
-				return glm::mix(glm::mix(getOriginalH(x0, z0), getOriginalH(x0 + 1, z0), tx),
-					glm::mix(getOriginalH(x0, z0 + 1), getOriginalH(x0 + 1, z0 + 1), tx), tz);
+				return glm::mix(glm::mix(filled[z0 * gridRes + x0], filled[z0 * gridRes + x1], tx),
+					glm::mix(filled[z1 * gridRes + x0], filled[z1 * gridRes + x1], tx), tz);
 			};
 			std::vector<float> surface(finePath.size());
 			for (size_t i = 0; i < finePath.size(); i++) {
-				glm::vec2 d = finePath[std::min(i + 1, finePath.size() - 1)].pos - finePath[i > 0 ? i - 1 : 0].pos;
-				glm::vec2 across = glm::length(d) > 1e-5f ? glm::vec2(-d.y, d.x) / glm::length(d) : glm::vec2(1.0f, 0.0f);
-				float reach = (finePath[i].width * 1.3f + 0.5f) / cellMetres; // Cells
-				float low = finePath[i].height; // The ground at the centre
-				for (float f : { -1.0f, -0.5f, 0.5f, 1.0f }) low = std::min(low, groundAt(finePath[i].pos + across * (reach * f)));
-				surface[i] = low - 0.03f;
+				surface[i] = std::min(filledAt(finePath[i].pos), finePath[i].height + 6.0f) - 0.03f; // A deep hollow (no lake made of it) is not filled to the brim
 				if (i > 0) surface[i] = std::min(surface[i], surface[i - 1]);
 			}
-			// Smoothed by lowering only (it stays under the banks): no steps, no bumps
-			for (int pass = 0; pass < 24; pass++) {
+			// Smoothed both ways (cut at the top of a drop, filled at its foot, like a river grades
+			// its bed): no steps, no bumps, no deep notch above every fall
+			std::vector<float> tmp(surface.size());
+			for (int pass = 0; pass < 12; pass++) {
+				tmp = surface;
 				for (size_t i = 1; i + 1 < surface.size(); i++)
-					surface[i] = std::min(surface[i], (surface[i - 1] + surface[i] + surface[i + 1]) / 3.0f);
+					surface[i] = (tmp[i - 1] + 2.0f * tmp[i] + tmp[i + 1]) * 0.25f;
+				for (size_t i = 1; i < surface.size(); i++) surface[i] = std::min(surface[i], surface[i - 1]);
 			}
-			for (size_t i = 1; i < surface.size(); i++) surface[i] = std::min(surface[i], surface[i - 1]);
 			for (size_t i = 0; i < finePath.size(); i++) finePath[i].height = surface[i] + 0.5f * finePath[i].depth;
 		}
 
@@ -549,12 +552,48 @@ void RiverNode::Execute(NodeContext& ctx)
 		currentPathID++;
 	}
 
+	// Confluences: a tributary joins the river it runs into at that river's water level (a hair
+	// below it, so the two surfaces never fight). Each surface computed on its own could put the
+	// tributary higher: a crest of water standing up out of the junction. Only that excess is taken
+	// off, fading out up the tributary over its last stretch (at least 20 m, at most a 5 % change of
+	// its slope): the rest of it keeps its own profile (pulled onto a fixed grade, a steep brook was
+	// dug a gorge a hundred metres deep).
+	for (size_t r = 0; r < fineRivers.size(); r++) {
+		auto& trib = fineRivers[r].path;
+		if (!fineRivers[r].isMerged || trib.size() < 2) continue;
+		glm::vec2 end = trib.back().pos;
+		float best = 1e30f, target = 0.0f;
+		for (size_t o = 0; o < fineRivers.size(); o++) {
+			if (o == r) continue;
+			for (const auto& q : fineRivers[o].path) {
+				glm::vec2 d = q.pos - end;
+				float d2 = glm::dot(d, d);
+				if (d2 < best) { best = d2; target = q.height - 0.5f * q.depth; }
+			}
+		}
+		if (best > 64.0f) continue; // No river within 8 cells: it ended in a lake or off the map
+		target -= 0.02f;
+		float excess = (trib.back().height - 0.5f * trib.back().depth) - target;
+		if (excess <= 0.0f) continue;
+		float stretch = std::max(20.0f, excess / 0.05f);
+		float along = 0.0f;
+		for (int i = (int)trib.size() - 1; i >= 0 && along < stretch; i--) {
+			if (i < (int)trib.size() - 1) along += glm::length(trib[i + 1].pos - trib[i].pos) * cellMetres;
+			float t = glm::clamp(along / stretch, 0.0f, 1.0f);
+			trib[i].height -= excess * (1.0f - t * t * (3.0f - 2.0f * t));
+		}
+	}
+
 	// Carving: the channel - its bed a full depth under its banks, rising to them at its edge -
 	// then, where the river runs below the ground beside it (a notch in a slope, a gap through a
 	// rim), the valley walls at their angle of repose (24-40 degrees, varying along the river)
 	// instead of vertical cuts, their crest rounded into the untouched ground (smooth minimum).
-	// Only ever lowers the terrain. carved: the cells lowered.
+	// Where the ground is lower than the water (a dip it filled, a low bank) it is raised instead:
+	// the bed under the water, and a bank just above it falling away at the same angle - what a
+	// river deposits. carved: the cells changed.
 	std::vector<char> carved(totalVerts, 0);
+	std::vector<float> channelFill(totalVerts, 1e30f); // Lowest bed any river wants here
+	std::vector<float> bankFill(totalVerts, -1e30f);   // Highest bank any river wants here
 	std::vector<char> inChannel(totalVerts, 0);       // Under some river's water
 	std::vector<float> nearestDist(totalVerts, 1e9f); // Metres to the nearest river point
 	std::vector<float> nearestWater(totalVerts, 0.0f); // That point's water level
@@ -574,9 +613,11 @@ void RiverNode::Execute(NodeContext& ctx)
 			float bank = pt.height, bed = pt.height - pt.depth;
 			float slope = std::tan(glm::radians(glm::mix(24.0f, 40.0f, SmoothNoise1(along / 60.0f + riverIndex * 17.0f))));
 			int cx = clampGrid((int)std::round(pt.pos.x)), cz = clampGrid((int)std::round(pt.pos.y));
+			float water = pt.height - 0.5f * pt.depth;
 			float cut = std::max(originalHeights[cz * gridRes + cx] - bank, 0.0f);
+			float fill = std::max(water + 0.1f - originalHeights[cz * gridRes + cx], 0.0f);
 			float crest = glm::clamp(cut * 0.3f, 0.15f, 3.0f); // A shallow river keeps sharp banks
-			int gridRadius = (int)std::ceil((pt.width + cut / slope + crest * 2.0f) / cellMetres) + 1;
+			int gridRadius = (int)std::ceil((pt.width + std::max(cut, fill) / slope + crest * 2.0f) / cellMetres) + 1;
 			gridRadius = std::min(gridRadius, gridRes / 4);
 
 			for (int rz = -gridRadius; rz <= gridRadius; rz++) {
@@ -597,8 +638,10 @@ void RiverNode::Execute(NodeContext& ctx)
 						float t = dist / pt.width;
 						t = t * t * (3.0f - 2.0f * t);
 						target = glm::mix(bed, bank, t);
+						channelFill[nidx] = std::min(channelFill[nidx], glm::mix(bed, water - 0.05f, t));
 					} else {
 						target = bank + (dist - pt.width) * slope;
+						bankFill[nidx] = std::max(bankFill[nidx], water + 0.1f - (dist - pt.width) * slope);
 					}
 					float ground = originalHeights[nidx];
 					float h = glm::clamp(0.5f + 0.5f * (ground - target) / crest, 0.0f, 1.0f);
@@ -609,6 +652,13 @@ void RiverNode::Execute(NodeContext& ctx)
 			}
 		}
 		riverIndex++;
+	}
+	// The deposits: raised where the ground is under them (a bank never fills another river's channel)
+	std::vector<float> raisedTo(totalVerts, -1e30f);
+	for (int i = 0; i < totalVerts; i++) {
+		float want = inChannel[i] ? (channelFill[i] < 1e29f ? channelFill[i] : -1e30f) : bankFill[i];
+		float& terrainH = data.vertices[i * 14 + 1];
+		if (want > terrainH + 0.01f) { terrainH = want; raisedTo[i] = want; carved[i] = 1; }
 	}
 
 	// Smoothing of what the rivers carved and a ring around it (no step or facet is left), and of
@@ -662,9 +712,39 @@ void RiverNode::Execute(NodeContext& ctx)
 	// (never above where it stood), so the river never spills over a bank nor ends in a wall of water
 	for (int i = 0; i < totalVerts; i++) {
 		if (inChannel[i] || nearestDist[i] > 40.0f || lakeMask[i]) continue;
-		float floorH = std::min(nearestWater[i] + 0.08f, originalHeights[i]);
+		float floorH = std::min(nearestWater[i] + 0.08f, std::max(originalHeights[i], raisedTo[i]));
 		float& terrainH = data.vertices[i * 14 + 1];
 		if (terrainH < floorH) terrainH = floorH;
+	}
+	// How much ground the rivers moved (shown under the node): a brook should barely touch it
+	{
+		for (size_t r = 0; r < fineRivers.size(); r++) { // DEBUGCUT
+			float worst = 0; size_t wi = 0; float fillAtWorst = 0;
+			for (size_t i = 0; i < fineRivers[r].path.size(); i++) {
+				const auto& pt = fineRivers[r].path[i];
+				int cx = clampGrid((int)std::round(pt.pos.x)), cz = clampGrid((int)std::round(pt.pos.y));
+				float c = originalHeights[cz * gridRes + cx] - (pt.height - 0.5f * pt.depth);
+				if (c > worst) { worst = c; wi = i; fillAtWorst = filled[cz * gridRes + cx]; }
+			}
+			const auto& w = fineRivers[r].path[wi];
+			printf("[GIS] DBG river %zu: %zu pts, worst cut %.1f at pt %zu (%.0f,%.0f) ground %.1f water %.1f filled %.1f lake %.1f w %.1f\n",
+				r, fineRivers[r].path.size(), worst, wi, w.pos.x, w.pos.y, originalHeights[clampGrid((int)std::round(w.pos.y)) * gridRes + clampGrid((int)std::round(w.pos.x))],
+				w.height - 0.5f * w.depth, fillAtWorst, w.lakeLevel, w.width);
+		}
+		int cutCells = 0, raisedCells = 0;
+		float maxCut = 0.0f;
+		for (int i = 0; i < totalVerts; i++) {
+			if (lakeMask[i]) continue;
+			float d = originalHeights[i] - data.vertices[i * 14 + 1];
+			if (d > 1.0f) cutCells++;
+			if (d < -0.3f) raisedCells++;
+			maxCut = std::max(maxCut, d);
+		}
+		float cellArea = cellMetres * cellMetres;
+		char msg[160];
+		snprintf(msg, sizeof(msg), "%d rivers: %.0f m2 dug over 1 m (deepest %.1f m), %.0f m2 raised",
+			(int)fineRivers.size(), cutCells * cellArea, maxCut, raisedCells * cellArea);
+		ctx.Info(msg);
 	}
 	RecomputeNormals(data, gridRes);
 
