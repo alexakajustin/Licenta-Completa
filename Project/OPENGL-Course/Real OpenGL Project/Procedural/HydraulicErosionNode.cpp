@@ -25,6 +25,40 @@ HydraulicErosionNode::HydraulicErosionNode(NodeGraph& graph) : GraphNode(graph),
 	AddFloat("edgeFadeCells", "Edge fade", &edgeFadeCells, 1.0f, 0.0f, 200.0f, "%.0f cells");
 	AddInt("smoothPasses", "Smooth passes", &smoothPasses, 0.1f, 0, 20);
 	AddSeed("seed", "Seed", &seed);
+	AddInt("simulationCells", "Simulation cells", &simulationCells, 4.0f, 0, 2048)
+		.Tip("The grid the erosion runs on (cells per side). Its look - brush, droplet paths, edge fade -\n"
+			"is measured in cells: a finer terrain is eroded at this resolution and the change\n"
+			"interpolated onto it, so the landscape (valleys, rivers, lakes) stays the same at any\n"
+			"terrain resolution and the terrain keeps its own finer detail.\n"
+			"0: at the terrain's own resolution (gullies at half the size with every doubling - another\n"
+			"landscape - and four times the time). For finer gullies on top, chain a second erosion\n"
+			"with 0 here and a few droplets per cell.");
+}
+
+namespace {
+	// Catmull-Rom through p1 (t = 0) and p2 (t = 1)
+	float CatmullRom(float p0, float p1, float p2, float p3, float t)
+	{
+		return p1 + 0.5f * t * (p2 - p0 + t * (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3 + t * (3.0f * (p1 - p2) + p3 - p0)));
+	}
+	// A res x res grid at a fractional position: bicubic (exact at the grid's points)
+	float SampleBicubic(const std::vector<float>& m, int res, float fx, float fz)
+	{
+		int x = (int)std::floor(fx), z = (int)std::floor(fz);
+		float tx = fx - (float)x, tz = fz - (float)z;
+		auto at = [&](int xi, int zi) { return m[std::clamp(zi, 0, res - 1) * res + std::clamp(xi, 0, res - 1)]; };
+		float rows[4];
+		for (int k = -1; k <= 2; k++) rows[k + 1] = CatmullRom(at(x - 1, z + k), at(x, z + k), at(x + 1, z + k), at(x + 2, z + k), tx);
+		return CatmullRom(rows[0], rows[1], rows[2], rows[3], tz);
+	}
+	float SampleBilinear(const std::vector<float>& m, int res, float fx, float fz)
+	{
+		int x = std::clamp((int)std::floor(fx), 0, res - 2), z = std::clamp((int)std::floor(fz), 0, res - 2);
+		float tx = std::clamp(fx - (float)x, 0.0f, 1.0f), tz = std::clamp(fz - (float)z, 0.0f, 1.0f);
+		const float* r0 = &m[z * res + x];
+		const float* r1 = r0 + res;
+		return (r0[0] * (1.0f - tx) + r0[1] * tx) * (1.0f - tz) + (r1[0] * (1.0f - tx) + r1[1] * tx) * tz;
+	}
 }
 
 void HydraulicErosionNode::LoadState(const json& j)
@@ -54,8 +88,25 @@ void HydraulicErosionNode::Execute(NodeContext& ctx)
 		for (int i = 0; i < gridRes * gridRes; i++)
 			hmap[i] = data.vertices[i * 14 + 1];
 
+		// The erosion's own grid: a finer terrain is eroded at simulationCells and the change laid
+		// onto it (where the grids nest, the simulated points are terrain points: there the result
+		// is exactly the coarser terrain's erosion)
+		const int cells = gridRes - 1;
+		const int sim = (simulationCells > 0 && simulationCells < cells) ? simulationCells : cells;
+		const int simRes = sim + 1;
+		const float simStep = (float)cells / (float)sim; // Terrain cells per simulation cell
+		std::vector<float> simMap, simBefore;
+		if (sim < cells) {
+			simMap.resize((size_t)simRes * simRes);
+			for (int z = 0; z < simRes; z++)
+				for (int x = 0; x < simRes; x++)
+					simMap[(size_t)z * simRes + x] = SampleBilinear(hmap, gridRes, (float)x * simStep, (float)z * simStep);
+			simBefore = simMap;
+		}
+		std::vector<float>& erodeMap = sim < cells ? simMap : hmap;
+
 		DropletErosionParams params;
-		const int totalDroplets = (int)(dropletsPerCell * (float)(gridRes * gridRes));
+		const int totalDroplets = (int)(dropletsPerCell * (float)(simRes * simRes));
 		params.erodeSpeed = erodeSpeed;
 		params.depositSpeed = depositSpeed;
 		params.sedimentCapacityFactor = sedimentCapacity;
@@ -72,6 +123,7 @@ void HydraulicErosionNode::Execute(NodeContext& ctx)
 			maxX = std::max(maxX, data.vertices[i * 14]);
 		}
 		const float cellSize = (maxX - minX) / (float)(gridRes - 1);
+		const float simCellSize = cellSize * simStep;
 		auto mm = std::minmax_element(hmap.begin(), hmap.end());
 		const float heightRange = *mm.second - *mm.first;
 		// A terrain taller than half its width means the grid is in unscaled local units:
@@ -87,7 +139,7 @@ void HydraulicErosionNode::Execute(NodeContext& ctx)
 		const int rounds = 4;
 		auto report = [&](float t, const std::string& what) { ctx.Progress(t * 100.0f, what); };
 
-		if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations * 3,
+		if (thermal) RunThermalErosion(erodeMap, simRes, simCellSize, talusAngle, thermalIterations * 3,
 			[&](float t) { report(t * 0.05f, "Thermal Erosion (settling)..."); });
 
 		for (int r = 0; r < rounds; r++)
@@ -96,15 +148,27 @@ void HydraulicErosionNode::Execute(NodeContext& ctx)
 			params.seed = (unsigned int)seed + (unsigned int)r;
 			float base = 0.05f + 0.9f * (float)r / (float)rounds;
 			float span = 0.9f / (float)rounds;
-			RunDropletErosion(hmap, gridRes, params, [&](float t) {
+			RunDropletErosion(erodeMap, simRes, params, [&](float t) {
 				report(base + span * 0.85f * t, "Hydraulic Erosion... round " + std::to_string(r + 1) + "/" + std::to_string(rounds) + " (" + std::to_string(totalDroplets) + " droplets)");
 			});
-			if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations,
+			if (thermal) RunThermalErosion(erodeMap, simRes, simCellSize, talusAngle, thermalIterations,
 				[&](float t) { report(base + span * (0.85f + 0.15f * t), "Thermal Erosion..."); });
 		}
 
-		if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations,
+		if (thermal) RunThermalErosion(erodeMap, simRes, simCellSize, talusAngle, thermalIterations,
 			[&](float t) { report(0.95f + 0.05f * t, "Thermal Erosion (final)..."); });
+
+		if (sim < cells) {
+			// The change onto the terrain (bicubic: smooth, through the simulated points), then a
+			// little settling at its own spacing (its finer detail standing steeper than the talus
+			// slope between the simulated points)
+			for (size_t i = 0; i < simMap.size(); i++) simMap[i] -= simBefore[i];
+			for (int z = 0; z < gridRes; z++)
+				for (int x = 0; x < gridRes; x++)
+					hmap[(size_t)z * gridRes + x] += SampleBicubic(simMap, simRes, (float)x / simStep, (float)z / simStep);
+			if (thermal) RunThermalErosion(hmap, gridRes, cellSize, talusAngle, thermalIterations);
+			ctx.Info("Eroded at " + std::to_string(sim) + " cells, laid onto " + std::to_string(cells));
+		}
 
 		for (int i = 0; i < gridRes * gridRes; i++)
 			data.vertices[i * 14 + 1] = hmap[i];
@@ -113,7 +177,8 @@ void HydraulicErosionNode::Execute(NodeContext& ctx)
 		if (smoothPasses > 0)
 		{
 			std::vector<float> heightBuffer(gridRes * gridRes);
-			for (int pass = 0; pass < smoothPasses; pass++)
+			const int passes = (int)std::lround((float)smoothPasses * simStep * simStep); // The same reach on a finer terrain
+			for (int pass = 0; pass < passes; pass++)
 			{
 				for (int i = 0; i < gridRes * gridRes; i++) heightBuffer[i] = data.vertices[i * 14 + 1];
 				for (int z = 1; z < gridRes - 1; z++)

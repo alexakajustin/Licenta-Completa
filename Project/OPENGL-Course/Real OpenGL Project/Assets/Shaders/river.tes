@@ -87,7 +87,7 @@ float Boils(vec2 xz, vec2 dir, float across, float steepness)
 {
     float speedScale = material_waveSpeed > 0.0 ? material_waveSpeed : 1.0;
     float strength = material_waveStrength > 0.0 ? clamp(material_waveStrength / 5.0, 0.0, 2.0) : 1.0;
-    float profile = 1.0 - pow(abs(across * 2.0 - 1.0), 3.0);
+    float profile = 1.0 - pow(min(abs(across * 2.0 - 1.0), 1.0), 3.0); // (past 0..1: under a bank)
     float v = 1.4 * speedScale * mix(0.2, 1.0, profile) * (1.0 + steepness * 8.0);
     float bankFade = smoothstep(0.0, 0.18, across) * smoothstep(1.0, 0.82, across);
     const float CYCLE = 6.0;

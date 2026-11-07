@@ -16,6 +16,6 @@ out vec4 FragColor;
 
 void main()
 {
-    float profile = 1.0 - pow(abs(Across * 2.0 - 1.0), 3.0); // Fastest mid-stream (river.frag)
+    float profile = 1.0 - pow(min(abs(Across * 2.0 - 1.0), 1.0), 3.0); // Fastest mid-stream (river.frag); past 0..1 under a bank
     FragColor = vec4(WorldPos.y, Flow, 1.0 + Speed * mix(0.2, 1.0, profile));
 }

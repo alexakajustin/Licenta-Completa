@@ -10,8 +10,9 @@ class Material;
 
 // An object's geometry and its children's, in the object's frame with its rotation and scale baked
 // in (relative to its world position), plus its look. originalPrimitives: planes, cubes and
-// spheres as fresh primitives rather than the mesh a graph last generated into them.
-MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives);
+// spheres as fresh primitives rather than the mesh a graph last generated into them; a fresh plane
+// has planeCells cells along each side.
+MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives, int planeCells = 512);
 
 // =====================================================================
 // Scene Object: one object of the scene, as geometry and as an object reference
@@ -41,6 +42,7 @@ public:
 private:
 	std::vector<std::string> selected;
 	bool forceOriginalPrimitive = true; // Planes/cubes/spheres as fresh primitives, not their last generated mesh
+	int planeCells = 512;               // A fresh plane's cells along each side (a terrain's grid)
 
 	// Fallback cache (the object may be deleted later)
 	std::string cachedPrimitiveType;

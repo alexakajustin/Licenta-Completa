@@ -673,7 +673,7 @@ vec3 ObstacleField(vec3 p)
 // swirls (the curl of a drifting noise potential) that also wander through the open current.
 vec2 RiverVelocity(vec2 dir, float across, float steepness, vec3 obstacle, float wake, float baseSpeed)
 {
-    float profile = 1.0 - pow(abs(across * 2.0 - 1.0), 3.0);
+    float profile = 1.0 - pow(min(abs(across * 2.0 - 1.0), 1.0), 3.0); // (past 0..1: under a bank)
     float speed = baseSpeed * mix(0.2, 1.0, profile) * (1.0 + steepness * 8.0);
     vec2 v = dir * speed;
     float g = length(obstacle.xy);

@@ -1,17 +1,17 @@
 {
     "camera": {
         "front": [
-            -0.621865451335907,
-            -0.2714404761791229,
-            0.7345770597457886
+            0.045625559985637665,
+            -0.7880107164382935,
+            0.613968551158905
         ],
-        "pitch": -15.75,
+        "pitch": -52.0,
         "position": [
-            -55.39999771118164,
-            265.15631103515625,
-            -145.07028198242188
+            -91.55583190917969,
+            960.599853515625,
+            -931.0310668945313
         ],
-        "yaw": -229.75
+        "yaw": -994.25
     },
     "instancedGroups": [
         {
@@ -120,7 +120,7 @@
     ],
     "nodeGraphs": {
         "activeTabIndex": 0,
-        "nextId": 21691,
+        "nextId": 23744,
         "tabs": [
             {
                 "graph": {
@@ -146,7 +146,7 @@
                             "start": 8378
                         }
                     ],
-                    "nextId": 21691,
+                    "nextId": 23744,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -257,6 +257,7 @@
                                 "mesh": 8362,
                                 "object": 8363
                             },
+                            "planeCells": 512,
                             "selectedName": "Plane",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -295,8 +296,8 @@
                             "useNormalDisplacement": false
                         },
                         {
-                            "baseDepth": 5.0,
-                            "baseWidth": 5.0,
+                            "baseDepth": 11.300000190734863,
+                            "baseWidth": 5.900000095367432,
                             "editorPos": [
                                 857.0,
                                 -188.09999084472656
@@ -355,6 +356,7 @@
                                 "mesh": 8388,
                                 "sedimentCapacity": 8393,
                                 "seed": 8401,
+                                "simulationCells": 23100,
                                 "smoothPasses": 8400,
                                 "talusAngle": 8397,
                                 "thermalIterations": 8398
@@ -365,6 +367,7 @@
                             },
                             "sedimentCapacity": 6.0,
                             "seed": 42,
+                            "simulationCells": 512,
                             "smoothPasses": 0,
                             "talusAngle": 35.0,
                             "thermalIterations": 20,
@@ -486,7 +489,7 @@
                             "start": 8511
                         }
                     ],
-                    "nextId": 21691,
+                    "nextId": 23744,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -597,6 +600,7 @@
                                 "mesh": 8409,
                                 "object": 8410
                             },
+                            "planeCells": 512,
                             "selectedName": "Plane",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -649,6 +653,7 @@
                                 "mesh": 8412,
                                 "object": 8413
                             },
+                            "planeCells": 512,
                             "selectedName": "Cedar A",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -819,6 +824,7 @@
                                 "mesh": 8461,
                                 "object": 8462
                             },
+                            "planeCells": 512,
                             "selectedName": "Cedar B",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -989,6 +995,7 @@
                                 "mesh": 8510,
                                 "object": 8511
                             },
+                            "planeCells": 512,
                             "selectedName": "Cedar C",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -1434,7 +1441,7 @@
                             "start": 20151
                         }
                     ],
-                    "nextId": 21691,
+                    "nextId": 23744,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -1545,6 +1552,7 @@
                                 "mesh": 8592,
                                 "object": 8593
                             },
+                            "planeCells": 512,
                             "selectedName": "Plane",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -1597,6 +1605,7 @@
                                 "mesh": 8595,
                                 "object": 8596
                             },
+                            "planeCells": 512,
                             "selectedName": "Fern A",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -1767,6 +1776,7 @@
                                 "mesh": 8644,
                                 "object": 8645
                             },
+                            "planeCells": 512,
                             "selectedName": "Fern B",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -1937,6 +1947,7 @@
                                 "mesh": 8693,
                                 "object": 8694
                             },
+                            "planeCells": 512,
                             "selectedName": "Dry Branches",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -2107,6 +2118,7 @@
                                 "mesh": 8742,
                                 "object": 8743
                             },
+                            "planeCells": 512,
                             "selectedName": "Stump A",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -2277,6 +2289,7 @@
                                 "mesh": 8791,
                                 "object": 8792
                             },
+                            "planeCells": 512,
                             "selectedName": "Stump B",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -2447,6 +2460,7 @@
                                 "mesh": 8840,
                                 "object": 8841
                             },
+                            "planeCells": 512,
                             "selectedName": "Fallen Log",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -2946,7 +2960,7 @@
                             "start": 9067
                         }
                     ],
-                    "nextId": 21691,
+                    "nextId": 23744,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3057,6 +3071,7 @@
                                 "mesh": 8958,
                                 "object": 8959
                             },
+                            "planeCells": 512,
                             "selectedName": "Plane",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3109,6 +3124,7 @@
                                 "mesh": 8961,
                                 "object": 8962
                             },
+                            "planeCells": 512,
                             "selectedName": "Boulder",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3252,6 +3268,7 @@
                                 "mesh": 8996,
                                 "object": 8997
                             },
+                            "planeCells": 512,
                             "selectedName": "Mossy Rock A",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3395,6 +3412,7 @@
                                 "mesh": 9031,
                                 "object": 9032
                             },
+                            "planeCells": 512,
                             "selectedName": "Mossy Rock B",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3538,6 +3556,7 @@
                                 "mesh": 9066,
                                 "object": 9067
                             },
+                            "planeCells": 512,
                             "selectedName": "Mossy Rock C",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3789,7 +3808,7 @@
                             "start": 20176
                         }
                     ],
-                    "nextId": 21691,
+                    "nextId": 23744,
                     "nodes": [
                         {
                             "cachedMatColor": [
@@ -3900,6 +3919,7 @@
                                 "mesh": 9138,
                                 "object": 9139
                             },
+                            "planeCells": 512,
                             "selectedName": "Plane",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -3965,6 +3985,7 @@
                                 "mesh": 9141,
                                 "object": 9142
                             },
+                            "planeCells": 512,
                             "selectedName": "free grass by adam127 8",
                             "title": "Scene Object",
                             "type": "scene_object"
@@ -4340,9 +4361,9 @@
             "texturePath": "",
             "transform": {
                 "position": [
-                    -61.14317321777344,
-                    263.00616455078125,
-                    -148.84690856933594
+                    -204.85569763183594,
+                    253.10350036621094,
+                    32.37537384033203
                 ],
                 "rotation": [
                     -0.0,
@@ -5741,15 +5762,15 @@
                 "material_shininessOverride": 256.0,
                 "material_specularIntensityOverride": 3.0,
                 "material_waterColorDeep": [
-                    0.0,
-                    0.0,
-                    0.0,
+                    0.2673267126083374,
+                    0.2673267126083374,
+                    0.2673267126083374,
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.0,
-                    0.24300000071525574,
-                    0.3059999942779541,
+                    0.20468580722808838,
+                    0.2308424413204193,
+                    0.23762375116348267,
                     0.7020000219345093
                 ],
                 "material_waterDepthScale": 0.30000001192092896,
@@ -5831,9 +5852,9 @@
                     0.9490000009536743
                 ],
                 "material_waterColorShallow": [
-                    0.0,
-                    0.24300000071525574,
-                    0.3059999942779541,
+                    0.3564356565475464,
+                    0.3564356565475464,
+                    0.3564356565475464,
                     0.7020000219345093
                 ],
                 "material_waterDepthScale": 0.30000001192092896,

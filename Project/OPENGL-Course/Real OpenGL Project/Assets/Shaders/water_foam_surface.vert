@@ -8,7 +8,7 @@
  */
 
 layout (location = 0) in vec3 pos;
-layout (location = 1) in vec2 tex;       // RiverNode: x = across (0..1), y = -1 - opacity at a lake mouth
+layout (location = 1) in vec2 tex;       // RiverNode: x = across the channel (0..1), y = -1 - opacity at a lake mouth
 layout (location = 2) in vec3 norm;      // Real surface normal (the downstream slope)
 layout (location = 4) in vec3 bitangent; // RiverNode stores the flow direction here
 
@@ -20,7 +20,7 @@ uniform float speedScale;  // The river material's flow speed (material_waveSpee
 out vec3 WorldPos;
 out vec2 Flow;
 out float Speed;           // m/s mid-stream (as river.frag's current: faster down steep stretches)
-out float Across;          // 0..1 bank to bank: the frag shapes the speed across (vertices sit on the banks)
+out float Across;          // 0..1 across the channel (beyond: under the banks): the frag shapes the speed across
 
 void main()
 {

@@ -8,6 +8,7 @@
 #include "Core/AssetManager.h"
 #include "Core/ServiceLocator.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 #include <functional>
 
 SceneInputNode::SceneInputNode(NodeGraph& graph) : GraphNode(graph)
@@ -19,6 +20,11 @@ SceneInputNode::SceneInputNode(NodeGraph& graph) : GraphNode(graph)
 	AddBool("forceOriginalPrimitive", "Original geometry", &forceOriginalPrimitive)
 		.Tip("Planes, cubes and spheres are read as fresh primitives, not as the mesh a graph last\n"
 			"generated into them (no feedback loops when a graph writes back into its own input)");
+	AddInt("planeCells", "Plane resolution", &planeCells, 4.0f, 2, 2048)
+		.Tip("Cells along each side of a plane read as original geometry: the grid of a terrain built\n"
+			"on it (512 on a 2000 m plane: 3.9 m cells). Each doubling makes four times the vertices,\n"
+			"and the nodes working on them take about four times as long")
+		.ShowIf([this] { return forceOriginalPrimitive && (cachedPrimitiveType == "Plane" || GetSelectedName().find("Plane") != std::string::npos); });
 }
 
 SceneInputNode::~SceneInputNode()
@@ -125,8 +131,9 @@ namespace {
 	}
 }
 
-MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives)
+MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives, int planeCells)
 {
+	planeCells = std::clamp(planeCells, 2, 2048);
 	glm::vec3 rootWorldPos = glm::vec3(obj->GetWorldMatrix()[3]);
 	glm::mat4 rootWorldPosInv = glm::translate(glm::mat4(1.0f), -rootWorldPos);
 	MeshData data;
@@ -136,7 +143,7 @@ MeshValue ReadObjectMesh(GameObject* obj, bool originalPrimitives)
 		MeshData part;
 		bool found = false;
 		if (current->HasCustomMesh() && !originalPrimitives) { part = current->GetCPUMeshData(); found = true; }
-		else if (current->GetPrimitiveType() == "Plane") { part = PrimitiveGenerator::GetPlaneData(512, 512); found = true; }
+		else if (current->GetPrimitiveType() == "Plane") { part = PrimitiveGenerator::GetPlaneData(planeCells, planeCells); found = true; }
 		else if (current->GetPrimitiveType() == "Sphere") { part = PrimitiveGenerator::GetSphereData(); found = true; }
 		else if (current->GetPrimitiveType() == "Cube") { part = PrimitiveGenerator::GetCubeData(); found = true; }
 		else if (current->GetModel() && !current->GetModel()->GetMeshDataList().empty()) {
@@ -190,7 +197,10 @@ MeshValue SceneInputNode::RebuildFromCache()
 {
 	const std::string name = GetSelectedName();
 	MeshData data;
-	if (cachedPrimitiveType == "Plane" || name.find("Plane") != std::string::npos) data = PrimitiveGenerator::GetPlaneData(512, 512);
+	if (cachedPrimitiveType == "Plane" || name.find("Plane") != std::string::npos) {
+		int cells = std::clamp(planeCells, 2, 2048);
+		data = PrimitiveGenerator::GetPlaneData(cells, cells);
+	}
 	else if (cachedPrimitiveType == "Sphere" || name.find("Sphere") != std::string::npos) data = PrimitiveGenerator::GetSphereData();
 	else if (cachedPrimitiveType == "Cube" || name.find("Cube") != std::string::npos) data = PrimitiveGenerator::GetCubeData();
 	else if (!cachedModelPath.empty()) {
@@ -284,7 +294,7 @@ void SceneInputNode::Execute(NodeContext& ctx)
 		}
 		CleanupFallbacks();
 
-		if (ctx.OutputUsed(0)) Out(0, NodeValue::FromMesh(ReadObjectMesh(obj, forceOriginalPrimitive)));
+		if (ctx.OutputUsed(0)) Out(0, NodeValue::FromMesh(ReadObjectMesh(obj, forceOriginalPrimitive, planeCells)));
 		return;
 	}
 

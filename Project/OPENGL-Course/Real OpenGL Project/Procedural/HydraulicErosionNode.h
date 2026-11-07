@@ -23,6 +23,7 @@ public:
 	void SetTalusAngle(float a) { talusAngle = a; }
 	void SetThermalIterations(int i) { thermalIterations = i; }
 	void SetEdgeFade(float cells) { edgeFadeCells = cells; }
+	void SetSimulationCells(int cells) { simulationCells = cells; }
 
 private:
 	float dropletsPerCell = 8.0f;  ///< Droplets simulated per heightmap cell (scales with resolution).
@@ -36,6 +37,7 @@ private:
 	float talusAngle = 35.0f;      ///< Thermal erosion: steepest stable slope (deg); steeper material slides down.
 	int thermalIterations = 20;    ///< Thermal relaxation per erosion round (x3 before, x1 after). 0 = off.
 	float edgeFadeCells = 40.0f;   ///< Erosion fades out over this many cells at the map border.
+	int simulationCells = 512;     ///< The erosion's grid (cells per side): a finer terrain is eroded at it, the change interpolated. 0 = the terrain's own.
 	int seed;                      ///< Where the droplets fall (saves from before it existed: 42).
 
 	/**

@@ -70,7 +70,7 @@
     "ssrMaxDistance": 60.0,
     "taaEnabled": true,
     "taaSharpness": 0.5,
-    "tonemapper": 0,
+    "tonemapper": 2,
     "universeNebulaColor1": [
         0.5,
         0.20000000298023224,
