@@ -147,6 +147,9 @@
     <ClCompile Include="Editor\TransformGizmo.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Atmosphere.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="Rendering\CloudShadows.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -2292,6 +2295,9 @@
     </ClInclude>
     <ClInclude Include="Editor\TransformGizmo.h">
       <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Atmosphere.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\CloudShadows.h">
       <Filter>Rendering</Filter>

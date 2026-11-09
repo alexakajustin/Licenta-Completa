@@ -188,6 +188,7 @@
     <ClCompile Include="Editor\AssetBrowser.cpp" />
     <ClCompile Include="Editor\TransformGizmo.cpp" />
     <ClCompile Include="Rendering\CloudShadows.cpp" />
+    <ClCompile Include="Rendering\Atmosphere.cpp" />
     <ClCompile Include="Rendering\TemporalAA.cpp" />
     <ClCompile Include="Rendering\GlobalIllumination.cpp" />
     <ClCompile Include="Rendering\Reflections.cpp" />
@@ -1050,6 +1051,7 @@
     <ClInclude Include="Editor\AssetBrowser.h" />
     <ClInclude Include="Editor\TransformGizmo.h" />
     <ClInclude Include="Rendering\CloudShadows.h" />
+    <ClInclude Include="Rendering\Atmosphere.h" />
     <ClInclude Include="Rendering\TemporalAA.h" />
     <ClInclude Include="Rendering\GlobalIllumination.h" />
     <ClInclude Include="Rendering\Reflections.h" />

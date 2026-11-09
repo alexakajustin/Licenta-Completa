@@ -420,11 +420,11 @@ void GlobalIllumination::Inject(int l, bool writeEmpty, const glm::vec3& cameraP
 	glUniform1f(U("voxelSize"), GetVoxelSize(l));
 	glUniform1i(U("writeEmpty"), writeEmpty ? 1 : 0);
 
-	glm::vec3 colour = *sun.GetColourPtr();
+	glm::vec3 colour = sun.GetRenderColour();
 	glm::vec3 toSun = -glm::normalize(*sun.GetDirectionPtr());
 	glUniform3fv(U("sunDir"), 1, glm::value_ptr(toSun));
 	glUniform3fv(U("sunRadiance"), 1, glm::value_ptr(colour * *sun.GetDiffuseIntensityPtr()));
-	glUniform3fv(U("ambientColour"), 1, glm::value_ptr(colour * *sun.GetAmbientIntensityPtr()));
+	glUniform3fv(U("ambientColour"), 1, glm::value_ptr(sun.GetAmbientRenderColour() * *sun.GetAmbientIntensityPtr()));
 	glUniform1f(U("bounce"), std::clamp(gs.giBounce, 0.0f, 1.0f));
 
 	// The sun's shadow cascades (as the volumetric fog reads them)
@@ -521,7 +521,7 @@ void GlobalIllumination::UpdateProbes(const GraphicsSettings& gs, DirectionalLig
 	glUniform1i(U("levelCount"), validLevels);
 	for (int l = 0; l < validLevels; l++)
 		glUniform4f(U("levelMinSize[" + std::to_string(l) + "]"), levels[l].min.x, levels[l].min.y, levels[l].min.z, GetVoxelSize(l));
-	glm::vec3 ambient = *sun.GetColourPtr() * *sun.GetAmbientIntensityPtr();
+	glm::vec3 ambient = sun.GetAmbientRenderColour() * *sun.GetAmbientIntensityPtr();
 	glUniform3fv(U("ambientColour"), 1, glm::value_ptr(ambient));
 	glUniform1f(U("skyColour"), std::clamp(gs.giSkyColour, 0.0f, 1.0f));
 

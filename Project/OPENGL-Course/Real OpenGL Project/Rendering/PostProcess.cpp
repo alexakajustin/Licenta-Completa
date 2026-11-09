@@ -130,7 +130,7 @@ void PostProcess::Apply(GLuint hdrSource, GLuint viewportTexture, GLuint viewpor
 	glUniform1f(glGetUniformLocation(id, "exposureKey"), std::max(gs.exposureKey, 0.01f));
 	glUniform1f(glGetUniformLocation(id, "exposureStrength"), std::clamp(gs.exposureStrength, 0.0f, 1.0f));
 	glUniform1f(glGetUniformLocation(id, "exposureRange"), std::max(gs.exposureRange, 0.0f));
-	glUniform1f(glGetUniformLocation(id, "exposureBias"), gs.exposureCompensation);
+	glUniform1f(glGetUniformLocation(id, "exposureBias"), gs.exposureCompensation + extraExposure);
 	glUniform1i(glGetUniformLocation(id, "tonemapper"), std::clamp(gs.tonemapper, 0, 2));
 	glUniform1f(glGetUniformLocation(id, "sharpness"), std::clamp(sharpness, 0.0f, 1.0f));
 	renderQuad();

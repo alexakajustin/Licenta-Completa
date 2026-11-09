@@ -101,7 +101,14 @@ struct GraphicsSettings {
 	bool cloudShadowsEnabled = true;   // The clouds shade the ground (Rendering/CloudShadows.h)
 	float cloudShadowStrength = 0.9f;  // How much sun a thick cloud takes away
 
-	// Day/Night transition colors
+	// Physical atmosphere (Rendering/Atmosphere.h): the sky's colour, the haze over the scene
+	bool physicalAtmosphere = true;      // Off: the sky is the gradient of the colours below
+	float atmosphereVisibility = 80.0f;  // Kilometres one can see through the haze (Mie): lower = hazier, a bigger glow round the sun
+	float aerialPerspectiveScale = 12.0f; // The scene's distances count this many times in the haze (a small map, a vast view)
+	float skyIntensity = 3.0f;           // The sun's illuminance on the sky and the haze
+	float timeOfDayExposure = 0.8f;      // How much of the light lost at a low sun the exposure gives back (0: none, 1: all)
+
+	// Day/Night transition colors (the gradient sky; at night a floor under the physical one)
 	glm::vec3 zenithDay = glm::vec3(0.05f, 0.15f, 0.5f);
 	glm::vec3 horizonDay = glm::vec3(0.3f, 0.5f, 0.8f);
 	glm::vec3 zenithSunset = glm::vec3(0.02f, 0.02f, 0.1f);

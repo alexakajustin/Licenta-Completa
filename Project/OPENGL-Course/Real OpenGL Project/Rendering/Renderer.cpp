@@ -47,9 +47,46 @@ Renderer::~Renderer()
 	if (sceneCubemapDepthRBO) glDeleteRenderbuffers(1, &sceneCubemapDepthRBO);
 }
 
+
+
+
+void Renderer::UpdateAtmosphere(const GraphicsSettings* gs, DirectionalLight& mainLight, const glm::vec3& cameraPos)
+{
+	skyCameraPos = cameraPos;
+	glm::vec3 toSun = -glm::normalize(*mainLight.GetDirectionPtr());
+	atmosphere.Update(*gs, toSun, cameraPos);
+	// The sunlight on the scene crosses the same air as the sky's (relative to a sun overhead)
+	if (AtmosphereLit(gs)) {
+		// The sky's light lasts through civil twilight (the sun 6 degrees under): a grey
+		// fade, its colour is the sky's own (the GI probes see the sky)
+		glm::vec3 t = atmosphere.SunTransmittance(cameraPos.y, toSun);
+		float el = std::asin(glm::clamp(toSun.y, -1.0f, 1.0f)) + 0.105f;
+		glm::vec3 later = atmosphere.SunTransmittance(cameraPos.y, glm::normalize(glm::vec3(toSun.x, 0.0f, toSun.z) * std::cos(el) + glm::vec3(0.0f, std::sin(el), 0.0f)));
+		float sky = std::max(glm::dot(later, glm::vec3(0.2126f, 0.7152f, 0.0722f)), 0.03f);
+		// The light colours are display-encoded (as the scene's): the linear fractions encoded
+		auto enc = [](glm::vec3 v) { return glm::pow(glm::max(v, glm::vec3(0.0f)), glm::vec3(1.0f / 2.2f)); };
+		mainLight.SetRenderTint(enc(t), enc(glm::vec3(sky)));
+		// The scene's light level (the sun on the ground + the sky's), like a camera adapting
+		// to the time of day: a sunset ~2 EV, the blue hour ~6 EV under a sun 20 degrees up.
+		// The exposure gives back part of it (sunset still darker, the blue hour dim)
+		const glm::vec3 L(0.2126f, 0.7152f, 0.0722f);
+		float level = glm::dot(t, L) * std::max(toSun.y, 0.0f) + 0.15f * sky;
+		atmosphereExposure = std::max(0.0f, -1.6f - std::log2(std::max(level, 1e-4f))) / 2.2f * glm::clamp(gs->timeOfDayExposure, 0.0f, 1.0f);
+	} else {
+		mainLight.SetRenderTint(glm::vec3(1.0f), glm::vec3(1.0f));
+		atmosphereExposure = 0.0f;
+	}
+}
+
+bool Renderer::AtmosphereLit(const GraphicsSettings* gs)
+{
+	return gs && gs->volumetricSkyEnabled && gs->physicalAtmosphere && gs->skyboxType == SkyboxType::Atmospheric;
+}
+
 void Renderer::Init()
 {
 	mainShader.CreateFromFiles("Assets/Shaders/shader.vert", "Assets/Shaders/shader.frag");
+	atmosphere.Init();
 	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
 	omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.frag");
 
@@ -639,7 +676,8 @@ void Renderer::UpdateReflectionProbes(const glm::vec3& cameraPos, SceneManager& 
 		}
 	};
 	Mix(&(*mainLight.GetDirectionPtr())[0], 3);
-	Mix(&(*mainLight.GetColourPtr())[0], 3);
+	glm::vec3 litColours[2] = { mainLight.GetRenderColour(), mainLight.GetAmbientRenderColour() };
+	Mix(&litColours[0][0], 6);
 	Mix(mainLight.GetAmbientIntensityPtr(), 1);
 	Mix(mainLight.GetDiffuseIntensityPtr(), 1);
 	for (unsigned int i = 0; i < pointLightCount; i++) {
@@ -904,6 +942,9 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonSunset"), 1, glm::value_ptr(gs->horizonSunset));
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithNight"), 1, glm::value_ptr(gs->zenithNight));
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "horizonNight"), 1, glm::value_ptr(gs->horizonNight));
+		glUniform1i(glGetUniformLocation(skyShader->GetShaderID(), "physicalAtmosphere"), gs->physicalAtmosphere ? 1 : 0);
+		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "cameraWorldPos"), 1, glm::value_ptr(skyCameraPos));
+		atmosphere.Bind(skyShader->GetShaderID());
 		// The clouds' noise volumes, on the same units as the main sky (Application)
 		glActiveTexture(GL_TEXTURE0 + 40);
 		glBindTexture(GL_TEXTURE_3D, cloudShapeNoise);
@@ -933,6 +974,10 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 	state.cloudsDensity = gs->cloudsDensity;
 	state.cloudsSpeed = gs->cloudsSpeed;
 	state.cloudsSharpness = gs->cloudsSharpness;
+	state.atmosphere[0] = gs->physicalAtmosphere ? 1.0f : 0.0f;
+	state.atmosphere[1] = gs->atmosphereVisibility;
+	state.atmosphere[2] = gs->skyIntensity;
+	state.atmosphere[3] = std::floor(skyCameraPos.y / 50.0f); // The sky seen from another altitude
 	state.sunDir = *mainLight.GetDirectionPtr();
 	state.sunColour = *mainLight.GetColourPtr();
 	state.colours[0] = gs->zenithDay;     state.colours[1] = gs->horizonDay;

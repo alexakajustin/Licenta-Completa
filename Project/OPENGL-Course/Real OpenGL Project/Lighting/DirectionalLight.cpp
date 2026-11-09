@@ -33,7 +33,8 @@ DirectionalLight::DirectionalLight(GLfloat shadowWidth, GLfloat shadowHeight,
 
 void DirectionalLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation, GLuint diffuseIntensityLocation, GLuint directionLocation)
 {
-	if (ambientColourLocation != (GLuint)-1) glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
+	glm::vec3 lit = GetRenderColour();
+	if (ambientColourLocation != (GLuint)-1) glUniform3f(ambientColourLocation, lit.x, lit.y, lit.z);
 	if (ambientIntensityLocation != (GLuint)-1) glUniform1f(ambientIntensityLocation, ambientIntensity);
 	
 	glm::vec3 normalizedDir = glm::normalize(direction);

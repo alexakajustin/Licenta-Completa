@@ -534,6 +534,8 @@ void Application::Run()
 		// Cloud shadows: before every lit pass (reflection, main, fog) samples them
 		cloudShadows.Update(activeCameraPos, -glm::normalize(*mainLight.GetDirectionPtr()), graphicsSettings,
 			cloudShapeNoiseTex, cloudDetailNoiseTex, (float)glfwGetTime(), [this]() { RenderQuad(); });
+		// The atmosphere's sky view around the camera (the sky, the sky cubemap, the haze)
+		renderer.UpdateAtmosphere(&graphicsSettings, mainLight, activeCameraPos);
 
 		// Global illumination: voxels lit with this frame's shadows, probes traced through them
 		// (before every lit pass reads the probes)
@@ -798,6 +800,18 @@ void Application::Run()
 			debugOverlay.EndPass("Reflections");
 		}
 
+		// Aerial perspective: the scene fades into the air with its distance (before the local fog,
+		// which lies in front of it)
+		if (graphicsSettings.volumetricSkyEnabled && graphicsSettings.physicalAtmosphere &&
+			graphicsSettings.skyboxType == SkyboxType::Atmospheric)
+		{
+			debugOverlay.BeginPass("Aerial Perspective");
+			glBindFramebuffer(GL_FRAMEBUFFER, viewportFBO);
+			glViewport(0, 0, currentViewportWidth, currentViewportHeight);
+			renderer.GetAtmosphere().ApplyAerialPerspective(viewportDepth, projection, view, activeCameraPos, graphicsSettings);
+			debugOverlay.EndPass("Aerial Perspective");
+		}
+
 		// Volumetric fog over the finished scene (before the screen-space god rays)
 		if (graphicsSettings.volumetricFogEnabled)
 		{
@@ -840,7 +854,8 @@ void Application::Run()
 			glm::vec3 sunDir = *mainLight.GetDirectionPtr();
 			glm::vec3 dirToSun = -glm::normalize(sunDir);
 			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunDir"), 1, glm::value_ptr(dirToSun));
-			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
+			glm::vec3 godraySun = mainLight.GetRenderColour();
+			glUniform3fv(glGetUniformLocation(godrayShader.GetShaderID(), "sunColor"), 1, glm::value_ptr(godraySun));
 
 			// God ray parameters - Linked to sun intensity (Ambient + Diffuse)
 			float sunIntensity = *mainLight.GetAmbientIntensityPtr() + *mainLight.GetDiffuseIntensityPtr();
@@ -882,6 +897,7 @@ void Application::Run()
 			debugOverlay.EndPass("TAA");
 		}
 		debugOverlay.BeginPass("Tone Mapping");
+		postProcess.SetExtraExposure(renderer.GetAtmosphereExposure());
 		postProcess.Apply(hdrImage, viewportTexture, viewportFBO, currentViewportWidth, currentViewportHeight,
 			graphicsSettings, deltaTime, hdrImage ? graphicsSettings.taaSharpness : 0.0f, [this]() { RenderQuad(); });
 		debugOverlay.EndPass("Tone Mapping");
@@ -1216,6 +1232,9 @@ void Application::SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm:
 	glUniform3fv(glGetUniformLocation(id, "horizonSunset"), 1, glm::value_ptr(graphicsSettings.horizonSunset));
 	glUniform3fv(glGetUniformLocation(id, "zenithNight"), 1, glm::value_ptr(graphicsSettings.zenithNight));
 	glUniform3fv(glGetUniformLocation(id, "horizonNight"), 1, glm::value_ptr(graphicsSettings.horizonNight));
+	glUniform1i(glGetUniformLocation(id, "physicalAtmosphere"), graphicsSettings.physicalAtmosphere ? 1 : 0);
+	glUniform3fv(glGetUniformLocation(id, "cameraWorldPos"), 1, glm::value_ptr(glm::vec3(invView[3])));
+	renderer.GetAtmosphere().Bind(id);
 
 	// High units so the noise volumes never collide with material/shadow bindings
 	glActiveTexture(GL_TEXTURE0 + 40);
@@ -1323,6 +1342,11 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("fogAnisotropy")) graphicsSettings.fogAnisotropy = j["fogAnisotropy"];
 		if (j.contains("fogAlbedo")) graphicsSettings.fogAlbedo = glm::vec3(j["fogAlbedo"][0].get<float>(), j["fogAlbedo"][1].get<float>(), j["fogAlbedo"][2].get<float>());
 		if (j.contains("fogSunIntensity")) graphicsSettings.fogSunIntensity = j["fogSunIntensity"];
+		if (j.contains("physicalAtmosphere")) graphicsSettings.physicalAtmosphere = j["physicalAtmosphere"];
+		if (j.contains("atmosphereVisibility")) graphicsSettings.atmosphereVisibility = j["atmosphereVisibility"];
+		if (j.contains("aerialPerspectiveScale")) graphicsSettings.aerialPerspectiveScale = j["aerialPerspectiveScale"];
+		if (j.contains("skyIntensity")) graphicsSettings.skyIntensity = j["skyIntensity"];
+		if (j.contains("timeOfDayExposure")) graphicsSettings.timeOfDayExposure = j["timeOfDayExposure"];
 		if (j.contains("fogAmbientIntensity")) graphicsSettings.fogAmbientIntensity = j["fogAmbientIntensity"];
 		if (j.contains("fogNoiseStrength")) graphicsSettings.fogNoiseStrength = j["fogNoiseStrength"];
 		if (j.contains("fogNoiseScale")) graphicsSettings.fogNoiseScale = j["fogNoiseScale"];
@@ -1430,6 +1454,11 @@ void Application::SaveGraphicsSettings()
 	j["fogAnisotropy"] = graphicsSettings.fogAnisotropy;
 	j["fogAlbedo"] = { graphicsSettings.fogAlbedo.x, graphicsSettings.fogAlbedo.y, graphicsSettings.fogAlbedo.z };
 	j["fogSunIntensity"] = graphicsSettings.fogSunIntensity;
+	j["physicalAtmosphere"] = graphicsSettings.physicalAtmosphere;
+	j["atmosphereVisibility"] = graphicsSettings.atmosphereVisibility;
+	j["aerialPerspectiveScale"] = graphicsSettings.aerialPerspectiveScale;
+	j["skyIntensity"] = graphicsSettings.skyIntensity;
+	j["timeOfDayExposure"] = graphicsSettings.timeOfDayExposure;
 	j["fogAmbientIntensity"] = graphicsSettings.fogAmbientIntensity;
 	j["fogNoiseStrength"] = graphicsSettings.fogNoiseStrength;
 	j["fogNoiseScale"] = graphicsSettings.fogNoiseScale;

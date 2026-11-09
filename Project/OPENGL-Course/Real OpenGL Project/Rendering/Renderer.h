@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
+#include <cmath>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -14,6 +15,7 @@
 #include "Lighting/SpotLight.h"
 #include "Rendering/Skybox.h"
 #include "Rendering/Wind.h"
+#include "Rendering/Atmosphere.h"
 
 class SceneManager;
 class Camera;
@@ -150,6 +152,13 @@ public:
 	const WindSystem& GetWind() const { return wind; }
 
 	GLuint GetProceduralSkyTextureID() const { return proceduralSkyTextureId; }
+	// The physical atmosphere, shared by the sky cubemap here and the main sky pass (Application)
+	Atmosphere& GetAtmosphere() { return atmosphere; }
+	static bool AtmosphereLit(const GraphicsSettings* gs);
+	// EV the exposure adds for the time of day (UpdateAtmosphere)
+	float GetAtmosphereExposure() const { return atmosphereExposure; }
+	// Once a frame, before the sky: the atmosphere's sky view around the camera
+	void UpdateAtmosphere(const GraphicsSettings* gs, DirectionalLight& mainLight, const glm::vec3& cameraPos);
 	GLuint GetCullShaderID() const { return instancedCullShader.GetShaderID(); }
 	// Cloud noise volumes of the main sky (Application), so the sky cubemap has the same clouds
 	void SetCloudNoise(GLuint shape, GLuint detail) { cloudShapeNoise = shape; cloudDetailNoise = detail; }
@@ -234,11 +243,15 @@ private:
 		float universe[4];
 		glm::vec3 nebula[2];
 		GLuint cloudNoise[2];
+		float atmosphere[4];
 	};
 	SkyCubemapState lastSkyState = {};
 	bool skyCubemapValid = false;
 	int skyCubemapFace = 0;
 	GLuint cloudShapeNoise = 0, cloudDetailNoise = 0;
+	Atmosphere atmosphere;
+	float atmosphereExposure = 0.0f;
+	glm::vec3 skyCameraPos = glm::vec3(0.0f);
 
 	// Cached uniform locations (fetched once at init)
 	GLint uniformModel, uniformProjection, uniformView, uniformEyePosition,

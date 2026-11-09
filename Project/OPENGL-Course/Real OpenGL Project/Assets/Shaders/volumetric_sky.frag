@@ -23,6 +23,10 @@
  *  - energy-conserving integration (Hillaire, "Physically Based Sky, Atmosphere and Cloud
  *    Rendering in Frostbite", 2016),
  *  - aerial perspective from the transmittance-weighted cloud distance.
+ * With the physical atmosphere (atmosphere_common.glsl, Rendering/Atmosphere.h) the sky's colour
+ * comes from its sky-view LUT, the sun lights each cloud sample through the air above that very
+ * point (still lit, pink, while the ground is already in the planet's shadow), the clouds' sky
+ * light is the sky's own, and the air between the camera and the clouds is marched for real.
  * The march start is jittered per pixel and per frame; sky_temporal.frag accumulates the frames.
  * Output alpha = cloud transmittance (used to mask the god rays).
  */
@@ -35,6 +39,9 @@ in vec3 WorldDir; ///< Ray direction mapping into 3D space.
 uniform int cloudsEnabled;     ///< Set to 1 if clouds are drawn.
 uniform int jitterFrame;       ///< Frame counter for the temporal jitter (constant = static pattern).
 #include "cloud_common.glsl"   // Density of the cloud layer (shared with the cloud shadow map)
+#include "atmosphere_common.glsl"
+uniform int physicalAtmosphere; ///< 1: the sky and the light on the clouds from the atmosphere LUTs
+uniform vec3 cameraWorldPos;    ///< The real camera (invView may be a cubemap face at the origin)
 
 uniform vec3 sunDir;   ///< Direction vector pointing towards the sun.
 uniform vec3 sunColor; ///< RGB intensity color of the sun light source.
@@ -144,12 +151,28 @@ void main()
     float sunsetFactor = 1.0 - smoothstep(-0.1, 0.5, toSun.y);
     float nightFactor = 1.0 - smoothstep(-0.5, -0.1, toSun.y);
 
-    vec3 sky = SkyGradient(dir, toSun, sunsetFactor, nightFactor);
-    vec3 sunLight = sunColor * SunTransmittance(toSun) * (1.0 - nightFactor) * 3.0;
-
-    // Sun disk (behind the clouds)
+    bool physical = physicalAtmosphere == 1;
+    vec3 atmoCam = vec3(cameraWorldPos.x, max(cameraWorldPos.y, 1.0), cameraWorldPos.z);
+    vec3 sky;
+    vec3 sunLight;
+    vec3 sunDisk;
     float mu = dot(dir, toSun);
-    vec3 sunDisk = sunLight * smoothstep(0.99985, 0.99993, mu) * 8.0;
+    if (physical) {
+        // The night keeps a floor: the gradient's night colours (moonlight, airglow)
+        sky = AtmoSkyRadiance(dir, atmoCam, toSun) * sunIlluminance
+            + pow(mix(horizonNight, zenithNight, pow(max(dir.y, 0.0), 0.45)), vec3(2.2)) * nightFactor;
+        sunLight = sunIlluminance * AtmoSunlight(AtmoRadius(atmoCam), toSun.y);
+        // The disc, limb-darkened, through the air in front of it
+        float cosR = cos(sunAngularRadius);
+        float disc = smoothstep(cosR - 0.00002, cosR + 0.00002, mu);
+        float x = clamp((1.0 - mu) / (1.0 - cosR), 0.0, 1.0);
+        sunDisk = sunLight * disc * (1.0 - 0.4 * x) * 40.0;
+        if (dir.y < 0.0 && RaySphere(gCamPos, dir, EARTH_RADIUS).x > 0.0) sunDisk = vec3(0.0);
+    } else {
+        sky = SkyGradient(dir, toSun, sunsetFactor, nightFactor);
+        sunLight = sunColor * SunTransmittance(toSun) * (1.0 - nightFactor) * 3.0;
+        sunDisk = sunLight * smoothstep(0.99985, 0.99993, mu) * 8.0;
+    }
 
     vec3 color = sky + sunDisk;
     float cloudTransmittance = 1.0;
@@ -171,9 +194,19 @@ void main()
             CloudSetup();
 
             // Sky light: the cloud top sees the zenith, the base sees the (darker) haze/ground bounce
-            vec3 ambientTop = SkyGradient(vec3(0.0, 1.0, 0.0), toSun, sunsetFactor, nightFactor) * 1.4
-                            + SkyGradient(normalize(vec3(-toSun.x, 0.3, -toSun.z)), toSun, sunsetFactor, nightFactor) * 0.6;
-            vec3 ambientBottom = SkyGradient(normalize(vec3(-toSun.x, 0.05, -toSun.z)), toSun, sunsetFactor, nightFactor) * 0.45;
+            vec3 ambientTop, ambientBottom;
+            if (physical) {
+                // What the cloud's top and base see: the sky overhead and around, the horizon
+                // and the ground below (the sky-view LUT, at the camera's altitude)
+                vec3 side = normalize(vec3(-toSun.x, 0.3, -toSun.z));
+                ambientTop = (AtmoSkyRadiance(vec3(0.0, 1.0, 0.0), atmoCam, toSun) * 1.4
+                            + AtmoSkyRadiance(side, atmoCam, toSun) * 0.6) * sunIlluminance;
+                ambientBottom = AtmoSkyRadiance(normalize(vec3(-toSun.x, 0.02, -toSun.z)), atmoCam, toSun) * sunIlluminance * 0.45;
+            } else {
+                ambientTop = SkyGradient(vec3(0.0, 1.0, 0.0), toSun, sunsetFactor, nightFactor) * 1.4
+                           + SkyGradient(normalize(vec3(-toSun.x, 0.3, -toSun.z)), toSun, sunsetFactor, nightFactor) * 0.6;
+                ambientBottom = SkyGradient(normalize(vec3(-toSun.x, 0.05, -toSun.z)), toSun, sunsetFactor, nightFactor) * 0.45;
+            }
             // The phase does not change along the ray: once per pixel
             float phase[3];
             for (int o = 0; o < 3; o++) {
@@ -244,8 +277,15 @@ void main()
                 // inside instead of turning into grey/black blobs.
                 vec3 sunScatter = vec3(0.0);
                 float a = 1.0, b = 1.0;
+                // The sun at this very point: through the air above it (at 2 km it still shines
+                // after sunset on the ground)
+                vec3 sunHere = sunLight;
+                if (physical) {
+                    vec3 wp = p + vec3(0.0, atmoCam.y - gCamPos.y, 0.0);
+                    sunHere = sunIlluminance * AtmoSunlight(AtmoRadius(wp), dot(AtmoUp(wp), toSun)) * 3.0;
+                }
                 for (int o = 0; o < 3; o++) {
-                    sunScatter += sunLight * a * exp(-lightDepth * SIGMA * b) * phase[o];
+                    sunScatter += sunHere * a * exp(-lightDepth * SIGMA * b) * phase[o];
                     a *= 0.5; b *= 0.3;
                 }
                 // Powder: thin cloud edges facing away from the sun look darker (in-scattering deficit)
@@ -265,9 +305,17 @@ void main()
 
             // Aerial perspective: distant clouds fade into the horizon haze, by where they are
             float cloudDist = depthWeight > 1e-4 ? depthSum / depthWeight : tStart;
-            float haze = 1.0 - exp(-cloudDist * 0.000022);
-            vec3 horizonColor = mix(mix(horizonDay, horizonSunset, sunsetFactor), horizonNight, nightFactor);
-            scattered = mix(scattered, horizonColor * (1.0 - transmittance), haze * 0.85);
+            if (physical) {
+                // The air between the camera and the cloud: the cloud's light dims and takes the
+                // air's colour on the way
+                vec3 airL, airT;
+                AtmoIntegrate(atmoCam, dir, cloudDist, toSun, 10, Jitter(2.0), airL, airT);
+                scattered = scattered * airT + airL * sunIlluminance * (1.0 - transmittance);
+            } else {
+                float haze = 1.0 - exp(-cloudDist * 0.000022);
+                vec3 horizonColor = mix(mix(horizonDay, horizonSunset, sunsetFactor), horizonNight, nightFactor);
+                scattered = mix(scattered, horizonColor * (1.0 - transmittance), haze * 0.85);
+            }
             // The farthest clouds melt into the horizon instead of ending on a hard line
             float horizonFade = smoothstep(0.0, 0.06, dir.y);
             transmittance = mix(1.0, transmittance, horizonFade);
@@ -278,6 +326,7 @@ void main()
     }
 
     // Gentle tone curve keeps bright cloud tops from clipping to flat white
-    color = color / (1.0 + max(max(color.r, color.g), color.b) * 0.15);
+    if (physical) color = AtmoEncode(color); // Linear light into the scene's encoding
+    else color = color / (1.0 + max(max(color.r, color.g), color.b) * 0.15);
     FragColor = vec4(color, cloudTransmittance);
 }

@@ -2418,6 +2418,29 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 			ImGui::Separator();
 
 			if (graphicsSettingsPtr->skyboxType == SkyboxType::Atmospheric) {
+				ImGui::Text("Atmosphere");
+				ImGui::Checkbox("Physical Atmosphere", &graphicsSettingsPtr->physicalAtmosphere);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Air, haze and ozone over a round planet (Hillaire 2020, Unreal's SkyAtmosphere):\nthe sky's colours at every sun height - blue hour, the earth's shadow, pink clouds after sunset -\nand the scene fading into the same air with its distance. Off: the gradient colours");
+				if (!graphicsSettingsPtr->physicalAtmosphere) ImGui::BeginDisabled();
+				ImGui::SliderFloat("Visibility (km)", &graphicsSettingsPtr->atmosphereVisibility, 2.0f, 200.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far one sees through the haze: 200 = crystal clear, 20 = a summer evening, 5 = misty");
+				ImGui::SliderFloat("Aerial Perspective", &graphicsSettingsPtr->aerialPerspectiveScale, 0.0f, 30.0f, "%.1fx");
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("The scene's distances count this many times in the air (Unreal's Aerial Perspective View Distance Scale):\na 2 km map layered into the haze like a 12 km view. 0 = no haze on the scene");
+				ImGui::SliderFloat("Sky Intensity", &graphicsSettingsPtr->skyIntensity, 0.5f, 30.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("The sun's illuminance on the sky and the haze");
+				ImGui::SliderFloat("Time of Day Exposure", &graphicsSettingsPtr->timeOfDayExposure, 0.0f, 1.0f);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("How much of the light lost at a low sun the exposure gives back, like a camera adapting:\n0 = the blue hour as dark as it is, 1 = as bright as noon");
+				if (!graphicsSettingsPtr->physicalAtmosphere) ImGui::EndDisabled();
+				if (ImGui::Button("Reset Defaults##Atmosphere", ImVec2(-1, 0))) {
+					GraphicsSettings defaults;
+					graphicsSettingsPtr->physicalAtmosphere = defaults.physicalAtmosphere;
+					graphicsSettingsPtr->atmosphereVisibility = defaults.atmosphereVisibility;
+					graphicsSettingsPtr->aerialPerspectiveScale = defaults.aerialPerspectiveScale;
+					graphicsSettingsPtr->skyIntensity = defaults.skyIntensity;
+					graphicsSettingsPtr->timeOfDayExposure = defaults.timeOfDayExposure;
+				}
+				ImGui::Separator();
+
 				ImGui::Text("Procedural Clouds");
 				ImGui::Checkbox("Enable Clouds", &graphicsSettingsPtr->cloudsEnabled);
 				

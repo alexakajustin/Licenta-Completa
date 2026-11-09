@@ -24,6 +24,8 @@ public:
 
 	// hdrSource: the TAA result, or 0 to use the viewport texture itself (copied first: the
 	// result goes back into it). sharpness: CAS strength (0 = none).
+	// EV added to the exposure this frame (the time of day: Renderer::GetAtmosphereExposure)
+	void SetExtraExposure(float ev) { extraExposure = ev; }
 	void Apply(GLuint hdrSource, GLuint viewportTexture, GLuint viewportFBO, int width, int height,
 		const GraphicsSettings& gs, float deltaTime, float sharpness, const std::function<void()>& renderQuad);
 
@@ -33,6 +35,7 @@ public:
 	GLuint GetScratch() const { return scratch; }
 
 private:
+	float extraExposure = 0.0f;
 	Shader luminanceShader, adaptShader, tonemapShader;
 	GLuint lumTex = 0, lumFBO = 0;
 	GLuint adaptTex[2] = { 0, 0 }, adaptFBO[2] = { 0, 0 };
