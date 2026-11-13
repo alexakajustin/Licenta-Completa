@@ -237,7 +237,7 @@ private:
 	void UpdateProceduralSkybox(DirectionalLight& mainLight, const GraphicsSettings* gs, float time);
 	struct SkyCubemapState {
 		int skyboxType, cloudsEnabled;
-		float cloudsDensity, cloudsSpeed, cloudsSharpness;
+		float cloudsDensity, cloudsSpeed, cloudsSharpness, cloudsLayer;
 		glm::vec3 sunDir, sunColour;
 		glm::vec3 colours[6];
 		float universe[4];

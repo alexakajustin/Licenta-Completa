@@ -141,6 +141,32 @@ void GlobalIllumination::Allocate(const Config& c)
 	warmupFrames = WARMUP_FRAMES;
 }
 
+bool GlobalIllumination::LightingChanged(DirectionalLight& sun, PointLight* pointLights, unsigned int pointLightCount,
+	SpotLight* spotLights, unsigned int spotLightCount, const GraphicsSettings& gs)
+{
+	std::vector<float> s;
+	auto Put = [&](const glm::vec3& v) { s.push_back(v.x); s.push_back(v.y); s.push_back(v.z); };
+	Put(glm::normalize(*sun.GetDirectionPtr()));
+	Put(sun.GetRenderColour() * *sun.GetDiffuseIntensityPtr());
+	Put(sun.GetAmbientRenderColour() * *sun.GetAmbientIntensityPtr());
+	s.push_back(gs.giIntensity); s.push_back(gs.giBounce); s.push_back(gs.giSkyColour);
+	for (unsigned int i = 0; i < pointLightCount; i++) {
+		Put(*pointLights[i].GetPositionPtr());
+		Put(*pointLights[i].GetColourPtr() * *pointLights[i].GetDiffuseIntensityPtr());
+	}
+	for (unsigned int i = 0; i < spotLightCount; i++) {
+		Put(*spotLights[i].GetPositionPtr());
+		Put(*spotLights[i].GetDirectionPtr());
+		Put(*spotLights[i].GetColourPtr() * *spotLights[i].GetDiffuseIntensityPtr());
+	}
+	// Beyond a hair of change (a sun drifting a tenth of a degree a frame stays on the slow path)
+	bool changed = s.size() != litState.size();
+	for (size_t i = 0; i < s.size() && !changed; i++)
+		changed = std::abs(s[i] - litState[i]) > 0.002f + 0.01f * std::abs(litState[i]);
+	if (changed) litState = s;
+	return changed;
+}
+
 void GlobalIllumination::Invalidate()
 {
 	for (auto& l : levels) { l.valid = false; l.dirty = true; }
@@ -535,10 +561,11 @@ void GlobalIllumination::UpdateProbes(const GraphicsSettings& gs, DirectionalLig
 	glm::mat3 rotation = glm::mat3_cast(glm::normalize(q));
 	glUniformMatrix3fv(U("rayRotation"), 1, GL_FALSE, glm::value_ptr(rotation));
 	glUniform1i(U("rayCount"), std::clamp(config.rays, 1, 64));
-	int slices = warmupFrames > 0 ? 1 : config.slices;
+	bool burst = warmupFrames > 0 || relightFrames > 0;
+	int slices = burst ? 1 : config.slices;
 	glUniform1i(U("frameSlice"), (int)(frame % (uint32_t)slices));
 	glUniform1i(U("sliceCount"), slices);
-	glUniform1f(U("hysteresis"), 0.9f);
+	glUniform1f(U("hysteresis"), relightFrames > 0 ? 0.4f : 0.9f);
 	glUniform1f(U("maxRayDistance"), GetVoxelSize(validLevels - 1) * config.resolution * 0.5f);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, GI_PROBE_SSBO_BINDING, probeBuffer);
@@ -613,6 +640,8 @@ void GlobalIllumination::Update(SceneManager& scene, const glm::vec3& cameraPos,
 	glBindBufferBase(GL_UNIFORM_BUFFER, GI_UBO_BINDING, ubo);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, GI_PROBE_SSBO_BINDING, probeBuffer);
 
+	if (LightingChanged(sun, pointLights, pointLightCount, spotLights, spotLightCount, gs)) relightFrames = RELIGHT_FRAMES;
+
 	// The scene changed: every level shows an older state now
 	uint64_t signature = SceneSignature(scene);
 	if (signature != sceneSignature) {
@@ -640,7 +669,7 @@ void GlobalIllumination::Update(SceneManager& scene, const glm::vec3& cameraPos,
 	// And one more level re-lit (moving sun and lights, light bouncing further)
 	// (all of them while warming up)
 	int valid = GetValidLevels();
-	int relit = warmupFrames > 0 ? valid : std::min(valid, 1);
+	int relit = (warmupFrames > 0 || relightFrames > 0) ? valid : std::min(valid, 1);
 	for (int k = 0; k < relit; k++) {
 		int l = injectCursor++ % valid;
 		if (l != target) Inject(l, false, cameraPos, view, sun, pointLights, pointLightCount, spotLights, spotLightCount, gs);
@@ -652,5 +681,6 @@ void GlobalIllumination::Update(SceneManager& scene, const glm::vec3& cameraPos,
 	timestampsIssued[ts] = true;
 	timestampFrame = (timestampFrame + 1) % 3;
 	if (warmupFrames > 0 && GetValidLevels() == config.levels) warmupFrames--;
+	if (relightFrames > 0) relightFrames--;
 	glUseProgram(0);
 }

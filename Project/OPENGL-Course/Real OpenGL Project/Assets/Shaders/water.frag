@@ -607,20 +607,35 @@ vec3 WaterReflection(vec3 N, vec3 viewDir, float roughness, float dist)
     if (planarWeight > 0.0) {
         vec2 screenUV = gl_FragCoord.xy / max(screenSize, vec2(1.0));
         vec2 reflUV = clamp(screenUV + N.xz * 0.04, vec2(0.001), vec2(0.999));
+        float travelled = skyFog;   // How far the reflected light came (fog along it)
+        float mirroredDepth = 1.0;
+        if (fogReflectionDepthValid == 1) {
+            // The rippled ray followed to what it mirrors. The planar render is the scene mirrored
+            // about the plane: what the ray from this point reaches at distance t shows where the
+            // mirror image of that point lies on screen. The mirror image of the ray is a straight
+            // line, its view depth linear in t: two steps against the mirrored depth find the hit.
+            // (A fixed screen offset barely moved the mirror at grazing angles, where the ripples
+            // are flattened: the water became a flawless mirror, nothing like the same ripples under
+            // the screen-space reflection beside it; also right for water off the plane's height.)
+            mat4 viewProj = projection * view;
+            vec3 ro = vec3(FragPos.x, 2.0 * waterReflectionHeight - FragPos.y, FragPos.z);
+            vec3 rd = vec3(reflected.x, -reflected.y, reflected.z);
+            float z0 = -(view * vec4(ro, 1.0)).z, dz = max(-(view * vec4(rd, 0.0)).z, 1e-3);
+            float t = dist;
+            for (int k = 0; k < 3; k++) {
+                vec4 c = viewProj * vec4(ro + rd * t, 1.0);
+                reflUV = clamp(c.xy / max(c.w, 1e-3) * 0.5 + 0.5, vec2(0.001), vec2(0.999));
+                if (k == 2) break;
+                mirroredDepth = textureLod(fogReflectionDepth, reflUV, 0.0).r;
+                t = mirroredDepth >= 1.0 ? 2000.0 : clamp((LinearDepth(mirroredDepth) - z0) / dz, 0.0, 2000.0);
+            }
+            mirroredDepth = textureLod(fogReflectionDepth, reflUV, 0.0).r;
+            if (mirroredDepth < 1.0) travelled = min(t, skyFog);
+        }
         vec3 planar = textureLod(reflectionMap, reflUV, 0.5 + roughness * 5.0).rgb;
         if (dot(planar, planar) > 0.0001) {
-            float fogLength = skyFog;
-            if (fogReflectionDepthValid == 1) {
-                float mirroredDepth = textureLod(fogReflectionDepth, reflUV, 0.0).r;
-                if (mirroredDepth >= 1.0) planar *= SkyReflectionLevel(); // The sky part
-                if (mirroredDepth < 1.0) {
-                    // The mirrored camera sees the object at this view depth; the same pixel turns
-                    // view depth into distance the same way, its first 'dist' metres end at the water
-                    float rayScale = dist / max(LinearDepth(gl_FragCoord.z), 1e-3);
-                    fogLength = min(max(LinearDepth(mirroredDepth) * rayScale - dist, 0.0), skyFog);
-                }
-            }
-            reflection = mix(reflection, FogReflection(planar, FragPos, reflect(-viewDir, vec3(0.0, 1.0, 0.0)), fogLength), planarWeight);
+            if (fogReflectionDepthValid == 1 && mirroredDepth >= 1.0) planar *= SkyReflectionLevel(); // The sky part
+            reflection = mix(reflection, FogReflection(planar, FragPos, reflected, travelled), planarWeight);
         } else {
             planarWeight = 0.0; // Nothing rendered there
         }

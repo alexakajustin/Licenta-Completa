@@ -121,6 +121,14 @@ private:
 	// Frames left of the warm-up after a reset (scene loaded, GI turned on): every probe traced
 	// and every level re-lit each frame, so the light settles (bounces included) in about a second
 	int warmupFrames = 0;
+	// The lighting changed (sun, its colours, ambient, lights, GI settings): for a few frames every
+	// probe and level is relit each frame with a short memory, so the change shows at once instead
+	// of creeping in over seconds (the probes' history otherwise keeps 90 % of the old light)
+	std::vector<float> litState;
+	int relightFrames = 0;
+	static constexpr int RELIGHT_FRAMES = 8;
+	bool LightingChanged(DirectionalLight& sun, PointLight* pointLights, unsigned int pointLightCount,
+		SpotLight* spotLights, unsigned int spotLightCount, const GraphicsSettings& gs);
 	static constexpr int WARMUP_FRAMES = 60;
 	bool enabledLastFrame = false;
 	GraphicsSettings voxelSettings; // The culler's settings for the voxel levels (cheapest LOD, no impostors)

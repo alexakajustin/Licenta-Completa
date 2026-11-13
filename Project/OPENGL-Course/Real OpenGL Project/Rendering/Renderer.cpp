@@ -65,7 +65,16 @@ void Renderer::UpdateAtmosphere(const GraphicsSettings* gs, DirectionalLight& ma
 		float sky = std::max(glm::dot(later, glm::vec3(0.2126f, 0.7152f, 0.0722f)), 0.03f);
 		// The light colours are display-encoded (as the scene's): the linear fractions encoded
 		auto enc = [](glm::vec3 v) { return glm::pow(glm::max(v, glm::vec3(0.0f)), glm::vec3(1.0f / 2.2f)); };
-		mainLight.SetRenderTint(enc(t), enc(glm::vec3(sky)));
+		// The ambient is the sky's light: its brightness as above, its colour the open sky's own
+		// (blue by day, violet in the blue hour), not the sun's. The light's colour keeps only
+		// its brightness there
+		glm::vec3 irr = atmosphere.SkyIrradiance();
+		float irrLum = glm::dot(irr, glm::vec3(0.2126f, 0.7152f, 0.0722f));
+		glm::vec3 hue = irrLum > 1e-9f ? irr / irrLum : glm::vec3(1.0f);
+		glm::vec3 own = *mainLight.GetColourPtr();
+		float ownLum = glm::dot(own, glm::vec3(0.2126f, 0.7152f, 0.0722f));
+		glm::vec3 ambient = enc(sky * hue) * ownLum / glm::max(own, glm::vec3(1e-3f));
+		mainLight.SetRenderTint(enc(t), ambient);
 		// The scene's light level (the sun on the ground + the sky's), like a camera adapting
 		// to the time of day: a sunset ~2 EV, the blue hour ~6 EV under a sun 20 degrees up.
 		// The exposure gives back part of it (sunset still darker, the blue hour dim)
@@ -934,6 +943,7 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "sunColor"), 1, glm::value_ptr(*mainLight.GetColourPtr()));
 		glUniform1i(glGetUniformLocation(skyShader->GetShaderID(), "cloudsEnabled"), gs->cloudsEnabled ? 1 : 0);
 		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsDensity"), gs->cloudsDensity);
+		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsLayer"), gs->cloudsLayer);
 		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsSpeed"), gs->cloudsSpeed);
 		glUniform1f(glGetUniformLocation(skyShader->GetShaderID(), "cloudsSharpness"), gs->cloudsSharpness);
 		glUniform3fv(glGetUniformLocation(skyShader->GetShaderID(), "zenithDay"), 1, glm::value_ptr(gs->zenithDay));
@@ -972,6 +982,7 @@ void Renderer::UpdateProceduralSkybox(DirectionalLight& mainLight, const Graphic
 	state.skyboxType = (int)gs->skyboxType;
 	state.cloudsEnabled = gs->cloudsEnabled ? 1 : 0;
 	state.cloudsDensity = gs->cloudsDensity;
+	state.cloudsLayer = gs->cloudsLayer;
 	state.cloudsSpeed = gs->cloudsSpeed;
 	state.cloudsSharpness = gs->cloudsSharpness;
 	state.atmosphere[0] = gs->physicalAtmosphere ? 1.0f : 0.0f;

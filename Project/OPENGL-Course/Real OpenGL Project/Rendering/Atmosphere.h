@@ -34,6 +34,10 @@ public:
 	// Sunlight reaching an altitude through the air, relative to a sun at the zenith (CPU, for
 	// the colour of the light on the scene)
 	glm::vec3 SunTransmittance(float altitude, const glm::vec3& toSun) const;
+	// The light the open sky sheds on ground facing up (cosine-weighted over the sky view LUT,
+	// per unit sun illuminance, linear): its colour is the sky light's - blue by day, violet in
+	// the blue hour. Read back when the sun or the air changed.
+	glm::vec3 SkyIrradiance() const { return skyIrradiance; }
 
 private:
 	struct Params {
@@ -53,9 +57,14 @@ private:
 	GLuint transmittanceFBO = 0, multiScatterFBO = 0, skyViewFBO = 0;
 	GLuint quadVAO = 0, quadVBO = 0;
 	Params current{};
+	Params lastIrradianceParams{};
 	bool built = false;
 	glm::vec3 sunIlluminance = glm::vec3(1.0f);
 	float aerialScale = 1.0f;
 	glm::vec3 lastToSun = glm::vec3(0.0f, 1.0f, 0.0f);
 	int frame = 0;
+	glm::vec3 skyIrradiance = glm::vec3(0.0f);
+	glm::vec3 irradianceSun = glm::vec3(0.0f);
+	float irradianceAltitude = -1e9f;
+	void ReadSkyIrradiance(float cameraAltitude);
 };

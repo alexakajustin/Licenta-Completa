@@ -1224,6 +1224,7 @@ void Application::SetAtmosphericSkyUniforms(const glm::mat4& invProj, const glm:
 	glUniform1i(glGetUniformLocation(id, "jitterFrame"), jitterFrame);
 	glUniform1i(glGetUniformLocation(id, "cloudsEnabled"), graphicsSettings.cloudsEnabled ? 1 : 0);
 	glUniform1f(glGetUniformLocation(id, "cloudsDensity"), graphicsSettings.cloudsDensity);
+	glUniform1f(glGetUniformLocation(id, "cloudsLayer"), graphicsSettings.cloudsLayer);
 	glUniform1f(glGetUniformLocation(id, "cloudsSpeed"), graphicsSettings.cloudsSpeed);
 	glUniform1f(glGetUniformLocation(id, "cloudsSharpness"), graphicsSettings.cloudsSharpness);
 	glUniform3fv(glGetUniformLocation(id, "zenithDay"), 1, glm::value_ptr(graphicsSettings.zenithDay));
@@ -1356,6 +1357,7 @@ void Application::LoadGraphicsSettings()
 		if (j.contains("volumetricSkyEnabled")) graphicsSettings.volumetricSkyEnabled = j["volumetricSkyEnabled"];
 		if (j.contains("cloudsEnabled")) graphicsSettings.cloudsEnabled = j["cloudsEnabled"];
 		if (j.contains("cloudsDensity")) graphicsSettings.cloudsDensity = j["cloudsDensity"];
+		if (j.contains("cloudsLayer")) graphicsSettings.cloudsLayer = j["cloudsLayer"];
 		if (j.contains("cloudsSpeed")) graphicsSettings.cloudsSpeed = j["cloudsSpeed"];
 		if (j.contains("cloudsSharpness")) graphicsSettings.cloudsSharpness = j["cloudsSharpness"];
 		if (j.contains("cloudShadowsEnabled")) graphicsSettings.cloudShadowsEnabled = j["cloudShadowsEnabled"];
@@ -1468,6 +1470,7 @@ void Application::SaveGraphicsSettings()
 	j["volumetricSkyEnabled"] = graphicsSettings.volumetricSkyEnabled;
 	j["cloudsEnabled"] = graphicsSettings.cloudsEnabled;
 	j["cloudsDensity"] = graphicsSettings.cloudsDensity;
+	j["cloudsLayer"] = graphicsSettings.cloudsLayer;
 	j["cloudsSpeed"] = graphicsSettings.cloudsSpeed;
 	j["cloudsSharpness"] = graphicsSettings.cloudsSharpness;
 	j["cloudShadowsEnabled"] = graphicsSettings.cloudShadowsEnabled;

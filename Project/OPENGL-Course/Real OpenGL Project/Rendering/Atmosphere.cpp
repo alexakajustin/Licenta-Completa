@@ -4,6 +4,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace
 {
@@ -134,6 +135,14 @@ void Atmosphere::Update(const GraphicsSettings& gs, const glm::vec3& toSun, cons
 	glUniform3fv(glGetUniformLocation(sv, "toSunDir"), 1, glm::value_ptr(toSun));
 	DrawQuad();
 
+	// The sky's light on the ground, when the sun moved or the air changed (a small read back)
+	bool rebuilt = frame == 0 || p != lastIrradianceParams;
+	if (rebuilt || glm::dot(toSun, irradianceSun) < 0.99998f || std::abs(cameraPos.y - irradianceAltitude) > 50.0f) {
+		lastIrradianceParams = p;
+		irradianceSun = toSun;
+		ReadSkyIrradiance(cameraPos.y);
+	}
+
 	glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
 	glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 	if (depthTest) glEnable(GL_DEPTH_TEST);
@@ -210,6 +219,42 @@ glm::vec3 Atmosphere::SunTransmittance(float altitude, const glm::vec3& toSun) c
 	float horizonMu = -std::sqrt(std::max(1.0f - (BOTTOM / r) * (BOTTOM / r), 0.0f));
 	float x = glm::clamp((toSun.y - horizonMu + 0.0047f) / 0.0094f, 0.0f, 1.0f);
 	return t * (x * x * (3.0f - 2.0f * x));
+}
+
+void Atmosphere::ReadSkyIrradiance(float cameraAltitude)
+{
+	irradianceAltitude = cameraAltitude;
+	static std::vector<float> px;
+	px.resize((size_t)SKYVIEW_W * SKYVIEW_H * 4);
+	glBindTexture(GL_TEXTURE_2D, skyViewTex);
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, px.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
+	// The LUT's rows (atmosphere_skyview.frag): v < 0.5 the sky, zenith angle packed toward the
+	// horizon; its columns the azimuth from the sun over half the circle (the sky is symmetric)
+	float r = BOTTOM + std::max(cameraAltitude, 1.0f);
+	float horizon = std::acos(glm::clamp(std::sqrt(std::max(r * r - BOTTOM * BOTTOM, 0.0f)) / r, -1.0f, 1.0f));
+	float horizonAngle = 0.5f * 3.14159265f + horizon;
+	glm::dvec3 sum(0.0);
+	for (int y = 0; y < SKYVIEW_H / 2; y++) {
+		float v0 = (float)y / SKYVIEW_H, v1 = (float)(y + 1) / SKYVIEW_H;
+		auto Zenith = [&](float v) { float x = 1.0f - 2.0f * v; return horizonAngle * (1.0f - x * x); };
+		float z0 = std::min(Zenith(v0), 0.5f * 3.14159265f), z1 = std::min(Zenith(v1), 0.5f * 3.14159265f);
+		// Cosine-weighted solid angle of the ring between the two zenith angles: pi (sin^2 z1 - sin^2 z0) / 2 per half
+		float w = 0.5f * (std::sin(z1) * std::sin(z1) - std::sin(z0) * std::sin(z0));
+		if (w <= 0.0f) continue;
+		glm::dvec3 row(0.0); double rowW = 0.0;
+		for (int x = 0; x < SKYVIEW_W; x++) {
+			// Columns span azimuth u^2 * pi: each column's share of the half circle
+			float u0 = (float)x / SKYVIEW_W, u1 = (float)(x + 1) / SKYVIEW_W;
+			double a = (double)(u1 * u1 - u0 * u0);
+			size_t i = ((size_t)y * SKYVIEW_W + x) * 4;
+			row += glm::dvec3(px[i], px[i + 1], px[i + 2]) * a;
+			rowW += a;
+		}
+		sum += row / std::max(rowW, 1e-9) * (double)w;
+	}
+	// integral L cos dw = 2 pi * integral avgL(z) cos z sin z dz = 2 pi * sum
+	skyIrradiance = glm::vec3(sum) * 2.0f * 3.14159265f;
 }
 
 void Atmosphere::Shutdown()

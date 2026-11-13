@@ -2450,6 +2450,8 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				}
 				
 				ImGui::SliderFloat("Cloud Density", &graphicsSettingsPtr->cloudsDensity, 0.1f, 0.9f);
+				ImGui::SliderFloat("Cloud Type", &graphicsSettingsPtr->cloudsLayer, 0.0f, 1.0f);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("0 = cumulus: towers with blue sky between them. 1 = stratocumulus: a broad low layer of sheets and rolls, lit from below at sunset");
 				ImGui::SliderFloat("Cloud Speed", &graphicsSettingsPtr->cloudsSpeed, 0.0f, 0.5f);
 				ImGui::SliderFloat("Cloud Sharpness", &graphicsSettingsPtr->cloudsSharpness, 0.05f, 0.5f);
 				ImGui::Checkbox("Cloud Shadows", &graphicsSettingsPtr->cloudShadowsEnabled);
@@ -2461,6 +2463,7 @@ void EditorUI::RenderGraphicsSettings(SceneManager* sceneManager)
 				if (ImGui::Button("Reset Defaults##Clouds", ImVec2(-1, 0))) {
 					GraphicsSettings defaults;
 					graphicsSettingsPtr->cloudsDensity = defaults.cloudsDensity;
+					graphicsSettingsPtr->cloudsLayer = defaults.cloudsLayer;
 					graphicsSettingsPtr->cloudsSpeed = defaults.cloudsSpeed;
 					graphicsSettingsPtr->cloudsSharpness = defaults.cloudsSharpness;
 					graphicsSettingsPtr->cloudShadowsEnabled = defaults.cloudShadowsEnabled;

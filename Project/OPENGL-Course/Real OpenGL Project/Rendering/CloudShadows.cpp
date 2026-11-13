@@ -69,6 +69,7 @@ void CloudShadowMap::Update(const glm::vec3& cameraPos, const glm::vec3& toSun, 
 	GLuint id = shader.GetShaderID();
 	glUniform1f(glGetUniformLocation(id, "time"), time);
 	glUniform1f(glGetUniformLocation(id, "cloudsDensity"), gs.cloudsDensity);
+	glUniform1f(glGetUniformLocation(id, "cloudsLayer"), gs.cloudsLayer);
 	glUniform1f(glGetUniformLocation(id, "cloudsSpeed"), gs.cloudsSpeed);
 	glUniform1f(glGetUniformLocation(id, "cloudsSharpness"), gs.cloudsSharpness);
 	glUniform3fv(glGetUniformLocation(id, "sunDir"), 1, glm::value_ptr(toSun));

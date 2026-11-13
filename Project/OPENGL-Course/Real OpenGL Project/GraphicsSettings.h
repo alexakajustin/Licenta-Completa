@@ -96,6 +96,7 @@ struct GraphicsSettings {
 	bool volumetricSkyEnabled = true;
 	bool cloudsEnabled = true;
 	float cloudsDensity = 0.5f;
+	float cloudsLayer = 0.0f;          // 0: cumulus (towers, blue gaps), 1: stratocumulus (a broad low layer, sheets and rolls)
 	float cloudsSpeed = 0.05f;
 	float cloudsSharpness = 0.3f;
 	bool cloudShadowsEnabled = true;   // The clouds shade the ground (Rendering/CloudShadows.h)

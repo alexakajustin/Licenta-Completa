@@ -13,6 +13,7 @@ uniform float time;            ///< Current animation timer.
 uniform float cloudsDensity;   ///< Sky coverage (0.1 = few clouds, 0.9 = overcast).
 uniform float cloudsSpeed;     ///< Wind speed multiplier.
 uniform float cloudsSharpness; ///< Edge detail / erosion strength.
+uniform float cloudsLayer;     ///< 0: cumulus, 1: stratocumulus (a thin broad layer)
 #include "wind.glsl"           // The clouds drift in the scene's wind direction (Wind.h integrates it)
 
 uniform sampler3D cloudShapeNoise;  ///< 128^3 RGBA: Perlin-Worley + Worley fBm (cloud_noise.glsl)
@@ -62,10 +63,16 @@ vec2 RaySphere(vec3 ro, vec3 rd, float r)
 // Cumulus: a low-frequency "weather" field groups clouds into clusters with blue gaps; the
 // Perlin-Worley base is eroded by its own Worley fBm, then thresholded by the local coverage.
 // The threshold rises with height, so towers have wide bases and narrowing rounded tops.
+// Stratocumulus (cloudsLayer): the same field in a layer a third of the shell thick with a flat
+// top, its cells wider and squashed - the broad grey sheets
+// broken into rolls and holes of an evening sky.
 float CloudShape(vec3 p, float h, float lod)
 {
-    // Flat-ish base, rounded top
-    float profile = Remap(h, 0.0, 0.08, 0.0, 1.0) * Remap(h, 0.45, 1.0, 1.0, 0.0);
+    float layer = clamp(cloudsLayer, 0.0, 1.0);
+    // Flat-ish base, rounded top (cumulus) / a flat slab (stratocumulus)
+    float cumulus = Remap(h, 0.0, 0.08, 0.0, 1.0) * Remap(h, 0.45, 1.0, 1.0, 0.0);
+    float strato = Remap(h, 0.0, 0.05, 0.0, 1.0) * Remap(h, 0.2, 0.34, 1.0, 0.0);
+    float profile = mix(cumulus, strato, layer);
     if (profile <= 0.0) return 0.0;
 
     vec3 q = p + gWind;
@@ -75,7 +82,9 @@ float CloudShape(vec3 p, float h, float lod)
     float weather = textureLod(cloudShapeNoise, vec3(q.x / WEATHER_TILE, 0.37, q.z / WEATHER_TILE), 0.0).g;
     float coverage = clamp(clamp(cloudsDensity, 0.05, 0.95) * Remap(weather, 0.25, 0.85, 0.55, 1.45), 0.0, 1.0);
 
-    vec4 n = textureLod(cloudShapeNoise, q / SHAPE_TILE, lod);
+    // Wider, flatter cells for the layer (one lookup: the coordinates stretch, the lod follows)
+    vec3 scale = mix(vec3(1.0), vec3(0.7, 1.3, 0.7), layer);
+    vec4 n = textureLod(cloudShapeNoise, q * scale / SHAPE_TILE, lod - 0.5 * layer);
     float lowFbm = n.g * 0.625 + n.b * 0.25 + n.a * 0.125;
     float base = Remap(n.r, lowFbm - 1.0, 1.0, 0.0, 1.0);
 
