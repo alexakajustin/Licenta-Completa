@@ -14,6 +14,7 @@
 #include "Scene/RigidBody.h"
 #include "Scene/Player.h"
 #include "Scene/Planet.h"
+#include "Scene/LuaScriptComponent.h"
 #include "Lighting/LightObject.h"
 #include "Lighting/DirectionalLight.h"
 #include "Lighting/PointLight.h"
@@ -291,6 +292,11 @@ bool SceneSerializer::SaveScene(const std::string& filePath, SceneManager& scene
 						cJson["friction"] = rb->GetFriction();
 						cJson["restitution"] = rb->GetRestitution();
 						cJson["lockRotation"] = rb->GetLockRotation();
+					}
+				} else if (comp->GetName() == "LuaScriptComponent") {
+					LuaScriptComponent* sc = dynamic_cast<LuaScriptComponent*>(comp.get());
+					if (sc) {
+						cJson["filepath"] = sc->GetFilepath();
 					}
 				}
 				compsArray.push_back(cJson);
@@ -764,39 +770,74 @@ bool SceneSerializer::LoadScene(const std::string& filePath, SceneManager& scene
 
 			// Components
 			if (objJson.contains("components")) {
-				for (const auto& cJson : objJson["components"]) {
-					std::string type = cJson.value("type", "");
-					if (type == "BoxCollider") {
-						BoxCollider* bc = obj->AddComponent<BoxCollider>();
-						if (cJson.contains("size")) {
-							auto& s = cJson["size"];
-							bc->size = glm::vec3(s[0].get<float>(), s[1].get<float>(), s[2].get<float>());
+				if (objJson["components"].is_array()) {
+					for (const auto& cJson : objJson["components"]) {
+						std::string type = cJson.value("type", "");
+						if (type == "BoxCollider") {
+							BoxCollider* bc = obj->AddComponent<BoxCollider>();
+							if (cJson.contains("size")) {
+								auto& s = cJson["size"];
+								bc->size = glm::vec3(s[0].get<float>(), s[1].get<float>(), s[2].get<float>());
+							}
+							if (cJson.contains("offset")) {
+								auto& o = cJson["offset"];
+								bc->offset = glm::vec3(o[0].get<float>(), o[1].get<float>(), o[2].get<float>());
+							}
+							bc->isTrigger = cJson.value("isTrigger", false);
+						} else if (type == "CapsuleCollider") {
+							CapsuleCollider* cc = obj->AddComponent<CapsuleCollider>();
+							cc->height = cJson.value("height", 1.7f);
+							cc->radius = cJson.value("radius", 0.5f);
+						} else if (type == "MeshCollider") {
+							obj->AddComponent<MeshCollider>();
+						} else if (type == "Player") {
+							Player* p = obj->AddComponent<Player>();
+							p->SetMoveSpeed(cJson.value("moveSpeed", 5.0f));
+							p->SetTurnSpeed(cJson.value("turnSpeed", 50.0f));
+							p->SetEyeHeight(cJson.value("eyeHeight", 1.7f));
+							p->SetJumpForce(cJson.value("jumpForce", 5.0f));
+							p->SetGravity(cJson.value("gravity", 9.8f));
+						} else if (type == "RigidBody") {
+							RigidBody* rb = obj->AddComponent<RigidBody>();
+							rb->SetType(static_cast<RigidBody::BodyType>(cJson.value("bodyType", static_cast<int>(RigidBody::BodyType::Dynamic))));
+							rb->SetMass(cJson.value("mass", 1.0f));
+							rb->SetFriction(cJson.value("friction", 0.2f));
+							rb->SetRestitution(cJson.value("restitution", 0.0f));
+							rb->SetLockRotation(cJson.value("lockRotation", false));
+						} else if (type == "LuaScript" || type == "LuaScriptComponent") {
+							std::string fp = cJson.value("filepath", "");
+							if (fp.empty() && cJson.contains("path")) {
+								fp = cJson.value("path", "");
+							}
+							obj->AddComponent<LuaScriptComponent>(fp);
+						} else if (cJson.contains("LuaScript")) {
+							const auto& scriptJson = cJson["LuaScript"];
+							std::string fp = "";
+							if (scriptJson.is_string()) {
+								fp = scriptJson.get<std::string>();
+							} else if (scriptJson.is_object()) {
+								fp = scriptJson.value("filepath", "");
+								if (fp.empty() && scriptJson.contains("path")) {
+									fp = scriptJson.value("path", "");
+								}
+							}
+							obj->AddComponent<LuaScriptComponent>(fp);
 						}
-						if (cJson.contains("offset")) {
-							auto& o = cJson["offset"];
-							bc->offset = glm::vec3(o[0].get<float>(), o[1].get<float>(), o[2].get<float>());
+					}
+				} else if (objJson["components"].is_object()) {
+					const auto& comps = objJson["components"];
+					if (comps.contains("LuaScript") || comps.contains("LuaScriptComponent")) {
+						const auto& scriptJson = comps.contains("LuaScript") ? comps["LuaScript"] : comps["LuaScriptComponent"];
+						std::string fp = "";
+						if (scriptJson.is_string()) {
+							fp = scriptJson.get<std::string>();
+						} else if (scriptJson.is_object()) {
+							fp = scriptJson.value("filepath", "");
+							if (fp.empty() && scriptJson.contains("path")) {
+								fp = scriptJson.value("path", "");
+							}
 						}
-						bc->isTrigger = cJson.value("isTrigger", false);
-					} else if (type == "CapsuleCollider") {
-						CapsuleCollider* cc = obj->AddComponent<CapsuleCollider>();
-						cc->height = cJson.value("height", 1.7f);
-						cc->radius = cJson.value("radius", 0.5f);
-					} else if (type == "MeshCollider") {
-						obj->AddComponent<MeshCollider>();
-					} else if (type == "Player") {
-						Player* p = obj->AddComponent<Player>();
-						p->SetMoveSpeed(cJson.value("moveSpeed", 5.0f));
-						p->SetTurnSpeed(cJson.value("turnSpeed", 50.0f));
-						p->SetEyeHeight(cJson.value("eyeHeight", 1.7f));
-						p->SetJumpForce(cJson.value("jumpForce", 5.0f));
-						p->SetGravity(cJson.value("gravity", 9.8f));
-					} else if (type == "RigidBody") {
-						RigidBody* rb = obj->AddComponent<RigidBody>();
-						rb->SetType(static_cast<RigidBody::BodyType>(cJson.value("bodyType", static_cast<int>(RigidBody::BodyType::Dynamic))));
-						rb->SetMass(cJson.value("mass", 1.0f));
-						rb->SetFriction(cJson.value("friction", 0.2f));
-						rb->SetRestitution(cJson.value("restitution", 0.0f));
-						rb->SetLockRotation(cJson.value("lockRotation", false));
+						obj->AddComponent<LuaScriptComponent>(fp);
 					}
 				}
 			}
@@ -1271,6 +1312,13 @@ std::string SceneSerializer::SnapshotObject(GameObject* obj)
 		j["planet_radius"] = p.radius;
 	}
 
+	// Components
+	if (auto* script = obj->GetComponent<LuaScriptComponent>()) {
+		j["components"]["LuaScript"] = {
+			{ "filepath", script->GetFilepath() }
+		};
+	}
+
 	return j.dump();
 }
 
@@ -1427,6 +1475,29 @@ void SceneSerializer::RestoreObject(GameObject* obj, const std::string& jsonStr,
 		planet->SetParams(p);
 		planet->Generate();
 		planet->UpdateUniforms();
+	}
+
+	// Components
+	if (j.contains("components") && j["components"].is_object()) {
+		const auto& comps = j["components"];
+		if (comps.contains("LuaScript") || comps.contains("LuaScriptComponent")) {
+			const auto& scriptJson = comps.contains("LuaScript") ? comps["LuaScript"] : comps["LuaScriptComponent"];
+			std::string fp = "";
+			if (scriptJson.is_string()) {
+				fp = scriptJson.get<std::string>();
+			} else if (scriptJson.is_object()) {
+				fp = scriptJson.value("filepath", "");
+				if (fp.empty() && scriptJson.contains("path")) {
+					fp = scriptJson.value("path", "");
+				}
+			}
+			auto* script = obj->GetComponent<LuaScriptComponent>();
+			if (!script) {
+				obj->AddComponent<LuaScriptComponent>(fp);
+			} else {
+				script->SetFilepath(fp);
+			}
+		}
 	}
 }
 

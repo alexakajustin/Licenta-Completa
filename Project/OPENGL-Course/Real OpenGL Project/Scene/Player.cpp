@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <imgui.h>
+#include "Editor/ScriptReference.h"
 
 // =====================================================================
 // Lifecycle
@@ -169,7 +170,9 @@ glm::vec3 Player::GetLookDirection() const
 
 void Player::DrawInspector()
 {
-	if (ImGui::CollapsingHeader("Player", ImGuiTreeNodeFlags_DefaultOpen))
+	bool headerOpen = ImGui::CollapsingHeader("Player", ImGuiTreeNodeFlags_DefaultOpen);
+	ScriptReference::ComponentDragSource(this);
+	if (headerOpen)
 	{
 		ImGui::DragFloat("Move Speed", &moveSpeed, 0.1f, 0.0f, 100.0f);
 		ImGui::DragFloat("Turn Speed", &turnSpeed, 0.1f, 0.0f, 1000.0f);

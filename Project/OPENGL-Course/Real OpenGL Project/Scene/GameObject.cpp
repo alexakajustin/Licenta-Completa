@@ -1,4 +1,7 @@
 #include "Scene/GameObject.h"
+#include "Scene/GameObjectRegistry.h"
+#include "Core/ServiceLocator.h"
+#include "Scene/SceneManager.h"
 #include <algorithm>
 #include "Rendering/LODPolicy.h"
 #include "Scene/BoxCollider.h"
@@ -12,15 +15,17 @@
 #include "GraphicsSettings.h"
 
 GameObject::GameObject()
-	: name("GameObject"), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
+	: name("GameObject"), id(0), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
 {
 	for (int i = 0; i < 3; i++) lodMeshes[i] = nullptr;
+	id = GameObjectRegistry::Register(this);
 }
 
 GameObject::GameObject(const std::string& name)
-	: name(name), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
+	: name(name), id(0), model(nullptr), mesh(nullptr), texture(nullptr), normalMap(nullptr), material(nullptr)
 {
 	for (int i = 0; i < 3; i++) lodMeshes[i] = nullptr;
+	id = GameObjectRegistry::Register(this);
 }
 
 GameObject* GameObject::Clone(const std::string& newName)
@@ -154,6 +159,7 @@ void GameObject::UploadLayerMasks()
 
 GameObject::~GameObject()
 {
+	GameObjectRegistry::Unregister(id);
 	if (layerMaskSSBO) glDeleteBuffers(1, &layerMaskSSBO);
 	layerMaskSSBO = 0;
 	if (parent) {

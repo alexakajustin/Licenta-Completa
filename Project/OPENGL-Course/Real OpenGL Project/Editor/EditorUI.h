@@ -68,6 +68,7 @@ public:
 		bool isDebugOverlayOpen = true;
 		bool isNodeBuilderOpen = false; // Node Builder panel (off by default)
 		bool isGraphicsSettingsOpen = false; // Graphics settings panel (off by default)
+		bool isScriptEditorOpen = false; // Lua Script Editor panel (off by default)
 		int activeViewportTab = 0; // 0 = Scene, 1 = Game
 		int pendingTabSwitch = -1; // -1 = no switch; 0/1 = one-shot switch to Scene/Game
 		bool forceLayout = false;

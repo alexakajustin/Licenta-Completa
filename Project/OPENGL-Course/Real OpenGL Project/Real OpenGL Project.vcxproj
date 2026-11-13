@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -92,6 +92,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -111,6 +112,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -131,6 +133,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -151,6 +154,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -171,6 +175,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);;$(ProjectDir)External Libs/GLFW/include;$(ProjectDir)External Libs/GLEW/include;$(ProjectDir)External Libs/GLM;$(ProjectDir)External Libs/ASSIMP/include/;$(ProjectDir)External Libs/ImGUI;$(ProjectDir)External Libs/joltphysics;;$(ProjectDir)External Libs/Lua;$(ProjectDir)External Libs/sol2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <LargeAddressAware>true</LargeAddressAware>
@@ -287,6 +292,8 @@
     <ClCompile Include="Tests\LightingTests.cpp" />
     <ClCompile Include="Tests\PerformanceProfilerTests.cpp" />
     <ClCompile Include="Tests\NodeGraphTests.cpp" />
+    <ClCompile Include="Tests\ResourceTests.cpp" />
+    <ClCompile Include="Tests\ScriptEditorTests.cpp" />
     <ClCompile Include="Simulation\PhysicsSystem.cpp" />
     <ClCompile Include="Scene\RigidBody.cpp" />
     <ClCompile Include="External Libs\Lua\lapi.c" />
@@ -321,8 +328,17 @@
     <ClCompile Include="External Libs\Lua\lutf8lib.c" />
     <ClCompile Include="External Libs\Lua\lvm.c" />
     <ClCompile Include="External Libs\Lua\lzio.c" />
-    <ClCompile Include="Core\ScriptEngine.cpp" />
+    <ClCompile Include="Core\ScriptEngine.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="Scene\LuaScriptComponent.cpp" />
+    <ClCompile Include="Core\ResourceHandle.cpp" />
+    <ClCompile Include="Core\ScriptApi.cpp" />
+    <ClCompile Include="Scene\GameObjectRegistry.cpp" />
+    <ClCompile Include="Editor\ScriptEditor.cpp" />
+    <ClCompile Include="Editor\ScriptReference.cpp" />
+    <ClCompile Include="Editor\ScriptAnalysis.cpp" />
+    <ClCompile Include="External Libs\ImGuiColorTextEdit\TextEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\CustomNodes\Alien_Sphere.json" />
@@ -1143,6 +1159,13 @@
     <ClInclude Include="External Libs\Lua\lzio.h" />
     <ClInclude Include="Core\ScriptEngine.h" />
     <ClInclude Include="Scene\LuaScriptComponent.h" />
+    <ClInclude Include="Core\ResourceHandle.h" />
+    <ClInclude Include="Core\ScriptApi.h" />
+    <ClInclude Include="Scene\GameObjectRegistry.h" />
+    <ClInclude Include="Editor\ScriptEditor.h" />
+    <ClInclude Include="Editor\ScriptReference.h" />
+    <ClInclude Include="Editor\ScriptAnalysis.h" />
+    <ClInclude Include="External Libs\ImGuiColorTextEdit\TextEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icons\Light.png" />

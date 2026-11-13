@@ -16,16 +16,16 @@ C++17 / OpenGL 4.3+–4.6 procedural 3D engine, scene editor, and node-based con
 ## Repository Layout
 
 - Root (`Real OpenGL Project/`): `main.cpp`, `Application.{h,cpp}`, `GraphicsSettings.h`, `graphics_settings.json`, `CommonValues.h`, `Doxyfile`, `imgui.ini`.
-- `Core/`: `AssetManager`, `ServiceLocator`, `Window`, `Camera`, `Frustum`, `Transform`, `InputHandler`, `Grid2D`, `ScriptEngine`, `PerformanceProfiler`.
+- `Core/`: `AssetManager`, `ServiceLocator`, `ResourceHandle`, `Window`, `Camera`, `Frustum`, `Transform`, `InputHandler`, `Grid2D`, `ScriptEngine`, `PerformanceProfiler`.
 - `Rendering/`: `Renderer`, `Shader`, `Material`, `Model`, `Mesh`, `MeshData`, `MeshSimplifier`, `PrimitiveGenerator`, `Texture`, `TextureLayer`, `InstancedGroup`, `LODPolicy`, `Impostor`, `CascadedShadowMap`, `OmniShadowMap`, `ShadowMap`, `CloudShadows`, `Wind`, `Atmosphere`, `Skybox`, `GlobalIllumination`, `VolumetricFog`, `AmbientOcclusion` (GTAO), `Reflections` (SSR + probes), `TemporalAA`, `PostProcess`, `WaterFoamMap`.
 - `Lighting/`: `Light`, `DirectionalLight`, `PointLight`, `SpotLight`, `LightObject`.
-- `Scene/`: `SceneManager`, `SceneSerializer`, `GameObject`, `Component`, `Player`, `Planet`, `RigidBody`, `BoxCollider`, `CapsuleCollider`, `MeshCollider`, `LuaScriptComponent`, `WorldStreamerComponent`, `InfiniteRepeaterComponent`, `UndoManager`, `UndoActions`.
+- `Scene/`: `SceneManager`, `SceneSerializer`, `GameObject`, `GameObjectRegistry`, `Component`, `Player`, `Planet`, `RigidBody`, `BoxCollider`, `CapsuleCollider`, `MeshCollider`, `LuaScriptComponent`, `WorldStreamerComponent`, `InfiniteRepeaterComponent`, `UndoManager`, `UndoActions`.
 - `Simulation/`: `PhysicsSystem` (Jolt wrapper, `Layers::NON_MOVING=0`, `MOVING=1`), `FluidSimulation` (CPU 2D `Grid2D` shallow-water/erosion solver), `JoltCommon.h`.
 - `Nodes/`: `NodeGraph`, `NodeValue`, `NodeRegistry`, `NodeParams`, `NodeAssets`, `NodeRandom`, `GenerationStack`, `GraphMigration`, `OutputNode`, `SceneInputNode`, `SceneObjectsNode`, `InfiniteRepeaterNode`, `CustomNode`, `CustomNodeDef`, `Operation`, `OperationRegistry`, `AllOperations.h`, `Nodes/Math/`, `Nodes/Operations/Op_*.h`.
 - `Procedural/`: `PerlinNoiseGenerator`, `PerlinNoiseNode`, `HydraulicErosionNode`, `BeautifulErosionNode`, `DropletErosion.h`, `ThermalErosion.h`, `Noise3D.h`, `RiverNode`, `TerrainLayerMaskNode`, `ScatterNode`, `SpawnInstancesNode`, `CityGridNode`, `BuildingGenNode`, `InteriorGenNode`, `InteriorDecorators`, `InteriorStructure.h`, `RoomOccupancy`, `SolarSystemNode`.
-- `Editor/`: `EditorUI`, `DebugOverlay`, `NodeEditorUI`, `NodeBuilderUI`, `GenerationPipelineUI`, `AssetBrowser`, `TransformGizmo`, `EditorUndo.h`.
+- `Editor/`: `EditorUI`, `DebugOverlay`, `NodeEditorUI`, `NodeBuilderUI`, `ScriptEditor`, `GenerationPipelineUI`, `AssetBrowser`, `TransformGizmo`, `EditorUndo.h`.
 - `Assets/` & `Shaders/`: Shaders live in **`Assets/Shaders/`** (primary lookup in `AssetManager::GetShaderPath`, includes `.glsl` headers, PBR, sky/clouds, GI, fog, water, instancing, post-processing) and **`Shaders/`** (fallback lookup for shadows, picking, gizmos, icons, thumbnails, skybox). `Assets/` also holds `Scenes/`, `Materials/`, `Models/`, `Textures/`, `scripts/`, `CustomNodes/`.
-- `Tests/`: `CoreTests.cpp`, `EngineTests.cpp`, `LightingTests.cpp`, `NodeGraphTests.cpp`, `NoiseTests.cpp`, `RenderTests.cpp`, `PerformanceProfilerTests.cpp` (`#ifdef RUN_PERFORMANCE_TESTS`), plus `GISceneTest_tmp.cpp` / `GISettings_tmp.inl` (env-driven `GI_SCENE`/`GI_OUT` visual harness).
+- `Tests/`: `CoreTests.cpp`, `EngineTests.cpp`, `LightingTests.cpp`, `NodeGraphTests.cpp`, `NoiseTests.cpp`, `RenderTests.cpp`, `ResourceTests.cpp`, `PerformanceProfilerTests.cpp` (`#ifdef RUN_PERFORMANCE_TESTS`), plus `GISceneTest_tmp.cpp` / `GISettings_tmp.inl` (env-driven `GI_SCENE`/`GI_OUT` visual harness).
 - `Tools/`: `build_ultimate_scene_assets.py` & `ultimate_scene_meshes.py` for fetching/preparing local CC0 assets for `Assets/Scenes/Ultimate_Scene`.
 
 ## Build & Testing
@@ -104,7 +104,8 @@ C++17 / OpenGL 4.3+–4.6 procedural 3D engine, scene editor, and node-based con
 - **Assets, Scene, Physics & Lua**:
   - Use `ServiceLocator::GetAssetManager()` for shader/texture/model loading; models load asynchronously (`LoadModelCPU` on worker thread -> `LoadModelGPU` on main thread in `AssetManager::Update()`).
   - Entering Play Mode snapshots scene transforms and auto-attaches static `RigidBody` components to colliders; exiting Play Mode restores transforms.
-  - `ScriptEngine` exposes `vec3`, `Transform`, `Component`, `GameObject`, `BodyType`, `RigidBody`, `BoxCollider`, and `Input.IsKeyDown` + key constants to Lua; startup runs `Assets/scripts/test_script.lua`.
+  - `ScriptEngine` exposes `vec3`, `Transform`, `Component`, `GameObject`, `BodyType`, `RigidBody`, `BoxCollider`, `Resource` / `ResourceHandle` (`Resource.Get`, `Resource.Texture`, `Resource.Model`, `Resource.Audio`, `Resource.NodeGraph`, `Resource.GameObject`, `Resource.FindObject`, `Resource.FromID` with `:is_valid()`, `:resolve()`, `:instantiate()`), and `Input.IsKeyDown` + key constants to Lua; startup runs `Assets/scripts/test_script.lua`.
+  - `ScriptEditor` (`Window -> Script Editor`) provides an in-engine multi-tab Lua editor accepting drag-and-drop payloads (`ASSET_PATH`, `MATERIAL_PATH`, `SCRIPT_PATH`, `SCENE_OBJECT_INDEX`) from `AssetBrowser` and Scene Hierarchy.
   - Viewport picking uses **screen points** (not framebuffer pixels) to stay accurate under High-DPI scaling (`InputHandler.cpp`).
   - Settings persist via `Application::{Load,Save}GraphicsSettings` to `graphics_settings.json`.
 

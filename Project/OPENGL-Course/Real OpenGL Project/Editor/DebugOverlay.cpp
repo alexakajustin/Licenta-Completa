@@ -259,7 +259,7 @@ void DebugOverlay::Render(EditorUI::WindowState& uiState)
 		return;
 	}
 
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	ImGui::SetNextWindowBgAlpha(0.95f);
 

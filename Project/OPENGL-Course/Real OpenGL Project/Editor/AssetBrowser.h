@@ -29,6 +29,7 @@ enum class AssetType {
 	Scene,
 	Script,
 	ShaderSource,
+	Audio,
 	Data,
 	Other
 };

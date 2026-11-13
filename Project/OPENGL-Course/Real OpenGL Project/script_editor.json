@@ -1,0 +1,13 @@
+{
+  "active": 0,
+  "explorerWidth": 250.0,
+  "fontSize": 16.0,
+  "open": false,
+  "popOut": false,
+  "problemsHeight": 140.0,
+  "showExplorer": true,
+  "showProblems": true,
+  "tabs": [
+    "Assets/scripts/rotate_test.lua"
+  ]
+}

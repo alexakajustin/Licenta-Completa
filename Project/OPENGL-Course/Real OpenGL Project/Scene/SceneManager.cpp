@@ -25,6 +25,7 @@
 #include "Scene/Planet.h"
 #include "Scene/Player.h"
 #include "Editor/DebugOverlay.h"
+#include "Core/ServiceLocator.h"
 
 // =====================================================================
 // Constructor / Destructor
@@ -41,6 +42,10 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
+	if (ServiceLocator::GetSceneManager() == this) {
+		ServiceLocator::Provide(static_cast<SceneManager*>(nullptr));
+	}
+
 	Clear();
 	ClearClipboard();
 	
@@ -1483,12 +1488,14 @@ void SceneManager::Clear()
 		if (obj) obj->Orphan();
 	}
 
-	// 2. Safe deletion
-	for (auto* obj : objects) delete obj;
+	// 2. Safe deletion (swap-to-delete prevents iterator invalidation from GameObject destructor)
+	std::vector<GameObject*> toDelete = std::move(objects);
 	objects.clear();
+	for (auto* obj : toDelete) delete obj;
 	
-	for (auto* light : lights) delete light;
+	std::vector<LightObject*> lightsToDelete = std::move(lights);
 	lights.clear();
+	for (auto* light : lightsToDelete) delete light;
 
 	ClearInstancedGroups();
 	

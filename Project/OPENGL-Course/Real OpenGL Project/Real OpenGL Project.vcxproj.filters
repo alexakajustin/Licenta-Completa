@@ -318,6 +318,12 @@
     <ClCompile Include="Tests\NodeGraphTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\ResourceTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\ScriptEditorTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\Player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -335,6 +341,33 @@
     </ClCompile>
     <ClCompile Include="Scene\RigidBody.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ScriptEngine.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\LuaScriptComponent.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ResourceHandle.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ScriptApi.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\GameObjectRegistry.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\ScriptEditor.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\ScriptReference.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\ScriptAnalysis.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="External Libs\ImGuiColorTextEdit\TextEditor.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2541,6 +2574,33 @@
     </ClInclude>
     <ClInclude Include="Scene\CapsuleCollider.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ScriptEngine.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\LuaScriptComponent.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ResourceHandle.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ScriptApi.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\GameObjectRegistry.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\ScriptEditor.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\ScriptReference.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\ScriptAnalysis.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="External Libs\ImGuiColorTextEdit\TextEditor.h">
+      <Filter>Editor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

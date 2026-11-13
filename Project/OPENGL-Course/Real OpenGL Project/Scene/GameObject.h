@@ -57,6 +57,12 @@ public:
 	std::string GetName() const { return name; }
 
 	/**
+	 * @brief Retrieves the object's unique 64-bit identifier.
+	 * @return Unique monotonic 64-bit ID.
+	 */
+	uint64_t GetID() const { return id; }
+
+	/**
 	 * @brief Retrieves reference to local transform matrix controls.
 	 * Marks hierarchy dirtiness state upon retrieval.
 	 * @return Reference to local Transform.
@@ -382,6 +388,7 @@ public:
 
 private:
 	std::string name;
+	uint64_t id = 0;
 	Transform transform;
 
 	GameObject* parent = nullptr;

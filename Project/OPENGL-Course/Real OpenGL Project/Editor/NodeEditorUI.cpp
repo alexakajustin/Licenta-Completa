@@ -253,7 +253,7 @@ NodeEditorAction NodeEditorUI::Render(SceneManager& scene, Texture* defaultTex, 
 	} else if (uiState.maximizedWindowID != -1) {
 		return NodeEditorAction::None;
 	}
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |

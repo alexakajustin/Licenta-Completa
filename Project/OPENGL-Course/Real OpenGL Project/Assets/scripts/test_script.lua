@@ -1,3 +1,4 @@
+local tex = Resource.Texture("Assets/Textures/plain.png")
 -- test_script.lua
 -- This script runs when the engine initializes.
 

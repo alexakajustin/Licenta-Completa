@@ -1,16 +1,44 @@
 #include "LuaScriptComponent.h"
 #include "Core/ScriptEngine.h"
 #include "GameObject.h"
+#include "Editor/ScriptEditor.h"
 #include <iostream>
 #include "imgui.h"
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>
+#include "Editor/ScriptReference.h"
 #pragma comment(lib, "Comdlg32.lib")
 
 LuaScriptComponent::LuaScriptComponent(GameObject* owner, const std::string& scriptPath)
     : Component(owner), filepath(scriptPath)
 {
+}
+
+std::string LuaScriptComponent::GetScriptName() const
+{
+    std::string name = filepath;
+    size_t slash = name.find_last_of("/\\");
+    if (slash != std::string::npos) name = name.substr(slash + 1);
+    size_t dot = name.find_last_of('.');
+    if (dot != std::string::npos) name = name.substr(0, dot);
+    return name;
+}
+
+bool LuaScriptComponent::MatchesScript(const std::string& nameOrPath) const
+{
+    if (nameOrPath.empty() || filepath.empty()) return false;
+    auto normalize = [](std::string s) {
+        for (char& c : s) { if (c == '\\') c = '/'; c = (char)tolower((unsigned char)c); }
+        return s;
+    };
+    std::string query = normalize(nameOrPath);
+    std::string path = normalize(filepath);
+    if (query == normalize(GetScriptName()) || query == path) return true;
+    // "enemy.lua", "scripts/enemy.lua" or an absolute path ending with the stored relative one
+    return (path.size() >= query.size() && path.compare(path.size() - query.size(), query.size(), query) == 0 &&
+            (path.size() == query.size() || path[path.size() - query.size() - 1] == '/')) ||
+           (query.size() > path.size() && query.compare(query.size() - path.size(), path.size(), path) == 0);
 }
 
 void LuaScriptComponent::Start()
@@ -85,6 +113,13 @@ void LuaScriptComponent::ReloadScript()
     }
 }
 
+void LuaScriptComponent::Stop()
+{
+    startFunc = sol::lua_nil;
+    updateFunc = sol::lua_nil;
+    env = sol::environment();
+}
+
 void LuaScriptComponent::Update(float deltaTime)
 {
     if (updateFunc.valid())
@@ -104,7 +139,9 @@ void LuaScriptComponent::DrawInspector()
     if (pos != std::string::npos) scriptName = scriptName.substr(pos + 1);
 
     // Make the header look like Unity's script component header
-    if (ImGui::CollapsingHeader((scriptName + " (Script)").c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+    bool headerOpen = ImGui::CollapsingHeader((scriptName + " (Script)").c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+    ScriptReference::ComponentDragSource(this); // drag into code: gameObject:GetScript("name")
+    if (headerOpen) {
         
         ImGui::Text("Script");
         ImGui::SameLine(80.0f); // align the button
@@ -128,11 +165,10 @@ void LuaScriptComponent::DrawInspector()
         
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip("Double click to open script in external editor");
+            ImGui::SetTooltip("Double click to edit the script in the Script Editor");
             if (ImGui::IsMouseDoubleClicked(0) && !filepath.empty())
             {
-                // Open the script in the OS default editor/IDE
-                ShellExecuteA(NULL, "open", filepath.c_str(), NULL, NULL, SW_SHOW);
+                ScriptEditor::RequestOpen(filepath);
             }
         }
         

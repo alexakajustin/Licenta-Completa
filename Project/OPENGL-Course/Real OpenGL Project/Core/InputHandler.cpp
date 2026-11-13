@@ -78,8 +78,11 @@ void InputHandler::UpdateEditor(Window& window, Camera& camera, SceneManager& sc
 	// is in screen points, not framebuffer pixels. Scaling by the framebuffer/window
 	// ratio would create a mismatch on High DPI displays (125%, 150%, 200% scaling),
 	// causing depth buffer reads from the wrong pixel and broken occlusion culling.
-	float screenX = (float)mouseX;
-	float screenY = (float)mouseY;
+	// GLFW gives the cursor relative to the main window; with multi-viewports ImGui works in
+	// desktop coordinates (vPos included), so move the cursor into that space too.
+	const ImVec2 mainViewportPos = ImGui::GetMainViewport()->Pos;
+	float screenX = (float)mouseX + mainViewportPos.x;
+	float screenY = (float)mouseY + mainViewportPos.y;
 
 	// Offset by viewport position (both in screen points now)
 	float relativeX = screenX - vPos.x;

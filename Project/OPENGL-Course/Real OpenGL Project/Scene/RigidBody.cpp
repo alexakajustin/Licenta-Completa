@@ -14,6 +14,7 @@
 #include "Scene/MeshCollider.h"
 #include <imgui.h>
 #include <glm/gtc/quaternion.hpp>
+#include "Editor/ScriptReference.h"
 
 RigidBody::RigidBody(GameObject* owner) : Component(owner) {
 }
@@ -269,7 +270,9 @@ void RigidBody::AddImpulse(const glm::vec3& impulse) {
 }
 
 void RigidBody::DrawInspector() {
-    if (ImGui::CollapsingHeader("RigidBody", ImGuiTreeNodeFlags_DefaultOpen)) {
+    bool headerOpen = ImGui::CollapsingHeader("RigidBody", ImGuiTreeNodeFlags_DefaultOpen);
+    ScriptReference::ComponentDragSource(this);
+    if (headerOpen) {
         int currentType = static_cast<int>(mType);
         const char* types[] = { "Static", "Kinematic", "Dynamic" };
         if (ImGui::Combo("Body Type", &currentType, types, IM_ARRAYSIZE(types))) {

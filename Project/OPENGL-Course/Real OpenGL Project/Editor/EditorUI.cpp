@@ -35,6 +35,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <filesystem>
+#include "Editor/ScriptReference.h"
 
 EditorUI::EditorUI()
 {
@@ -329,7 +330,8 @@ void EditorUI::UpdateLayoutLogic()
 	// Universal Fix: If any ImGui widget is active (slider, scrollbar, etc.), ignore splitters
 	if (ImGui::IsAnyItemActive() && windowState.activeSplitterID == -1) return;
 
-	ImVec2 mousePos = ImGui::GetIO().MousePos;
+	// Layout math is relative to the main window; ImGui mouse is in desktop coordinates (multi-viewport)
+	ImVec2 mousePos = ImVec2(ImGui::GetIO().MousePos.x - ImGui::GetMainViewport()->Pos.x, ImGui::GetIO().MousePos.y - ImGui::GetMainViewport()->Pos.y);
 	bool mousePressed = ImGui::IsMouseDown(0);
 	float winWidth = ImGui::GetIO().DisplaySize.x;
 	float winHeight = ImGui::GetIO().DisplaySize.y;
@@ -428,8 +430,11 @@ void EditorUI::UpdateLayoutVisual()
 	float winHeight = displaySize.y;
 	float menuHeight = ImGui::GetFrameHeight();
 	float contentHeight = winHeight - menuHeight;
-	ImVec2 mousePos = ImGui::GetIO().MousePos;
+	// Layout math is relative to the main window; ImGui mouse/draw lists are in desktop coordinates (multi-viewport)
+	const ImVec2 vpOrigin = ImGui::GetMainViewport()->Pos;
+	ImVec2 mousePos = ImVec2(ImGui::GetIO().MousePos.x - vpOrigin.x, ImGui::GetIO().MousePos.y - vpOrigin.y);
 	ImDrawList* fgDraw = ImGui::GetForegroundDrawList();
+	const int splitterVtxStart = fgDraw->VtxBuffer.Size;
 
 	float hitBuffer = 2.0f; // Visual safe zone
 
@@ -471,6 +476,9 @@ void EditorUI::UpdateLayoutVisual()
 	if (hoverID == 2) fgDraw->AddRectFilled(ImVec2(0, menuHeight + contentHeight * windowState.leftHeightRatio - 2), ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.leftHeightRatio + 2), highlightColor);
 	if (hoverID == 3) fgDraw->AddRectFilled(ImVec2(windowState.leftWidth, menuHeight + contentHeight * windowState.midHeightRatio - 2), ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * windowState.midHeightRatio + 2), highlightColor);
 	if (hoverID == 4) fgDraw->AddRectFilled(ImVec2(winWidth - windowState.rightWidth, menuHeight + contentHeight * windowState.rightHeightRatio - 2), ImVec2(winWidth, menuHeight + contentHeight * windowState.rightHeightRatio + 2), highlightColor);
+
+	// Highlights were drawn in main-window space: move them to desktop space
+	for (int vi = splitterVtxStart; vi < fgDraw->VtxBuffer.Size; vi++) { fgDraw->VtxBuffer[vi].pos.x += vpOrigin.x; fgDraw->VtxBuffer[vi].pos.y += vpOrigin.y; }
 
 }
 
@@ -522,7 +530,7 @@ void EditorUI::UpdateViewportMetadata()
 		return; // Completely skip the Scene window
 	}
 
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar;
 
@@ -622,6 +630,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 			ImGui::MenuItem("Project (Asset Browser)", nullptr, &windowState.isAssetBrowserOpen);
 			ImGui::MenuItem("Node Editor", nullptr, &windowState.isNodeEditorOpen);
 			ImGui::MenuItem("Node Builder", nullptr, &windowState.isNodeBuilderOpen);
+			ImGui::MenuItem("Script Editor", nullptr, &windowState.isScriptEditorOpen);
 			ImGui::Separator();
 			ImGui::MenuItem("Debug Overlay", nullptr, &windowState.isDebugOverlayOpen);
 			ImGui::Separator();
@@ -706,7 +715,7 @@ void EditorUI::RenderMainMenuBar(SceneManager& scene, NodeGraph& nodeGraph, Came
 				GraphNode* ground = add("scene_object", 0, 0);
 				GraphNode* objects = add("scene_object", 0, 260);
 				GraphNode* scatter = add("scatter", 280, 0);
-				GraphNode* spawn = add("spawn_instances", filtered ? 860 : 580, 120);
+				GraphNode* spawn = add("spawn_instances", filtered ? 860.0f : 580.0f, 120.0f);
 				link(ground, "mesh", scatter, "surface");
 				link(objects, "object", spawn, "objects");
 				if (filtered) {
@@ -900,7 +909,7 @@ void EditorUI::RenderViewport(SceneManager& scene, const glm::mat4& projection, 
 		return; // Completely skip rendering
 	}
 
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
 
@@ -1147,7 +1156,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 		return;
 	}
 
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	if (!windowState.isHierarchyOpen) return;
 
@@ -1208,6 +1217,7 @@ void EditorUI::RenderHierarchy(SceneManager& scene, int winHeight, Camera* camer
 					bool rangeSelect = ImGui::GetIO().KeyShift;
 					scene.SetSelectedLightIndex(i, multiSelect, rangeSelect);
 				}
+				ScriptReference::LightDragSource(lights[i]); // drag into the Script Editor
 
 				// Double-click to focus
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && camera) {
@@ -1456,7 +1466,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 		return;
 	}
 
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	if (!windowState.isInspectorOpen) return;
 
@@ -1541,7 +1551,9 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			ImGui::Separator();
 
 			// --- Transform (collapsible) ---
-			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+			bool transformOpen = ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen);
+			ScriptReference::TransformDragSource(selected); // drag into the Script Editor
+			if (transformOpen)
 			{
 				bool changed = false;
 				if (DrawVec3Control("Position", *transform.GetPositionPtr(), 0.0f, 0.1f)) changed = true;
@@ -1576,7 +1588,8 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			}
 
 				// --- Texture Layers (collapsible) ---
-			if (ImGui::CollapsingHeader("Texture Layers", ImGuiTreeNodeFlags_DefaultOpen))
+			bool layersOpen = ImGui::CollapsingHeader("Texture Layers", ImGuiTreeNodeFlags_DefaultOpen);
+			if (layersOpen)
 			{
 				auto& layers = selected->GetTextureLayers();
 				float slotSize = 48.0f;
@@ -1589,6 +1602,7 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 
 					ImGui::Separator();
 					ImGui::Text("Layer %d", li);
+					ScriptReference::LayerDragSource(selected, li); // drag into the Script Editor
 					ImGui::SameLine();
 					if (ImGui::SmallButton("X##RemoveLayer")) removeIdx = li;
 
@@ -1748,7 +1762,9 @@ void EditorUI::RenderInspector(SceneManager& scene, int winWidth, int winHeight)
 			// Culling Settings removed to enforce Single Responsibility Principle (Global Culling only)
 
 			// --- Material (collapsible, with preview sphere) ---
-			if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
+			bool materialOpen = ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen);
+			ScriptReference::MaterialDragSource(selected); // drag into the Script Editor
+			if (materialOpen)
 			{
 				Material* mat = selected->GetMaterial();
 				

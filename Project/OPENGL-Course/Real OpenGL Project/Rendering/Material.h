@@ -73,6 +73,11 @@ public:
 	glm::vec2 GetOffset() const { return GetVec2("material.offset"); }
 	void SetOffset(glm::vec2 val) { SetVec2("material.offset", val); }
 
+	// Live references (scripts write .x / .r through them); missing entries are created
+	glm::vec2* GetVec2Ptr(const std::string& name) { return &vec2s[name]; }
+	glm::vec3* GetVec3Ptr(const std::string& name) { return &vec3s[name]; }
+	glm::vec4* GetVec4Ptr(const std::string& name) { return &vec4s[name]; }
+
 	const std::map<std::string, float>& GetFloats() const { return floats; }
 	const std::map<std::string, int>& GetInts() const { return ints; }
 	const std::map<std::string, glm::vec2>& GetVec2s() const { return vec2s; }

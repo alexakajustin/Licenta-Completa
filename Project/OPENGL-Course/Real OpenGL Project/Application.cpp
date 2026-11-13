@@ -107,11 +107,13 @@ Application::Application()
 
 Application::~Application()
 {
+	ServiceLocator::Provide((SceneManager*)nullptr);
 	PhysicsSystem::GetInstance().Shutdown();
 }
 
 bool Application::Init()
 {
+	ServiceLocator::Provide(&sceneManager);
 	LoadGraphicsSettings();
 
 	// Initialize ScriptEngine
@@ -159,7 +161,10 @@ bool Application::Init()
 	ImNodes::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-	// io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Missing in this ImGui branch
+	// Multi-viewport (docking branch): ImGui windows can leave the main window and become OS
+	// windows of their own, e.g. the Script Editor on a second monitor. Layout code that works in
+	// main-window coordinates offsets by GetMainViewport()->Pos.
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	
 	// Load Modern System Font (Segoe UI) at 18px
 	if (GetFileAttributesA("C:\\Windows\\Fonts\\segoeui.ttf") != INVALID_FILE_ATTRIBUTES) {
@@ -169,7 +174,23 @@ bool Application::Init()
 		io.FontGlobalScale = 1.15f; 
 	}
 
+	// Monospace font for the Script Editor (the first font added stays the UI default)
+	for (const char* mono : { "C:\\Windows\\Fonts\\CascadiaMono.ttf", "C:\\Windows\\Fonts\\consola.ttf" })
+	{
+		if (GetFileAttributesA(mono) != INVALID_FILE_ATTRIBUTES)
+		{
+			ScriptEditor::SetCodeFont(io.Fonts->AddFontFromFileTTF(mono, 16.0f));
+			break;
+		}
+	}
+
 	SetupModernTheme();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		// Platform windows are real OS windows: square corners and an opaque background
+		ImGui::GetStyle().WindowRounding = 0.0f;
+		ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
 	ImNodes::StyleColorsDark();
 	SetupModernNodeTheme();
 	ImGui_ImplGlfw_InitForOpenGL(mainWindow.getWindow(), true);
@@ -192,6 +213,7 @@ bool Application::Init()
 	sceneManager.InitIcons();
 	sceneManager.InitGizmo();
 	assetBrowser.Init();
+	scriptEditor.Init();
 
 	sceneManager.SetLightArrays(pointLights, &pointLightCount, spotLights, &spotLightCount);
 
@@ -384,7 +406,8 @@ void Application::Run()
 
 			PhysicsSystem::GetInstance().Update(deltaTime);
 
-			// Update components on all objects
+			// Script clock (Time.deltaTime / Time.time / Time.frameCount), then components
+			ScriptEngine::GetInstance().BeginFrame(deltaTime);
 			for (auto* obj : sceneManager.GetObjects()) {
 				obj->UpdateComponents(deltaTime);
 			}
@@ -416,7 +439,7 @@ void Application::Run()
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::SetNextWindowPos(ImVec2(mainWindow.getBufferWidth() * 0.5f, mainWindow.getBufferHeight() * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 			ImGui::SetNextWindowSize(ImVec2(450, 150));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.98f));
@@ -443,6 +466,7 @@ void Application::Run()
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			// Purposefully DO NOT glClear so the app remains visible in the background
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			RenderImGuiPlatformWindows();
 			mainWindow.swapBuffers();
 		};
 
@@ -930,6 +954,7 @@ void Application::Run()
 		assetBrowser.Render(sceneManager, uiState);
 		NodeEditorAction graphAction = nodeEditorUI.Render(sceneManager, &plainTexture, &plainMaterial, uiState);
 		nodeBuilderUI.Render(sceneManager.GetNodeGraph(), uiState);
+		scriptEditor.Render(sceneManager, uiState.isScriptEditorOpen);
 		editorUI.RenderGraphicsSettings(&sceneManager);
 
 
@@ -949,6 +974,7 @@ void Application::Run()
 		ImGui::Render();
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		RenderImGuiPlatformWindows();
 
 		// UpdateProjection() was removed here as it is now handled at the start of the loop with dynamic far planes
 
@@ -1500,6 +1526,17 @@ void Application::SaveGraphicsSettings()
 	}
 }
 
+void Application::RenderImGuiPlatformWindows()
+{
+	// Windows dragged out of the main window (multi-viewport) are rendered into their own OS
+	// windows; they share the main GL context's objects, then the main context is restored.
+	if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)) return;
+	GLFWwindow* backupContext = glfwGetCurrentContext();
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+	glfwMakeContextCurrent(backupContext);
+}
+
 void Application::SetupModernTheme()
 {
 	auto& style = ImGui::GetStyle();
@@ -1675,6 +1712,8 @@ void Application::StartPlayMode()
 		transformBackups[obj] = backup;
 	}
 
+	ScriptEngine::GetInstance().ResetClock();
+
 	// Sync/Recreate Jolt bodies for any pre-existing RigidBodies, and Reload Lua scripts
 	for (auto* obj : sceneManager.GetObjects())
 	{
@@ -1682,10 +1721,9 @@ void Application::StartPlayMode()
 		{
 			rb->RecreateBody();
 		}
-		if (auto* script = obj->GetComponent<LuaScriptComponent>())
-		{
-			script->ReloadScript();
-		}
+		// Every script on the object runs (not only the first one)
+		for (const auto& comp : obj->GetComponents())
+			if (auto* script = dynamic_cast<LuaScriptComponent*>(comp.get())) script->ReloadScript();
 	}
 
 	Player* player = sceneManager.FindPlayer();
@@ -1737,6 +1775,11 @@ void Application::StopPlayMode()
 		}
 	}
 	transformBackups.clear();
+
+	// Scripts stop running: saving a script in edit mode must not start it
+	for (auto* obj : sceneManager.GetObjects())
+		for (const auto& comp : obj->GetComponents())
+			if (auto* script = dynamic_cast<LuaScriptComponent*>(comp.get())) script->Stop();
 
 	// Restore cursor for editor interaction
 	glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);

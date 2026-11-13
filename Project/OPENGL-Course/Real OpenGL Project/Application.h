@@ -14,6 +14,7 @@
 #include "Nodes/NodeGraph.h"
 #include "Editor/NodeEditorUI.h"
 #include "Editor/NodeBuilderUI.h"
+#include "Editor/ScriptEditor.h"
 #include "Rendering/Texture.h"
 #include "Rendering/Material.h"
 #include "Lighting/DirectionalLight.h"
@@ -120,6 +121,7 @@ private:
 	DebugOverlay debugOverlay;
 	NodeEditorUI nodeEditorUI;
 	NodeBuilderUI nodeBuilderUI;
+	ScriptEditor scriptEditor;
 
 	// Resources
 	Texture plainTexture;
@@ -137,6 +139,7 @@ private:
 	void ResizeViewportFBO(int width, int height);
 	void SetupDockSpace();
 	void SetupModernTheme();
+	void RenderImGuiPlatformWindows();
 	void SetupModernNodeTheme();
 	GLuint viewportFBO = 0;
 	// Half-resolution target for the ray-marched atmospheric sky (upscaled into the viewport)

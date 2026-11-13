@@ -3,6 +3,7 @@
 #include <shellapi.h>
 
 #include "Editor/AssetBrowser.h"
+#include "Editor/ScriptEditor.h"
 #include "Scene/SceneManager.h"
 #include "Rendering/Material.h"
 #include "Rendering/Mesh.h"
@@ -64,6 +65,7 @@ namespace {
 		if (ext == ".mat") return AssetType::MaterialAsset;
 		if (ext == ".lua") return AssetType::Script;
 		if (ext == ".vert" || ext == ".frag" || ext == ".geom" || ext == ".glsl" || ext == ".tesc" || ext == ".tese" || ext == ".comp") return AssetType::ShaderSource;
+		if (ext == ".wav" || ext == ".mp3" || ext == ".ogg" || ext == ".flac") return AssetType::Audio;
 		if (ext == ".json") {
 			for (const auto& part : path)
 				if (Lower(Narrow(part)) == "scenes") return AssetType::Scene;
@@ -106,6 +108,7 @@ namespace {
 		case AssetType::Scene:         return "Scene";
 		case AssetType::Script:        return "Lua script";
 		case AssetType::ShaderSource:  return "Shader";
+		case AssetType::Audio:         return "Audio";
 		case AssetType::Data:          return "Data";
 		default:                       return "File";
 		}
@@ -831,6 +834,11 @@ void AssetBrowser::OpenAsset(const AssetInfo& asset)
 		sceneOpenRequestPopup = true;
 		return;
 	}
+	// Lua scripts open in the engine's own Script Editor
+	if (asset.type == AssetType::Script) {
+		ScriptEditor::RequestOpen(asset.pathStr);
+		return;
+	}
 	// Anything else: the program Windows opens it with (image viewer, code editor...)
 	std::error_code ec;
 	fs::path abs = fs::absolute(asset.path, ec);
@@ -914,7 +922,7 @@ void AssetBrowser::Render(SceneManager& scene, EditorUI::WindowState& uiState)
 	} else if (uiState.maximizedWindowID != -1) {
 		return;
 	}
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(pos.x + ImGui::GetMainViewport()->Pos.x, pos.y + ImGui::GetMainViewport()->Pos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
@@ -1170,10 +1178,11 @@ void AssetBrowser::BeginItemDrag(const AssetInfo& asset)
 	if (it != thumbs.end() && it->second.state == ThumbState::Ready)
 		ImGui::Image((ImTextureID)(intptr_t)it->second.tex, ImVec2(48, 48));
 	ImGui::Text("%s", asset.name.c_str());
-	const char* hint = asset.type == AssetType::Model ? "Drop in the viewport or the hierarchy" :
-		asset.type == AssetType::Texture ? "Drop on a texture slot in the inspector" :
+	const char* hint = asset.type == AssetType::Model ? "Drop in the viewport, the hierarchy or a script" :
+		asset.type == AssetType::Texture ? "Drop on a texture slot in the inspector or in a script" :
 		asset.type == AssetType::MaterialAsset ? "Drop on an object" :
-		asset.type == AssetType::Script ? "Drop on a script field in the inspector" : "";
+		asset.type == AssetType::Audio ? "Drop in the Script Editor" :
+		asset.type == AssetType::Script ? "Drop on a script field in the inspector or the Script Editor" : "";
 	if (*hint) ImGui::TextDisabled("%s", hint);
 	ImGui::EndDragDropSource();
 }

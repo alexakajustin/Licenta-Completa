@@ -40,7 +40,7 @@ extern "C" {
 #include "Core/AssetManager.h"
 #include "Core/ServiceLocator.h"
 
-int main()
+int main(int argc, char** argv)
 {
 	// Force the GPU exports to not be stripped
 	volatile DWORD forceNvidia = NvOptimusEnablement;
@@ -92,6 +92,7 @@ int main()
 
 	// --- Run doctest ---
 	doctest::Context ctx;
+	ctx.applyCommandLine(argc, argv);
 	int testResult = ctx.run();
 
 	// --- Cleanup ---
